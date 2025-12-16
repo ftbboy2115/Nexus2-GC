@@ -1,0 +1,13 @@
+/.env
+/.venv/
+/charts_kk/
+/charts_ep/
+/charts_htf/
+__pycache__/
+*.log
+/data/
+STOP_SNIPER
+.idea/
+/core/charts_ep/
+/core/charts_htf/
+/core/charts_kk/
