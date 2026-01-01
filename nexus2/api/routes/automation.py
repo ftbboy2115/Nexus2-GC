@@ -945,6 +945,86 @@ async def stop_scheduler(
     return {**result, "engine_stopped": True, "monitor_stopped": True}
 
 
+@router.post("/scheduler/force_scan", response_model=dict)
+async def force_scheduler_scan(
+    request: Request,
+    engine: AutomationEngine = Depends(get_engine),
+):
+    """
+    Force an immediate scan cycle regardless of market hours.
+    
+    This is useful for:
+    - Simulation testing (when sim_clock is during market hours but real time isn't)
+    - Manual testing outside market hours
+    
+    Returns:
+        Dict with scan results, signals found, and execution results if auto_execute is on
+    """
+    from nexus2.db import SessionLocal, SchedulerSettingsRepository, PositionRepository
+    from nexus2.domain.automation.services import create_unified_scanner_callback
+    
+    # Get fresh settings
+    db = SessionLocal()
+    try:
+        settings_repo = SchedulerSettingsRepository(db)
+        sched_settings = settings_repo.get()
+        
+        min_quality = sched_settings.min_quality
+        stop_mode = sched_settings.stop_mode or "atr"
+        max_stop_atr = float(sched_settings.max_stop_atr) if sched_settings.max_stop_atr else 1.0
+        max_stop_percent = float(sched_settings.max_stop_percent) if sched_settings.max_stop_percent else 5.0
+        scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
+        htf_frequency = sched_settings.htf_frequency or "every_cycle"
+        
+        # Check sim_mode
+        sim_mode_setting = getattr(sched_settings, 'sim_mode', 'false')
+        sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
+        
+        # Check auto_execute
+        auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
+        auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
+        
+    finally:
+        db.close()
+    
+    # Configure engine scanner with sim_mode
+    engine._scanner_func = await create_unified_scanner_callback(
+        min_quality=min_quality,
+        max_stop_percent=max_stop_percent,
+        stop_mode=stop_mode,
+        max_stop_atr=max_stop_atr,
+        scan_modes=scan_modes,
+        htf_frequency=htf_frequency,
+        sim_mode=sim_mode,
+    )
+    
+    logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
+    
+    # Run the scan cycle
+    scan_result = await engine.run_scan_cycle()
+    
+    # Get signals from context
+    signals = []
+    if hasattr(scan_result, 'signals'):
+        signals = [s.to_dict() if hasattr(s, 'to_dict') else str(s) for s in scan_result.signals]
+    elif isinstance(scan_result, dict) and 'signals' in scan_result:
+        signals = scan_result['signals']
+    
+    result = {
+        "status": "scan_complete",
+        "sim_mode": sim_mode,
+        "auto_execute": auto_execute,
+        "signals_count": len(signals),
+        "signals": signals[:10],  # Limit to first 10 for display
+    }
+    
+    # If auto_execute and we have signals, execute top signal
+    if auto_execute and signals:
+        result["execution_note"] = "Auto-execute would run here. Enable via scheduler start."
+    
+    return result
+
+
 @router.get("/scheduler/status", response_model=dict)
 async def get_scheduler_status():
     """Get current scheduler status."""

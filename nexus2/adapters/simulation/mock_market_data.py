@@ -259,10 +259,21 @@ class MockMarketData:
     
     def to_dict(self) -> Dict:
         """Convert to dict for debugging."""
+        # Get first/last bar dates for debugging
+        date_ranges = {}
+        for symbol, bars in self._data.items():
+            if bars:
+                date_ranges[symbol] = {
+                    "first": bars[0].date,
+                    "last": bars[-1].date,
+                    "count": len(bars)
+                }
+        
         return {
             "symbols": self.get_symbols(),
             "bar_counts": {s: len(bars) for s, bars in self._data.items()},
             "current_prices": self._current_prices.copy(),
+            "date_ranges": date_ranges,  # DEBUG: Show bar date ranges
         }
     
     # ==========================================================================
