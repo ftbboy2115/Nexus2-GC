@@ -454,15 +454,37 @@ def create_execute_callback(engine, broker, get_app_fn):
                                 skipped.append({"symbol": signal.symbol, "reason": "max_position_value_too_small"})
                                 continue
                     
-                    # Submit bracket order
-                    from nexus2.domain.orders.models import OrderSide
-                    result = broker.submit_bracket_order(
-                        symbol=signal.symbol,
-                        side=OrderSide.BUY,
-                        qty=shares,
-                        stop_price=float(signal.stop_price),
-                        take_profit_price=None,  # No TP for KK style
-                    )
+                    # Check if in simulation mode
+                    sim_mode = getattr(sched_settings, 'sim_mode', 'false') == 'true'
+                    
+                    if sim_mode:
+                        # Use MockBroker for simulation
+                        from nexus2.api.routes.automation import get_simulation_status
+                        if hasattr(get_simulation_status, '_mock_broker'):
+                            mock_broker = get_simulation_status._mock_broker
+                            # Set current price for the symbol (use signal entry price)
+                            mock_broker.set_price(signal.symbol, float(signal.entry_price))
+                            
+                            result = mock_broker.submit_bracket_order(
+                                symbol=signal.symbol,
+                                side="buy",
+                                qty=shares,
+                                stop_price=float(signal.stop_price),
+                            )
+                            logger.info(f"[SIM] Submitted mock order for {signal.symbol}: {result}")
+                        else:
+                            skipped.append({"symbol": signal.symbol, "reason": "simulation_not_initialized"})
+                            continue
+                    else:
+                        # Submit bracket order to real broker
+                        from nexus2.domain.orders.models import OrderSide
+                        result = broker.submit_bracket_order(
+                            symbol=signal.symbol,
+                            side=OrderSide.BUY,
+                            qty=shares,
+                            stop_price=float(signal.stop_price),
+                            take_profit_price=None,  # No TP for KK style
+                        )
                     
                     if result and result.is_accepted:
                         # Get NAC-specific broker/account for position tagging
