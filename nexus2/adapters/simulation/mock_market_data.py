@@ -518,6 +518,33 @@ class MockMarketData:
     def get_etf_symbols(self) -> set:
         """Return empty set (no ETFs to filter in simulation)."""
         return set()
+    
+    def screen_stocks(self, threshold: float = 0.0) -> List[Dict]:
+        """
+        Screen stocks for breakout scanner compatibility.
+        
+        Returns loaded symbols with basic screening info.
+        In simulation, returns all loaded symbols as candidates.
+        """
+        results = []
+        for symbol in self._data.keys():
+            bars = self.get_daily_bars(symbol, days=20)
+            if not bars:
+                continue
+            
+            # Calculate basic metrics
+            latest_bar = bars[0]
+            avg_volume = sum(b.volume for b in bars) / len(bars) if bars else 0
+            
+            results.append({
+                "symbol": symbol,
+                "price": latest_bar.close,
+                "volume": latest_bar.volume,
+                "avg_volume": avg_volume,
+                "change_percent": 0,  # Would need yesterday's close
+            })
+        
+        return results
 
 
 # Global instance

@@ -1735,6 +1735,29 @@ async def reset_simulation(
     }
 
 
+@router.get("/simulation/debug", response_model=dict)
+async def debug_simulation():
+    """
+    Debug endpoint - shows what get_gainers() and get_actives() return.
+    """
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    # Ensure clock is connected
+    if data._sim_clock is None:
+        data.set_clock(clock)
+    
+    return {
+        "clock": clock.get_trading_day(),
+        "is_market_hours": clock.is_market_hours(),
+        "gainers": data.get_gainers()[:5],  # Top 5 gainers
+        "actives": data.get_actives()[:5],  # Top 5 actives
+        "symbols": data.get_symbols(),
+    }
+
+
 @router.post("/simulation/advance", response_model=dict)
 async def advance_simulation(
     minutes: int = 0,
@@ -1866,13 +1889,20 @@ async def load_historical_data(
     # Load into MockMarketData
     count = data.load_data(symbol.upper(), bar_dicts)
     
-    # Set simulation clock to start of data if not already set
-    if bar_dicts and bar_dicts[0]["date"]:
+    # Set simulation clock to date with enough history for scanner lookback
+    # Scanner needs ~20 bars of history, so set clock 30+ bars into the data
+    if bar_dicts:
         from datetime import datetime
         import pytz
         ET = pytz.timezone("US/Eastern")
-        first_date = datetime.strptime(bar_dicts[0]["date"], "%Y-%m-%d")
-        clock.set_time(ET.localize(first_date.replace(hour=9, minute=30)))
+        
+        # Use bar at position 30 (or last if fewer bars) for enough lookback
+        target_idx = min(30, len(bar_dicts) - 1)
+        target_date_str = bar_dicts[target_idx]["date"]
+        target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
+        clock.set_time(ET.localize(target_date.replace(hour=9, minute=30)))
+        
+        logger.info(f"[Simulation] Clock set to {target_date_str} (bar {target_idx + 1} of {len(bar_dicts)})")
     
     # Update broker price if exists
     if hasattr(get_simulation_status, '_mock_broker') and bar_dicts:
