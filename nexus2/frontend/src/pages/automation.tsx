@@ -1294,8 +1294,8 @@ export default function Automation() {
                                             min="0"
                                             step="100"
                                             placeholder="Use global setting"
-                                            value={schedulerSettings?.max_position_value || ''}
-                                            onChange={async (e) => {
+                                            defaultValue={schedulerSettings?.max_position_value || ''}
+                                            onBlur={async (e) => {
                                                 const value = e.target.value ? parseFloat(e.target.value) : null;
                                                 try {
                                                     const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {

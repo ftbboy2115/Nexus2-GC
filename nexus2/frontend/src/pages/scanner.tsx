@@ -444,7 +444,10 @@ export default function Scanner() {
                                             <td className={styles.name}>{result.name}</td>
                                             <td>${parseFloat(result.price).toFixed(2)}</td>
                                             <td>
-                                                <span className={styles.qualityScore}>
+                                                <span
+                                                    className={styles.qualityScore}
+                                                    title={`Quality Score: ${result.quality_score}/10\n\nFactors (KK-style):\n• RS Percentile (higher = stronger)\n• Volume expansion vs average\n• Price vs 50/200 MA alignment\n• Gap/catalyst strength\n• Tightness of pattern\n• Distance from highs`}
+                                                >
                                                     {result.quality_score}/10
                                                 </span>
                                             </td>
