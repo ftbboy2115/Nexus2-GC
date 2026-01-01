@@ -146,6 +146,22 @@ class UnifiedMarketData:
         volumes = [b.volume for b in recent_bars]
         return int(sum(volumes) / len(volumes))
     
+    def get_historical_bars(self, symbol: str, days: int = 60) -> Optional[List[OHLCV]]:
+        """
+        Get historical daily bars for affinity analysis.
+        
+        Alias for get_daily_bars, used by MA affinity callback.
+        Returns OHLCV objects (not dicts) for backward compatibility.
+        
+        Args:
+            symbol: Stock symbol
+            days: Number of days of history
+            
+        Returns:
+            List of OHLCV objects or None
+        """
+        return self.get_daily_bars(symbol, limit=days + 10)
+    
     # =========================================================================
     # EP-Specific Methods
     # =========================================================================
