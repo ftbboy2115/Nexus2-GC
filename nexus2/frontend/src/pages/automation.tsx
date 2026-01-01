@@ -160,6 +160,7 @@ interface SchedulerSettingsData {
     auto_execute: boolean  // Auto-execute trades when scheduler runs
     nac_broker_type: string  // alpaca_paper, alpaca_live
     nac_account: string  // A or B (default A for Automation)
+    sim_mode: boolean  // Enable simulation mode (uses MockBroker)
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1134,7 +1135,36 @@ export default function Automation() {
                                 </div>
                             </div>
 
-                            {/* Use Quick Actions Toggle */}
+                            {/* Simulation Mode Toggle */}
+                            <div className={styles.settingGroup}>
+                                <label className={styles.toggleLabel}>
+                                    <span>🧪 Simulation Mode</span>
+                                    <button
+                                        className={`${styles.toggleBtn} ${schedulerSettings?.sim_mode ? styles.toggleActive : ''}`}
+                                        onClick={async () => {
+                                            const newValue = !schedulerSettings?.sim_mode
+                                            try {
+                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ sim_mode: newValue })
+                                                })
+                                                if (res.ok) {
+                                                    const data = await res.json()
+                                                    setSchedulerSettings(data)
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to update sim_mode:', err)
+                                            }
+                                        }}
+                                    >
+                                        {schedulerSettings?.sim_mode ? '✅ ON' : '❌ OFF'}
+                                    </button>
+                                </label>
+                                <p className={styles.settingHint}>
+                                    When ON, trades use MockBroker (no real orders). Reset sim via API first.
+                                </p>
+                            </div>
                             <div className={styles.settingGroup}>
                                 <label className={styles.toggleLabel}>
                                     <span>Use Quick Actions Settings</span>
