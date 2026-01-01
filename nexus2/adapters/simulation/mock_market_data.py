@@ -519,12 +519,16 @@ class MockMarketData:
         """Return empty set (no ETFs to filter in simulation)."""
         return set()
     
-    def screen_stocks(self, threshold: float = 0.0) -> List[Dict]:
+    def screen_stocks(self, threshold: float = 0.0, **kwargs) -> List[Dict]:
         """
         Screen stocks for breakout scanner compatibility.
         
         Returns loaded symbols with basic screening info.
         In simulation, returns all loaded symbols as candidates.
+        
+        Args:
+            threshold: Minimum change threshold (ignored in sim)
+            **kwargs: Additional filters (min_price, min_market_cap, etc.) - ignored in sim
         """
         results = []
         for symbol in self._data.keys():
