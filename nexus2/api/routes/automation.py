@@ -134,9 +134,9 @@ async def auto_start_checker():
                             await monitor.start()  # Async, returns dict
                             print("[AutoStart] Monitor started")
                         
-                        # Start Scheduler (async method)
-                        await scheduler.start()  # Async, returns dict
-                        print("[AutoStart] Scheduler started")
+                        # Configure scheduler with callbacks (same as manual UI start)
+                        await _configure_and_start_scheduler(engine, scheduler)
+                        print("[AutoStart] Scheduler started with full callbacks")
                         
                         _auto_start_triggered_today = True
                         
@@ -177,6 +177,97 @@ def start_auto_start_checker():
         _auto_start_task = asyncio.create_task(auto_start_checker())
         logger.info("[AutoStart] Checker started")
     return _auto_start_task
+
+
+async def _configure_scanner_from_settings(engine, scheduler):
+    """
+    Configure engine scanner and scheduler settings from database.
+    
+    This is the shared scanner configuration logic used by both manual start
+    and auto-start. Returns settings dict for logging/reference.
+    
+    Returns:
+        dict with settings applied
+    """
+    from nexus2.domain.automation.services import create_unified_scanner_callback
+    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+    
+    db = SessionLocal()
+    try:
+        settings_repo = SchedulerSettingsRepository(db)
+        sched_settings = settings_repo.get()
+        
+        # Read settings
+        min_quality = sched_settings.min_quality
+        stop_mode = sched_settings.stop_mode or "atr"
+        max_stop_atr = float(sched_settings.max_stop_atr) if sched_settings.max_stop_atr else 1.0
+        max_stop_percent = float(sched_settings.max_stop_percent) if sched_settings.max_stop_percent else 5.0
+        scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
+        htf_frequency = sched_settings.htf_frequency or "every_cycle"
+        
+        # Read auto_execute from settings (default False for safety)
+        auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
+        auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
+        
+        # Set scheduler auto_execute flag
+        scheduler.auto_execute = auto_execute
+        
+        # Configure engine scanner
+        engine._scanner_func = await create_unified_scanner_callback(
+            min_quality=min_quality,
+            max_stop_percent=max_stop_percent,
+            stop_mode=stop_mode,
+            max_stop_atr=max_stop_atr,
+            scan_modes=scan_modes,
+            htf_frequency=htf_frequency,
+        )
+        
+        settings_used = {
+            "min_quality": min_quality,
+            "stop_mode": stop_mode,
+            "max_stop_atr": max_stop_atr,
+            "max_stop_percent": max_stop_percent,
+            "scan_modes": scan_modes,
+            "htf_frequency": htf_frequency,
+            "auto_execute": auto_execute,
+        }
+        
+        logger.info(f"[Scheduler] Scanner configured: {settings_used}")
+        
+        return settings_used
+    finally:
+        db.close()
+
+
+async def _configure_and_start_scheduler(engine, scheduler):
+    """
+    Configure scheduler with scan callback and start it.
+    
+    Used by auto-start for scan-only mode (no execute callback).
+    For full functionality with execute/EOD callbacks, use manual start via UI.
+    
+    Returns:
+        dict with scheduler start result
+    """
+    # Configure scanner from settings (shared logic)
+    settings = await _configure_scanner_from_settings(engine, scheduler)
+    
+    # For auto-start: disable auto_execute (safety - no unattended trades)
+    scheduler.auto_execute = False
+    
+    # Set up scan callback
+    async def scan_callback():
+        return await engine.run_scan_cycle()
+    
+    # No execute/EOD callbacks for auto-start (scan-only mode)
+    scheduler.set_callbacks(scan_callback, None, None)
+    
+    logger.info("[Scheduler] Auto-start: running in scan-only mode (no auto-execute)")
+    
+    # Start scheduler
+    result = await scheduler.start()
+    
+    return result
 
 
 # Request/Response models
@@ -745,48 +836,11 @@ async def start_scheduler(
     # =============================
     # CONFIGURE ENGINE SCANNER FUNCTION
     # =============================
-    # The engine needs a scanner function to run scans.
-    # Load settings from scheduler_settings table and configure scanner.
-    from nexus2.domain.automation.services import create_unified_scanner_callback
-    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+    # Use shared helper to configure scanner from settings (eliminates duplication)
+    settings = await _configure_scanner_from_settings(engine, scheduler)
+    auto_execute = settings["auto_execute"]
     
-    db = SessionLocal()
-    try:
-        settings_repo = SchedulerSettingsRepository(db)
-        sched_settings = settings_repo.get()
-        
-        # Use ALL scheduler settings for scanner configuration
-        min_quality = sched_settings.min_quality
-        stop_mode = sched_settings.stop_mode or "atr"
-        max_stop_atr = float(sched_settings.max_stop_atr) if sched_settings.max_stop_atr else 1.0
-        max_stop_percent = float(sched_settings.max_stop_percent) if sched_settings.max_stop_percent else 5.0
-        scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
-        htf_frequency = sched_settings.htf_frequency or "every_cycle"
-        
-        # Read auto_execute from settings (default False for safety)
-        auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
-        auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
-        
-        # Override scheduler auto_execute from settings (not just from API request)
-        scheduler.auto_execute = auto_execute
-        
-        # If htf_frequency is "market_open", remove HTF from subsequent scans
-        # (For now, we include HTF on first scan only - tracked in scheduler state)
-        # Configure the engine's scanner function with ALL settings including htf_frequency
-        engine._scanner_func = await create_unified_scanner_callback(
-            min_quality=min_quality,
-            max_stop_percent=max_stop_percent,
-            stop_mode=stop_mode,
-            max_stop_atr=max_stop_atr,
-            scan_modes=scan_modes,
-            htf_frequency=htf_frequency,
-        )
-        logger.info(f"[Scheduler] Scanner configured: min_quality={min_quality}, stop_mode={stop_mode}, "
-                    f"max_stop_atr={max_stop_atr}, max_stop_percent={max_stop_percent}, scan_modes={scan_modes}, htf_frequency={htf_frequency}, auto_execute={auto_execute}")
-        print(f"🔧 [Scheduler] Scanner configured: min_quality={min_quality}, stop_mode={stop_mode}, "
-              f"max_stop_atr={max_stop_atr}, max_stop_percent={max_stop_percent}, scan_modes={scan_modes}, htf_frequency={htf_frequency}, auto_execute={auto_execute}")
-    finally:
-        db.close()
+    print(f"🔧 [Scheduler] Scanner configured: {settings}")
     
     # Set up callbacks
     async def scan_callback():
