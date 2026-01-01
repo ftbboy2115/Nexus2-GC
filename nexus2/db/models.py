@@ -213,6 +213,10 @@ class SchedulerSettingsModel(Base):
     auto_start_enabled = Column(String(5), default="false")  # "true" or "false"
     auto_start_time = Column(String(5), nullable=True, default=None)  # HH:MM format (ET timezone)
     
+    # NAC-specific broker/account (separate from dashboard settings)
+    nac_broker_type = Column(String(20), default="alpaca_paper")  # alpaca_paper, alpaca_live
+    nac_account = Column(String(10), default="A")  # A or B (default A for Automation)
+    
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
@@ -231,6 +235,8 @@ class SchedulerSettingsModel(Base):
             "max_position_value": float(self.max_position_value) if self.max_position_value else None,
             "auto_start_enabled": self.auto_start_enabled == "true",
             "auto_start_time": self.auto_start_time,
+            "nac_broker_type": self.nac_broker_type or "alpaca_paper",
+            "nac_account": self.nac_account or "A",
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 

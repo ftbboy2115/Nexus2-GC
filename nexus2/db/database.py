@@ -78,3 +78,29 @@ def _run_migrations():
             except Exception as e:
                 # Table might not exist yet, that's OK
                 print(f"[DB] Migration skipped: {e}")
+        
+        # Migration 2: Add nac_broker_type column to scheduler_settings if missing
+        try:
+            conn.execute(text("SELECT nac_broker_type FROM scheduler_settings LIMIT 1"))
+        except Exception:
+            try:
+                conn.execute(text(
+                    "ALTER TABLE scheduler_settings ADD COLUMN nac_broker_type VARCHAR(20) DEFAULT 'alpaca_paper'"
+                ))
+                conn.commit()
+                print("[DB] Migration: Added nac_broker_type column to scheduler_settings")
+            except Exception:
+                pass
+        
+        # Migration 3: Add nac_account column to scheduler_settings if missing
+        try:
+            conn.execute(text("SELECT nac_account FROM scheduler_settings LIMIT 1"))
+        except Exception:
+            try:
+                conn.execute(text(
+                    "ALTER TABLE scheduler_settings ADD COLUMN nac_account VARCHAR(10) DEFAULT 'A'"
+                ))
+                conn.commit()
+                print("[DB] Migration: Added nac_account column to scheduler_settings")
+            except Exception:
+                pass

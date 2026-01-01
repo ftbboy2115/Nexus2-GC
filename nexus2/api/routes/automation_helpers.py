@@ -465,7 +465,11 @@ def create_execute_callback(engine, broker, get_app_fn):
                     )
                     
                     if result and result.is_accepted:
-                        # Create position record
+                        # Get NAC-specific broker/account for position tagging
+                        nac_broker = getattr(sched_settings, 'nac_broker_type', 'alpaca_paper') or 'alpaca_paper'
+                        nac_account = getattr(sched_settings, 'nac_account', 'A') or 'A'
+                        
+                        # Create position record with NAC account
                         position_repo.create({
                             "id": str(uuid4()),
                             "symbol": signal.symbol,
@@ -478,6 +482,8 @@ def create_execute_callback(engine, broker, get_app_fn):
                             "current_stop": str(signal.stop_price),
                             "realized_pnl": "0",
                             "opened_at": datetime.utcnow(),
+                            "broker_type": nac_broker,
+                            "account": nac_account,
                         })
                         executed.append({"symbol": signal.symbol, "shares": shares})
                         print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
