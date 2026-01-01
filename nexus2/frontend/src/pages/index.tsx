@@ -1,0 +1,978 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Head from 'next/head'
+import Link from 'next/link'
+import styles from '@/styles/Home.module.css'
+
+interface HealthStatus {
+    status: string
+    version: string
+    mode: string
+    timestamp: string
+}
+
+interface LivePosition {
+    id: string
+    symbol: string
+    shares: number
+    entry_price: number
+    current_price: number
+    unrealized_pnl: number
+    unrealized_pnl_pct: number
+    status: string
+}
+
+interface Position {
+    id: string
+    symbol: string
+    setup_type: string
+    entry_price: string
+    shares: number
+    remaining_shares: number
+    current_stop: string
+    status: string
+    realized_pnl: string
+    days_held: number
+}
+
+interface PositionsResponse {
+    positions: Position[]
+    total: number
+}
+
+interface TradeForm {
+    symbol: string
+    shares: string
+    order_type: string
+    limit_price: string
+    stop_price: string
+    setup_type: string
+}
+
+interface ActionModal {
+    type: 'partial' | 'close' | null
+    position: Position | null
+}
+
+interface Settings {
+    partial_exit_fraction: number
+    partial_exit_days: number
+    partial_exit_gain_pct: number
+    risk_per_trade: number
+    max_per_symbol: number
+    max_positions: number
+    trading_mode: string
+    broker_type: string
+    active_account: string
+}
+
+const initialFormState: TradeForm = {
+    symbol: '',
+    shares: '100',
+    order_type: 'market',
+    limit_price: '',
+    stop_price: '',
+    setup_type: 'ep',
+}
+
+export default function Home() {
+    const [health, setHealth] = useState<HealthStatus | null>(null)
+    const [positions, setPositions] = useState<Position[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [formData, setFormData] = useState<TradeForm>(initialFormState)
+    const [submitting, setSubmitting] = useState(false)
+    const [tradeResult, setTradeResult] = useState<string | null>(null)
+
+    // Action modal state
+    const [actionModal, setActionModal] = useState<ActionModal>({ type: null, position: null })
+    const [actionPrice, setActionPrice] = useState('')
+    const [actionShares, setActionShares] = useState('')
+    const [actionSubmitting, setActionSubmitting] = useState(false)
+
+    // Settings
+    const [settings, setSettings] = useState<Settings | null>(null)
+    const [showSettings, setShowSettings] = useState(false)
+
+    // WebSocket live positions
+    const [livePositions, setLivePositions] = useState<LivePosition[]>([])
+    const [totalUnrealizedPnl, setTotalUnrealizedPnl] = useState(0)
+    const [wsConnected, setWsConnected] = useState(false)
+    const [liveEnabled, setLiveEnabled] = useState(false)
+    const wsRef = useRef<WebSocket | null>(null)
+    const liveEnabledRef = useRef(false)
+
+    // Order notifications
+    const [orderNotification, setOrderNotification] = useState<string | null>(null)
+
+    // Position selection for bulk actions
+    const [selectedPositions, setSelectedPositions] = useState<Set<string>>(() => new Set())
+    const [closingPositions, setClosingPositions] = useState(false)
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        liveEnabledRef.current = liveEnabled
+    }, [liveEnabled])
+
+    // WebSocket connection for positions
+    useEffect(() => {
+        const ws = new WebSocket('ws://localhost:8000/ws/positions')
+        wsRef.current = ws
+
+        ws.onopen = () => {
+            console.log('[WS] Connected to positions feed')
+            setWsConnected(true)
+        }
+
+        ws.onmessage = (event) => {
+            if (!liveEnabledRef.current) return
+
+            const data = JSON.parse(event.data)
+            if (data.type === 'positions_update') {
+                setLivePositions(data.positions)
+                setTotalUnrealizedPnl(data.total_unrealized_pnl)
+            }
+        }
+
+        ws.onclose = () => {
+            console.log('[WS] Disconnected')
+            setWsConnected(false)
+        }
+
+        ws.onerror = (err) => {
+            console.error('[WS] Error:', err)
+        }
+
+        return () => {
+            ws.close()
+        }
+    }, [])
+
+    const fetchPositions = useCallback(async () => {
+        try {
+            const positionsRes = await fetch('/api/positions')
+            if (positionsRes.ok) {
+                const positionsData: PositionsResponse = await positionsRes.json()
+                setPositions(positionsData.positions)
+            }
+        } catch (err) {
+            console.error('Failed to fetch positions:', err)
+        }
+    }, [])
+
+    // WebSocket connection for order updates
+    useEffect(() => {
+        const wsUrl = 'ws://localhost:8000/ws/orders'
+        const orderWs = new WebSocket(wsUrl)
+
+        orderWs.onopen = () => {
+            console.log('[WS Orders] Connected to', wsUrl)
+        }
+
+        orderWs.onerror = (error) => {
+            console.error('[WS Orders] Connection error:', error)
+        }
+
+        orderWs.onmessage = (event) => {
+            const data = JSON.parse(event.data)
+            if (data.type === 'order_update') {
+                const emoji = data.status === 'filled' ? '✅' : data.status === 'pending' ? '⏳' : '📝'
+                setOrderNotification(`${emoji} ${data.message}`)
+
+                if (data.status === 'filled') {
+                    fetchPositions()
+                }
+
+                setTimeout(() => setOrderNotification(null), 5000)
+            }
+        }
+
+        orderWs.onclose = () => {
+            console.log('[WS Orders] Disconnected')
+        }
+
+        return () => {
+            orderWs.close()
+        }
+    }, [fetchPositions])
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const healthRes = await fetch('/api/health')
+                if (healthRes.ok) {
+                    const healthData = await healthRes.json()
+                    setHealth(healthData)
+                }
+
+                const settingsRes = await fetch('/api/settings')
+                if (settingsRes.ok) {
+                    const settingsData = await settingsRes.json()
+                    setSettings(settingsData)
+                }
+
+                await fetchPositions()
+                setLoading(false)
+            } catch (err) {
+                setError('Failed to connect to API. Is the backend running?')
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [fetchPositions])
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSubmitting(true)
+        setTradeResult(null)
+
+        try {
+            const payload: Record<string, unknown> = {
+                symbol: formData.symbol.toUpperCase(),
+                shares: parseInt(formData.shares),
+                stop_price: formData.stop_price,
+                setup_type: formData.setup_type,
+                order_type: formData.order_type,
+            }
+            if (formData.order_type === 'limit' && formData.limit_price) {
+                payload.limit_price = formData.limit_price
+            }
+
+            const response = await fetch('/api/trade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                if (data.status === 'filled') {
+                    setTradeResult(`✅ Filled ${data.shares} ${data.symbol} @ $${parseFloat(data.fill_price).toFixed(2)}`)
+                    await fetchPositions()
+                } else if (data.status === 'pending') {
+                    setTradeResult(`⏳ Order pending for ${data.shares} ${data.symbol} (market closed or limit not hit)`)
+                } else if (data.status === 'partial') {
+                    setTradeResult(`🔄 Partial fill for ${data.symbol} - check orders page`)
+                } else {
+                    setTradeResult(`📝 Order submitted: ${data.status}`)
+                }
+                setFormData(initialFormState)
+            } else {
+                const err = await response.json()
+                setTradeResult(`❌ Error: ${err.detail || 'Trade failed'}`)
+            }
+        } catch (err) {
+            setTradeResult('❌ Failed to submit trade')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const openActionModal = (type: 'partial' | 'close', position: Position) => {
+        setActionModal({ type, position })
+        setActionPrice('')
+        const fraction = settings?.partial_exit_fraction ?? 0.5
+        const partialShares = Math.floor(position.remaining_shares * fraction)
+        setActionShares(type === 'partial' ? partialShares.toString() : position.remaining_shares.toString())
+    }
+
+    const closeActionModal = () => {
+        setActionModal({ type: null, position: null })
+        setActionPrice('')
+        setActionShares('')
+    }
+
+    const handleActionSubmit = async () => {
+        if (!actionModal.position || !actionPrice) return
+
+        setActionSubmitting(true)
+        const endpoint = actionModal.type === 'partial'
+            ? `/api/positions/${actionModal.position.id}/partial-exit`
+            : `/api/positions/${actionModal.position.id}/close`
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    shares: parseInt(actionShares),
+                    price: actionPrice,
+                    reason: actionModal.type === 'partial' ? 'partial_profit' : 'manual',
+                }),
+            })
+
+            if (response.ok) {
+                await fetchPositions()
+                closeActionModal()
+            } else {
+                const err = await response.json()
+                alert(`Error: ${err.detail || 'Action failed'}`)
+            }
+        } catch (err) {
+            alert('Failed to execute action')
+        } finally {
+            setActionSubmitting(false)
+        }
+    }
+
+    // Position selection handlers
+    const togglePositionSelection = (positionId: string) => {
+        setSelectedPositions(prev => {
+            const next = new Set(prev)
+            if (next.has(positionId)) {
+                next.delete(positionId)
+            } else {
+                next.add(positionId)
+            }
+            return next
+        })
+    }
+
+    const toggleSelectAll = () => {
+        if (selectedPositions.size === positions.length) {
+            setSelectedPositions(new Set())
+        } else {
+            setSelectedPositions(new Set(positions.map(p => p.id)))
+        }
+    }
+
+    const closeSelectedPositions = async () => {
+        if (selectedPositions.size === 0) return
+
+        const confirmed = confirm(`Close ${selectedPositions.size} position(s)? This will mark them as closed.`)
+        if (!confirmed) return
+
+        setClosingPositions(true)
+        let closed = 0
+        let failed = 0
+
+        for (const posId of Array.from(selectedPositions)) {
+            const position = positions.find(p => p.id === posId)
+            if (!position) continue
+
+            try {
+                const response = await fetch(`/api/positions/${posId}/close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        price: position.entry_price,
+                        reason: 'manual',
+                    }),
+                })
+
+                if (response.ok) {
+                    closed++
+                } else {
+                    failed++
+                    console.error(`Failed to close ${position.symbol}`)
+                }
+            } catch (err) {
+                failed++
+                console.error(`Error closing ${position.symbol}:`, err)
+            }
+        }
+
+        setClosingPositions(false)
+        setSelectedPositions(new Set())
+        await fetchPositions()
+
+        if (failed > 0) {
+            alert(`Closed ${closed} position(s). ${failed} failed.`)
+        }
+    }
+
+    return (
+        <div>
+            <Head>
+                <title>Nexus 2 - Trading Dashboard</title>
+                <meta name="description" content="KK-style trading platform" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+            </Head>
+
+            <main className={styles.main}>
+                {orderNotification && (
+                    <div className={styles.orderToast}>
+                        {orderNotification}
+                    </div>
+                )}
+                <header className={styles.header}>
+                    <div className={styles.headerLeft}>
+                        <h1 className={styles.title}>Nexus 2</h1>
+                        <Link href="/scanner" className={styles.navLink}>
+                            🔍 Scanner
+                        </Link>
+                        <Link href="/orders" className={styles.navLink}>
+                            📋 Orders
+                        </Link>
+                        <Link href="/closed" className={styles.navLink}>
+                            📊 Closed
+                        </Link>
+                        <Link href="/automation" className={styles.navLink}>
+                            🤖 Auto
+                        </Link>
+                        <Link href="/analytics" className={styles.navLink}>
+                            📈 Analytics
+                        </Link>
+                    </div>
+                    <div className={styles.headerRight}>
+                        {settings && (
+                            <>
+                                {settings.broker_type.startsWith('alpaca') && (
+                                    <select
+                                        className={styles.brokerSelect}
+                                        value={settings.active_account}
+                                        onChange={async (e) => {
+                                            const newAccount = e.target.value
+                                            try {
+                                                const response = await fetch('/api/settings', {
+                                                    method: 'PUT',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ active_account: newAccount }),
+                                                })
+                                                if (response.ok) {
+                                                    const updated = await response.json()
+                                                    setSettings(updated)
+                                                    fetchPositions()
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to switch account:', err)
+                                            }
+                                        }}
+                                        title="Switch Alpaca Account"
+                                    >
+                                        <option value="A">Account A</option>
+                                        <option value="B">Account B</option>
+                                    </select>
+                                )}
+                                <select
+                                    className={styles.brokerSelect}
+                                    value={settings.broker_type}
+                                    onChange={async (e) => {
+                                        const newBroker = e.target.value
+                                        try {
+                                            const response = await fetch('/api/settings', {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ broker_type: newBroker }),
+                                            })
+                                            if (response.ok) {
+                                                const updated = await response.json()
+                                                setSettings(updated)
+                                                fetchPositions()
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to update broker:', err)
+                                        }
+                                    }}
+                                >
+                                    <option value="paper">📄 Paper (Local)</option>
+                                    <option value="alpaca_paper">🅰️ Alpaca Paper</option>
+                                </select>
+                            </>
+                        )}
+                        {health && (
+                            <div className={styles.status}>
+                                <span className={styles.statusDot} data-status={health.status}></span>
+                                <span>{settings?.trading_mode || health.mode.toUpperCase()}</span>
+                                <span className={styles.version}>v{health.version}</span>
+                            </div>
+                        )}
+                        <button
+                            className={styles.settingsBtn}
+                            onClick={() => setShowSettings(true)}
+                            title="Settings"
+                        >
+                            ⚙️
+                        </button>
+                    </div>
+                </header>
+
+                {error && (
+                    <div className={styles.error}>
+                        <p>{error}</p>
+                        <p className={styles.hint}>Run: uvicorn nexus2.api.main:app --reload</p>
+                    </div>
+                )}
+
+                {loading && !error && (
+                    <div className={styles.loading}>Loading...</div>
+                )}
+
+                {!loading && !error && (
+                    <>
+                        {/* Trade Form */}
+                        <section className={styles.section}>
+                            <h2 className={styles.sectionTitle}>New Trade</h2>
+                            <form className={styles.tradeForm} onSubmit={handleSubmit}>
+                                <div className={styles.formRow}>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="symbol">Symbol</label>
+                                        <input
+                                            type="text"
+                                            id="symbol"
+                                            name="symbol"
+                                            value={formData.symbol}
+                                            onChange={handleInputChange}
+                                            placeholder="NVDA"
+                                            required
+                                            className={styles.input}
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="shares">Shares</label>
+                                        <input
+                                            type="number"
+                                            id="shares"
+                                            name="shares"
+                                            value={formData.shares}
+                                            onChange={handleInputChange}
+                                            min="1"
+                                            required
+                                            className={styles.input}
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="order_type">Type</label>
+                                        <select
+                                            id="order_type"
+                                            name="order_type"
+                                            value={formData.order_type}
+                                            onChange={handleInputChange}
+                                            className={styles.select}
+                                        >
+                                            <option value="market">Market</option>
+                                            <option value="limit">Limit</option>
+                                        </select>
+                                    </div>
+                                    {formData.order_type === 'limit' && (
+                                        <div className={styles.formGroup}>
+                                            <label htmlFor="limit_price">Limit Price</label>
+                                            <input
+                                                type="number"
+                                                id="limit_price"
+                                                name="limit_price"
+                                                value={formData.limit_price}
+                                                onChange={handleInputChange}
+                                                step="0.01"
+                                                placeholder="450.00"
+                                                required
+                                                className={styles.input}
+                                            />
+                                        </div>
+                                    )}
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="stop_price">Stop Price</label>
+                                        <input
+                                            type="number"
+                                            id="stop_price"
+                                            name="stop_price"
+                                            value={formData.stop_price}
+                                            onChange={handleInputChange}
+                                            step="0.01"
+                                            placeholder="445.00"
+                                            required
+                                            className={styles.input}
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label htmlFor="setup_type">Setup</label>
+                                        <select
+                                            id="setup_type"
+                                            name="setup_type"
+                                            value={formData.setup_type}
+                                            onChange={handleInputChange}
+                                            className={styles.select}
+                                        >
+                                            <option value="ep">EP</option>
+                                            <option value="flag">Flag</option>
+                                            <option value="htf">HTF</option>
+                                            <option value="breakout">Breakout</option>
+                                            <option value="manual">Manual</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className={styles.formActions}>
+                                    <button
+                                        type="submit"
+                                        className={styles.submitBtn}
+                                        disabled={submitting}
+                                    >
+                                        {submitting ? 'Executing...' : 'Execute Trade'}
+                                    </button>
+                                    {tradeResult && (
+                                        <span className={styles.tradeResult}>{tradeResult}</span>
+                                    )}
+                                </div>
+                            </form>
+                        </section>
+
+                        {/* Live P&L */}
+                        <section className={styles.section}>
+                            <h2 className={styles.sectionTitle}>
+                                📡 Live P&L
+                                <label className={styles.liveToggle}>
+                                    <input
+                                        type="checkbox"
+                                        checked={liveEnabled}
+                                        onChange={(e) => setLiveEnabled(e.target.checked)}
+                                    />
+                                    {liveEnabled ? 'On' : 'Off'}
+                                </label>
+                                {liveEnabled && (
+                                    <>
+                                        <span className={styles.wsStatus} data-connected={wsConnected}>
+                                            {wsConnected ? '● Connected' : '○ Disconnected'}
+                                        </span>
+                                        <span className={`${styles.totalPnl} ${totalUnrealizedPnl >= 0 ? styles.positive : styles.negative}`}>
+                                            ${totalUnrealizedPnl.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </>
+                                )}
+                            </h2>
+                            {liveEnabled && livePositions.length > 0 && (
+                                <div className={styles.positionsGrid}>
+                                    {livePositions.map((pos) => (
+                                        <div key={pos.id} className={styles.liveCard}>
+                                            <div className={styles.liveSymbol}>{pos.symbol}</div>
+                                            <div className={styles.liveShares}>{pos.shares} shares</div>
+                                            <div className={styles.livePrice}>
+                                                ${pos.current_price.toFixed(2)}
+                                            </div>
+                                            <div className={`${styles.livePnl} ${pos.unrealized_pnl >= 0 ? styles.positive : styles.negative}`}>
+                                                ${pos.unrealized_pnl.toFixed(2)} ({pos.unrealized_pnl_pct.toFixed(1)}%)
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {liveEnabled && livePositions.length === 0 && (
+                                <p className={styles.hint}>Waiting for position updates...</p>
+                            )}
+                            {!liveEnabled && (
+                                <p className={styles.hint}>Enable live updates to see real-time P&L</p>
+                            )}
+                        </section>
+
+                        {/* Positions Table */}
+                        <section className={styles.section}>
+                            <h2 className={styles.sectionTitle}>
+                                Open Positions
+                                {settings && (
+                                    <span className={styles.brokerBadge}>
+                                        {settings.broker_type === 'paper' ? '📄 Paper' : `🅰️ Alpaca ${settings.active_account}`}
+                                    </span>
+                                )}
+                                <button
+                                    className={styles.refreshBtn}
+                                    onClick={fetchPositions}
+                                    title="Refresh positions"
+                                >
+                                    ↻
+                                </button>
+                            </h2>
+
+                            {positions.length === 0 ? (
+                                <div className={styles.empty}>
+                                    <p>No open positions</p>
+                                    <p className={styles.hint}>Use the form above to create a trade</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    {selectedPositions.size > 0 && (
+                                        <div className={styles.bulkActions}>
+                                            <span>{selectedPositions.size} selected</span>
+                                            <button
+                                                className={styles.closeSelectedBtn}
+                                                onClick={closeSelectedPositions}
+                                                disabled={closingPositions}
+                                            >
+                                                {closingPositions ? 'Closing...' : '🔴 Close Selected'}
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className={styles.tableContainer}>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th className={styles.checkboxCol}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedPositions.size === positions.length && positions.length > 0}
+                                                            onChange={toggleSelectAll}
+                                                            title="Select all"
+                                                        />
+                                                    </th>
+                                                    <th>Symbol</th>
+                                                    <th>Setup</th>
+                                                    <th>Entry</th>
+                                                    <th>Shares</th>
+                                                    <th>Stop</th>
+                                                    <th>P&L</th>
+                                                    <th>Days</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {positions.map((pos) => (
+                                                    <tr key={pos.id} className={selectedPositions.has(pos.id) ? styles.selectedRow : ''}>
+                                                        <td className={styles.checkboxCol}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedPositions.has(pos.id)}
+                                                                onChange={() => togglePositionSelection(pos.id)}
+                                                            />
+                                                        </td>
+                                                        <td className={styles.symbol}>{pos.symbol}</td>
+                                                        <td>{pos.setup_type}</td>
+                                                        <td>${parseFloat(pos.entry_price).toFixed(2)}</td>
+                                                        <td>{pos.remaining_shares}/{pos.shares}</td>
+                                                        <td>${parseFloat(pos.current_stop).toFixed(2)}</td>
+                                                        <td className={parseFloat(pos.realized_pnl) >= 0 ? styles.profit : styles.loss}>
+                                                            ${parseFloat(pos.realized_pnl).toFixed(2)}
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                className={`${styles.daysIndicator} ${pos.days_held >= 5 ? styles.daysCritical :
+                                                                    pos.days_held >= 4 ? styles.daysAlert :
+                                                                        pos.days_held >= 3 ? styles.daysWarning : ''
+                                                                    }`}
+                                                                title={pos.days_held >= 3 ? 'Consider partial exit (KK 3-5 day rule)' : ''}
+                                                            >
+                                                                {pos.days_held}d
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span className={styles.badge} data-status={pos.status}>
+                                                                {pos.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className={styles.actions}>
+                                                            {pos.remaining_shares > 0 && (
+                                                                <>
+                                                                    <button
+                                                                        className={styles.actionBtn}
+                                                                        onClick={() => openActionModal('partial', pos)}
+                                                                        title="Take partial profit"
+                                                                    >
+                                                                        Partial
+                                                                    </button>
+                                                                    <button
+                                                                        className={`${styles.actionBtn} ${styles.closeBtn}`}
+                                                                        onClick={() => openActionModal('close', pos)}
+                                                                        title="Close position"
+                                                                    >
+                                                                        Close
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+
+                        {/* Action Modal */}
+                        {actionModal.type && actionModal.position && (
+                            <div className={styles.modalOverlay} onClick={closeActionModal}>
+                                <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                                    <h3 className={styles.modalTitle}>
+                                        {actionModal.type === 'partial' ? 'Partial Exit' : 'Close Position'}
+                                        <span className={styles.modalSymbol}>{actionModal.position.symbol}</span>
+                                    </h3>
+
+                                    <div className={styles.modalForm}>
+                                        <div className={styles.formGroup}>
+                                            <label>Shares</label>
+                                            <input
+                                                type="number"
+                                                value={actionShares}
+                                                onChange={(e) => setActionShares(e.target.value)}
+                                                min="1"
+                                                max={actionModal.position.remaining_shares}
+                                                className={styles.input}
+                                            />
+                                            <span className={styles.hint}>
+                                                Max: {actionModal.position.remaining_shares}
+                                            </span>
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Exit Price</label>
+                                            <input
+                                                type="number"
+                                                value={actionPrice}
+                                                onChange={(e) => setActionPrice(e.target.value)}
+                                                step="0.01"
+                                                placeholder="Enter exit price"
+                                                className={styles.input}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.modalActions}>
+                                        <button
+                                            className={styles.cancelBtn}
+                                            onClick={closeActionModal}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className={actionModal.type === 'close' ? styles.closePosBtn : styles.submitBtn}
+                                            onClick={handleActionSubmit}
+                                            disabled={actionSubmitting || !actionPrice}
+                                        >
+                                            {actionSubmitting ? 'Processing...' : (actionModal.type === 'partial' ? 'Take Partial' : 'Close Position')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Settings Modal */}
+                        {showSettings && settings && (
+                            <div className={styles.modalOverlay} onClick={() => setShowSettings(false)}>
+                                <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                                    <h3 className={styles.modalTitle}>
+                                        ⚙️ Settings
+                                    </h3>
+
+                                    <div className={styles.modalForm}>
+                                        <div className={styles.settingItem}>
+                                            <span className={styles.settingLabel}>Trading Mode</span>
+                                            <span className={styles.settingValue}>{settings.trading_mode}</span>
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Partial Exit Fraction</label>
+                                            <select
+                                                className={styles.select}
+                                                value={settings.partial_exit_fraction}
+                                                onChange={(e) => setSettings({ ...settings, partial_exit_fraction: parseFloat(e.target.value) })}
+                                            >
+                                                <option value="0.5">1/2 (50%)</option>
+                                                <option value="0.33">1/3 (33%)</option>
+                                                <option value="0.25">1/4 (25%)</option>
+                                            </select>
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Partial Exit Days</label>
+                                            <input
+                                                type="number"
+                                                className={styles.input}
+                                                value={settings.partial_exit_days}
+                                                onChange={(e) => setSettings({ ...settings, partial_exit_days: parseInt(e.target.value) || 3 })}
+                                                min="1"
+                                                max="10"
+                                            />
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Partial Exit Gain %</label>
+                                            <input
+                                                type="number"
+                                                className={styles.input}
+                                                value={settings.partial_exit_gain_pct}
+                                                onChange={(e) => setSettings({ ...settings, partial_exit_gain_pct: parseFloat(e.target.value) || 10 })}
+                                                min="5"
+                                                max="50"
+                                                step="1"
+                                            />
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Risk Per Trade ($)</label>
+                                            <input
+                                                type="number"
+                                                className={styles.input}
+                                                value={settings.risk_per_trade}
+                                                onChange={(e) => setSettings({ ...settings, risk_per_trade: parseFloat(e.target.value) || 250 })}
+                                                min="50"
+                                                max="5000"
+                                                step="50"
+                                            />
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Max Per Symbol ($)</label>
+                                            <input
+                                                type="number"
+                                                className={styles.input}
+                                                value={settings.max_per_symbol}
+                                                onChange={(e) => setSettings({ ...settings, max_per_symbol: parseFloat(e.target.value) || 2000 })}
+                                                min="500"
+                                                max="50000"
+                                                step="500"
+                                            />
+                                        </div>
+
+                                        <div className={styles.formGroup}>
+                                            <label>Max Positions</label>
+                                            <input
+                                                type="number"
+                                                className={styles.input}
+                                                value={settings.max_positions}
+                                                onChange={(e) => {
+                                                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                                    setSettings({ ...settings, max_positions: isNaN(val) ? 5 : val });
+                                                }}
+                                                min="1"
+                                                max="20"
+                                                step="1"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.modalActions}>
+                                        <button
+                                            className={styles.cancelBtn}
+                                            onClick={() => setShowSettings(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className={styles.submitBtn}
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch('/api/settings', {
+                                                        method: 'PUT',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            partial_exit_fraction: settings.partial_exit_fraction,
+                                                            partial_exit_days: settings.partial_exit_days,
+                                                            partial_exit_gain_pct: settings.partial_exit_gain_pct,
+                                                            risk_per_trade: settings.risk_per_trade,
+                                                            max_per_symbol: settings.max_per_symbol,
+                                                            max_positions: settings.max_positions,
+                                                        }),
+                                                    })
+                                                    if (res.ok) {
+                                                        setShowSettings(false)
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to save settings:', err)
+                                                }
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </main>
+        </div>
+    )
+}

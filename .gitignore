@@ -11,3 +11,16 @@ STOP_SNIPER
 /core/charts_ep/
 /core/charts_htf/
 /core/charts_kk/
+
+# Frontend
+node_modules/
+.next/
+out/
+build/
+*.local
+
+# Python
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/

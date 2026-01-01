@@ -1,0 +1,15 @@
+{
+  "partial_exit_fraction": 0.5,
+  "partial_exit_days": 3,
+  "partial_exit_gain_pct": 10.0,
+  "risk_per_trade": 25.0,
+  "max_per_symbol": 250.0,
+  "max_positions": 25,
+  "dual_stop_enabled": false,
+  "trading_mode": "PAPER",
+  "broker_type": "alpaca_paper",
+  "active_account": "A",
+  "trailing_ma_type": "lower_10",
+  "adr_threshold": 6.0,
+  "min_days_for_trailing": 5
+}
