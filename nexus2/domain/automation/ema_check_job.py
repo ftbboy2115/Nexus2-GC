@@ -10,6 +10,7 @@ Supports:
 - EMA (exponential moving average)
 - SMA (simple moving average)
 - Lower of EMA/SMA (whichever is lower acts as tighter stop)
+- AUTO mode with affinity-based selection (analyzes consolidation surfing)
 """
 
 import asyncio
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class TrailingMAType(Enum):
     """Which moving average to use for trailing."""
-    AUTO = "auto"        # Auto-select based on ADR% (KK-style)
+    AUTO = "auto"        # Auto-select based on affinity/ADR% (KK-style enhanced)
     EMA_10 = "ema_10"    # 10 EMA (fast movers)
     EMA_20 = "ema_20"    # 20 EMA (slower stocks)
     SMA_10 = "sma_10"    # 10 SMA
@@ -110,7 +111,11 @@ class MACheckJob:
         self._get_ema: Optional[Callable] = None  # (symbol, period) -> Decimal
         self._get_sma: Optional[Callable] = None  # (symbol, period) -> Decimal
         self._get_adr_percent: Optional[Callable] = None  # (symbol, period) -> Decimal for auto-select
+        self._get_price_history: Optional[Callable] = None  # (symbol, days) -> List[dict] for affinity
         self._execute_exit: Optional[Callable] = None  # (position_id, shares, reason) -> None
+        
+        # Position-specific MA affinity (overrides AUTO selection)
+        self._position_affinities: dict = {}  # {position_id: "10" or "20"}
         
         # Stats
         self.last_check: Optional[datetime] = None
@@ -124,6 +129,7 @@ class MACheckJob:
         get_ema: Callable = None,
         get_sma: Callable = None,
         get_adr_percent: Callable = None,
+        get_price_history: Callable = None,
         execute_exit: Callable = None,
     ):
         """Set callbacks for data access and execution."""
@@ -137,8 +143,24 @@ class MACheckJob:
             self._get_sma = get_sma
         if get_adr_percent:
             self._get_adr_percent = get_adr_percent
+        if get_price_history:
+            self._get_price_history = get_price_history
         if execute_exit:
             self._execute_exit = execute_exit
+    
+    def set_position_affinity(self, position_id: str, affinity: str):
+        """
+        Set MA affinity for a specific position.
+        
+        Called when position is created from a signal that has affinity data.
+        
+        Args:
+            position_id: Position ID
+            affinity: "10" or "20"
+        """
+        if affinity in ("10", "20"):
+            self._position_affinities[position_id] = affinity
+            logger.debug(f"[MACheck] Set affinity for {position_id}: {affinity}")
     
     async def run(self, dry_run: bool = True) -> MACheckResult:
         """
@@ -291,8 +313,8 @@ class MACheckJob:
         adr_percent = None
         
         if ma_type == TrailingMAType.AUTO:
-            ma_type, adr_percent = await self._auto_select_ma(symbol)
-            logger.info(f"[MACheck] {symbol}: ADR={adr_percent:.1f}% -> Auto-selected {ma_type.value}")
+            ma_type, adr_percent = await self._auto_select_ma(symbol, position_id)
+            # Note: _auto_select_ma now logs the selection reason
         
         # Get MA value
         ma_value = await self._get_ma_value(symbol, ma_type)
@@ -319,18 +341,21 @@ class MACheckJob:
         )
         return None
     
-    async def _auto_select_ma(self, symbol: str) -> tuple[TrailingMAType, float]:
+    async def _auto_select_ma(self, symbol: str, position_id: str = None) -> tuple[TrailingMAType, float]:
         """
-        Auto-select MA type based on ADR% (KK-style).
+        Auto-select MA type based on affinity and ADR% (KK-style enhanced).
         
-        KK uses:
-        - ADR% >= 5% -> Fast mover -> 10 MA (LOWER_10)
-        - ADR% < 5% -> Slower stock -> 20 MA (LOWER_20)
+        Priority order:
+        1. Stored position affinity (from consolidation analysis at entry)
+        2. Dynamic affinity analysis (if price history available)
+        3. Violation count (choppy = use wider MA)
+        4. ADR% threshold (5% = fast mover)
         
         Returns (selected_ma_type, adr_percent)
         """
         adr_percent = 0.0
         
+        # Get ADR% for logging and fallback
         if self._get_adr_percent:
             try:
                 adr = await self._get_adr_percent(symbol, 20)  # 20-day ADR
@@ -339,10 +364,55 @@ class MACheckJob:
             except Exception as e:
                 logger.warning(f"[MACheck] Could not get ADR% for {symbol}: {e}")
         
-        # KK's threshold: 5% ADR = fast mover
+        # Priority 1: Check stored affinity
+        if position_id and position_id in self._position_affinities:
+            affinity = self._position_affinities[position_id]
+            ma_type = TrailingMAType.LOWER_10 if affinity == "10" else TrailingMAType.LOWER_20
+            logger.info(f"[MACheck] {symbol}: Using stored affinity -> {ma_type.value}")
+            return ma_type, adr_percent
+        
+        # Priority 2: Dynamic affinity analysis (if price history available)
+        if self._get_price_history:
+            try:
+                from nexus2.domain.automation.ma_affinity import (
+                    analyze_ma_affinity,
+                    select_trailing_ma_from_affinity,
+                )
+                
+                prices = await self._get_price_history(symbol, 60)  # 60 days for analysis
+                if prices and len(prices) >= 10:
+                    affinity_data = await analyze_ma_affinity(
+                        symbol=symbol,
+                        prices=prices,
+                        get_ema=self._get_ema,
+                        get_sma=self._get_sma,
+                        get_adr_percent=self._get_adr_percent,
+                    )
+                    
+                    # Use affinity if determined
+                    if affinity_data.affinity_ma in ("10", "20"):
+                        ma_type_str = select_trailing_ma_from_affinity(affinity_data)
+                        ma_type = TrailingMAType.LOWER_10 if ma_type_str == "LOWER_10" else TrailingMAType.LOWER_20
+                        logger.info(
+                            f"[MACheck] {symbol}: Dynamic affinity -> {ma_type.value} "
+                            f"(affinity={affinity_data.affinity_ma}, violations={affinity_data.violations})"
+                        )
+                        return ma_type, adr_percent
+                    
+                    # Check violations (Priority 3)
+                    if affinity_data.violations >= 2:
+                        logger.info(f"[MACheck] {symbol}: Choppy ({affinity_data.violations} violations) -> LOWER_20")
+                        return TrailingMAType.LOWER_20, adr_percent
+                        
+            except Exception as e:
+                logger.warning(f"[MACheck] Dynamic affinity analysis failed for {symbol}: {e}")
+        
+        # Priority 4: ADR-based selection (fallback)
         if adr_percent >= self.adr_threshold:
+            logger.info(f"[MACheck] {symbol}: ADR={adr_percent:.1f}% (fast) -> LOWER_10")
             return TrailingMAType.LOWER_10, adr_percent  # Fast mover - tight trailing
         else:
+            logger.info(f"[MACheck] {symbol}: ADR={adr_percent:.1f}% (slow) -> LOWER_20")
             return TrailingMAType.LOWER_20, adr_percent  # Slower - give more room
     
     async def _get_ma_value(self, symbol: str, ma_type: TrailingMAType) -> Optional[Decimal]:
