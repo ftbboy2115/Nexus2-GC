@@ -104,3 +104,16 @@ def _run_migrations():
                 print("[DB] Migration: Added nac_account column to scheduler_settings")
             except Exception:
                 pass
+        
+        # Migration 4: Add sim_mode column to scheduler_settings if missing
+        try:
+            conn.execute(text("SELECT sim_mode FROM scheduler_settings LIMIT 1"))
+        except Exception:
+            try:
+                conn.execute(text(
+                    "ALTER TABLE scheduler_settings ADD COLUMN sim_mode VARCHAR(5) DEFAULT 'false'"
+                ))
+                conn.commit()
+                print("[DB] Migration: Added sim_mode column to scheduler_settings")
+            except Exception:
+                pass

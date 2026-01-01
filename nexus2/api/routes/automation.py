@@ -1125,7 +1125,7 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
                       "max_position_value", "auto_start_enabled", "auto_start_time", "auto_execute",
-                      "nac_broker_type", "nac_account"]:
+                      "nac_broker_type", "nac_account", "sim_mode"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
@@ -1559,3 +1559,159 @@ async def get_ma_check_status():
     from nexus2.domain.automation.ema_check_job import get_ma_check_job
     job = get_ma_check_job()
     return job.get_status()
+
+
+# ==================== SIMULATION ENDPOINTS ====================
+
+@router.get("/simulation/status", response_model=dict)
+async def get_simulation_status():
+    """
+    Get simulation environment status.
+    
+    Returns current simulation clock time, broker state, and market data info.
+    """
+    from nexus2.adapters.simulation import (
+        get_simulation_clock, 
+        get_mock_market_data
+    )
+    from nexus2.adapters.simulation.mock_broker import MockBroker
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    # Get global mock broker if exists
+    broker_state = None
+    if hasattr(get_simulation_status, '_mock_broker'):
+        broker = get_simulation_status._mock_broker
+        broker_state = broker.to_dict()
+    
+    return {
+        "clock": clock.to_dict(),
+        "market_data": data.to_dict(),
+        "broker": broker_state,
+    }
+
+
+@router.post("/simulation/reset", response_model=dict)
+async def reset_simulation(
+    start_date: str = None,  # YYYY-MM-DD format
+    initial_cash: float = 100_000.0,
+    load_synthetic: bool = True,
+    symbols: list[str] = None,
+):
+    """
+    Reset simulation environment.
+    
+    Args:
+        start_date: Starting date for simulation (default: 60 days ago)
+        initial_cash: Starting cash balance
+        load_synthetic: Generate synthetic test data
+        symbols: Symbols to load data for (default: NVDA, AAPL, MSFT)
+    """
+    from nexus2.adapters.simulation import (
+        reset_simulation_clock,
+        reset_mock_market_data
+    )
+    from nexus2.adapters.simulation.mock_broker import MockBroker
+    from datetime import datetime, timedelta
+    import pytz
+    
+    ET = pytz.timezone("US/Eastern")
+    
+    # Parse start date or default to 60 days ago
+    if start_date:
+        start_dt = ET.localize(datetime.strptime(start_date, "%Y-%m-%d").replace(hour=9, minute=30))
+    else:
+        start_dt = datetime.now(ET) - timedelta(days=60)
+        start_dt = start_dt.replace(hour=9, minute=30, second=0, microsecond=0)
+    
+    # Reset clock
+    clock = reset_simulation_clock(start_time=start_dt)
+    
+    # Reset market data
+    data = reset_mock_market_data()
+    data.set_clock(clock)
+    
+    # Load synthetic data if requested
+    if symbols is None:
+        symbols = ["NVDA", "AAPL", "MSFT", "TSLA", "META"]
+    
+    if load_synthetic:
+        for sym in symbols:
+            data.load_synthetic_data(sym, start_price=100 + hash(sym) % 400, days=120)
+    
+    # Reset broker
+    broker = MockBroker(initial_cash=initial_cash)
+    reset_simulation._mock_broker = broker
+    get_simulation_status._mock_broker = broker  # Share with status endpoint
+    
+    logger.info(f"[Simulation] Reset: start={start_dt}, cash=${initial_cash:,.2f}, symbols={symbols}")
+    
+    return {
+        "status": "reset",
+        "clock": clock.to_dict(),
+        "market_data": data.to_dict(),
+        "broker": broker.to_dict(),
+    }
+
+
+@router.post("/simulation/advance", response_model=dict)
+async def advance_simulation(
+    minutes: int = 0,
+    hours: int = 0,
+    days: int = 0,
+    to_market_open: bool = False,
+    to_eod: bool = False,
+):
+    """
+    Advance simulation time.
+    
+    Args:
+        minutes: Advance by N minutes
+        hours: Advance by N hours
+        days: Advance by N days
+        to_market_open: Advance to next market open
+        to_eod: Advance to end of day (4:00 PM)
+    """
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    old_time = clock.current_time
+    
+    if to_market_open:
+        clock.advance_to_next_market_open()
+    elif to_eod:
+        clock.advance_to_market_close()
+    else:
+        clock.advance(minutes=minutes, hours=hours, days=days)
+    
+    # Update market data prices for new date
+    new_prices = data.advance_day()
+    
+    # Update broker prices if exists
+    if hasattr(get_simulation_status, '_mock_broker'):
+        broker = get_simulation_status._mock_broker
+        for sym, price in new_prices.items():
+            broker.set_price(sym, price)
+    
+    logger.info(f"[Simulation] Advanced: {old_time} -> {clock.current_time}")
+    
+    return {
+        "old_time": old_time.isoformat(),
+        "new_time": clock.current_time.isoformat(),
+        "is_market_hours": clock.is_market_hours(),
+        "is_eod_window": clock.is_eod_window(),
+        "new_prices": new_prices,
+    }
+
+
+@router.get("/simulation/broker", response_model=dict)
+async def get_simulation_broker():
+    """Get simulation broker state (positions, orders, P&L)."""
+    if hasattr(get_simulation_status, '_mock_broker'):
+        broker = get_simulation_status._mock_broker
+        return broker.to_dict()
+    return {"error": "Simulation not initialized. Call /simulation/reset first."}
+

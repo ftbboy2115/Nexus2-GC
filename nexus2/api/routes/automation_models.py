@@ -91,6 +91,7 @@ class SchedulerSettingsRequest(BaseModel):
     auto_execute: Optional[bool] = None  # Enable auto-execute for autonomous trading
     nac_broker_type: Optional[str] = None  # alpaca_paper, alpaca_live
     nac_account: Optional[str] = None  # A or B (default A for Automation)
+    sim_mode: Optional[bool] = None  # Enable simulation mode (uses MockBroker)
 
 
 # Preset definitions for scheduler (same as Quick Actions)
