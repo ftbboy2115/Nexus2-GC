@@ -14,7 +14,7 @@ from nexus2.adapters.broker import OrderExecutor
 from nexus2.settings.risk_settings import PartialExitSettings
 from nexus2.api.broker_factory import create_broker_by_type
 
-from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics
+from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics, automation_simulation
 from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
@@ -105,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router)
     app.include_router(websocket.router)
     app.include_router(automation.router)
+    app.include_router(automation_simulation.router)
     app.include_router(watchlist.router)
     app.include_router(analytics.router)
     
