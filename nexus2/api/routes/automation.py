@@ -1812,3 +1812,176 @@ async def load_historical_data(
         "clock": clock.to_dict(),
         "rate_stats": fmp.get_rate_stats(),
     }
+
+
+@router.post("/simulation/load_test_case", response_model=dict)
+async def load_test_case(case_id: str):
+    """
+    Load a curated test case by ID.
+    
+    Test cases are defined in nexus2/tests/test_cases/kk_setups.yaml
+    
+    Args:
+        case_id: Test case ID (e.g., smci_ep_2023, nvda_ep_2024)
+    
+    Returns:
+        Dict with case details, loaded data info, and expected outcomes
+    """
+    import os
+    import yaml
+    
+    # Load test cases from YAML
+    yaml_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "tests", "test_cases", "kk_setups.yaml"
+    )
+    yaml_path = os.path.normpath(yaml_path)
+    
+    if not os.path.exists(yaml_path):
+        return {"error": f"Test cases file not found: {yaml_path}"}
+    
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    # Find the test case
+    test_cases = data.get("test_cases", [])
+    case = None
+    for tc in test_cases:
+        if tc.get("id") == case_id:
+            case = tc
+            break
+    
+    if not case:
+        available = [tc.get("id") for tc in test_cases]
+        return {
+            "error": f"Test case '{case_id}' not found",
+            "available_cases": available,
+        }
+    
+    # Load historical data for the symbol
+    symbol = case["symbol"]
+    start_date = case["date_range"]["start"]
+    end_date = case["date_range"]["end"]
+    
+    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+    from nexus2.adapters.simulation import get_mock_market_data, get_simulation_clock
+    
+    fmp = get_fmp_adapter()
+    market_data = get_mock_market_data()
+    clock = get_simulation_clock()
+    
+    # Connect clock to data
+    if market_data._sim_clock is None:
+        market_data.set_clock(clock)
+    
+    # Calculate days needed
+    from datetime import datetime
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    days = (end - start).days + 60  # Extra buffer
+    
+    # Fetch from FMP
+    logger.info(f"[TestCase] Loading {days} days of historical data for {symbol}...")
+    bars = fmp.get_daily_bars(symbol.upper(), limit=days)
+    
+    if not bars:
+        return {
+            "error": f"Failed to load data for {symbol}",
+            "rate_stats": fmp.get_rate_stats()
+        }
+    
+    # Convert and filter by date range
+    bar_dicts = []
+    for bar in bars:
+        bar_date = bar.timestamp.strftime("%Y-%m-%d")
+        if bar_date < start_date or bar_date > end_date:
+            continue
+        bar_dicts.append({
+            "date": bar_date,
+            "open": float(bar.open),
+            "high": float(bar.high),
+            "low": float(bar.low),
+            "close": float(bar.close),
+            "volume": bar.volume,
+        })
+    
+    # Load into MockMarketData
+    count = market_data.load_data(symbol.upper(), bar_dicts)
+    
+    # Set clock to setup date (or start of range)
+    import pytz
+    ET = pytz.timezone("US/Eastern")
+    setup_date_str = case.get("setup_date", start_date)
+    setup_date = datetime.strptime(setup_date_str, "%Y-%m-%d")
+    clock.set_time(ET.localize(setup_date.replace(hour=9, minute=30)))
+    
+    # Initialize broker if needed
+    if not hasattr(get_simulation_status, '_mock_broker'):
+        # Reset simulation to create broker
+        from nexus2.adapters.simulation import MockBroker
+        broker = MockBroker(initial_cash=100000.0)
+        get_simulation_status._mock_broker = broker
+    
+    # Set current price
+    if bar_dicts:
+        # Find the bar at or before setup date
+        setup_price = None
+        for bar in bar_dicts:
+            if bar["date"] <= setup_date_str:
+                setup_price = bar["close"]
+            else:
+                break
+        if setup_price:
+            get_simulation_status._mock_broker.set_price(symbol.upper(), setup_price)
+    
+    logger.info(f"[TestCase] Loaded test case {case_id}: {count} bars for {symbol}")
+    
+    return {
+        "case_id": case_id,
+        "symbol": symbol,
+        "setup_type": case["setup_type"],
+        "outcome": case["outcome"],
+        "description": case["description"],
+        "bars_loaded": count,
+        "date_range": case["date_range"],
+        "setup_date": case.get("setup_date"),
+        "expected": case.get("expected", {}),
+        "clock": clock.to_dict(),
+        "rate_stats": fmp.get_rate_stats(),
+    }
+
+
+@router.get("/simulation/test_cases", response_model=dict)
+async def list_test_cases():
+    """List all available curated test cases."""
+    import os
+    import yaml
+    
+    yaml_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "tests", "test_cases", "kk_setups.yaml"
+    )
+    yaml_path = os.path.normpath(yaml_path)
+    
+    if not os.path.exists(yaml_path):
+        return {"error": f"Test cases file not found: {yaml_path}"}
+    
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    test_cases = data.get("test_cases", [])
+    
+    summary = []
+    for tc in test_cases:
+        summary.append({
+            "id": tc.get("id"),
+            "symbol": tc.get("symbol"),
+            "setup_type": tc.get("setup_type"),
+            "outcome": tc.get("outcome"),
+            "description": tc.get("description"),
+        })
+    
+    return {
+        "count": len(summary),
+        "test_cases": summary,
+    }

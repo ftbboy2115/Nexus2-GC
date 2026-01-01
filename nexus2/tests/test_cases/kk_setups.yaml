@@ -1,0 +1,181 @@
+# KK-Style Curated Test Cases
+# 
+# Known setups for validating NAC scanner and execution logic.
+# Each case includes:
+#   - Symbol and date range
+#   - Setup type (ep, htf, breakout)
+#   - Expected outcome (winner/loser)
+#   - Entry and stop levels for validation
+
+test_cases:
+  # ==========================================================================
+  # EP WINNERS - Stocks that had successful EP setups
+  # ==========================================================================
+  
+  - id: smci_ep_2023
+    symbol: SMCI
+    setup_type: ep
+    outcome: winner
+    description: "SMCI Dec 2023 EP - Massive AI/datacenter earnings gap"
+    date_range:
+      start: "2023-11-01"
+      end: "2024-02-28"
+    setup_date: "2023-12-14"
+    expected:
+      entry_near: 280.0  # Approximate entry range
+      stop_near: 265.0   # Initial stop area
+      peak_price: 1200.0  # Price ran to ~$1200
+      peak_gain_pct: 300
+
+  - id: nvda_ep_2024
+    symbol: NVDA
+    setup_type: ep
+    outcome: winner
+    description: "NVDA Q4 2024 earnings gap - AI demand"
+    date_range:
+      start: "2024-02-01"
+      end: "2024-04-30"
+    setup_date: "2024-02-22"
+    expected:
+      entry_near: 788.0
+      stop_near: 750.0
+      peak_price: 950.0
+      peak_gain_pct: 20
+
+  - id: meta_ep_2023
+    symbol: META
+    setup_type: ep
+    outcome: winner
+    description: "META Q4 2023 earnings gap - Year of efficiency"
+    date_range:
+      start: "2023-10-15"
+      end: "2024-01-31"
+    setup_date: "2023-10-26"
+    expected:
+      entry_near: 310.0
+      stop_near: 290.0
+      peak_price: 500.0
+      peak_gain_pct: 60
+
+  # ==========================================================================
+  # EP LOSERS - Failed setups (for testing stop execution)
+  # ==========================================================================
+  
+  - id: upst_ep_fail
+    symbol: UPST
+    setup_type: ep
+    outcome: loser
+    description: "UPST earnings gap that reversed - test stop execution"
+    date_range:
+      start: "2023-11-01"
+      end: "2024-01-31"
+    setup_date: "2023-11-08"
+    expected:
+      entry_near: 40.0
+      stop_near: 35.0
+      stopped_at: 34.0
+      loss_pct: -15
+
+  # ==========================================================================
+  # HIGH-TIGHT FLAG (HTF) SETUPS
+  # ==========================================================================
+  
+  - id: app_htf_2024
+    symbol: APP
+    setup_type: htf
+    outcome: winner
+    description: "APP high-tight flag after 100% move"
+    date_range:
+      start: "2024-01-01"
+      end: "2024-04-30"
+    setup_date: "2024-02-15"
+    expected:
+      entry_near: 60.0
+      stop_near: 55.0
+      peak_price: 150.0
+      peak_gain_pct: 150
+
+  # ==========================================================================
+  # BREAKOUT SETUPS
+  # ==========================================================================
+  
+  - id: pltr_breakout_2024
+    symbol: PLTR
+    setup_type: breakout
+    outcome: winner
+    description: "PLTR multi-month base breakout"
+    date_range:
+      start: "2024-01-01"
+      end: "2024-05-31"
+    setup_date: "2024-02-22"
+    expected:
+      entry_near: 25.0
+      stop_near: 23.0
+      peak_price: 80.0
+      peak_gain_pct: 200
+
+# ==========================================================================
+# USAGE:
+# 
+# 1. Load a test case:
+#    POST /simulation/load_test_case?case_id=smci_ep_2023
+#
+# 2. This will:
+#    - Load historical data for the symbol
+#    - Set clock to start of date_range
+#    - Return expected entry/stop for validation
+#
+# 3. Run scanner to see if it detects the setup
+# 4. Execute trade and advance time
+# 5. Compare outcome vs expected
+# ==========================================================================
+
+  # ==========================================================================
+  # MID-CAP EP WINNERS (Confirmed KK-traded stocks)
+  # ==========================================================================
+  
+  - id: celh_ep_2023
+    symbol: CELH
+    setup_type: ep
+    outcome: winner
+    description: "CELH earnings gap - Energy drink distribution deal"
+    date_range:
+      start: "2023-02-01"
+      end: "2023-05-31"
+    setup_date: "2023-02-28"
+    expected:
+      entry_near: 110.0
+      stop_near: 95.0
+      peak_price: 200.0
+      peak_gain_pct: 80
+
+  - id: amd_ep_2024
+    symbol: AMD
+    setup_type: ep
+    outcome: winner
+    description: "AMD Q4 2023 earnings gap - AI chip demand"
+    date_range:
+      start: "2024-01-15"
+      end: "2024-04-30"
+    setup_date: "2024-01-31"
+    expected:
+      entry_near: 165.0
+      stop_near: 155.0
+      peak_price: 227.0
+      peak_gain_pct: 37
+
+  - id: apps_ep_2021
+    symbol: APPS
+    setup_type: ep
+    outcome: winner
+    description: "APPS earnings gap - Mobile ad tech momentum"
+    date_range:
+      start: "2021-02-01"
+      end: "2021-05-31"
+    setup_date: "2021-02-10"
+    expected:
+      entry_near: 80.0
+      stop_near: 72.0
+      peak_price: 102.0
+      peak_gain_pct: 27
+
