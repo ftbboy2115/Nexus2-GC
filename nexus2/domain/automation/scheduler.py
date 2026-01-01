@@ -65,16 +65,25 @@ class AutomationScheduler:
     
     @property
     def is_market_hours(self) -> bool:
-        """Check if currently within market hours."""
-        now = datetime.now()
-        current_time = now.time()
-        weekday = now.weekday()
+        """
+        Check if market is currently open.
         
-        # Weekends
-        if weekday >= 5:
-            return False
-        
-        return self.market_open <= current_time <= self.market_close
+        Uses Alpaca clock API for accurate detection of holidays and early closes.
+        """
+        try:
+            from nexus2.adapters.market_data.market_calendar import get_market_calendar
+            calendar = get_market_calendar(paper=True)  # Scheduler uses paper by default
+            return calendar.is_market_open()
+        except Exception:
+            # Fallback to basic time check
+            now = datetime.now()
+            current_time = now.time()
+            weekday = now.weekday()
+            
+            if weekday >= 5:
+                return False
+            
+            return self.market_open <= current_time <= self.market_close
     
     @property
     def is_eod_window(self) -> bool:

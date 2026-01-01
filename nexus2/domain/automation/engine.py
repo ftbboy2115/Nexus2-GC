@@ -109,17 +109,30 @@ class AutomationEngine:
     
     @property
     def is_market_hours(self) -> bool:
-        """Check if currently within market hours."""
-        now = datetime.now()
-        current_time = now.time()
-        weekday = now.weekday()
+        """
+        Check if market is currently open.
         
-        # Weekends
-        if weekday >= 5:
-            return False
-        
-        # Check time
-        return self.config.market_open <= current_time <= self.config.market_close
+        Uses Alpaca clock API for accurate detection of:
+        - Holidays (New Year's, MLK, etc.)
+        - Early closes (Black Friday, Christmas Eve)
+        - Weekend
+        - Regular hours
+        """
+        try:
+            from nexus2.adapters.market_data.market_calendar import get_market_calendar
+            calendar = get_market_calendar(paper=self.config.sim_only)
+            return calendar.is_market_open()
+        except Exception as e:
+            logger.warning(f"Market calendar unavailable, using fallback: {e}")
+            # Fallback to basic time check
+            now = datetime.now()
+            current_time = now.time()
+            weekday = now.weekday()
+            
+            if weekday >= 5:
+                return False
+            
+            return self.config.market_open <= current_time <= self.config.market_close
     
     def start(self) -> dict:
         """Start the automation engine."""
