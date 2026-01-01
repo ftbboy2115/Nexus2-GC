@@ -71,7 +71,6 @@ def test_1_scanner_to_unified_result():
     print(f"  ✅ UnifiedScanResult has correct structure")
     print(f"  ✅ UnifiedScannerService created successfully")
     print(f"  ✅ Scanner has scan() method")
-    return True
 
 
 def test_2_signal_has_required_fields():
@@ -123,8 +122,6 @@ def test_2_signal_has_required_fields():
     stop_distance = signal.stop_distance
     assert stop_distance > 0, "Stop distance must be positive"
     print(f"  ✅ stop_distance property works: ${stop_distance}")
-    
-    return True
 
 
 def test_3_scanmode_enum_values():
@@ -149,8 +146,6 @@ def test_3_scanmode_enum_values():
     assert ScanMode.BREAKOUT_ONLY.value == "breakout"
     assert ScanMode.HTF_ONLY.value == "htf"
     print(f"  ✅ All ScanMode values correct")
-    
-    return True
 
 
 def test_4_broker_integration():
@@ -179,8 +174,6 @@ def test_4_broker_integration():
         print(f"  ✅ Broker initialized successfully")
     except Exception as e:
         print(f"  ⚠️ Broker init warning (may need API keys): {e}")
-    
-    return True
 
 
 def test_5_catalyst_verification_in_pipeline():
@@ -208,8 +201,6 @@ def test_5_catalyst_verification_in_pipeline():
         "Scanner missing _evaluate_symbol method"
     
     print(f"  ✅ Scanner ready for market open")
-    
-    return True
 
 
 def test_6_full_signal_flow():
@@ -261,8 +252,6 @@ def test_6_full_signal_flow():
     
     print(f"  Bracket: Entry=${signal.entry_price}, Stop=${stop_loss_price}, Target=${take_profit_price}")
     print(f"  ✅ Full signal flow calculation verified")
-    
-    return True
 
 
 import pytest
@@ -311,11 +300,9 @@ def test_7_api_endpoints():
     
     if all(results):
         print(f"  ✅ All endpoints responsive")
-        return True
     else:
         # Fail the test if ANY endpoint is unreachable
-        print(f"  ❌ FAILED: Server must be running for this test!")
-        return False
+        pytest.fail("Server must be running for this test!")
 
 
 def run_all_tests():
