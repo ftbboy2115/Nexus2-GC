@@ -1249,6 +1249,36 @@ async def toggle_auto_execute(req: SchedulerToggleRequest):
     }
 
 
+class SchedulerIntervalRequest(BaseModel):
+    interval_minutes: int
+
+
+@router.patch("/scheduler/interval", response_model=dict)
+async def update_scheduler_interval(req: SchedulerIntervalRequest):
+    """Update the scheduler interval (takes effect on next cycle)."""
+    scheduler = get_scheduler()
+    
+    # Validate interval
+    valid_intervals = [5, 10, 15, 30]
+    if req.interval_minutes not in valid_intervals:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid interval. Valid options: {valid_intervals}"
+        )
+    
+    old_interval = scheduler.interval_minutes
+    scheduler.interval_minutes = req.interval_minutes
+    
+    logger.info(f"[Scheduler] interval changed: {old_interval} -> {req.interval_minutes} min")
+    print(f"🔄 [Scheduler] interval changed: {old_interval} -> {req.interval_minutes} min (takes effect next cycle)")
+    
+    return {
+        "status": "updated",
+        "interval_minutes": scheduler.interval_minutes,
+        "message": f"Interval updated from {old_interval} to {req.interval_minutes} min"
+    }
+
+
 # ==================== SCHEDULER SETTINGS ENDPOINTS ====================
 
 class SchedulerSettingsRequest(BaseModel):

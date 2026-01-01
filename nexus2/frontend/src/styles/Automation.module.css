@@ -615,6 +615,27 @@
     color: #00ff88;
 }
 
+/* Interval Select Dropdown */
+.intervalSelect {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.intervalSelect:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.intervalSelect option {
+    background: #1a1a2e;
+    color: #fff;
+}
+
 /* Instructions Panel */
 .instructions {
     background: rgba(0, 150, 255, 0.08);

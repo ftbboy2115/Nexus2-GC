@@ -185,6 +185,9 @@ export default function Automation() {
     // Broker positions (actual Alpaca positions)
     const [positions, setPositions] = useState<PositionsData | null>(null)
 
+    // Scheduler interval selector (5, 10, 15, 30 min)
+    const [selectedInterval, setSelectedInterval] = useState<number>(15)
+
     const API_BASE = 'http://localhost:8000'
 
 
@@ -404,7 +407,33 @@ export default function Automation() {
                                 <div className={styles.cardBody}>
                                     <div className={styles.stat}>
                                         <span>Interval:</span>
-                                        <strong>{scheduler?.interval_minutes || 15} min</strong>
+                                        <select
+                                            value={scheduler?.running ? scheduler.interval_minutes : selectedInterval}
+                                            onChange={async (e) => {
+                                                const newInterval = Number(e.target.value);
+                                                setSelectedInterval(newInterval);
+                                                if (scheduler?.running) {
+                                                    // Update running scheduler
+                                                    try {
+                                                        await fetch(`${API_BASE}/automation/scheduler/interval`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ interval_minutes: newInterval }),
+                                                        });
+                                                        // Refresh status to show new interval
+                                                        fetchStatus();
+                                                    } catch (err) {
+                                                        console.error('Failed to update interval:', err);
+                                                    }
+                                                }
+                                            }}
+                                            className={styles.intervalSelect}
+                                        >
+                                            <option value={5}>5 min</option>
+                                            <option value={10}>10 min</option>
+                                            <option value={15}>15 min</option>
+                                            <option value={30}>30 min</option>
+                                        </select>
                                     </div>
                                     <div className={styles.stat}>
                                         <span>Auto-Execute:</span>
@@ -485,7 +514,7 @@ export default function Automation() {
                                         </button>
                                     ) : (
                                         <button
-                                            onClick={() => handleAction('scheduler-start', '/automation/scheduler/start', { interval_minutes: 15 })}
+                                            onClick={() => handleAction('scheduler-start', '/automation/scheduler/start', { interval_minutes: selectedInterval })}
                                             className={styles.btnPrimary}
                                             disabled={actionLoading === 'scheduler-start'}
                                             title="Starts full automation: scans every 15 min, auto-executes trades, monitors positions for Day 3-5 partials, and runs EOD MA check at 3:45 PM"
