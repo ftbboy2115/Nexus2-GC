@@ -1131,7 +1131,7 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
                 # Convert numeric to string for DB storage
                 if field in ["max_stop_atr", "max_stop_percent", "max_position_value"]:
                     updates[field] = str(value)
-                elif field in ["auto_start_enabled", "auto_execute"]:
+                elif field in ["auto_start_enabled", "auto_execute", "sim_mode"]:
                     updates[field] = "true" if value else "false"
                 else:
                     updates[field] = value
