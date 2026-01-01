@@ -2,6 +2,7 @@
 Automation Routes
 
 API endpoints for controlling the automation engine.
+Now uses modular structure with separate files for state, models, and helpers.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,563 +18,56 @@ from nexus2.db.repository import PositionRepository
 import logging
 logger = logging.getLogger(__name__)
 
-
+# Import from new modular structure
+from nexus2.api.routes.automation_state import (
+    get_engine, set_engine, get_scheduler, get_monitor,
+    set_app, get_app,
+    get_auto_start_task, set_auto_start_task,
+    get_auto_start_triggered_today, set_auto_start_triggered_today,
+)
+from nexus2.api.routes.automation_models import (
+    StartRequest, EngineStatusResponse, ActionResponse,
+    ScanAllRequest, ExecuteRequest,
+    SchedulerStartRequest, SchedulerToggleRequest, SchedulerIntervalRequest,
+    SchedulerSettingsRequest, MonitorStartRequest, MACheckRequest,
+    SCHEDULER_PRESETS,
+)
+from nexus2.api.routes.automation_helpers import (
+    auto_start_checker as _auto_start_checker_fn,
+    start_auto_start_checker as _start_auto_start_checker,
+    configure_scanner_from_settings as _configure_scanner_from_settings,
+    create_eod_callback as _create_eod_callback,
+    create_execute_callback as _create_execute_callback,
+    configure_and_start_scheduler as _configure_and_start_scheduler,
+)
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
 
-# Global instances (initialized in lifespan)
-_engine: Optional[AutomationEngine] = None
-_scheduler: Optional[AutomationScheduler] = None
-
-
-def get_engine() -> AutomationEngine:
-    """Get the automation engine instance."""
-    if _engine is None:
-        raise HTTPException(status_code=503, detail="Automation engine not initialized")
-    return _engine
-
-
-def set_engine(engine: AutomationEngine):
-    """Set the automation engine instance."""
-    global _engine
-    _engine = engine
-
-
-def get_scheduler() -> AutomationScheduler:
-    """Get the automation scheduler instance."""
-    global _scheduler
-    if _scheduler is None:
-        _scheduler = AutomationScheduler()
-    return _scheduler
-
-
-# Position monitor instance
-_monitor: Optional["PositionMonitor"] = None
-
-
-def get_monitor():
-    """Get the position monitor instance."""
-    global _monitor
-    from nexus2.domain.automation.monitor import PositionMonitor
-    if _monitor is None:
-        _monitor = PositionMonitor()
-    return _monitor
-
-
-# App reference for accessing broker/market_data in background tasks
-_app = None
-
-
-def set_app(app):
-    """Set the FastAPI app reference for background tasks."""
-    global _app
-    _app = app
-
-
-def get_app():
-    """Get the FastAPI app reference."""
-    return _app
-
-
-# Auto-start checker state
-_auto_start_task = None
-_auto_start_triggered_today = False
-
-
+# Wrapper functions to provide dependencies to helpers
 async def auto_start_checker():
-    """
-    Background task that checks if scheduler should auto-start.
-    
-    Runs every 60 seconds and checks:
-    1. Is auto-start enabled?
-    2. Is current time (ET) matching the configured start time?
-    3. Is scheduler not already running?
-    
-    If all conditions met, starts the scheduler and sends Discord notification.
-    """
-    import asyncio
-    from datetime import datetime
-    import pytz
-    
-    global _auto_start_triggered_today
-    
-    et_tz = pytz.timezone('America/New_York')
-    
-    while True:
-        try:
-            # Get current ET time
-            now_et = datetime.now(et_tz)
-            current_time = now_et.strftime("%H:%M")
-            
-            
-            # Reset trigger flag at midnight
-            if current_time == "00:00":
-                _auto_start_triggered_today = False
-            
-            # Skip if already triggered today
-            if _auto_start_triggered_today:
-                await asyncio.sleep(60)
-                continue
-            
-            # Check scheduler settings
-            from nexus2.db import SessionLocal
-            from nexus2.db.repository import SchedulerSettingsRepository
-            
-            db = SessionLocal()
-            try:
-                repo = SchedulerSettingsRepository(db)
-                settings = repo.get()
-                
-                
-                # Check if auto-start is enabled and time matches
-                if (settings.auto_start_enabled == "true" and 
-                    settings.auto_start_time and
-                    settings.auto_start_time == current_time):
-                    
-                    # Check if scheduler is not already running
-                    scheduler = get_scheduler()
-                    if not scheduler.is_running:
-                        logger.info(f"[AutoStart] Time matched ({current_time} ET) - starting full automation")
-                        print(f"🚀 [AutoStart] Starting full automation at {current_time} ET")
-                        
-                        # Start Engine first (sync method)
-                        engine = get_engine()
-                        if engine.state.name != "RUNNING":
-                            engine.start()  # Sync, returns dict
-                            print("[AutoStart] Engine started")
-                        
-                        # Start Monitor (async method)
-                        monitor = get_monitor()
-                        if not monitor._running:
-                            await monitor.start()  # Async, returns dict
-                            print("[AutoStart] Monitor started")
-                        
-                        # Configure scheduler with callbacks (same as manual UI start)
-                        await _configure_and_start_scheduler(engine, scheduler)
-                        print("[AutoStart] Scheduler started with full callbacks")
-                        
-                        _auto_start_triggered_today = True
-                        
-                        # Send Discord notification
-                        try:
-                            from nexus2.adapters.notifications.discord import DiscordNotifier
-                            notifier = DiscordNotifier()
-                            if notifier.config.enabled:
-                                notifier.send_system_alert(
-                                    f"🚀 Full Automation Started at {current_time} ET (Engine + Monitor + Scheduler)",
-                                    level="success"
-                                )
-                                print("[AutoStart] Discord notification sent")
-                            else:
-                                print("[AutoStart] Discord disabled (no webhook URL configured)")
-                            logger.info("[AutoStart] Full automation started with Discord notification")
-                        except Exception as e:
-                            logger.warning(f"[AutoStart] Discord notification failed: {e}")
-                    else:
-                        logger.debug(f"[AutoStart] Scheduler already running, skipping")
-                        _auto_start_triggered_today = True
-                        
-            finally:
-                db.close()
-                
-        except Exception as e:
-            logger.error(f"[AutoStart] Checker error: {e}")
-        
-        await asyncio.sleep(60)
+    """Background task wrapper that injects dependencies."""
+    await _auto_start_checker_fn(
+        get_scheduler,
+        get_engine,
+        get_monitor,
+        lambda e, s: _configure_and_start_scheduler(e, s, get_app),
+    )
 
 
 def start_auto_start_checker():
     """Start the auto-start checker background task."""
-    global _auto_start_task
     import asyncio
-    
-    if _auto_start_task is None:
-        _auto_start_task = asyncio.create_task(auto_start_checker())
+    task = get_auto_start_task()
+    if task is None:
+        task = asyncio.create_task(auto_start_checker())
+        set_auto_start_task(task)
         logger.info("[AutoStart] Checker started")
-    return _auto_start_task
+    return task
 
 
-async def _configure_scanner_from_settings(engine, scheduler):
-    """
-    Configure engine scanner and scheduler settings from database.
-    
-    This is the shared scanner configuration logic used by both manual start
-    and auto-start. Returns settings dict for logging/reference.
-    
-    Returns:
-        dict with settings applied
-    """
-    from nexus2.domain.automation.services import create_unified_scanner_callback
-    from nexus2.db import SessionLocal, SchedulerSettingsRepository
-    
-    db = SessionLocal()
-    try:
-        settings_repo = SchedulerSettingsRepository(db)
-        sched_settings = settings_repo.get()
-        
-        # Read settings
-        min_quality = sched_settings.min_quality
-        stop_mode = sched_settings.stop_mode or "atr"
-        max_stop_atr = float(sched_settings.max_stop_atr) if sched_settings.max_stop_atr else 1.0
-        max_stop_percent = float(sched_settings.max_stop_percent) if sched_settings.max_stop_percent else 5.0
-        scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
-        htf_frequency = sched_settings.htf_frequency or "every_cycle"
-        
-        # Read auto_execute from settings (default False for safety)
-        auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
-        auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
-        
-        # Set scheduler auto_execute flag
-        scheduler.auto_execute = auto_execute
-        
-        # Configure engine scanner
-        engine._scanner_func = await create_unified_scanner_callback(
-            min_quality=min_quality,
-            max_stop_percent=max_stop_percent,
-            stop_mode=stop_mode,
-            max_stop_atr=max_stop_atr,
-            scan_modes=scan_modes,
-            htf_frequency=htf_frequency,
-        )
-        
-        settings_used = {
-            "min_quality": min_quality,
-            "stop_mode": stop_mode,
-            "max_stop_atr": max_stop_atr,
-            "max_stop_percent": max_stop_percent,
-            "scan_modes": scan_modes,
-            "htf_frequency": htf_frequency,
-            "auto_execute": auto_execute,
-        }
-        
-        logger.info(f"[Scheduler] Scanner configured: {settings_used}")
-        
-        return settings_used
-    finally:
-        db.close()
-
-
-def _create_eod_callback(market_data, broker):
-    """
-    Create the EOD callback function for 3:45 PM MA trailing stop check.
-    
-    This is shared between manual start and auto-start to avoid duplication.
-    Uses AUTO MA type (KK-style: ADR% determines 10 vs 20 MA).
-    
-    Args:
-        market_data: Market data provider for quotes and MAs
-        broker: Broker for submitting exit orders
-    
-    Returns:
-        Async callback function for EOD check
-    """
-    async def eod_callback():
-        """Run MA check at end of day for trailing stops."""
-        from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
-        from nexus2.db import SessionLocal, PositionRepository, PositionExitRepository
-        from uuid import uuid4
-        from datetime import datetime
-        
-        logger.info("[EOD] Running automatic MA trailing stop check...")
-        
-        # Create job with AUTO MA selection (KK-style: ADR% determines 10 vs 20 MA)
-        job = MACheckJob(
-            min_days_for_trailing=5,
-            default_ma_type=TrailingMAType.AUTO,  # Dynamic based on ADR%
-            require_timing_window=False,  # Already in window, so don't require it again
-        )
-        
-        # Callback: Get open positions
-        async def get_positions():
-            db = SessionLocal()
-            try:
-                position_repo = PositionRepository(db)
-                positions = position_repo.get_open()
-                return [
-                    {
-                        "id": p.id,
-                        "symbol": p.symbol,
-                        "opened_at": p.opened_at,
-                        "remaining_shares": p.remaining_shares,
-                        "entry_price": p.entry_price,
-                    }
-                    for p in positions
-                ]
-            finally:
-                db.close()
-        
-        # Callback: Get daily close
-        async def get_daily_close(symbol: str):
-            if market_data:
-                try:
-                    quote = market_data.get_quote(symbol)
-                    if quote and hasattr(quote, 'close'):
-                        return quote.close
-                    elif quote and hasattr(quote, 'price'):
-                        return quote.price
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get close for {symbol}: {e}")
-            return None
-        
-        # Callback: Get EMA
-        async def get_ema(symbol: str, period: int):
-            if market_data:
-                try:
-                    return market_data.get_ema(symbol, period)
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get EMA{period} for {symbol}: {e}")
-            return None
-        
-        # Callback: Get SMA
-        async def get_sma(symbol: str, period: int):
-            if market_data:
-                try:
-                    return market_data.get_sma(symbol, period)
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get SMA{period} for {symbol}: {e}")
-            return None
-        
-        # Callback: Execute exit (use broker if available)
-        async def execute_exit(position_id: str, shares: int, reason: str):
-            db = SessionLocal()
-            try:
-                position_repo = PositionRepository(db)
-                exit_repo = PositionExitRepository(db)
-                
-                position = position_repo.get_by_id(position_id)
-                if not position:
-                    return
-                
-                # Get current price for exit record
-                current_price = None
-                if market_data:
-                    quote = market_data.get_quote(position.symbol)
-                    current_price = quote.price if quote else None
-                
-                if not current_price:
-                    current_price = position.entry_price  # Fallback
-                
-                # Submit sell order through broker if available
-                if broker:
-                    try:
-                        broker.submit_order(
-                            client_order_id=uuid4(),
-                            symbol=position.symbol,
-                            quantity=shares,
-                            side="sell",
-                            order_type="market",
-                        )
-                        logger.info(f"[EOD] Submitted sell order for {position.symbol} x {shares}")
-                    except Exception as e:
-                        logger.error(f"[EOD] Failed to submit sell order: {e}")
-                
-                # Record exit
-                exit_repo.create({
-                    "id": str(uuid4()),
-                    "position_id": position_id,
-                    "shares": shares,
-                    "exit_price": str(current_price),
-                    "reason": reason,
-                    "exited_at": datetime.utcnow(),
-                })
-                
-                # Update position
-                new_remaining = position.remaining_shares - shares
-                position_repo.update(position_id, {
-                    "remaining_shares": new_remaining,
-                    "status": "closed" if new_remaining <= 0 else "open",
-                })
-                
-                logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
-            finally:
-                db.close()
-        
-        # Set callbacks and run
-        job.set_callbacks(
-            get_positions=get_positions,
-            get_daily_close=get_daily_close,
-            get_ema=get_ema,
-            get_sma=get_sma,
-            execute_exit=execute_exit,
-        )
-        
-        result = await job.run(dry_run=False)  # Execute real exits
-        
-        return {
-            "positions_checked": result.positions_checked,
-            "exit_signals": len(result.exit_signals),
-            "errors": len(result.errors),
-        }
-    
-    return eod_callback
-
-
-async def _configure_and_start_scheduler(engine, scheduler):
-    """
-    Configure scheduler with scan callback and start it.
-    
-    Used by auto-start for scan-only mode (no execute callback).
-    For full functionality with execute/EOD callbacks, use manual start via UI.
-    
-    Returns:
-        dict with scheduler start result
-    """
-    # Configure scanner from settings (shared logic)
-    settings = await _configure_scanner_from_settings(engine, scheduler)
-    
-    # Get broker from app state for execute callback
-    app = get_app()
-    broker = getattr(app.state, 'broker', None) if app else None
-    market_data = getattr(app.state, 'market_data', None) if app else None
-    
-    # Use auto_execute from settings (for full autonomous operation)
-    auto_execute = settings.get("auto_execute", False)
-    scheduler.auto_execute = auto_execute if broker else False
-    
-    # Set up scan callback
-    async def scan_callback():
-        return await engine.run_scan_cycle()
-    
-    # Set up execute callback if broker is available
-    execute_callback = None
-    if broker and auto_execute:
-        from nexus2.db import SessionLocal, PositionRepository, SchedulerSettingsRepository
-        from uuid import uuid4
-        from datetime import datetime
-        from decimal import Decimal
-        
-        async def execute_callback():
-            """Auto-execute trades from signals using broker."""
-            print(f"🤖 [AutoExec] Starting auto-execute cycle...")
-            
-            # Get signals from engine's last scan
-            if not hasattr(engine, '_last_signals') or not engine._last_signals:
-                print("[AutoExec] No signals to execute")
-                return {"status": "no_signals"}
-            
-            signals = engine._last_signals
-            executed = []
-            skipped = []
-            errors = []
-            
-            for signal in signals:  # Execute all valid signals
-                try:
-                    # Get fresh settings each cycle
-                    db = SessionLocal()
-                    try:
-                        settings_repo = SchedulerSettingsRepository(db)
-                        sched_settings = settings_repo.get()
-                        
-                        # Position limit check
-                        position_repo = PositionRepository(db)
-                        open_positions = position_repo.get_open()
-                        max_positions = int(sched_settings.max_positions) if sched_settings.max_positions else 5
-                        
-                        if len(open_positions) >= max_positions:
-                            skipped.append({"symbol": signal.symbol, "reason": "max_positions_reached"})
-                            continue
-                        
-                        # Calculate position size based on risk
-                        risk_amount = float(sched_settings.risk_per_trade) if sched_settings.risk_per_trade else 250.0
-                        stop_distance = abs(float(signal.entry_price) - float(signal.stop_price))
-                        if stop_distance <= 0:
-                            skipped.append({"symbol": signal.symbol, "reason": "invalid_stop"})
-                            continue
-                        
-                        shares = int(risk_amount / stop_distance)
-                        if shares < 1:
-                            skipped.append({"symbol": signal.symbol, "reason": "position_too_small"})
-                            continue
-                        
-                        # Apply max position value cap (if set)
-                        entry_price = float(signal.entry_price)
-                        max_position_value = float(sched_settings.max_position_value) if sched_settings.max_position_value else None
-                        if max_position_value:
-                            max_shares_by_value = int(max_position_value / entry_price)
-                            if shares > max_shares_by_value:
-                                logger.info(f"[AutoExec] Capping {signal.symbol} shares from {shares} to {max_shares_by_value} (max_position_value=${max_position_value})")
-                                shares = max_shares_by_value
-                                if shares < 1:
-                                    skipped.append({"symbol": signal.symbol, "reason": "max_position_value_too_small"})
-                                    continue
-                        
-                        # Submit bracket order
-                        from nexus2.domain.orders.models import OrderSide
-                        result = broker.submit_bracket_order(
-                            symbol=signal.symbol,
-                            side=OrderSide.BUY,
-                            qty=shares,
-                            stop_price=float(signal.stop_price),
-                            take_profit_price=None,  # No TP for KK style
-                        )
-                        
-                        if result and result.is_accepted:
-                            # Create position record
-                            position_repo.create({
-                                "id": str(uuid4()),
-                                "symbol": signal.symbol,
-                                "setup_type": signal.setup_type.value,
-                                "status": "open",
-                                "entry_price": str(result.avg_fill_price or signal.entry_price),
-                                "shares": shares,
-                                "remaining_shares": shares,
-                                "initial_stop": str(signal.stop_price),
-                                "current_stop": str(signal.stop_price),
-                                "realized_pnl": "0",
-                                "opened_at": datetime.utcnow(),
-                            })
-                            executed.append({"symbol": signal.symbol, "shares": shares})
-                            print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
-                        else:
-                            errors.append({"symbol": signal.symbol, "error": "order_rejected"})
-                    finally:
-                        db.close()
-                except Exception as e:
-                    errors.append({"symbol": signal.symbol, "error": str(e)})
-                    logger.error(f"[AutoExec] Error executing {signal.symbol}: {e}")
-            
-            print(f"🤖 [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
-            return {"executed": executed, "skipped": skipped, "errors": errors}
-        
-        logger.info("[Scheduler] Auto-start: FULL AUTONOMOUS MODE (execute callback enabled)")
-    else:
-        logger.info("[Scheduler] Auto-start: scan-only mode (no broker or auto_execute disabled)")
-    
-    # Create EOD callback using shared helper (for 3:45 PM MA trailing stop check)
-    eod_callback = _create_eod_callback(market_data, broker)
-    
-    # Set callbacks (scan + optional execute + EOD)
-    scheduler.set_callbacks(scan_callback, execute_callback, eod_callback)
-    
-    # Start scheduler
-    result = await scheduler.start()
-    
-    return result
-
-
-# Request/Response models
-class StartRequest(BaseModel):
-    sim_only: bool = True  # Default to SIM mode
-    scanner_interval: int = 15  # minutes
-    min_quality: int = 7
-    max_positions: int = 5
-    risk_per_trade: Optional[float] = None  # If None, reads from main settings
-    daily_loss_limit: float = 1000.0
-    max_capital: float = 10000.0  # Maximum capital for automation
-
-
-class EngineStatusResponse(BaseModel):
-    state: str
-    sim_only: bool
-    is_market_hours: bool
-    config: dict
-    stats: dict
-
-
-class ActionResponse(BaseModel):
-    status: str
-    message: Optional[str] = None
+# ==================== ROUTE HANDLERS ====================
+# (Models imported from automation_models.py, state from automation_state.py)
 
 
 @router.get("/status", response_model=dict)
@@ -742,13 +236,6 @@ async def trigger_scan(engine: AutomationEngine = Depends(get_engine)):
     }
 
 
-class ScanAllRequest(BaseModel):
-    """Request for unified scan across all scanners."""
-    modes: list[str] = ["all"]  # "all", "ep", "breakout", "htf"
-    min_quality: int = 7
-    stop_mode: str = "atr"  # "atr" (KK-style) or "percent"
-    max_stop_atr: float = 1.0  # KK uses 1.0-1.5 ATR
-    max_stop_percent: float = 5.0  # Fallback for percent mode
 
 
 @router.post("/scan-all", response_model=dict)
@@ -827,13 +314,6 @@ async def scan_all(
         ]
     }
 
-
-class ExecuteRequest(BaseModel):
-    symbol: str
-    shares: int
-    stop_price: float
-    setup_type: str = "ep"
-    dry_run: bool = True  # Default to dry run for safety
 
 
 @router.post("/execute", response_model=dict)
@@ -1084,11 +564,6 @@ async def scan_and_execute(
 
 
 # ==================== SCHEDULER ENDPOINTS ====================
-
-class SchedulerStartRequest(BaseModel):
-    interval_minutes: int = 15
-    auto_execute: bool = False  # Default to scan-only
-
 
 @router.post("/scheduler/start", response_model=dict)
 async def start_scheduler(
@@ -1549,10 +1024,6 @@ async def get_scheduler_diagnostics():
 
 
 
-class SchedulerToggleRequest(BaseModel):
-    auto_execute: bool
-
-
 @router.patch("/scheduler/auto-execute", response_model=dict)
 async def toggle_auto_execute(req: SchedulerToggleRequest):
     """Toggle auto_execute on the scheduler and persist to database."""
@@ -1577,10 +1048,6 @@ async def toggle_auto_execute(req: SchedulerToggleRequest):
         "status": "updated",
         "auto_execute": scheduler.auto_execute,
     }
-
-
-class SchedulerIntervalRequest(BaseModel):
-    interval_minutes: int
 
 
 @router.patch("/scheduler/interval", response_model=dict)
@@ -1610,39 +1077,6 @@ async def update_scheduler_interval(req: SchedulerIntervalRequest):
 
 
 # ==================== SCHEDULER SETTINGS ENDPOINTS ====================
-
-class SchedulerSettingsRequest(BaseModel):
-    """Request model for updating scheduler settings."""
-    adopt_quick_actions: Optional[bool] = None
-    preset: Optional[str] = None  # strict, relaxed, custom
-    min_quality: Optional[int] = None
-    stop_mode: Optional[str] = None  # atr or percent
-    max_stop_atr: Optional[float] = None
-    max_stop_percent: Optional[float] = None
-    scan_modes: Optional[List[str]] = None  # ["ep", "breakout", "htf"]
-    htf_frequency: Optional[str] = None  # every_cycle or market_open
-    max_position_value: Optional[float] = None  # Automation-specific capital limit per position
-    auto_start_enabled: Optional[bool] = None  # Enable auto-start for headless operation
-    auto_start_time: Optional[str] = None  # HH:MM format (ET timezone)
-    auto_execute: Optional[bool] = None  # Enable auto-execute for autonomous trading
-
-
-# Preset definitions for scheduler (same as Quick Actions)
-SCHEDULER_PRESETS = {
-    "strict": {
-        "min_quality": 7,
-        "stop_mode": "atr",
-        "max_stop_atr": 1.0,
-        "max_stop_percent": 5.0,
-    },
-    "relaxed": {
-        "min_quality": 5,
-        "stop_mode": "percent",
-        "max_stop_atr": 1.5,
-        "max_stop_percent": 8.0,
-    },
-}
-
 
 @router.get("/scheduler/settings", response_model=dict)
 async def get_scheduler_settings():
@@ -1710,12 +1144,6 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
     finally:
         db.close()
 
-
-
-class MonitorStartRequest(BaseModel):
-    check_interval_seconds: int = 60
-    enable_trailing_stops: bool = True
-    enable_partial_exits: bool = True
 
 
 @router.post("/monitor/start", response_model=dict)
@@ -1908,14 +1336,6 @@ async def get_broker_positions(request: Request):
         }
 
 # ==================== MA CHECK ENDPOINTS (KK TRAILING) ====================
-
-class MACheckRequest(BaseModel):
-    """Request for MA check job."""
-    dry_run: bool = True  # Default to dry run for safety
-    min_days: int = 5  # Start MA trailing after day 5
-    ma_type: str = "auto"  # auto (default), ema_10, ema_20, sma_10, sma_20, lower_10, lower_20
-    require_timing_window: bool = False  # If True, only run 3:45-4:00 PM ET
-
 
 @router.post("/ma-check", response_model=dict)
 async def run_ma_check(
