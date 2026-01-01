@@ -254,6 +254,161 @@ async def _configure_scanner_from_settings(engine, scheduler):
         db.close()
 
 
+def _create_eod_callback(market_data, broker):
+    """
+    Create the EOD callback function for 3:45 PM MA trailing stop check.
+    
+    This is shared between manual start and auto-start to avoid duplication.
+    Uses AUTO MA type (KK-style: ADR% determines 10 vs 20 MA).
+    
+    Args:
+        market_data: Market data provider for quotes and MAs
+        broker: Broker for submitting exit orders
+    
+    Returns:
+        Async callback function for EOD check
+    """
+    async def eod_callback():
+        """Run MA check at end of day for trailing stops."""
+        from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
+        from nexus2.db import SessionLocal, PositionRepository, PositionExitRepository
+        from uuid import uuid4
+        from datetime import datetime
+        
+        logger.info("[EOD] Running automatic MA trailing stop check...")
+        
+        # Create job with AUTO MA selection (KK-style: ADR% determines 10 vs 20 MA)
+        job = MACheckJob(
+            min_days_for_trailing=5,
+            default_ma_type=TrailingMAType.AUTO,  # Dynamic based on ADR%
+            require_timing_window=False,  # Already in window, so don't require it again
+        )
+        
+        # Callback: Get open positions
+        async def get_positions():
+            db = SessionLocal()
+            try:
+                position_repo = PositionRepository(db)
+                positions = position_repo.get_open()
+                return [
+                    {
+                        "id": p.id,
+                        "symbol": p.symbol,
+                        "opened_at": p.opened_at,
+                        "remaining_shares": p.remaining_shares,
+                        "entry_price": p.entry_price,
+                    }
+                    for p in positions
+                ]
+            finally:
+                db.close()
+        
+        # Callback: Get daily close
+        async def get_daily_close(symbol: str):
+            if market_data:
+                try:
+                    quote = market_data.get_quote(symbol)
+                    if quote and hasattr(quote, 'close'):
+                        return quote.close
+                    elif quote and hasattr(quote, 'price'):
+                        return quote.price
+                except Exception as e:
+                    logger.warning(f"[EOD] Could not get close for {symbol}: {e}")
+            return None
+        
+        # Callback: Get EMA
+        async def get_ema(symbol: str, period: int):
+            if market_data:
+                try:
+                    return market_data.get_ema(symbol, period)
+                except Exception as e:
+                    logger.warning(f"[EOD] Could not get EMA{period} for {symbol}: {e}")
+            return None
+        
+        # Callback: Get SMA
+        async def get_sma(symbol: str, period: int):
+            if market_data:
+                try:
+                    return market_data.get_sma(symbol, period)
+                except Exception as e:
+                    logger.warning(f"[EOD] Could not get SMA{period} for {symbol}: {e}")
+            return None
+        
+        # Callback: Execute exit (use broker if available)
+        async def execute_exit(position_id: str, shares: int, reason: str):
+            db = SessionLocal()
+            try:
+                position_repo = PositionRepository(db)
+                exit_repo = PositionExitRepository(db)
+                
+                position = position_repo.get_by_id(position_id)
+                if not position:
+                    return
+                
+                # Get current price for exit record
+                current_price = None
+                if market_data:
+                    quote = market_data.get_quote(position.symbol)
+                    current_price = quote.price if quote else None
+                
+                if not current_price:
+                    current_price = position.entry_price  # Fallback
+                
+                # Submit sell order through broker if available
+                if broker:
+                    try:
+                        broker.submit_order(
+                            client_order_id=uuid4(),
+                            symbol=position.symbol,
+                            quantity=shares,
+                            side="sell",
+                            order_type="market",
+                        )
+                        logger.info(f"[EOD] Submitted sell order for {position.symbol} x {shares}")
+                    except Exception as e:
+                        logger.error(f"[EOD] Failed to submit sell order: {e}")
+                
+                # Record exit
+                exit_repo.create({
+                    "id": str(uuid4()),
+                    "position_id": position_id,
+                    "shares": shares,
+                    "exit_price": str(current_price),
+                    "reason": reason,
+                    "exited_at": datetime.utcnow(),
+                })
+                
+                # Update position
+                new_remaining = position.remaining_shares - shares
+                position_repo.update(position_id, {
+                    "remaining_shares": new_remaining,
+                    "status": "closed" if new_remaining <= 0 else "open",
+                })
+                
+                logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
+            finally:
+                db.close()
+        
+        # Set callbacks and run
+        job.set_callbacks(
+            get_positions=get_positions,
+            get_daily_close=get_daily_close,
+            get_ema=get_ema,
+            get_sma=get_sma,
+            execute_exit=execute_exit,
+        )
+        
+        result = await job.run(dry_run=False)  # Execute real exits
+        
+        return {
+            "positions_checked": result.positions_checked,
+            "exit_signals": len(result.exit_signals),
+            "errors": len(result.errors),
+        }
+    
+    return eod_callback
+
+
 async def _configure_and_start_scheduler(engine, scheduler):
     """
     Configure scheduler with scan callback and start it.
@@ -385,8 +540,11 @@ async def _configure_and_start_scheduler(engine, scheduler):
     else:
         logger.info("[Scheduler] Auto-start: scan-only mode (no broker or auto_execute disabled)")
     
-    # Set callbacks
-    scheduler.set_callbacks(scan_callback, execute_callback, None)
+    # Create EOD callback using shared helper (for 3:45 PM MA trailing stop check)
+    eod_callback = _create_eod_callback(market_data, broker)
+    
+    # Set callbacks (scan + optional execute + EOD)
+    scheduler.set_callbacks(scan_callback, execute_callback, eod_callback)
     
     # Start scheduler
     result = await scheduler.start()
@@ -1179,147 +1337,8 @@ async def start_scheduler(
             "errors": errors if errors else None,
         }
     
-    # EOD callback for automatic MA trailing stop check at 3:45 PM
-    async def eod_callback():
-        """Run MA check at end of day for trailing stops."""
-        from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
-        from nexus2.db import SessionLocal, PositionRepository
-        
-        logger.info("[EOD] Running automatic MA trailing stop check...")
-        
-        # Create job
-        job = MACheckJob(
-            min_days_for_trailing=5,
-            default_ma_type=TrailingMAType.EMA_10,  # Default to 10 EMA
-            require_timing_window=False,  # Already in window, so don't require it again
-        )
-        
-        # Callback: Get open positions
-        async def get_positions():
-            db = SessionLocal()
-            try:
-                position_repo = PositionRepository(db)
-                positions = position_repo.get_open()
-                return [
-                    {
-                        "id": p.id,
-                        "symbol": p.symbol,
-                        "opened_at": p.opened_at,
-                        "remaining_shares": p.remaining_shares,
-                        "entry_price": p.entry_price,
-                    }
-                    for p in positions
-                ]
-            finally:
-                db.close()
-        
-        # Callback: Get daily close
-        async def get_daily_close(symbol: str):
-            if market_data:
-                try:
-                    quote = market_data.get_quote(symbol)
-                    if quote and hasattr(quote, 'close'):
-                        return quote.close
-                    elif quote and hasattr(quote, 'price'):
-                        return quote.price
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get close for {symbol}: {e}")
-            return None
-        
-        # Callback: Get EMA
-        async def get_ema(symbol: str, period: int):
-            if market_data:
-                try:
-                    return market_data.get_ema(symbol, period)
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get EMA{period} for {symbol}: {e}")
-            return None
-        
-        # Callback: Get SMA
-        async def get_sma(symbol: str, period: int):
-            if market_data:
-                try:
-                    return market_data.get_sma(symbol, period)
-                except Exception as e:
-                    logger.warning(f"[EOD] Could not get SMA{period} for {symbol}: {e}")
-            return None
-        
-        # Callback: Execute exit (use broker if available)
-        async def execute_exit(position_id: str, shares: int, reason: str):
-            from nexus2.db import PositionRepository, PositionExitRepository
-            from datetime import datetime
-            from uuid import uuid4
-            
-            db = SessionLocal()
-            try:
-                position_repo = PositionRepository(db)
-                exit_repo = PositionExitRepository(db)
-                
-                position = position_repo.get_by_id(position_id)
-                if not position:
-                    return
-                
-                # Get current price for exit
-                current_price = None
-                if market_data:
-                    quote = market_data.get_quote(position.symbol)
-                    current_price = quote.price if quote else None
-                
-                if not current_price:
-                    current_price = position.entry_price  # Fallback
-                
-                # Submit sell order through broker if available
-                if broker:
-                    try:
-                        from decimal import Decimal
-                        broker.submit_order(
-                            client_order_id=uuid4(),
-                            symbol=position.symbol,
-                            quantity=shares,
-                            side="sell",
-                            order_type="market",
-                        )
-                        logger.info(f"[EOD] Submitted sell order for {position.symbol} x {shares}")
-                    except Exception as e:
-                        logger.error(f"[EOD] Failed to submit sell order: {e}")
-                
-                # Record exit
-                exit_repo.create({
-                    "id": str(uuid4()),
-                    "position_id": position_id,
-                    "shares": shares,
-                    "exit_price": str(current_price),
-                    "reason": reason,
-                    "exited_at": datetime.utcnow(),
-                })
-                
-                # Update position
-                new_remaining = position.remaining_shares - shares
-                position_repo.update(position_id, {
-                    "remaining_shares": new_remaining,
-                    "status": "closed" if new_remaining <= 0 else "open",
-                })
-                
-                logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
-            finally:
-                db.close()
-        
-        # Set callbacks and run
-        job.set_callbacks(
-            get_positions=get_positions,
-            get_daily_close=get_daily_close,
-            get_ema=get_ema,
-            get_sma=get_sma,
-            execute_exit=execute_exit,
-        )
-        
-        result = await job.run(dry_run=False)  # Execute real exits
-        
-        return {
-            "positions_checked": result.positions_checked,
-            "exit_signals": len(result.exit_signals),
-            "errors": len(result.errors),
-        }
+    # EOD callback using shared helper (avoids code duplication)
+    eod_callback = _create_eod_callback(market_data, broker)
     
     scheduler.set_callbacks(scan_callback, execute_callback, eod_callback)
     
