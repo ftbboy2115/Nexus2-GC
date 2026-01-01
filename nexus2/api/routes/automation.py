@@ -1124,7 +1124,8 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         # Override with any explicitly provided values
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
-                      "max_position_value", "auto_start_enabled", "auto_start_time", "auto_execute"]:
+                      "max_position_value", "auto_start_enabled", "auto_start_time", "auto_execute",
+                      "nac_broker_type", "nac_account"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage

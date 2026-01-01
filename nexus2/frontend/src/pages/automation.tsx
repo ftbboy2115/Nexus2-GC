@@ -158,6 +158,8 @@ interface SchedulerSettingsData {
     auto_start_enabled: boolean  // Enable auto-start for headless operation
     auto_start_time: string | null  // HH:MM format (ET timezone)
     auto_execute: boolean  // Auto-execute trades when scheduler runs
+    nac_broker_type: string  // alpaca_paper, alpaca_live
+    nac_account: string  // A or B (default A for Automation)
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1078,6 +1080,60 @@ export default function Automation() {
                             <button className={styles.closeBtn} onClick={() => setShowSchedulerModal(false)}>×</button>
                         </div>
                         <div className={styles.modalBody}>
+                            {/* NAC Broker/Account Selection */}
+                            <div className={styles.settingGroup}>
+                                <label>NAC Account</label>
+                                <p className={styles.settingHint} style={{ marginTop: 0, marginBottom: '8px' }}>
+                                    NAC uses its own account, separate from Dashboard trading.
+                                </p>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <select
+                                        value={schedulerSettings?.nac_broker_type || 'alpaca_paper'}
+                                        onChange={async (e) => {
+                                            try {
+                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ nac_broker_type: e.target.value })
+                                                })
+                                                if (res.ok) {
+                                                    const data = await res.json()
+                                                    setSchedulerSettings(data)
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to update nac_broker_type:', err)
+                                            }
+                                        }}
+                                        className={styles.intervalSelect}
+                                    >
+                                        <option value="alpaca_paper">Alpaca Paper</option>
+                                        <option value="alpaca_live">Alpaca Live</option>
+                                    </select>
+                                    <select
+                                        value={schedulerSettings?.nac_account || 'A'}
+                                        onChange={async (e) => {
+                                            try {
+                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ nac_account: e.target.value })
+                                                })
+                                                if (res.ok) {
+                                                    const data = await res.json()
+                                                    setSchedulerSettings(data)
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to update nac_account:', err)
+                                            }
+                                        }}
+                                        className={styles.intervalSelect}
+                                    >
+                                        <option value="A">Account A (Automation)</option>
+                                        <option value="B">Account B</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             {/* Use Quick Actions Toggle */}
                             <div className={styles.settingGroup}>
                                 <label className={styles.toggleLabel}>

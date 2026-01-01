@@ -89,6 +89,8 @@ class SchedulerSettingsRequest(BaseModel):
     auto_start_enabled: Optional[bool] = None  # Enable auto-start for headless operation
     auto_start_time: Optional[str] = None  # HH:MM format (ET timezone)
     auto_execute: Optional[bool] = None  # Enable auto-execute for autonomous trading
+    nac_broker_type: Optional[str] = None  # alpaca_paper, alpaca_live
+    nac_account: Optional[str] = None  # A or B (default A for Automation)
 
 
 # Preset definitions for scheduler (same as Quick Actions)
