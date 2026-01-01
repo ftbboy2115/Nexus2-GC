@@ -1715,3 +1715,100 @@ async def get_simulation_broker():
         return broker.to_dict()
     return {"error": "Simulation not initialized. Call /simulation/reset first."}
 
+
+@router.post("/simulation/load_historical", response_model=dict)
+async def load_historical_data(
+    symbol: str,
+    start_date: str = None,  # YYYY-MM-DD
+    end_date: str = None,  # YYYY-MM-DD
+    days: int = 120,  # Default to 120 days if no dates provided
+):
+    """
+    Load real historical data from FMP API for backtesting.
+    
+    Args:
+        symbol: Stock symbol (e.g., SMCI, NVDA)
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        days: Number of days to load (if dates not provided)
+    
+    Returns:
+        Dict with loaded bar count and date range
+    """
+    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+    from nexus2.adapters.simulation import get_mock_market_data, get_simulation_clock
+    
+    fmp = get_fmp_adapter()
+    data = get_mock_market_data()
+    clock = get_simulation_clock()
+    
+    # Connect clock to data if not already
+    if data._sim_clock is None:
+        data.set_clock(clock)
+    
+    # Calculate days needed
+    if start_date and end_date:
+        from datetime import datetime
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        days = (end - start).days + 30  # Extra buffer for lookback
+    
+    # Fetch from FMP
+    logger.info(f"[Simulation] Loading {days} days of historical data for {symbol}...")
+    bars = fmp.get_daily_bars(symbol.upper(), limit=days + 30)
+    
+    if not bars:
+        return {
+            "error": f"Failed to load data for {symbol}. Check symbol and FMP rate limits.",
+            "rate_stats": fmp.get_rate_stats()
+        }
+    
+    # Convert OHLCV to dict format and filter by date range if provided
+    bar_dicts = []
+    for bar in bars:
+        bar_date = bar.timestamp.strftime("%Y-%m-%d")
+        
+        # Filter by date range if provided
+        if start_date and bar_date < start_date:
+            continue
+        if end_date and bar_date > end_date:
+            continue
+        
+        bar_dicts.append({
+            "date": bar_date,
+            "open": float(bar.open),
+            "high": float(bar.high),
+            "low": float(bar.low),
+            "close": float(bar.close),
+            "volume": bar.volume,
+        })
+    
+    # Load into MockMarketData
+    count = data.load_data(symbol.upper(), bar_dicts)
+    
+    # Set simulation clock to start of data if not already set
+    if bar_dicts and bar_dicts[0]["date"]:
+        from datetime import datetime
+        import pytz
+        ET = pytz.timezone("US/Eastern")
+        first_date = datetime.strptime(bar_dicts[0]["date"], "%Y-%m-%d")
+        clock.set_time(ET.localize(first_date.replace(hour=9, minute=30)))
+    
+    # Update broker price if exists
+    if hasattr(get_simulation_status, '_mock_broker') and bar_dicts:
+        broker = get_simulation_status._mock_broker
+        broker.set_price(symbol.upper(), bar_dicts[-1]["close"])
+    
+    logger.info(f"[Simulation] Loaded {count} bars for {symbol}")
+    
+    return {
+        "symbol": symbol.upper(),
+        "bars_loaded": count,
+        "date_range": {
+            "start": bar_dicts[0]["date"] if bar_dicts else None,
+            "end": bar_dicts[-1]["date"] if bar_dicts else None,
+        },
+        "current_price": bar_dicts[-1]["close"] if bar_dicts else None,
+        "clock": clock.to_dict(),
+        "rate_stats": fmp.get_rate_stats(),
+    }
