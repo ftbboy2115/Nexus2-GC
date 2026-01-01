@@ -481,6 +481,29 @@ def create_execute_callback(engine, broker, get_app_fn):
                         })
                         executed.append({"symbol": signal.symbol, "shares": shares})
                         print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
+                        
+                        # Send Discord notification for executed trade
+                        try:
+                            from nexus2.adapters.notifications.discord import DiscordNotifier
+                            notifier = DiscordNotifier()
+                            if notifier.config.enabled:
+                                fill_price = float(result.avg_fill_price or signal.entry_price)
+                                stop_price = float(signal.stop_price)
+                                risk_per_share = abs(fill_price - stop_price)
+                                total_risk = risk_per_share * shares
+                                position_value = fill_price * shares
+                                
+                                notifier.send_system_alert(
+                                    f"📈 **TRADE EXECUTED**\n"
+                                    f"**{signal.symbol}** ({signal.setup_type.value})\n"
+                                    f"• Shares: {shares} @ ${fill_price:.2f}\n"
+                                    f"• Stop: ${stop_price:.2f}\n"
+                                    f"• Risk: ${total_risk:.2f} (${risk_per_share:.2f}/share)\n"
+                                    f"• Position: ${position_value:.2f}",
+                                    level="success"
+                                )
+                        except Exception as discord_err:
+                            logger.warning(f"[AutoExec] Discord notification failed: {discord_err}")
                     else:
                         errors.append({"symbol": signal.symbol, "error": "order_rejected"})
                 finally:
