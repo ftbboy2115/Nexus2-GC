@@ -61,6 +61,21 @@ def get_monitor():
     return _monitor
 
 
+# App reference for accessing broker/market_data in background tasks
+_app = None
+
+
+def set_app(app):
+    """Set the FastAPI app reference for background tasks."""
+    global _app
+    _app = app
+
+
+def get_app():
+    """Get the FastAPI app reference."""
+    return _app
+
+
 # Auto-start checker state
 _auto_start_task = None
 _auto_start_triggered_today = False
@@ -252,17 +267,126 @@ async def _configure_and_start_scheduler(engine, scheduler):
     # Configure scanner from settings (shared logic)
     settings = await _configure_scanner_from_settings(engine, scheduler)
     
-    # For auto-start: disable auto_execute (safety - no unattended trades)
-    scheduler.auto_execute = False
+    # Get broker from app state for execute callback
+    app = get_app()
+    broker = getattr(app.state, 'broker', None) if app else None
+    market_data = getattr(app.state, 'market_data', None) if app else None
+    
+    # Use auto_execute from settings (for full autonomous operation)
+    auto_execute = settings.get("auto_execute", False)
+    scheduler.auto_execute = auto_execute if broker else False
     
     # Set up scan callback
     async def scan_callback():
         return await engine.run_scan_cycle()
     
-    # No execute/EOD callbacks for auto-start (scan-only mode)
-    scheduler.set_callbacks(scan_callback, None, None)
+    # Set up execute callback if broker is available
+    execute_callback = None
+    if broker and auto_execute:
+        from nexus2.db import SessionLocal, PositionRepository, SchedulerSettingsRepository
+        from uuid import uuid4
+        from datetime import datetime
+        from decimal import Decimal
+        
+        async def execute_callback():
+            """Auto-execute trades from signals using broker."""
+            print(f"🤖 [AutoExec] Starting auto-execute cycle...")
+            
+            # Get signals from engine's last scan
+            if not hasattr(engine, '_last_signals') or not engine._last_signals:
+                print("[AutoExec] No signals to execute")
+                return {"status": "no_signals"}
+            
+            signals = engine._last_signals
+            executed = []
+            skipped = []
+            errors = []
+            
+            for signal in signals:  # Execute all valid signals
+                try:
+                    # Get fresh settings each cycle
+                    db = SessionLocal()
+                    try:
+                        settings_repo = SchedulerSettingsRepository(db)
+                        sched_settings = settings_repo.get()
+                        
+                        # Position limit check
+                        position_repo = PositionRepository(db)
+                        open_positions = position_repo.get_open()
+                        max_positions = int(sched_settings.max_positions) if sched_settings.max_positions else 5
+                        
+                        if len(open_positions) >= max_positions:
+                            skipped.append({"symbol": signal.symbol, "reason": "max_positions_reached"})
+                            continue
+                        
+                        # Calculate position size based on risk
+                        risk_amount = float(sched_settings.risk_per_trade) if sched_settings.risk_per_trade else 250.0
+                        stop_distance = abs(float(signal.entry_price) - float(signal.stop_price))
+                        if stop_distance <= 0:
+                            skipped.append({"symbol": signal.symbol, "reason": "invalid_stop"})
+                            continue
+                        
+                        shares = int(risk_amount / stop_distance)
+                        if shares < 1:
+                            skipped.append({"symbol": signal.symbol, "reason": "position_too_small"})
+                            continue
+                        
+                        # Apply max position value cap (if set)
+                        entry_price = float(signal.entry_price)
+                        max_position_value = float(sched_settings.max_position_value) if sched_settings.max_position_value else None
+                        if max_position_value:
+                            max_shares_by_value = int(max_position_value / entry_price)
+                            if shares > max_shares_by_value:
+                                logger.info(f"[AutoExec] Capping {signal.symbol} shares from {shares} to {max_shares_by_value} (max_position_value=${max_position_value})")
+                                shares = max_shares_by_value
+                                if shares < 1:
+                                    skipped.append({"symbol": signal.symbol, "reason": "max_position_value_too_small"})
+                                    continue
+                        
+                        # Submit bracket order
+                        from nexus2.domain.orders.models import OrderSide
+                        result = broker.submit_bracket_order(
+                            symbol=signal.symbol,
+                            side=OrderSide.BUY,
+                            qty=shares,
+                            stop_price=float(signal.stop_price),
+                            take_profit_price=None,  # No TP for KK style
+                        )
+                        
+                        if result and result.is_accepted:
+                            # Create position record
+                            position_repo.create({
+                                "id": str(uuid4()),
+                                "symbol": signal.symbol,
+                                "setup_type": signal.setup_type.value,
+                                "status": "open",
+                                "entry_price": str(result.avg_fill_price or signal.entry_price),
+                                "shares": shares,
+                                "remaining_shares": shares,
+                                "initial_stop": str(signal.stop_price),
+                                "current_stop": str(signal.stop_price),
+                                "realized_pnl": "0",
+                                "opened_at": datetime.utcnow(),
+                            })
+                            executed.append({"symbol": signal.symbol, "shares": shares})
+                            print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
+                        else:
+                            errors.append({"symbol": signal.symbol, "error": "order_rejected"})
+                    finally:
+                        db.close()
+                except Exception as e:
+                    errors.append({"symbol": signal.symbol, "error": str(e)})
+                    logger.error(f"[AutoExec] Error executing {signal.symbol}: {e}")
+            
+            print(f"🤖 [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
+            return {"executed": executed, "skipped": skipped, "errors": errors}
+        
+        logger.info("[Scheduler] Auto-start: FULL AUTONOMOUS MODE (execute callback enabled)")
+    else:
+        logger.info("[Scheduler] Auto-start: scan-only mode (no broker or auto_execute disabled)")
     
-    logger.info("[Scheduler] Auto-start: running in scan-only mode (no auto-execute)")
+    # Set callbacks
+    scheduler.set_callbacks(scan_callback, execute_callback, None)
     
     # Start scheduler
     result = await scheduler.start()
@@ -1481,6 +1605,7 @@ class SchedulerSettingsRequest(BaseModel):
     max_position_value: Optional[float] = None  # Automation-specific capital limit per position
     auto_start_enabled: Optional[bool] = None  # Enable auto-start for headless operation
     auto_start_time: Optional[str] = None  # HH:MM format (ET timezone)
+    auto_execute: Optional[bool] = None  # Enable auto-execute for autonomous trading
 
 
 # Preset definitions for scheduler (same as Quick Actions)
@@ -1546,13 +1671,13 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         # Override with any explicitly provided values
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
-                      "max_position_value", "auto_start_enabled", "auto_start_time"]:
+                      "max_position_value", "auto_start_enabled", "auto_start_time", "auto_execute"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
                 if field in ["max_stop_atr", "max_stop_percent", "max_position_value"]:
                     updates[field] = str(value)
-                elif field == "auto_start_enabled":
+                elif field in ["auto_start_enabled", "auto_execute"]:
                     updates[field] = "true" if value else "false"
                 else:
                     updates[field] = value

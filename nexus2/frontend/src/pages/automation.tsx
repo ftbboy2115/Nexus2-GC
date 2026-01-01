@@ -157,6 +157,7 @@ interface SchedulerSettingsData {
     max_position_value: number | null  // Automation-specific capital limit (null = use global)
     auto_start_enabled: boolean  // Enable auto-start for headless operation
     auto_start_time: string | null  // HH:MM format (ET timezone)
+    auto_execute: boolean  // Auto-execute trades when scheduler runs
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1374,6 +1375,34 @@ export default function Automation() {
                                         />
                                     </div>
                                 )}
+
+                                {/* Auto Execute toggle - for autonomous trading */}
+                                {schedulerSettings?.auto_start_enabled && (
+                                    <label className={styles.toggleLabel} style={{ marginTop: '0.5rem' }}>
+                                        <span>🤖 Auto Execute Trades</span>
+                                        <button
+                                            className={`${styles.toggleBtn} ${schedulerSettings?.auto_execute ? styles.toggleActive : ''}`}
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ auto_execute: !schedulerSettings?.auto_execute })
+                                                    });
+                                                    if (res.ok) {
+                                                        const data = await res.json()
+                                                        setSchedulerSettings(data)
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to update auto_execute:', err)
+                                                }
+                                            }}
+                                        >
+                                            {schedulerSettings?.auto_execute ? '✅ ON' : '❌ OFF'}
+                                        </button>
+                                    </label>
+                                )}
+
                                 <p className={styles.settingHint}>
                                     Scheduler auto-starts at configured time. Discord notification sent on start.
                                 </p>
