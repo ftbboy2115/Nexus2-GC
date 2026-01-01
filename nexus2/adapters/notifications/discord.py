@@ -62,7 +62,8 @@ class DiscordNotifier:
             self.config = config
         else:
             # Load from app config if available
-            webhook_url = getattr(app_config, 'DISCORD_WEBHOOK_URL', None) or ""
+            # Check both DISCORD_WEBHOOK and DISCORD_WEBHOOK_URL for compatibility
+            webhook_url = getattr(app_config, 'DISCORD_WEBHOOK', None) or getattr(app_config, 'DISCORD_WEBHOOK_URL', None) or ""
             self.config = DiscordConfig(
                 webhook_url=webhook_url,
                 enabled=bool(webhook_url),

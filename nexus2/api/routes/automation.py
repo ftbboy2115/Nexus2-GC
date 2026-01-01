@@ -91,6 +91,7 @@ async def auto_start_checker():
             now_et = datetime.now(et_tz)
             current_time = now_et.strftime("%H:%M")
             
+            
             # Reset trigger flag at midnight
             if current_time == "00:00":
                 _auto_start_triggered_today = False
@@ -109,6 +110,7 @@ async def auto_start_checker():
                 repo = SchedulerSettingsRepository(db)
                 settings = repo.get()
                 
+                
                 # Check if auto-start is enabled and time matches
                 if (settings.auto_start_enabled == "true" and 
                     settings.auto_start_time and
@@ -117,29 +119,40 @@ async def auto_start_checker():
                     # Check if scheduler is not already running
                     scheduler = get_scheduler()
                     if not scheduler.is_running:
-                        logger.info(f"[AutoStart] Time matched ({current_time} ET) - starting scheduler")
+                        logger.info(f"[AutoStart] Time matched ({current_time} ET) - starting full automation")
+                        print(f"🚀 [AutoStart] Starting full automation at {current_time} ET")
                         
-                        # Start the scheduler
-                        scheduler.start(execute_callback=execute_callback)
+                        # Start Engine first (sync method)
+                        engine = get_engine()
+                        if engine.state.name != "RUNNING":
+                            engine.start()  # Sync, returns dict
+                            print("[AutoStart] Engine started")
+                        
+                        # Start Monitor (async method)
+                        monitor = get_monitor()
+                        if not monitor._running:
+                            await monitor.start()  # Async, returns dict
+                            print("[AutoStart] Monitor started")
+                        
+                        # Start Scheduler (async method)
+                        await scheduler.start()  # Async, returns dict
+                        print("[AutoStart] Scheduler started")
+                        
                         _auto_start_triggered_today = True
                         
                         # Send Discord notification
                         try:
                             from nexus2.adapters.notifications.discord import DiscordNotifier
                             notifier = DiscordNotifier()
-                            notifier.send_raw({
-                                "embeds": [{
-                                    "title": "🚀 Scheduler Auto-Started",
-                                    "description": f"Automation scheduler started at {current_time} ET",
-                                    "color": 5763719,  # Green
-                                    "fields": [
-                                        {"name": "Status", "value": "✅ Running", "inline": True},
-                                        {"name": "Mode", "value": "Auto-Start", "inline": True},
-                                    ],
-                                    "timestamp": datetime.utcnow().isoformat(),
-                                }]
-                            })
-                            logger.info("[AutoStart] Discord notification sent")
+                            if notifier.config.enabled:
+                                notifier.send_system_alert(
+                                    f"🚀 Full Automation Started at {current_time} ET (Engine + Monitor + Scheduler)",
+                                    level="success"
+                                )
+                                print("[AutoStart] Discord notification sent")
+                            else:
+                                print("[AutoStart] Discord disabled (no webhook URL configured)")
+                            logger.info("[AutoStart] Full automation started with Discord notification")
                         except Exception as e:
                             logger.warning(f"[AutoStart] Discord notification failed: {e}")
                     else:

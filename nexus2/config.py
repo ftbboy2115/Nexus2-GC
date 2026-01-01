@@ -49,6 +49,9 @@ ALPACA_SECRET_B = get_env("APCA_API_SECRET_KEY_B")
 # Trading Mode
 TRADING_MODE = get_env("TRADING_MODE", "SIMULATION")
 
+# Discord Webhook
+DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
+
 # Validate on import
 if not FMP_API_KEY:
     print("[Config] WARNING: FMP_API_KEY not set")
