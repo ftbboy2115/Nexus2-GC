@@ -265,6 +265,9 @@ def test_6_full_signal_flow():
     return True
 
 
+import pytest
+
+@pytest.mark.timeout(30)  # Allow time for all 4 endpoints
 def test_7_api_endpoints():
     """
     Test: Key automation API endpoints are responsive.
