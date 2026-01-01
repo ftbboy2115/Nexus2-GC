@@ -276,6 +276,35 @@ def create_eod_callback(market_data, broker):
                     logger.warning(f"[EOD] Could not get SMA{period} for {symbol}: {e}")
             return None
         
+        # Callback: Get ADR% (for AUTO MA selection)
+        async def get_adr_percent(symbol: str, period: int):
+            if market_data:
+                try:
+                    return market_data.get_adr_percent(symbol, period)
+                except Exception as e:
+                    logger.warning(f"[EOD] Could not get ADR% for {symbol}: {e}")
+            return None
+        
+        # Callback: Get price history (for affinity analysis)
+        async def get_price_history(symbol: str, days: int):
+            if market_data:
+                try:
+                    # Get historical bars for affinity analysis
+                    bars = market_data.get_historical_bars(symbol, days)
+                    if bars:
+                        return [
+                            {
+                                "close": float(bar.close),
+                                "high": float(bar.high),
+                                "low": float(bar.low),
+                                "date": bar.timestamp.isoformat() if hasattr(bar, 'timestamp') else str(bar.date),
+                            }
+                            for bar in bars
+                        ]
+                except Exception as e:
+                    logger.warning(f"[EOD] Could not get price history for {symbol}: {e}")
+            return None
+        
         # Callback: Execute exit (use broker if available)
         async def execute_exit(position_id: str, shares: int, reason: str):
             db = SessionLocal()
@@ -331,12 +360,14 @@ def create_eod_callback(market_data, broker):
             finally:
                 db.close()
         
-        # Set callbacks and run
+        # Set callbacks and run (including affinity callbacks)
         job.set_callbacks(
             get_positions=get_positions,
             get_daily_close=get_daily_close,
             get_ema=get_ema,
             get_sma=get_sma,
+            get_adr_percent=get_adr_percent,
+            get_price_history=get_price_history,
             execute_exit=execute_exit,
         )
         
