@@ -205,6 +205,10 @@ class SchedulerSettingsModel(Base):
     # Auto-execute orders when signals found (default False for safety)
     auto_execute = Column(String(5), default="false")  # "true" or "false"
     
+    # Maximum position value for automation (overrides global max_per_symbol if set)
+    # Stored as string to handle Decimal, None means use global setting
+    max_position_value = Column(String(20), nullable=True, default=None)
+    
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
@@ -220,6 +224,7 @@ class SchedulerSettingsModel(Base):
             "scan_modes": self.scan_modes.split(",") if self.scan_modes else ["ep", "breakout", "htf"],
             "htf_frequency": self.htf_frequency,
             "auto_execute": self.auto_execute == "true",
+            "max_position_value": float(self.max_position_value) if self.max_position_value else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 

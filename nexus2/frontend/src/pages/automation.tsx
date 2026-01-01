@@ -154,6 +154,7 @@ interface SchedulerSettingsData {
     max_stop_percent: number
     scan_modes: string[]  // ["ep", "breakout", "htf"]
     htf_frequency: 'every_cycle' | 'market_open'
+    max_position_value: number | null  // Automation-specific capital limit (null = use global)
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1282,6 +1283,38 @@ export default function Automation() {
                                         </div>
                                         <p className={styles.settingHint}>
                                             HTF patterns form slowly - running once at market open saves API calls.
+                                        </p>
+                                    </div>
+
+                                    {/* Max Position Value */}
+                                    <div className={styles.settingGroup}>
+                                        <label>Max Position Value ($)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="100"
+                                            placeholder="Use global setting"
+                                            value={schedulerSettings?.max_position_value || ''}
+                                            onChange={async (e) => {
+                                                const value = e.target.value ? parseFloat(e.target.value) : null;
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ max_position_value: value })
+                                                    });
+                                                    if (res.ok) {
+                                                        const data = await res.json();
+                                                        setSchedulerSettings(data);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to update max_position_value:', err);
+                                                }
+                                            }}
+                                            className={styles.numberInput}
+                                        />
+                                        <p className={styles.settingHint}>
+                                            Cap per position for automation. Leave empty to use global max_per_symbol from Settings.
                                         </p>
                                     </div>
                                 </>

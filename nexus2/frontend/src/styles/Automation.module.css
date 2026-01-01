@@ -572,6 +572,27 @@
     cursor: pointer;
 }
 
+/* Number Input for Max Position Value */
+.numberInput {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.numberInput:focus {
+    outline: none;
+    border-color: #00d4ff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.numberInput::placeholder {
+    color: #666;
+}
+
 .currentSettings {
     text-align: center;
     font-size: 0.85rem;

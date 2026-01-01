@@ -747,8 +747,23 @@ async def start_scheduler(
         MAX_TRADES_PER_CYCLE = 10
         
         from nexus2.api.routes.settings import get_settings
+        from nexus2.db import SessionLocal, SchedulerSettingsRepository
+        
         settings = get_settings()
-        max_per_symbol = Decimal(str(settings.max_per_symbol))
+        
+        # Check scheduler-specific max_position_value first, fall back to global
+        scheduler_max = None
+        try:
+            db = SessionLocal()
+            scheduler_settings = SchedulerSettingsRepository(db).get()
+            if scheduler_settings.max_position_value:
+                scheduler_max = Decimal(scheduler_settings.max_position_value)
+                print(f"📐 [AutoExec] Using scheduler max_position_value: ${scheduler_max}")
+            db.close()
+        except Exception as e:
+            logger.warning(f"[AutoExec] Could not read scheduler settings: {e}")
+        
+        max_per_symbol = scheduler_max if scheduler_max else Decimal(str(settings.max_per_symbol))
         
         # Get existing positions from Alpaca to avoid adding to existing positions
         existing_symbols = set()
@@ -1291,6 +1306,7 @@ class SchedulerSettingsRequest(BaseModel):
     max_stop_percent: Optional[float] = None
     scan_modes: Optional[List[str]] = None  # ["ep", "breakout", "htf"]
     htf_frequency: Optional[str] = None  # every_cycle or market_open
+    max_position_value: Optional[float] = None  # Automation-specific capital limit per position
 
 
 # Preset definitions for scheduler (same as Quick Actions)
@@ -1355,11 +1371,12 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         
         # Override with any explicitly provided values
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
-                      "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency"]:
+                      "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
+                      "max_position_value"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
-                if field in ["max_stop_atr", "max_stop_percent"]:
+                if field in ["max_stop_atr", "max_stop_percent", "max_position_value"]:
                     updates[field] = str(value)
                 else:
                     updates[field] = value
