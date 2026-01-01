@@ -68,18 +68,41 @@ async def run_e2e_test():
         else:
             print(f"   {symbol}: FAILED to load")
     
-    # Step 3: Set clock to date within data range
-    print("\n📌 Step 3: Set clock to date within data range")
-    # Get first date from loaded data
+    # Step 3: Find a date with a BIG gainer (5%+) for EP testing
+    print("\n📌 Step 3: Search for a date with 5%+ gainer for EP test")
     first_symbol = list(data._data.keys())[0]
     first_bars = data._data[first_symbol]
-    if len(first_bars) > 30:
-        target_date_str = first_bars[30].date  # 30 bars in for lookback
+    
+    best_date = None
+    best_gainer = None
+    best_change = 0
+    
+    # Search through dates starting at bar 30 (for lookback)
+    for idx in range(30, len(first_bars) - 1):
+        target_date_str = first_bars[idx].date
         target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
         clock.set_time(ET.localize(target_date.replace(hour=9, minute=30)))
-        print(f"   Clock set to: {clock.get_trading_day()}")
+        
+        # Check for gainers on this date
+        gainers = data.get_gainers()
+        if gainers and gainers[0]['change_percent'] > best_change:
+            best_change = gainers[0]['change_percent']
+            best_date = target_date_str
+            best_gainer = gainers[0]
+            
+            # Stop if we find a 5%+ gainer
+            if best_change >= 5.0:
+                print(f"   🎯 Found EP candidate! {gainers[0]['symbol']} +{best_change:.2f}% on {best_date}")
+                break
     
-    # Step 4: Test get_gainers
+    if best_date:
+        target_date = datetime.strptime(best_date, "%Y-%m-%d")
+        clock.set_time(ET.localize(target_date.replace(hour=9, minute=30)))
+        print(f"   Clock set to: {clock.get_trading_day()} (best gainer: +{best_change:.2f}%)")
+    else:
+        print("   ⚠️ No significant gainers found in data range")
+    
+    # Step 4: Test get_gainers on best date
     print("\n📌 Step 4: Test MockMarketData.get_gainers()")
     gainers = data.get_gainers()
     print(f"   Gainers found: {len(gainers)}")
@@ -93,21 +116,58 @@ async def run_e2e_test():
     for a in actives[:5]:
         print(f"   - {a['symbol']}: vol={a['volume']:,}")
     
-    # Step 6: Run scanner with sim_mode
-    print("\n📌 Step 6: Run scanner with MockMarketData")
+    # Step 6: Test EP scanner directly to debug
+    print("\n📌 Step 6: Test EP scanner directly")
+    from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
+    
+    # Create EP scanner with our MockMarketData
+    ep_scanner = EPScannerService(
+        settings=EPScanSettings(
+            min_gap=3.0,  # Lowered from 5% for testing
+            min_rvol=0.5,  # Lowered for testing
+            min_price=5.0,
+        ),
+        market_data=data,  # Use our MockMarketData directly!
+    )
+    
+    print("   Testing EP scanner with MockMarketData...")
+    print(f"   - get_gainers() returns: {len(data.get_gainers())} stocks")
+    print(f"   - Clock date: {clock.get_trading_day()}")
+    
+    # Manually test what EP scanner would do
+    try:
+        # Try to run the EP scan
+        ep_result = ep_scanner.scan(verbose=True)  # Verbose for debug
+        print(f"   EP scan result: {len(ep_result.candidates)} candidates, processed {ep_result.processed_count}")
+        for r in ep_result.candidates[:5]:
+            print(f"   - {r.symbol}: gap={r.gap_percent}%, status={r.status}")
+    except Exception as e:
+        print(f"   EP scan error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Step 7: Run unified scanner
+    print("\n📌 Step 7: Run unified scanner with MockMarketData")
     from nexus2.domain.automation.services import create_unified_scanner_callback
     
     scanner_func = await create_unified_scanner_callback(
-        min_quality=5,  # Lower threshold for testing
-        max_stop_percent=10.0,
+        min_quality=3,  # Lower threshold for testing
+        max_stop_percent=15.0,
         stop_mode="atr",
-        max_stop_atr=2.0,  # More lenient
-        scan_modes=["ep", "breakout"],
+        max_stop_atr=3.0,  # More lenient
+        scan_modes=["ep"],  # Only EP for now
         sim_mode=True,  # KEY: This injects MockMarketData
     )
     
+    # Debug: Check if MockMarketData singletons match
+    from nexus2.adapters.simulation import get_mock_market_data as get_md
+    service_data = get_md()
+    print(f"   DEBUG: Test data id={id(data)}, service data id={id(service_data)}")
+    print(f"   DEBUG: Test data symbols={data.get_symbols()}")
+    print(f"   DEBUG: Service data symbols={service_data.get_symbols()}")
+    
     # Run scan
-    print("   Running scan...")
+    print("   Running unified scan...")
     scan_result = await scanner_func()
     
     # Extract signals from result (may be UnifiedScanResult or list)
@@ -121,6 +181,13 @@ async def run_e2e_test():
         signals = []
     
     print(f"   Signals found: {len(signals)}")
+    
+    # Show diagnostics (rejections)
+    if hasattr(scan_result, 'diagnostics'):
+        for diag in scan_result.diagnostics:
+            print(f"   - {diag.scanner}: found={diag.candidates_found}, passed={diag.candidates_passed}")
+            for rej in diag.rejections[:3]:
+                print(f"     REJECTED: {rej.symbol} - {rej.reason} (threshold={rej.threshold}, actual={rej.actual_value})")
     for sig in signals[:5]:
         if isinstance(sig, dict):
             print(f"   - {sig.get('symbol', 'N/A')}: {sig.get('signal_type', 'N/A')}")

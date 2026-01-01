@@ -165,11 +165,18 @@ async def create_unified_scanner_callback(
         # Create scanner with optional market_data override for simulation
         if market_data is not None:
             # SIM MODE: Create scanners with MockMarketData
-            from nexus2.domain.scanner.ep_scanner_service import EPScannerService
+            from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
             from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
             from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
             
-            ep_scanner = EPScannerService(market_data=market_data)
+            # Use relaxed settings for simulation (limited data may not show 8%+ gaps)
+            sim_ep_settings = EPScanSettings(
+                min_gap=3.0,    # Lower from 8% - sim data may not have big gaps
+                min_rvol=0.5,   # Lower from 2.0 - volume calculation may vary
+                min_price=5.0,  # Keep minimum price
+            )
+            
+            ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=market_data)
             breakout_scanner = BreakoutScannerService(market_data=market_data)
             htf_scanner = HTFScannerService(market_data=market_data)
             

@@ -370,9 +370,9 @@ class UnifiedScannerService:
             
             # Use tactical stop if available (opening range low), else 3% default
             if candidate.tactical_stop:
-                tactical_stop = candidate.tactical_stop
+                tactical_stop = Decimal(str(candidate.tactical_stop))
             elif candidate.opening_range:
-                tactical_stop = candidate.opening_range.low
+                tactical_stop = Decimal(str(candidate.opening_range.low))
             else:
                 tactical_stop = entry_price * Decimal("0.97")  # 3% default stop
             
