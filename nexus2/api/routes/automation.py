@@ -61,6 +61,111 @@ def get_monitor():
     return _monitor
 
 
+# Auto-start checker state
+_auto_start_task = None
+_auto_start_triggered_today = False
+
+
+async def auto_start_checker():
+    """
+    Background task that checks if scheduler should auto-start.
+    
+    Runs every 60 seconds and checks:
+    1. Is auto-start enabled?
+    2. Is current time (ET) matching the configured start time?
+    3. Is scheduler not already running?
+    
+    If all conditions met, starts the scheduler and sends Discord notification.
+    """
+    import asyncio
+    from datetime import datetime
+    import pytz
+    
+    global _auto_start_triggered_today
+    
+    et_tz = pytz.timezone('America/New_York')
+    
+    while True:
+        try:
+            # Get current ET time
+            now_et = datetime.now(et_tz)
+            current_time = now_et.strftime("%H:%M")
+            
+            # Reset trigger flag at midnight
+            if current_time == "00:00":
+                _auto_start_triggered_today = False
+            
+            # Skip if already triggered today
+            if _auto_start_triggered_today:
+                await asyncio.sleep(60)
+                continue
+            
+            # Check scheduler settings
+            from nexus2.db import SessionLocal
+            from nexus2.db.repository import SchedulerSettingsRepository
+            
+            db = SessionLocal()
+            try:
+                repo = SchedulerSettingsRepository(db)
+                settings = repo.get()
+                
+                # Check if auto-start is enabled and time matches
+                if (settings.auto_start_enabled == "true" and 
+                    settings.auto_start_time and
+                    settings.auto_start_time == current_time):
+                    
+                    # Check if scheduler is not already running
+                    scheduler = get_scheduler()
+                    if not scheduler.is_running:
+                        logger.info(f"[AutoStart] Time matched ({current_time} ET) - starting scheduler")
+                        
+                        # Start the scheduler
+                        scheduler.start(execute_callback=execute_callback)
+                        _auto_start_triggered_today = True
+                        
+                        # Send Discord notification
+                        try:
+                            from nexus2.adapters.notifications.discord import DiscordNotifier
+                            notifier = DiscordNotifier()
+                            notifier.send_raw({
+                                "embeds": [{
+                                    "title": "🚀 Scheduler Auto-Started",
+                                    "description": f"Automation scheduler started at {current_time} ET",
+                                    "color": 5763719,  # Green
+                                    "fields": [
+                                        {"name": "Status", "value": "✅ Running", "inline": True},
+                                        {"name": "Mode", "value": "Auto-Start", "inline": True},
+                                    ],
+                                    "timestamp": datetime.utcnow().isoformat(),
+                                }]
+                            })
+                            logger.info("[AutoStart] Discord notification sent")
+                        except Exception as e:
+                            logger.warning(f"[AutoStart] Discord notification failed: {e}")
+                    else:
+                        logger.debug(f"[AutoStart] Scheduler already running, skipping")
+                        _auto_start_triggered_today = True
+                        
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"[AutoStart] Checker error: {e}")
+        
+        await asyncio.sleep(60)
+
+
+def start_auto_start_checker():
+    """Start the auto-start checker background task."""
+    global _auto_start_task
+    import asyncio
+    
+    if _auto_start_task is None:
+        _auto_start_task = asyncio.create_task(auto_start_checker())
+        logger.info("[AutoStart] Checker started")
+    return _auto_start_task
+
+
 # Request/Response models
 class StartRequest(BaseModel):
     sim_only: bool = True  # Default to SIM mode
@@ -1307,6 +1412,8 @@ class SchedulerSettingsRequest(BaseModel):
     scan_modes: Optional[List[str]] = None  # ["ep", "breakout", "htf"]
     htf_frequency: Optional[str] = None  # every_cycle or market_open
     max_position_value: Optional[float] = None  # Automation-specific capital limit per position
+    auto_start_enabled: Optional[bool] = None  # Enable auto-start for headless operation
+    auto_start_time: Optional[str] = None  # HH:MM format (ET timezone)
 
 
 # Preset definitions for scheduler (same as Quick Actions)
@@ -1372,12 +1479,14 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         # Override with any explicitly provided values
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
-                      "max_position_value"]:
+                      "max_position_value", "auto_start_enabled", "auto_start_time"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
                 if field in ["max_stop_atr", "max_stop_percent", "max_position_value"]:
                     updates[field] = str(value)
+                elif field == "auto_start_enabled":
+                    updates[field] = "true" if value else "false"
                 else:
                     updates[field] = value
         

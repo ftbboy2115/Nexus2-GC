@@ -155,6 +155,8 @@ interface SchedulerSettingsData {
     scan_modes: string[]  // ["ep", "breakout", "htf"]
     htf_frequency: 'every_cycle' | 'market_open'
     max_position_value: number | null  // Automation-specific capital limit (null = use global)
+    auto_start_enabled: boolean  // Enable auto-start for headless operation
+    auto_start_time: string | null  // HH:MM format (ET timezone)
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1319,6 +1321,63 @@ export default function Automation() {
                                     </div>
                                 </>
                             )}
+
+                            {/* Auto-Start Settings - Always visible */}
+                            <div className={styles.settingGroup} style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                                <label className={styles.toggleLabel}>
+                                    <span>⏰ Auto-Start (Headless)</span>
+                                    <button
+                                        className={`${styles.toggleBtn} ${schedulerSettings?.auto_start_enabled ? styles.toggleActive : ''}`}
+                                        onClick={async () => {
+                                            const newValue = !schedulerSettings?.auto_start_enabled
+                                            try {
+                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ auto_start_enabled: newValue })
+                                                })
+                                                if (res.ok) {
+                                                    const data = await res.json()
+                                                    setSchedulerSettings(data)
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to update auto_start_enabled:', err)
+                                            }
+                                        }}
+                                    >
+                                        {schedulerSettings?.auto_start_enabled ? '✅ ON' : '❌ OFF'}
+                                    </button>
+                                </label>
+                                {schedulerSettings?.auto_start_enabled && (
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        <label>Start Time (ET)</label>
+                                        <input
+                                            type="time"
+                                            value={schedulerSettings?.auto_start_time || '09:20'}
+                                            onChange={async (e) => {
+                                                const value = e.target.value;
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ auto_start_time: value })
+                                                    });
+                                                    if (res.ok) {
+                                                        const data = await res.json();
+                                                        setSchedulerSettings(data);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to update auto_start_time:', err);
+                                                }
+                                            }}
+                                            className={styles.numberInput}
+                                        />
+                                    </div>
+                                )}
+                                <p className={styles.settingHint}>
+                                    Scheduler auto-starts at configured time. Discord notification sent on start.
+                                </p>
+                            </div>
                         </div>
                         <div className={styles.modalFooter}>
                             <button className={styles.btnPrimary} onClick={() => setShowSchedulerModal(false)}>

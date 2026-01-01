@@ -59,10 +59,14 @@ async def lifespan(app: FastAPI):
     
     # Initialize automation engine
     from nexus2.domain.automation import AutomationEngine
-    from nexus2.api.routes.automation import set_engine
+    from nexus2.api.routes.automation import set_engine, start_auto_start_checker
     app.state.automation_engine = AutomationEngine()
     set_engine(app.state.automation_engine)
     print("[Startup] Automation engine initialized")
+    
+    # Start auto-start checker (for headless server operation)
+    start_auto_start_checker()
+    print("[Startup] Auto-start checker running")
     
     yield
     
