@@ -167,10 +167,14 @@ async def configure_scanner_from_settings(engine, scheduler):
         auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
         auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
         
+        # Read sim_mode from settings (default False)
+        sim_mode_setting = getattr(sched_settings, 'sim_mode', 'false')
+        sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
+        
         # Set scheduler auto_execute flag
         scheduler.auto_execute = auto_execute
         
-        # Configure engine scanner
+        # Configure engine scanner (with sim_mode for MockMarketData injection)
         engine._scanner_func = await create_unified_scanner_callback(
             min_quality=min_quality,
             max_stop_percent=max_stop_percent,
@@ -178,6 +182,7 @@ async def configure_scanner_from_settings(engine, scheduler):
             max_stop_atr=max_stop_atr,
             scan_modes=scan_modes,
             htf_frequency=htf_frequency,
+            sim_mode=sim_mode,  # NEW: Use MockMarketData when True
         )
         
         settings_used = {
@@ -188,6 +193,7 @@ async def configure_scanner_from_settings(engine, scheduler):
             "scan_modes": scan_modes,
             "htf_frequency": htf_frequency,
             "auto_execute": auto_execute,
+            "sim_mode": sim_mode,  # NEW
         }
         
         logger.info(f"[Scheduler] Scanner configured: {settings_used}")

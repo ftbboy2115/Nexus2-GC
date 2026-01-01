@@ -55,6 +55,7 @@ async def create_unified_scanner_callback(
     max_stop_atr: float = 1.0,
     scan_modes: List[str] = None,
     htf_frequency: str = "every_cycle",
+    sim_mode: bool = False,  # NEW: Use MockMarketData when True
 ):
     """
     Create a scanner callback that uses the UnifiedScannerService.
@@ -69,6 +70,7 @@ async def create_unified_scanner_callback(
         max_stop_atr: Maximum stop distance as ATR multiple (used when stop_mode="atr")
         scan_modes: List of scanner modes to run, e.g. ["ep", "breakout", "htf"]
         htf_frequency: "every_cycle" or "market_open" (HTF only runs on first scan)
+        sim_mode: When True, use MockMarketData instead of live FMP data
     """
     from nexus2.domain.automation.unified_scanner import (
         UnifiedScannerService,
@@ -103,7 +105,15 @@ async def create_unified_scanner_callback(
     
     # Pre-compute the enabled modes from settings
     base_scan_modes = scan_modes.copy()
-    logger.info(f"Scanner configured: modes={scan_modes}, stop_mode={stop_mode}, min_quality={min_quality}, htf_frequency={htf_frequency}")
+    
+    # Get market data provider (MockMarketData for sim, live for production)
+    market_data = None
+    if sim_mode:
+        from nexus2.adapters.simulation import get_mock_market_data
+        market_data = get_mock_market_data()
+        logger.info(f"Scanner configured: modes={scan_modes}, SIMULATION MODE (using MockMarketData)")
+    else:
+        logger.info(f"Scanner configured: modes={scan_modes}, stop_mode={stop_mode}, min_quality={min_quality}, htf_frequency={htf_frequency}")
     
     async def unified_scanner_func(mode: str = "all", limit: int = 20) -> List[dict]:
         """
@@ -151,7 +161,28 @@ async def create_unified_scanner_callback(
             breakout_limit=limit,
             htf_limit=limit,
         )
-        scanner = UnifiedScannerService(settings=settings)
+        
+        # Create scanner with optional market_data override for simulation
+        if market_data is not None:
+            # SIM MODE: Create scanners with MockMarketData
+            from nexus2.domain.scanner.ep_scanner_service import EPScannerService
+            from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
+            from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
+            
+            ep_scanner = EPScannerService(market_data=market_data)
+            breakout_scanner = BreakoutScannerService(market_data=market_data)
+            htf_scanner = HTFScannerService(market_data=market_data)
+            
+            scanner = UnifiedScannerService(
+                settings=settings,
+                ep_scanner=ep_scanner,
+                breakout_scanner=breakout_scanner,
+                htf_scanner=htf_scanner,
+            )
+            logger.info(f"[SIM] Using MockMarketData for scan")
+        else:
+            # LIVE MODE: Use default singletons
+            scanner = UnifiedScannerService(settings=settings)
         
         # Run scan (sync call wrapped for async)
         import asyncio
