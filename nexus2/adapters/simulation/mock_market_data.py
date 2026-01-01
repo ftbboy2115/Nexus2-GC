@@ -264,6 +264,249 @@ class MockMarketData:
             "bar_counts": {s: len(bars) for s, bars in self._data.items()},
             "current_prices": self._current_prices.copy(),
         }
+    
+    # ==========================================================================
+    # SCANNER SUPPORT METHODS
+    # These methods are required for EP scanner compatibility
+    # ==========================================================================
+    
+    def get_gainers(self) -> List[Dict]:
+        """
+        Get top gainers (simulated from loaded data).
+        
+        Returns loaded symbols with their current day's change as gainers.
+        This allows the EP scanner to find candidates in simulation mode.
+        """
+        gainers = []
+        
+        if not self._sim_clock:
+            return gainers
+        
+        sim_date = self._sim_clock.get_trading_day()
+        
+        for symbol, bars in self._data.items():
+            # Find today's bar and yesterday's bar
+            today_bar = None
+            yesterday_bar = None
+            
+            for i, bar in enumerate(bars):
+                if bar.date == sim_date:
+                    today_bar = bar
+                    if i > 0:
+                        yesterday_bar = bars[i - 1]
+                    break
+                elif bar.date < sim_date:
+                    yesterday_bar = bar
+            
+            if today_bar and yesterday_bar:
+                # Calculate change
+                change = today_bar.close - yesterday_bar.close
+                change_pct = (change / yesterday_bar.close) * 100 if yesterday_bar.close > 0 else 0
+                
+                if change_pct > 0:  # Only include positive changers
+                    gainers.append({
+                        "symbol": symbol,
+                        "name": symbol,
+                        "price": today_bar.close,
+                        "change": change,
+                        "change_percent": change_pct,
+                    })
+        
+        # Sort by change percent descending
+        gainers.sort(key=lambda x: x["change_percent"], reverse=True)
+        
+        return gainers
+    
+    def get_actives(self) -> List[Dict]:
+        """
+        Get most active stocks (simulated from loaded data).
+        
+        Returns loaded symbols sorted by volume.
+        """
+        actives = []
+        
+        if not self._sim_clock:
+            return actives
+        
+        sim_date = self._sim_clock.get_trading_day()
+        
+        for symbol, bars in self._data.items():
+            for bar in bars:
+                if bar.date == sim_date:
+                    actives.append({
+                        "symbol": symbol,
+                        "name": symbol,
+                        "price": bar.close,
+                        "volume": bar.volume,
+                        "change": 0,
+                        "change_percent": 0,
+                    })
+                    break
+        
+        # Sort by volume descending
+        actives.sort(key=lambda x: x["volume"], reverse=True)
+        
+        return actives
+    
+    def has_recent_catalyst(self, symbol: str, days: int = 5) -> tuple:
+        """
+        Simulate catalyst check for EP scanner.
+        
+        In simulation mode, we assume all loaded stocks have a catalyst
+        (since we explicitly loaded them for testing).
+        
+        Returns:
+            (has_catalyst, catalyst_type, description)
+        """
+        # In simulation, assume loaded data has a catalyst
+        return (True, "earnings", f"Simulated catalyst for {symbol}")
+    
+    def has_upcoming_earnings(self, symbol: str, days: int = 3) -> tuple:
+        """
+        Check for upcoming earnings (simulated).
+        
+        Returns:
+            (has_upcoming, earnings_date)
+        """
+        # In simulation, no upcoming earnings risk
+        return (False, None)
+    
+    def has_recent_earnings(self, symbol: str, days: int = 5) -> tuple:
+        """
+        Check for recent past earnings (simulated).
+        
+        Returns:
+            (has_earnings, earnings_date)
+        """
+        # In simulation, assume recent earnings
+        sim_date = self._sim_clock.get_trading_day() if self._sim_clock else None
+        return (True, sim_date)
+    
+    def build_ep_session_snapshot(self, symbol: str) -> Optional[Dict]:
+        """
+        Build EP session snapshot for scanner.
+        
+        This provides the data structure expected by EPScannerService.
+        """
+        if symbol not in self._data:
+            return None
+        
+        bars = self._data[symbol]
+        if not bars:
+            return None
+        
+        # Get bar for sim date
+        sim_date = self._sim_clock.get_trading_day() if self._sim_clock else None
+        today_bar = None
+        yesterday_bar = None
+        
+        for i, bar in enumerate(bars):
+            if sim_date and bar.date == sim_date:
+                today_bar = bar
+                if i > 0:
+                    yesterday_bar = bars[i - 1]
+                break
+            elif not sim_date or bar.date <= sim_date:
+                yesterday_bar = today_bar
+                today_bar = bar
+        
+        if not today_bar:
+            today_bar = bars[-1]
+        if not yesterday_bar and len(bars) > 1:
+            yesterday_bar = bars[-2]
+        
+        if not yesterday_bar:
+            return None
+        
+        # Calculate average volume
+        recent_bars = bars[-20:] if len(bars) >= 20 else bars
+        avg_volume = sum(b.volume for b in recent_bars) / len(recent_bars) if recent_bars else 0
+        
+        return {
+            "symbol": symbol,
+            "yesterday_close": yesterday_bar.close,
+            "session_open": today_bar.open,
+            "session_high": today_bar.high,
+            "session_low": today_bar.low,
+            "last_price": today_bar.close,
+            "session_volume": today_bar.volume,
+            "avg_daily_volume": avg_volume,
+        }
+    
+    def get_atr(self, symbol: str, period: int = 14) -> Optional[float]:
+        """
+        Calculate ATR for symbol.
+        """
+        bars = self.get_daily_bars(symbol, days=period + 5)
+        if not bars or len(bars) < period:
+            return None
+        
+        tr_values = []
+        for i in range(1, len(bars)):
+            high = bars[i].high
+            low = bars[i].low
+            prev_close = bars[i - 1].close
+            
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            tr_values.append(tr)
+        
+        if not tr_values:
+            return None
+        
+        return sum(tr_values[-period:]) / min(period, len(tr_values))
+    
+    def get_adr_percent(self, symbol: str, period: int = 14) -> Optional[float]:
+        """
+        Calculate average daily range as percentage.
+        """
+        bars = self.get_daily_bars(symbol, days=period + 5)
+        if not bars or len(bars) < period:
+            return None
+        
+        adr_values = []
+        for bar in bars[-period:]:
+            if bar.close > 0:
+                adr_pct = ((bar.high - bar.low) / bar.close) * 100
+                adr_values.append(adr_pct)
+        
+        if not adr_values:
+            return None
+        
+        return sum(adr_values) / len(adr_values)
+    
+    def get_opening_range(self, symbol: str, timeframe_minutes: int = 5) -> Optional[tuple]:
+        """
+        Get opening range (simulated from daily bar).
+        
+        In simulation, we use the daily open +/- small range.
+        Returns: (high, low)
+        """
+        bars = self.get_daily_bars(symbol, days=1)
+        if not bars:
+            return None
+        
+        bar = bars[0]
+        # Simulate opening range as small % of day's range
+        day_range = bar.high - bar.low
+        or_range = day_range * 0.2  # 20% of day's range
+        
+        or_high = bar.open + or_range / 2
+        or_low = bar.open - or_range / 2
+        
+        return (or_high, or_low)
+    
+    @property
+    def fmp(self):
+        """
+        Return self as FMP adapter proxy for EP scanner compatibility.
+        
+        The EP scanner calls self.market_data.fmp.get_etf_symbols().
+        """
+        return self
+    
+    def get_etf_symbols(self) -> set:
+        """Return empty set (no ETFs to filter in simulation)."""
+        return set()
 
 
 # Global instance
