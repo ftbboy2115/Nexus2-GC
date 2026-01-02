@@ -656,6 +656,10 @@ async def start_scheduler(
             sim_mode_setting = getattr(sched_settings, 'sim_mode', False)
             sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
             
+            # Get min_price from settings (default $5 if not set)
+            min_price_setting = getattr(sched_settings, 'min_price', None)
+            min_price = float(min_price_setting) if min_price_setting else 5.0
+            
             # Reconfigure engine scanner with fresh settings + sim_mode
             preset = sched_settings.preset or "strict"
             engine._scanner_func = await create_unified_scanner_callback(
@@ -667,8 +671,9 @@ async def start_scheduler(
                 htf_frequency=htf_frequency,
                 sim_mode=sim_mode,  # Pass sim_mode to use MockMarketData
                 preset=preset,  # Pass preset for relaxed EP settings
+                min_price=min_price,  # Pass min_price to scanner
             )
-            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}")
+            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}, min_price=${min_price}")
         finally:
             db_settings.close()
         
@@ -1368,11 +1373,11 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
                       "max_position_value", "auto_start_enabled", "auto_start_time", "auto_execute",
-                      "nac_broker_type", "nac_account", "sim_mode"]:
+                      "nac_broker_type", "nac_account", "sim_mode", "min_price"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
-                if field in ["max_stop_atr", "max_stop_percent", "max_position_value"]:
+                if field in ["max_stop_atr", "max_stop_percent", "max_position_value", "min_price"]:
                     updates[field] = str(value)
                 elif field in ["auto_start_enabled", "auto_execute", "sim_mode"]:
                     updates[field] = "true" if value else "false"

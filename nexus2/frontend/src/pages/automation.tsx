@@ -186,6 +186,7 @@ interface SchedulerSettingsData {
     nac_broker_type: string  // alpaca_paper, alpaca_live
     nac_account: string  // A or B (default A for Automation)
     sim_mode: boolean  // Enable simulation mode (uses MockBroker)
+    min_price: number  // Minimum stock price filter ($2-10)
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1337,6 +1338,34 @@ export default function Automation() {
                                                             }
                                                         } catch (err) {
                                                             console.error('Failed to update min_quality:', err)
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {/* Min Price Slider */}
+                                            <div className={styles.settingGroup}>
+                                                <label>Min Stock Price: ${schedulerSettings?.min_price || 5}</label>
+                                                <input
+                                                    type="range"
+                                                    min="2"
+                                                    max="10"
+                                                    step="0.5"
+                                                    value={schedulerSettings?.min_price || 5}
+                                                    onChange={async (e) => {
+                                                        const min_price = parseFloat(e.target.value)
+                                                        try {
+                                                            const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                                method: 'PATCH',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ min_price })
+                                                            })
+                                                            if (res.ok) {
+                                                                const data = await res.json()
+                                                                setSchedulerSettings(data)
+                                                            }
+                                                        } catch (err) {
+                                                            console.error('Failed to update min_price:', err)
                                                         }
                                                     }}
                                                 />

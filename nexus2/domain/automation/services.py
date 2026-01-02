@@ -55,8 +55,9 @@ async def create_unified_scanner_callback(
     max_stop_atr: float = 1.0,
     scan_modes: List[str] = None,
     htf_frequency: str = "every_cycle",
-    sim_mode: bool = False,  # NEW: Use MockMarketData when True
-    preset: str = "strict",  # NEW: "relaxed" applies looser EP criteria
+    sim_mode: bool = False,  # Use MockMarketData when True
+    preset: str = "strict",  # "relaxed" applies looser EP criteria
+    min_price: float = 5.0,  # NEW: Minimum stock price filter
 ):
     """
     Create a scanner callback that uses the UnifiedScannerService.
@@ -155,6 +156,7 @@ async def create_unified_scanner_callback(
             stop_mode=stop_mode,
             max_stop_atr=max_stop_atr,
             max_stop_percent=max_stop_percent,
+            min_price=min_price,  # Pass min_price to unified settings
             ep_limit=limit,
             breakout_limit=limit,
             htf_limit=limit,
@@ -181,7 +183,7 @@ async def create_unified_scanner_callback(
             sim_ep_settings = EPScanSettings(
                 min_gap=3.0,    # Lower from 8% - sim data may not have big gaps
                 min_rvol=0.5,   # Lower from 2.0 - volume calculation may vary
-                min_price=5.0,  # Keep minimum price
+                min_price=min_price,  # Use configurable min_price
             )
             
             ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=market_data)
@@ -205,10 +207,10 @@ async def create_unified_scanner_callback(
                 ep_settings = EPScanSettings(
                     min_gap=Decimal("3.0"),    # Lower from 8% 
                     min_rvol=Decimal("0.5"),   # Lower from 2.0
-                    min_price=Decimal("5.0"),  # Keep minimum price
+                    min_price=Decimal(str(min_price)),  # Use configurable min_price
                     min_range_position=Decimal("0.30"),  # Lower from 0.40
                 )
-                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=0.5x)")
+                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=0.5x, min_price=${min_price})")
                 ep_scanner = EPScannerService(settings=ep_settings)
             else:
                 # Strict mode - use defaults

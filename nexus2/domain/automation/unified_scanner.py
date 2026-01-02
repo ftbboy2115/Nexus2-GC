@@ -52,6 +52,9 @@ class UnifiedScanSettings:
     max_stop_atr: float = 1.0  # KK uses 1.0-1.5 ATR
     max_stop_percent: float = 5.0  # Fallback for percent mode
     
+    # Price filter (applied in individual scanners)
+    min_price: float = 5.0  # Minimum stock price (default $5)
+    
     # Limits per scanner
     ep_limit: int = 20
     breakout_limit: int = 20

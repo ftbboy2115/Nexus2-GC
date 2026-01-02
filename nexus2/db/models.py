@@ -230,6 +230,9 @@ class SchedulerSettingsModel(Base):
     # Simulation mode (uses MockBroker instead of real broker)
     sim_mode = Column(String(5), default="false")  # "true" or "false"
     
+    # Minimum stock price filter for scanner (defaults to $5 if not set)
+    min_price = Column(String(10), nullable=True, default=None)
+    
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
@@ -251,6 +254,7 @@ class SchedulerSettingsModel(Base):
             "nac_broker_type": self.nac_broker_type or "alpaca_paper",
             "nac_account": self.nac_account or "A",
             "sim_mode": self.sim_mode == "true",
+            "min_price": float(self.min_price) if self.min_price else 5.0,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
