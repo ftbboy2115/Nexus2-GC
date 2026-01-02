@@ -405,7 +405,9 @@ class UnifiedScannerService:
         """Convert Breakout candidate to Signal."""
         try:
             entry_price = candidate.entry_price or candidate.price
-            tactical_stop = candidate.stop_price or (entry_price * Decimal("0.95"))
+            entry_price = Decimal(str(entry_price))  # Ensure Decimal
+            tactical_stop = candidate.stop_price
+            tactical_stop = Decimal(str(tactical_stop)) if tactical_stop else (entry_price * Decimal("0.95"))
             
             # Calculate quality based on breakout metrics
             quality = 5
@@ -438,7 +440,9 @@ class UnifiedScannerService:
         """Convert HTF candidate to Signal."""
         try:
             entry_price = candidate.entry_price or candidate.price
-            tactical_stop = candidate.stop_price or (entry_price * Decimal("0.90"))
+            entry_price = Decimal(str(entry_price))  # Ensure Decimal
+            tactical_stop = candidate.stop_price
+            tactical_stop = Decimal(str(tactical_stop)) if tactical_stop else (entry_price * Decimal("0.90"))
             
             # Calculate quality based on HTF metrics
             quality = 6  # HTF patterns start higher quality
