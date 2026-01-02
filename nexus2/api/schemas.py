@@ -69,17 +69,17 @@ class PositionResponse(BaseModel):
     """Position response."""
     id: UUID
     symbol: str
-    setup_type: str
-    entry_date: str
+    setup_type: Optional[str] = None
+    entry_date: Optional[str] = None
     entry_price: Decimal
     shares: int
     remaining_shares: int
-    initial_stop: Decimal
-    current_stop: Decimal
-    stop_type: str
+    initial_stop: Optional[Decimal] = None
+    current_stop: Optional[Decimal] = None
+    stop_type: Optional[str] = None
     status: str
     realized_pnl: Decimal
-    days_held: int
+    days_held: int = 0
     
     class Config:
         from_attributes = True
