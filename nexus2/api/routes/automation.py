@@ -24,6 +24,9 @@ from nexus2.domain.automation.automation_logger import (
     log_execution_decision, log_cycle_summary,
 )
 
+# Discord notifications
+from nexus2.adapters.notifications.discord import DiscordNotifier
+
 # Import from new modular structure
 from nexus2.api.routes.automation_state import (
     get_engine, set_engine, get_scheduler, get_monitor,
@@ -902,6 +905,17 @@ async def start_scheduler(
                         signal.symbol, shares, float(stop_price), "EXECUTED",
                         order_id=str(result.broker_order_id)
                     )
+                    
+                    # Send Discord notification
+                    try:
+                        discord = DiscordNotifier()
+                        setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
+                        discord.send_trade_alert(
+                            message=f"ENTRY: {signal.symbol} x {shares} shares | {setup_name.upper()} | Stop ${stop_price:.2f}",
+                            trade_id=str(result.broker_order_id)
+                        )
+                    except Exception as e:
+                        logger.warning(f"Discord notification failed: {e}")
                     
                     executed.append({
                         "symbol": signal.symbol,
