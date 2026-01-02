@@ -226,7 +226,7 @@ class AlpacaBroker:
             "client_order_id": str(client_order_id),
             "order_class": order_class,
             "stop_loss": {
-                "stop_price": str(stop_loss_price),
+                "stop_price": str(round(float(stop_loss_price), 2)),  # Round to 2 decimals for Alpaca
             },
         }
         
