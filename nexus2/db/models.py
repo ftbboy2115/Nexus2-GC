@@ -6,7 +6,7 @@ SQLAlchemy models for orders and positions.
 
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import Column, String, Integer, DateTime, Enum as SQLEnum, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, DateTime, Enum as SQLEnum, ForeignKey, Text, Boolean
 from sqlalchemy.types import DECIMAL
 from sqlalchemy.orm import relationship
 
@@ -153,6 +153,9 @@ class PositionModel(Base):
     rs_percentile = Column(Integer, nullable=True)
     adr_percent = Column(String(10), nullable=True)
     
+    # Partial exit tracking (prevents repeated partial exits)
+    partial_taken = Column(Boolean, default=False)
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -175,6 +178,7 @@ class PositionModel(Base):
             "tier": self.tier,
             "rs_percentile": self.rs_percentile,
             "adr_percent": self.adr_percent,
+            "partial_taken": self.partial_taken,
             "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
         }
 
