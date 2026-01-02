@@ -192,16 +192,18 @@ async def stop_engine(engine: AutomationEngine = Depends(get_engine)):
 
 
 @router.get("/api-stats", response_model=dict)
-async def get_api_stats():
+async def get_api_stats(request: Request):
     """
     Get API rate limit statistics.
     
     Returns current FMP API usage including calls/minute, remaining, and usage%.
     """
-    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
-    
     try:
-        fmp = get_fmp_adapter()
+        fmp = getattr(request.app.state, 'market_data', None)
+        if not fmp:
+            # Fallback to singleton if not in app state
+            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+            fmp = get_fmp_adapter()
         stats = fmp.get_rate_stats()
         return {
             "status": "ok",
