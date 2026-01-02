@@ -727,6 +727,7 @@ class FMPAdapter:
             r'fda.*approv|drug.*approv|clinical.*trial|phase.*[123]|breakthrough',
             r'contract.*\$|\$.*contract|deal.*\$|\$.*deal|partnership|acquisition|merger|buyout',
             r'guidance.*raise|guidance.*up|upgrade|raised.*target|price.*target',
+            r'announces.*guidance|financial.*guidance|fy.*guidance|[0-9]{4}.*guidance',
             r'dividend.*increase|special.*dividend|buyback|repurchase',
             
             # Analyst/Rating actions
