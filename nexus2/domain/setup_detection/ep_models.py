@@ -21,6 +21,7 @@ class CatalystType(Enum):
     """Type of catalyst triggering the EP."""
     EARNINGS = "earnings"
     GUIDANCE = "guidance"
+    NEWS = "news"  # Generic news catalyst
     PRODUCT_LAUNCH = "product_launch"
     FDA_APPROVAL = "fda_approval"
     PARTNERSHIP = "partnership"
