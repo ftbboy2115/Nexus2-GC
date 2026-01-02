@@ -119,11 +119,19 @@ async def get_summary(
 @router.get("/by-setup")
 async def get_by_setup(
     source: Optional[str] = Query(None, description="Filter by source: nac, manual, external"),
+    start_date: Optional[date] = Query(None, description="Start date filter"),
+    end_date: Optional[date] = Query(None, description="End date filter"),
 ):
     """
     Get stats grouped by setup type (EP, breakout, flag, etc).
     """
     positions = _get_positions_from_db(source=source, status="closed")
+    
+    # Filter by date if specified
+    if start_date:
+        positions = [p for p in positions if p.get("opened_at") and p["opened_at"][:10] >= str(start_date)]
+    if end_date:
+        positions = [p for p in positions if p.get("opened_at") and p["opened_at"][:10] <= str(end_date)]
     
     if not positions:
         return {"status": "success", "by_setup": [], "filter": {"source": source or "all"}}
@@ -163,6 +171,8 @@ async def get_by_setup(
 @router.get("/quick-stats")
 async def get_quick_stats(
     source: Optional[str] = Query(None, description="Filter by source: nac, manual, external"),
+    start_date: Optional[date] = Query(None, description="Start date filter"),
+    end_date: Optional[date] = Query(None, description="End date filter"),
 ):
     """
     Get quick stats for dashboard display.
@@ -170,6 +180,12 @@ async def get_quick_stats(
     Returns only key metrics for fast rendering.
     """
     positions = _get_positions_from_db(source=source, status="closed")
+    
+    # Filter by date if specified
+    if start_date:
+        positions = [p for p in positions if p.get("opened_at") and p["opened_at"][:10] >= str(start_date)]
+    if end_date:
+        positions = [p for p in positions if p.get("opened_at") and p["opened_at"][:10] <= str(end_date)]
     
     if not positions:
         return {

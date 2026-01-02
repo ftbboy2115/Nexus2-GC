@@ -218,6 +218,9 @@ export default function Automation() {
     // Broker positions (actual Alpaca positions)
     const [positions, setPositions] = useState<PositionsData | null>(null)
 
+    // Position table sort state
+    const [positionSort, setPositionSort] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'unrealized_pnl', direction: 'desc' })
+
     // Simulation positions (from MockBroker)
     const [simPositions, setSimPositions] = useState<SimPositionsData | null>(null)
 
@@ -953,11 +956,11 @@ export default function Automation() {
                                         {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
                                     </h2>
                                     {schedulerSettings?.sim_mode && simPositions?.count ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6' }}>
+                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
                                             {simPositions.count} positions • ${simPositions.account?.portfolio_value?.toFixed(0) || 0}
                                         </span>
                                     ) : positions?.count ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                        <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff' }}>
                                             {positions.count} positions • {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
                                         </span>
                                     ) : null}
@@ -1011,39 +1014,75 @@ export default function Automation() {
                                     ) : (
                                         /* LIVE MODE: Show Alpaca positions */
                                         positions?.positions && positions.positions.length > 0 ? (
-                                            <div style={{ overflowX: 'auto', width: '100%' }}>
+                                            <div className={styles.scrollableTable} style={{ overflowX: 'auto', maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
                                                 <table className={styles.signalTable}>
-                                                    <thead>
+                                                    <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 1 }}>
                                                         <tr>
-                                                            <th>Symbol</th>
-                                                            <th>Qty</th>
-                                                            <th>Avg</th>
-                                                            <th>Value</th>
-                                                            <th>P/L$</th>
-                                                            <th>P/L%</th>
+                                                            {[
+                                                                { key: 'symbol', label: 'Sym' },
+                                                                { key: 'qty', label: 'Qty' },
+                                                                { key: 'avg_price', label: 'Avg' },
+                                                                { key: 'market_value', label: 'Val' },
+                                                                { key: 'unrealized_pnl', label: 'P&L$' },
+                                                                { key: 'pnl_percent', label: 'P&L%' },
+                                                            ].map(col => (
+                                                                <th
+                                                                    key={col.key}
+                                                                    onClick={() => setPositionSort(prev => ({
+                                                                        column: col.key,
+                                                                        direction: prev.column === col.key && prev.direction === 'desc' ? 'asc' : 'desc'
+                                                                    }))}
+                                                                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                                                                    title={`Sort by ${col.label}`}
+                                                                >
+                                                                    {col.label}
+                                                                    {positionSort.column === col.key && (
+                                                                        <span style={{ marginLeft: '4px' }}>
+                                                                            {positionSort.direction === 'desc' ? '▼' : '▲'}
+                                                                        </span>
+                                                                    )}
+                                                                </th>
+                                                            ))}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {positions.positions.map((pos) => (
-                                                            <tr key={pos.symbol}>
-                                                                <td className={styles.symbol}>{pos.symbol}</td>
-                                                                <td>{pos.qty}</td>
-                                                                <td>${pos.avg_price.toFixed(2)}</td>
-                                                                <td>${pos.market_value.toFixed(0)}</td>
-                                                                <td style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                    {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
-                                                                </td>
-                                                                <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                    {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
-                                                                </td>
-                                                            </tr>
-                                                        ))}
+                                                        {[...positions.positions]
+                                                            .sort((a, b) => {
+                                                                const key = positionSort.column as keyof typeof a
+                                                                const aVal = a[key] ?? 0
+                                                                const bVal = b[key] ?? 0
+                                                                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                                                                    return positionSort.direction === 'asc'
+                                                                        ? aVal.localeCompare(bVal)
+                                                                        : bVal.localeCompare(aVal)
+                                                                }
+                                                                return positionSort.direction === 'asc'
+                                                                    ? (aVal as number) - (bVal as number)
+                                                                    : (bVal as number) - (aVal as number)
+                                                            })
+                                                            .map((pos) => (
+                                                                <tr key={pos.symbol}>
+                                                                    <td className={styles.symbol}>{pos.symbol}</td>
+                                                                    <td>{pos.qty}</td>
+                                                                    <td>${pos.avg_price.toFixed(2)}</td>
+                                                                    <td>${pos.market_value.toFixed(0)}</td>
+                                                                    <td style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                        {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
+                                                                    </td>
+                                                                    <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                        {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
                                                     </tbody>
                                                 </table>
-                                                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                                                     <span style={{ color: '#9ca3af' }}>Total Value: <strong>${positions.total_value.toFixed(0)}</strong></span>
                                                     <span style={{ color: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                        Total P&L: <strong>{positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}</strong>
+                                                        Total P&L ($): <strong>{positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}</strong>
+                                                    </span>
+                                                    <span style={{ color: positions.total_value > 0 ? (positions.total_pnl >= 0 ? '#22c55e' : '#ef4444') : '#9ca3af' }}>
+                                                        Total P&L (%): <strong>{positions.total_value > 0 ? `${positions.total_pnl >= 0 ? '+' : ''}${((positions.total_pnl / (positions.total_value - positions.total_pnl)) * 100).toFixed(2)}%` : '0.00%'}</strong>
                                                     </span>
                                                 </div>
                                             </div>

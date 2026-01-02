@@ -46,29 +46,43 @@ export default function Analytics() {
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'setup' | 'comparison'>('overview')
     const [sourceFilter, setSourceFilter] = useState<string>('') // '', 'nac', 'manual', 'external'
+    const [dateFilter, setDateFilter] = useState<string>('today') // 'today', 'week', 'all'
 
-    // Fetch all analytics data on mount and when source changes
+    // Fetch all analytics data on mount and when filters change
     useEffect(() => {
         fetchAnalytics()
-    }, [sourceFilter])
+    }, [sourceFilter, dateFilter])
 
     const fetchAnalytics = async () => {
         setLoading(true)
         setError(null)
 
-        // Build source query param
-        const sourceParam = sourceFilter ? `?source=${sourceFilter}` : ''
+        // Build query params
+        const params = new URLSearchParams()
+        if (sourceFilter) params.append('source', sourceFilter)
+
+        // Add date filter
+        const today = new Date().toISOString().split('T')[0]
+        if (dateFilter === 'today') {
+            params.append('start_date', today)
+            params.append('end_date', today)
+        } else if (dateFilter === 'week') {
+            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            params.append('start_date', weekAgo)
+        }
+
+        const queryString = params.toString() ? `?${params.toString()}` : ''
 
         try {
             // Fetch quick stats
-            const quickRes = await fetch(`http://localhost:8000/analytics/quick-stats${sourceParam}`)
+            const quickRes = await fetch(`http://localhost:8000/analytics/quick-stats${queryString}`)
             if (quickRes.ok) {
                 const data = await quickRes.json()
                 setQuickStats(data)
             }
 
             // Fetch detailed summary
-            const summaryRes = await fetch(`http://localhost:8000/analytics/summary${sourceParam}`)
+            const summaryRes = await fetch(`http://localhost:8000/analytics/summary${queryString}`)
             if (summaryRes.ok) {
                 const data = await summaryRes.json()
                 if (data.status === 'success') {
@@ -77,7 +91,7 @@ export default function Analytics() {
             }
 
             // Fetch by setup
-            const setupRes = await fetch(`http://localhost:8000/analytics/by-setup${sourceParam}`)
+            const setupRes = await fetch(`http://localhost:8000/analytics/by-setup${queryString}`)
             if (setupRes.ok) {
                 const data = await setupRes.json()
                 if (data.status === 'success') {
@@ -147,6 +161,15 @@ export default function Analytics() {
                             <option value="manual">Manual Only</option>
                             <option value="external">External Only</option>
                         </select>
+                        <select
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            className={styles.sourceFilter}
+                        >
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="all">All Time</option>
+                        </select>
                         <button
                             onClick={fetchAnalytics}
                             className={styles.refreshBtn}
@@ -215,11 +238,11 @@ export default function Analytics() {
                                 <h3>Win/Loss</h3>
                                 <div className={styles.statRow}>
                                     <span>Winners</span>
-                                    <span className={styles.positive}>{detailedStats.winners}</span>
+                                    <span className={styles.positive}>{(detailedStats as any).win_count ?? (detailedStats as any).winners ?? 0}</span>
                                 </div>
                                 <div className={styles.statRow}>
                                     <span>Losers</span>
-                                    <span className={styles.negative}>{detailedStats.losers}</span>
+                                    <span className={styles.negative}>{(detailedStats as any).loss_count ?? (detailedStats as any).losers ?? 0}</span>
                                 </div>
                                 <div className={styles.statRow}>
                                     <span>Win Rate</span>
@@ -231,49 +254,29 @@ export default function Analytics() {
                                 <h3>P&L</h3>
                                 <div className={styles.statRow}>
                                     <span>Total P&L</span>
-                                    <span className={detailedStats.total_pnl >= 0 ? styles.positive : styles.negative}>
-                                        {formatCurrency(detailedStats.total_pnl)}
+                                    <span className={((detailedStats as any).net_profit ?? (detailedStats as any).total_pnl ?? 0) >= 0 ? styles.positive : styles.negative}>
+                                        {formatCurrency((detailedStats as any).net_profit ?? (detailedStats as any).total_pnl ?? 0)}
                                     </span>
                                 </div>
                                 <div className={styles.statRow}>
                                     <span>Avg Win</span>
-                                    <span className={styles.positive}>{formatCurrency(detailedStats.avg_win)}</span>
+                                    <span className={styles.positive}>{formatCurrency((detailedStats as any).avg_profit ?? (detailedStats as any).avg_win ?? 0)}</span>
                                 </div>
                                 <div className={styles.statRow}>
                                     <span>Avg Loss</span>
-                                    <span className={styles.negative}>{formatCurrency(detailedStats.avg_loss)}</span>
+                                    <span className={styles.negative}>{formatCurrency((detailedStats as any).avg_loss ?? 0)}</span>
                                 </div>
                             </div>
 
                             <div className={styles.statsSection}>
                                 <h3>Performance</h3>
                                 <div className={styles.statRow}>
-                                    <span>Avg R-Multiple</span>
-                                    <span>{formatR(detailedStats.avg_r)}</span>
-                                </div>
-                                <div className={styles.statRow}>
                                     <span>Expectancy</span>
-                                    <span>{formatCurrency(detailedStats.expectancy)}</span>
+                                    <span>{formatCurrency((detailedStats as any).expectancy ?? 0)}</span>
                                 </div>
                                 <div className={styles.statRow}>
-                                    <span>Profit Factor</span>
-                                    <span>{(detailedStats.profit_factor ?? 0).toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            <div className={styles.statsSection}>
-                                <h3>Risk</h3>
-                                <div className={styles.statRow}>
-                                    <span>Max Drawdown</span>
-                                    <span className={styles.negative}>{formatCurrency(detailedStats.max_drawdown)}</span>
-                                </div>
-                                <div className={styles.statRow}>
-                                    <span>Largest Win</span>
-                                    <span className={styles.positive}>{formatCurrency(detailedStats.largest_win)}</span>
-                                </div>
-                                <div className={styles.statRow}>
-                                    <span>Largest Loss</span>
-                                    <span className={styles.negative}>{formatCurrency(detailedStats.largest_loss)}</span>
+                                    <span>Total Trades</span>
+                                    <span>{(detailedStats as any).total_trades ?? 0}</span>
                                 </div>
                             </div>
                         </div>
@@ -289,27 +292,23 @@ export default function Analytics() {
                     {activeTab === 'setup' && (
                         <div className={styles.setupGrid}>
                             {setupStats.length > 0 ? (
-                                setupStats.map((setup) => (
+                                setupStats.map((setup: any) => (
                                     <div key={setup.setup_type} className={styles.setupCard}>
                                         <h3 className={styles.setupType}>{setup.setup_type.toUpperCase()}</h3>
                                         <div className={styles.setupStats}>
                                             <div className={styles.statRow}>
                                                 <span>Trades</span>
-                                                <span>{setup.stats.total_trades}</span>
+                                                <span>{setup.count || setup.stats?.total_trades || 0}</span>
                                             </div>
                                             <div className={styles.statRow}>
                                                 <span>Win Rate</span>
-                                                <span>{formatPercent(setup.stats.win_rate)}</span>
+                                                <span>{formatPercent(setup.win_rate ?? setup.stats?.win_rate ?? 0)}</span>
                                             </div>
                                             <div className={styles.statRow}>
                                                 <span>Total P&L</span>
-                                                <span className={setup.stats.total_pnl >= 0 ? styles.positive : styles.negative}>
-                                                    {formatCurrency(setup.stats.total_pnl)}
+                                                <span className={(setup.net_profit ?? setup.stats?.total_pnl ?? 0) >= 0 ? styles.positive : styles.negative}>
+                                                    {formatCurrency(setup.net_profit ?? setup.stats?.total_pnl ?? 0)}
                                                 </span>
-                                            </div>
-                                            <div className={styles.statRow}>
-                                                <span>Avg R</span>
-                                                <span>{formatR(setup.stats.avg_r)}</span>
                                             </div>
                                         </div>
                                     </div>
