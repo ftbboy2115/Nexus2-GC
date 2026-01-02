@@ -179,7 +179,9 @@ class EPSetup:
         
         entry = entry_price or orh
         stop_distance = entry - lod
-        stop_atr_ratio = stop_distance / candidate.atr if candidate.atr > 0 else Decimal("999")
+        # Ensure Decimal types for safe division
+        atr = Decimal(str(candidate.atr)) if not isinstance(candidate.atr, Decimal) else candidate.atr
+        stop_atr_ratio = stop_distance / atr if atr > 0 else Decimal("999")
         
         return cls(
             id=uuid4(),

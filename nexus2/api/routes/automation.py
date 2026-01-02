@@ -415,7 +415,7 @@ async def scan_and_execute(
             
             # Cap shares based on max_per_symbol
             if signal.entry_price > 0:
-                max_shares_from_cap = int(max_per_symbol / signal.entry_price)
+                max_shares_from_cap = int(max_per_symbol / float(signal.entry_price))
                 if shares > max_shares_from_cap:
                     shares = max_shares_from_cap
             
@@ -634,7 +634,7 @@ async def start_scheduler(
         from datetime import datetime
         from decimal import Decimal
         
-        print(f"🤖 [AutoExec] Starting execute_callback...")
+        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Starting execute_callback...")
         
         # =============================
         # DYNAMIC SETTINGS RELOAD
@@ -677,7 +677,7 @@ async def start_scheduler(
         scan_start = time.time()
         signals = await engine.run_scan_cycle()
         scan_duration = time.time() - scan_start
-        print(f"🤖 [AutoExec] Scan returned {len(signals) if signals else 0} signals (took {scan_duration:.1f}s)")
+        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Scan returned {len(signals) if signals else 0} signals (took {scan_duration:.1f}s)")
         
         # Store signals in scheduler for UI display (even in auto_execute mode)
         scheduler.last_signals = signals if signals else []
@@ -685,7 +685,7 @@ async def start_scheduler(
         
         # Log summary of all signals received for diagnostics
         if signals:
-            print("📋 [AutoExec] Signal Summary:")
+            print(f"📋 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Signal Summary:")
             for i, sig in enumerate(signals[:10], 1):
                 setup_name = sig.setup_type.value if hasattr(sig.setup_type, 'value') else str(sig.setup_type)
                 print(f"   {i}. {sig.symbol:6} | Score: {sig.quality_score} | Type: {setup_name:8} | Mode: {sig.scanner_mode} | Tier: {sig.tier}")
@@ -874,7 +874,7 @@ async def start_scheduler(
                 logger.error(f"[AutoExec] Order not accepted for {signal.symbol}: {result}")
                 errors.append({"symbol": signal.symbol, "error": "Order not accepted by broker"})
         
-        print(f"🤖 [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
+        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
         
         return {
             "status": "executed" if executed else "no_trades",
