@@ -561,6 +561,7 @@ async def scan_and_execute(
                     "current_stop": trade["stop_price"],
                     "realized_pnl": "0",
                     "opened_at": datetime.utcnow(),
+                    "source": "nac",  # Track that this is an automated trade
                 })
                 
                 executed.append({
@@ -891,6 +892,7 @@ async def start_scheduler(
                         "current_stop": str(stop_price),
                         "realized_pnl": "0",
                         "opened_at": datetime.utcnow(),
+                        "source": "nac",  # Track that this is an automated trade
                         # Signal quality tracking
                         "quality_score": signal.quality_score,
                         "tier": signal.tier,
@@ -1047,6 +1049,34 @@ async def start_scheduler(
                     order_type="market",
                 )
                 logger.info(f"[Monitor] Exit executed: {signal.symbol} x {signal.shares_to_exit}")
+                
+                # Record exit data in database
+                try:
+                    db = SessionLocal()
+                    position_repo = PositionRepository(db)
+                    # Find open position for this symbol
+                    positions = position_repo.get_open()
+                    for pos in positions:
+                        if pos.symbol == signal.symbol:
+                            exit_price = str(result.avg_fill_price) if result.avg_fill_price else None
+                            remaining = pos.remaining_shares - signal.shares_to_exit
+                            updates = {
+                                "remaining_shares": max(0, remaining),
+                                "exit_price": exit_price,
+                                "exit_date": datetime.utcnow(),
+                            }
+                            # If fully closed, update status
+                            if remaining <= 0:
+                                updates["status"] = "closed"
+                                updates["closed_at"] = datetime.utcnow()
+                            position_repo.update(pos.id, updates)
+                            logger.info(f"[Monitor] Position updated: {signal.symbol} remaining={remaining}")
+                            break
+                    db.commit()
+                    db.close()
+                except Exception as db_err:
+                    logger.warning(f"[Monitor] DB update failed: {db_err}")
+                    
             except Exception as e:
                 logger.error(f"[Monitor] Exit failed: {e}")
     

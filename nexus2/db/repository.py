@@ -125,6 +125,25 @@ class PositionRepository:
             "realized_pnl": realized_pnl,
             "closed_at": datetime.utcnow(),
         })
+    
+    def get_by_source(self, source: Optional[str] = None, status: Optional[str] = None, limit: int = 1000) -> List[PositionModel]:
+        """
+        Get positions filtered by source for analytics.
+        
+        Args:
+            source: 'nac', 'manual', 'external', or None for all
+            status: 'open', 'closed', or None for all
+            limit: Max results
+            
+        Returns:
+            List of positions
+        """
+        query = self.db.query(PositionModel)
+        if source:
+            query = query.filter(PositionModel.source == source)
+        if status:
+            query = query.filter(PositionModel.status == status)
+        return query.order_by(PositionModel.opened_at.desc()).limit(limit).all()
 
 
 class PositionExitRepository:

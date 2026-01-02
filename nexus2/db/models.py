@@ -156,6 +156,13 @@ class PositionModel(Base):
     # Partial exit tracking (prevents repeated partial exits)
     partial_taken = Column(Boolean, default=False)
     
+    # Trade source tracking (for analytics filtering)
+    source = Column(String(20), default="manual")  # "nac", "manual", "external"
+    
+    # Exit data (for P&L calculation in analytics)
+    exit_price = Column(String(20), nullable=True)
+    exit_date = Column(DateTime, nullable=True)
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -179,6 +186,9 @@ class PositionModel(Base):
             "rs_percentile": self.rs_percentile,
             "adr_percent": self.adr_percent,
             "partial_taken": self.partial_taken,
+            "source": self.source,
+            "exit_price": self.exit_price,
+            "exit_date": self.exit_date.isoformat() if self.exit_date else None,
             "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
         }
 
