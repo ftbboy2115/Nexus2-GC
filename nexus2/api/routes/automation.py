@@ -910,8 +910,10 @@ async def start_scheduler(
                     try:
                         discord = DiscordNotifier()
                         setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
+                        entry_price = float(signal.entry_price)
+                        order_total = entry_price * shares
                         discord.send_trade_alert(
-                            message=f"ENTRY: {signal.symbol} x {shares} shares | {setup_name.upper()} | Stop ${stop_price:.2f}",
+                            message=f"ENTRY: {signal.symbol} x {shares} @ ${entry_price:.2f} = ${order_total:.2f}\n{setup_name.upper()} | Stop ${stop_price:.2f} | Score: {signal.quality_score}",
                             trade_id=str(result.broker_order_id)
                         )
                     except Exception as e:
