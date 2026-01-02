@@ -137,7 +137,9 @@ class PositionService:
         stop_atr_ratio = None
         if atr_at_entry and atr_at_entry > 0 and stop > 0 and order.avg_fill_price:
             stop_distance = order.avg_fill_price - stop
-            stop_atr_ratio = stop_distance / atr_at_entry
+            # Ensure Decimal types for safe division
+            atr = Decimal(str(atr_at_entry)) if not isinstance(atr_at_entry, Decimal) else atr_at_entry
+            stop_atr_ratio = stop_distance / atr
         
         # Get invalidation level (EP candle low) - wider than tactical stop
         invalidation = getattr(order, 'invalidation_level', None)

@@ -56,14 +56,18 @@ class Signal:
         """Stop distance as percentage of entry."""
         if self.entry_price == 0:
             return 0
-        return float((self.stop_distance / self.entry_price) * 100)
+        # Ensure Decimal types for safe division
+        entry = Decimal(str(self.entry_price)) if not isinstance(self.entry_price, Decimal) else self.entry_price
+        return float((self.stop_distance / entry) * 100)
     
     @property
     def stop_atr(self) -> float:
         """Stop distance in ATR units (KK uses 1.0-1.5 ATR max)."""
         if self.atr_at_entry is None or self.atr_at_entry == 0:
             return 0
-        return float(self.stop_distance / self.atr_at_entry)
+        # Ensure Decimal types for safe division
+        atr = Decimal(str(self.atr_at_entry)) if not isinstance(self.atr_at_entry, Decimal) else self.atr_at_entry
+        return float(self.stop_distance / atr)
     
     def calculate_shares(self, risk_dollars: Decimal) -> int:
         """Calculate position size based on risk."""
