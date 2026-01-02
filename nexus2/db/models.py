@@ -147,6 +147,12 @@ class PositionModel(Base):
     # Related order
     entry_order_id = Column(String(36), ForeignKey("orders.id"), nullable=True)
     
+    # Signal quality at entry (for tracking/analysis)
+    quality_score = Column(Integer, nullable=True)
+    tier = Column(String(20), nullable=True)  # FOCUS, WIDE
+    rs_percentile = Column(Integer, nullable=True)
+    adr_percent = Column(String(10), nullable=True)
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -165,6 +171,10 @@ class PositionModel(Base):
             "broker_type": self.broker_type,
             "account": self.account,
             "entry_order_id": self.entry_order_id,
+            "quality_score": self.quality_score,
+            "tier": self.tier,
+            "rs_percentile": self.rs_percentile,
+            "adr_percent": self.adr_percent,
             "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
         }
 

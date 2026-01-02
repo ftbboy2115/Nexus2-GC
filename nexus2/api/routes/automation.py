@@ -844,6 +844,11 @@ async def start_scheduler(
                         "current_stop": str(stop_price),
                         "realized_pnl": "0",
                         "opened_at": datetime.utcnow(),
+                        # Signal quality tracking
+                        "quality_score": signal.quality_score,
+                        "tier": signal.tier,
+                        "rs_percentile": signal.rs_percentile,
+                        "adr_percent": str(signal.adr_percent) if signal.adr_percent else None,
                     })
                     
                     # Update engine stats
