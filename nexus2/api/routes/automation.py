@@ -756,17 +756,21 @@ async def start_scheduler(
                 skipped.append({"symbol": signal.symbol, "reason": "Already holding position"})
                 continue
             
+            
             # Safety check: Can we open a new position?
             if not engine.can_open_position():
                 logger.warning(f"[AutoExec] Position limit reached, stopping at {len(executed)} trades")
                 break
             
+            
             # Calculate position size based on risk
             shares = signal.calculate_shares(engine.config.risk_per_trade)
             
+            
+            
             # Cap position size to max_per_symbol setting
             if signal.entry_price > 0:
-                max_shares_from_cap = int(max_per_symbol / float(signal.entry_price))
+                max_shares_from_cap = int(float(max_per_symbol) / float(signal.entry_price))
                 print(f"📊 [DEBUG] {signal.symbol}: entry_price={signal.entry_price}, max_per_symbol={max_per_symbol}, max_shares={max_shares_from_cap}")
                 if shares > max_shares_from_cap:
                     print(f"🔒 [AutoExec] Capping {signal.symbol} shares from {shares} to {max_shares_from_cap} (max ${max_per_symbol})")
