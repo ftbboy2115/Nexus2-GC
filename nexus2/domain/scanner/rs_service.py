@@ -76,7 +76,7 @@ class RSService:
         API usage tracking.
         """
         self._fmp = adapter
-        logger.info("[RS] Using shared FMP adapter")
+        print("[RS] Using shared FMP adapter")
     
     @property
     def fmp(self):
@@ -84,7 +84,7 @@ class RSService:
         if self._fmp is None:
             from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
             self._fmp = FMPAdapter()
-            logger.info("[RS] Created new FMP adapter (not shared)")
+            print("[RS] Created new FMP adapter (not shared)")
         return self._fmp
     
     def _save_cache(self) -> None:
@@ -118,7 +118,7 @@ class RSService:
         """Load RS universe from file cache. Returns True if loaded successfully."""
         try:
             if not self.CACHE_FILE.exists():
-                logger.info("[RS] No cache file found")
+                print("[RS] No cache file found")
                 return False
             
             with open(self.CACHE_FILE, "r") as f:
@@ -130,7 +130,7 @@ class RSService:
                 
                 # Check if cache is still valid
                 if datetime.now() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
-                    logger.info("[RS] Cache file expired, will refresh")
+                    print("[RS] Cache file expired, will refresh")
                     return False
             else:
                 return False
@@ -148,11 +148,11 @@ class RSService:
                     calculated_at=datetime.fromisoformat(data["calculated_at"]),
                 )
             
-            logger.info(f"[RS] Loaded cache: {len(self._universe)} stocks from {self.CACHE_FILE}")
+            print(f"[RS] Loaded cache: {len(self._universe)} stocks from {self.CACHE_FILE}")
             return True
             
         except Exception as e:
-            logger.warning(f"[RS] Failed to load cache: {e}")
+            print(f"[RS] Failed to load cache: {e}")
             return False
     
     def get_rs_percentile(self, symbol: str) -> int:
