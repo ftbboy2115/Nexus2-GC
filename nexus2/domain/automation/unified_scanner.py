@@ -457,6 +457,10 @@ class UnifiedScannerService:
                 quality += 2
             quality = min(10, quality)
             
+            # Get actual RS percentile from RS service
+            from nexus2.domain.scanner.rs_service import get_rs_service
+            rs_percentile = get_rs_service().get_rs_percentile(candidate.symbol)
+            
             return Signal(
                 symbol=candidate.symbol,
                 setup_type=SetupType.HTF,
@@ -464,7 +468,7 @@ class UnifiedScannerService:
                 tactical_stop=tactical_stop,
                 quality_score=quality,
                 tier="FOCUS" if quality >= 8 else "WIDE" if quality >= 6 else "SKIP",
-                rs_percentile=70,  # Default
+                rs_percentile=rs_percentile,
                 adr_percent=5.0,  # HTF stocks tend to be volatile
                 scanner_mode="htf",
             )

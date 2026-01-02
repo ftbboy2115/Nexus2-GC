@@ -187,9 +187,9 @@ class BreakoutScannerService:
         sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else sma20
         ma_stacked = current_price > sma10 > sma20 > sma50
         
-        # Calculate RS percentile (simplified)
-        perf_3m = ((current_price - closes[-63]) / closes[-63]) * 100 if len(closes) >= 63 else Decimal("0")
-        rs_percentile = min(99, max(1, int(50 + float(perf_3m))))
+        # Calculate RS percentile using RS Service (true percentile ranking)
+        from nexus2.domain.scanner.rs_service import get_rs_service
+        rs_percentile = get_rs_service().get_rs_percentile(symbol)
         
         if rs_percentile < self.settings.min_rs_percentile:
             return None
