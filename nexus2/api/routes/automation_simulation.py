@@ -634,19 +634,30 @@ async def load_historical_data(
     count = data.load_data(symbol.upper(), bar_dicts)
     
     # Set simulation clock to date with enough history for scanner lookback
-    # Scanner needs ~20 bars of history, so set clock 30+ bars into the data
-    if bar_dicts:
+    # Only if clock wasn't explicitly set by user (check if clock is at default or very old)
+    # The reset endpoint sets the clock, so we respect that
+    if bar_dicts and data._sim_clock:
         from datetime import datetime
         import pytz
         ET = pytz.timezone("US/Eastern")
         
-        # Use bar at position 30 (or last if fewer bars) for enough lookback
-        target_idx = min(30, len(bar_dicts) - 1)
-        target_date_str = bar_dicts[target_idx]["date"]
-        target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
-        clock.set_time(ET.localize(target_date.replace(hour=9, minute=30)))
+        current_clock_date = clock.get_trading_day()
+        if isinstance(current_clock_date, str):
+            current_clock_date = datetime.strptime(current_clock_date, "%Y-%m-%d").date()
         
-        logger.info(f"[Simulation] Clock set to {target_date_str} (bar {target_idx + 1} of {len(bar_dicts)})")
+        # Check if data covers the current clock date
+        first_bar = datetime.strptime(bar_dicts[0]["date"], "%Y-%m-%d").date()
+        last_bar = datetime.strptime(bar_dicts[-1]["date"], "%Y-%m-%d").date()
+        
+        if current_clock_date < first_bar or current_clock_date > last_bar:
+            # Clock is outside data range, auto-adjust to a sensible date
+            target_idx = min(30, len(bar_dicts) - 1)
+            target_date_str = bar_dicts[target_idx]["date"]
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
+            clock.set_time(ET.localize(target_date.replace(hour=9, minute=30)))
+            logger.info(f"[Simulation] Clock adjusted to {target_date_str} (outside data range)")
+        else:
+            logger.info(f"[Simulation] Clock kept at {current_clock_date} (within data range)")
     
     # Update broker price if exists
     if hasattr(get_simulation_status, '_mock_broker') and bar_dicts:
