@@ -34,6 +34,25 @@ class OHLCV:
         return self.high - self.low
 
 
+@dataclass
+class MockQuote:
+    """Mock quote for scanner compatibility (Breakout scanner expects .price attribute)."""
+    symbol: str
+    price: float
+    bid: float
+    ask: float
+    volume: int = 0
+
+
+@dataclass
+class MockStockInfo:
+    """Mock stock info for scanner compatibility."""
+    symbol: str
+    name: str
+    market_cap: float = 1_000_000_000  # Default $1B
+    sector: str = "Unknown"
+
+
 class MockMarketData:
     """
     Provides simulated market data from historical bars.
@@ -59,6 +78,44 @@ class MockMarketData:
     def set_clock(self, clock):
         """Set simulation clock reference."""
         self._sim_clock = clock
+    
+    @property
+    def fmp(self):
+        """
+        Return self as FMP adapter proxy for scanner compatibility.
+        
+        Scanners call market_data.fmp.get_daily_bars(), etc.
+        In simulation mode, we return self so those calls work.
+        """
+        return self
+    
+    def screen_stocks(self, min_market_cap: int = 0, min_price: float = 0, 
+                      min_volume: int = 0, limit: int = 200) -> List[Dict]:
+        """
+        Stock screener for Breakout scanner compatibility.
+        
+        In simulation, returns all loaded symbols as candidates.
+        """
+        return [{"symbol": sym} for sym in self._data.keys()]
+    
+    def get_stock_info(self, symbol: str) -> Optional[MockStockInfo]:
+        """
+        Get stock info for Breakout scanner compatibility.
+        
+        Returns MockStockInfo with symbol as name.
+        """
+        if symbol not in self._data:
+            return None
+        return MockStockInfo(symbol=symbol, name=symbol)
+    
+    def get_etf_symbols(self) -> set:
+        """
+        Get ETF symbols to exclude from scans.
+        
+        In simulation, returns empty set (no ETF filtering).
+        """
+        return set()
+
     
     def load_data(self, symbol: str, bars: List[Dict]) -> int:
         """
@@ -167,12 +224,12 @@ class MockMarketData:
         """Alias for get_current_price - used by MockBroker."""
         return self.get_current_price(symbol)
     
-    def get_quote(self, symbol: str) -> Optional[Dict]:
+    def get_quote(self, symbol: str) -> Optional[MockQuote]:
         """
         Get quote (bid/ask/last) for symbol.
         
         Returns:
-            Dict with price info, or None if no data
+            MockQuote with price info, or None if no data
         """
         price = self.get_current_price(symbol)
         if price is None:
@@ -181,13 +238,13 @@ class MockMarketData:
         # Simulate small spread
         spread = price * 0.001  # 0.1% spread
         
-        return {
-            "symbol": symbol,
-            "last": price,
-            "bid": round(price - spread/2, 2),
-            "ask": round(price + spread/2, 2),
-            "volume": 0,  # Would need intraday tracking
-        }
+        return MockQuote(
+            symbol=symbol,
+            price=price,
+            bid=round(price - spread/2, 2),
+            ask=round(price + spread/2, 2),
+            volume=0,
+        )
     
     def get_daily_bars(self, symbol: str, days: int = 60, limit: int = None) -> List[OHLCV]:
         """
@@ -261,6 +318,33 @@ class MockMarketData:
                     break
         
         return new_prices
+    
+    def get_historical_prices(self, symbol: str, days: int = 60) -> List[Dict]:
+        """
+        Get historical prices for HTF scanner.
+        
+        Returns list of dicts with open, high, low, close, volume.
+        """
+        bars = self.get_daily_bars(symbol, days=days)
+        return [
+            {
+                "date": b.date,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+            }
+            for b in bars
+        ]
+    
+    def get_trend_leaders(self, limit: int = 100) -> List[str]:
+        """
+        Get trend leaders for HTF scanner.
+        
+        In simulation, returns all loaded symbols.
+        """
+        return list(self._data.keys())[:limit]
     
     def get_symbols(self) -> List[str]:
         """Get list of symbols with loaded data."""
