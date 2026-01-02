@@ -56,6 +56,7 @@ async def create_unified_scanner_callback(
     scan_modes: List[str] = None,
     htf_frequency: str = "every_cycle",
     sim_mode: bool = False,  # NEW: Use MockMarketData when True
+    preset: str = "strict",  # NEW: "relaxed" applies looser EP criteria
 ):
     """
     Create a scanner callback that uses the UnifiedScannerService.
@@ -194,8 +195,37 @@ async def create_unified_scanner_callback(
                 htf_scanner=htf_scanner,
             )
         else:
-            # LIVE MODE: Use default singletons
-            scanner = UnifiedScannerService(settings=settings)
+            # LIVE MODE: Apply preset-based settings
+            from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
+            from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
+            from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
+            
+            # Check if relaxed preset - use looser EP criteria
+            if preset.lower() == "relaxed":
+                ep_settings = EPScanSettings(
+                    min_gap=Decimal("3.0"),    # Lower from 8% 
+                    min_rvol=Decimal("0.5"),   # Lower from 2.0
+                    min_price=Decimal("5.0"),  # Keep minimum price
+                    min_range_position=Decimal("0.30"),  # Lower from 0.40
+                )
+                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=0.5x)")
+                ep_scanner = EPScannerService(settings=ep_settings)
+            else:
+                # Strict mode - use defaults
+                ep_scanner = None  # Will use singleton with defaults
+            
+            # Create scanner with optional custom EP scanner
+            if ep_scanner:
+                breakout_scanner = BreakoutScannerService()
+                htf_scanner = HTFScannerService()
+                scanner = UnifiedScannerService(
+                    settings=settings,
+                    ep_scanner=ep_scanner,
+                    breakout_scanner=breakout_scanner,
+                    htf_scanner=htf_scanner,
+                )
+            else:
+                scanner = UnifiedScannerService(settings=settings)
         
         # Run scan (sync call wrapped for async)
         import asyncio

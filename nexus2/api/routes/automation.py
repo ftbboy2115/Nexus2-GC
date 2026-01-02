@@ -657,6 +657,7 @@ async def start_scheduler(
             sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
             
             # Reconfigure engine scanner with fresh settings + sim_mode
+            preset = sched_settings.preset or "strict"
             engine._scanner_func = await create_unified_scanner_callback(
                 min_quality=min_quality,
                 max_stop_percent=max_stop_percent,
@@ -665,6 +666,7 @@ async def start_scheduler(
                 scan_modes=scan_modes,
                 htf_frequency=htf_frequency,
                 sim_mode=sim_mode,  # Pass sim_mode to use MockMarketData
+                preset=preset,  # Pass preset for relaxed EP settings
             )
             print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}")
         finally:
