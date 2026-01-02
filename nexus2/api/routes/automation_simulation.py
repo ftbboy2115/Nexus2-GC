@@ -6,6 +6,7 @@ Extracted from automation.py for maintainability.
 """
 
 from fastapi import APIRouter
+from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,124 @@ async def reset_simulation(
     }
 
 
+@router.post("/simulation/load_htf_pattern", response_model=dict)
+async def load_htf_pattern(
+    symbol: str = "HTFTEST",
+    start_price: float = 50.0,
+    move_percent: float = 120.0,  # 120% = HTF qualifies (needs 90%+)
+    pullback_percent: float = 15.0,  # 15% pullback in flag
+):
+    """
+    Load synthetic data with an HTF-qualifying pattern.
+    
+    Creates a stock with:
+    - A strong uptrend (the "pole") 
+    - A tight consolidation (the "flag")
+    - Pullback within 25% (qualifying for HTF)
+    """
+    from nexus2.adapters.simulation import get_mock_market_data, get_simulation_clock
+    from datetime import date, timedelta
+    import random
+    
+    data = get_mock_market_data()
+    clock = get_simulation_clock()
+    
+    sim_date = clock.get_trading_day()
+    if isinstance(sim_date, str):
+        sim_date = date.fromisoformat(sim_date)
+    
+    # Generate 90 trading days of data ENDING at sim_date
+    # Work backwards to calculate start date
+    total_trading_days = 90
+    calendar_days = int(total_trading_days * 7 / 5) + 10  # Rough estimate + buffer
+    start_date = sim_date - timedelta(days=calendar_days)
+    
+    # Generate trading days between start and sim_date
+    trading_dates = []
+    current = start_date
+    while current <= sim_date:
+        if current.weekday() < 5:  # Mon-Fri
+            trading_dates.append(current)
+        current += timedelta(days=1)
+    
+    # Take last 90 trading days
+    trading_dates = trading_dates[-total_trading_days:]
+    
+    if len(trading_dates) < 60:  # Need at least 60 days for HTF scanner
+        return {"error": "Not enough trading days", "count": len(trading_dates)}
+    
+    bars = []
+    price = start_price
+    
+    # Split into pole (first 60%) and flag (last 40%)
+    pole_days = int(len(trading_dates) * 0.6)
+    flag_days = len(trading_dates) - pole_days
+    
+    # Calculate target high price
+    target_high = start_price * (1 + move_percent / 100)
+    daily_gain = (target_high / start_price) ** (1 / pole_days) - 1
+    
+    # Phase 1: Pole (strong uptrend)
+    for i in range(pole_days):
+        open_price = price
+        price = price * (1 + daily_gain * (0.8 + random.random() * 0.4))
+        close_price = price
+        
+        high_price = max(open_price, close_price) * (1 + random.random() * 0.02)
+        low_price = min(open_price, close_price) * (1 - random.random() * 0.02)
+        
+        bars.append({
+            "date": trading_dates[i].isoformat(),
+            "open": round(open_price, 2),
+            "high": round(high_price, 2),
+            "low": round(low_price, 2),
+            "close": round(close_price, 2),
+            "volume": int(2_000_000 * (0.8 + random.random() * 0.4)),
+        })
+    
+    highest_high = price
+    pullback_target = highest_high * (1 - pullback_percent / 100)
+    
+    # Phase 2: Flag (tight consolidation)
+    for i in range(flag_days):
+        open_price = price
+        volatility = 0.01
+        price = price * (1 + (random.random() - 0.5) * volatility)
+        
+        # Keep in range
+        if price < pullback_target:
+            price = pullback_target * (1 + random.random() * 0.02)
+        if price > highest_high:
+            price = highest_high * (1 - random.random() * 0.02)
+        
+        close_price = price
+        high_price = max(open_price, close_price) * (1 + random.random() * 0.01)
+        low_price = min(open_price, close_price) * (1 - random.random() * 0.01)
+        
+        bars.append({
+            "date": trading_dates[pole_days + i].isoformat(),
+            "open": round(open_price, 2),
+            "high": round(high_price, 2),
+            "low": round(low_price, 2),
+            "close": round(close_price, 2),
+            "volume": int(500_000 * (0.8 + random.random() * 0.4)),
+        })
+    
+    count = data.load_data(symbol, bars)
+    
+    return {
+        "status": "loaded",
+        "symbol": symbol,
+        "bars_loaded": count,
+        "start_price": start_price,
+        "target_high": round(highest_high, 2),
+        "move_percent": round((highest_high - start_price) / start_price * 100, 1),
+        "current_price": round(price, 2),
+        "pullback_percent": round((highest_high - price) / highest_high * 100, 1),
+        "date_range": f"{trading_dates[0].isoformat()} to {trading_dates[-1].isoformat()}",
+    }
+
+
 @router.get("/simulation/debug", response_model=dict)
 async def debug_simulation():
     """
@@ -216,6 +335,65 @@ async def diagnostic_scan():
     }
 
 
+@router.get("/simulation/diagnostic_htf", response_model=dict)
+async def diagnostic_htf(symbol: str = "HTFSTOCK"):
+    """
+    Debug HTF scanner data flow for a specific symbol.
+    """
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    from nexus2.domain.scanner.htf_scanner_service import HTFScannerService, HTFScanSettings
+    from decimal import Decimal
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    # Ensure clock is connected
+    if data._sim_clock is None:
+        data.set_clock(clock)
+    
+    sim_date = clock.get_trading_day()
+    
+    # Check what data is available
+    raw_bars = data._data.get(symbol, [])
+    daily_bars = data.get_daily_bars(symbol, days=90)
+    history = data.get_historical_prices(symbol, days=90)
+    
+    # Calculate HTF metrics if we have data
+    htf_metrics = {}
+    if history and len(history) >= 60:
+        window = history[-60:]
+        highs = [Decimal(str(d.get("high", 0))) for d in window]
+        lows = [Decimal(str(d.get("low", 0))) for d in window]
+        
+        highest_high = max(highs)
+        lowest_low = min([l for l in lows if l > 0])
+        current_close = Decimal(str(window[-1].get("close", 0)))
+        
+        move_pct = ((highest_high - lowest_low) / lowest_low) * 100 if lowest_low > 0 else 0
+        pullback_pct = ((highest_high - current_close) / highest_high) * 100 if highest_high > 0 else 0
+        
+        htf_metrics = {
+            "move_pct": float(move_pct),
+            "pullback_pct": float(pullback_pct),
+            "highest_high": float(highest_high),
+            "lowest_low": float(lowest_low),
+            "current_close": float(current_close),
+            "passes_min_move": float(move_pct) >= 90,
+            "passes_max_pullback": float(pullback_pct) <= 25,
+        }
+    
+    return {
+        "symbol": symbol,
+        "sim_date": sim_date,
+        "raw_bars_count": len(raw_bars),
+        "daily_bars_count": len(daily_bars),
+        "history_count": len(history),
+        "first_bar_date": daily_bars[0].date if daily_bars else None,
+        "last_bar_date": daily_bars[-1].date if daily_bars else None,
+        "htf_metrics": htf_metrics,
+    }
+
+
 @router.post("/simulation/diagnostic_unified_scan", response_model=dict)
 async def diagnostic_unified_scan():
     """
@@ -250,10 +428,17 @@ async def diagnostic_unified_scan():
         min_dollar_vol=1_000_000,
     )
     
+    # HTF settings with longer lookback to capture full pole+flag
+    from nexus2.domain.scanner.htf_scanner_service import HTFScanSettings
+    sim_htf_settings = HTFScanSettings(
+        lookback_days=90,  # Capture full pole+flag pattern
+        min_dollar_vol=Decimal("1000000"),  # Lower for sim
+    )
+    
     # Create scanners with MockMarketData
     ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=data)
     breakout_scanner = BreakoutScannerService(market_data=data)
-    htf_scanner = HTFScannerService(market_data=data)
+    htf_scanner = HTFScannerService(settings=sim_htf_settings, market_data=data)
     
     # Use same settings as force_scan
     settings = UnifiedScanSettings(

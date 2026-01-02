@@ -624,12 +624,14 @@ class MockMarketData:
         Get historical prices as list of dicts for HTF scanner.
         
         Returns list of dicts with open, high, low, close, volume keys.
+        NOTE: Returns oldest-first order (HTF scanner uses history[-60:] for most recent)
         """
         bars = self.get_daily_bars(symbol, days=days)
         if not bars:
             return []
         
-        # Convert OHLCV objects to dicts (HTF scanner expects dicts)
+        # Convert OHLCV objects to dicts (HTF scanner expects oldest-first order)
+        # get_daily_bars returns newest-first, so reverse it
         return [
             {
                 "date": b.date,
@@ -639,7 +641,7 @@ class MockMarketData:
                 "close": b.close,
                 "volume": b.volume,
             }
-            for b in bars
+            for b in reversed(bars)
         ]
     
     def get_company_name(self, symbol: str) -> Optional[str]:
