@@ -45,8 +45,9 @@ class RSService:
     But simplified here to 1-month for speed, with 3-month as fallback.
     """
     
-    # Cache duration
-    CACHE_HOURS = 6  # Refresh every 6 hours
+    # Cache duration - 24 hours to cover full trading day
+    # (RS uses EOD data which only updates after market close)
+    CACHE_HOURS = 24
     
     # Weighting (simplified: 60% 1M, 40% 3M)
     WEIGHT_1M = 0.60
