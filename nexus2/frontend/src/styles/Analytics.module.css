@@ -61,6 +61,22 @@
     cursor: not-allowed;
 }
 
+.sourceFilter {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    min-width: 140px;
+}
+
+.sourceFilter:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
 .error {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);

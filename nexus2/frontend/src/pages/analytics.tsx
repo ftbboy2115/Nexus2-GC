@@ -45,26 +45,30 @@ export default function Analytics() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'setup' | 'comparison'>('overview')
+    const [sourceFilter, setSourceFilter] = useState<string>('') // '', 'nac', 'manual', 'external'
 
-    // Fetch all analytics data on mount
+    // Fetch all analytics data on mount and when source changes
     useEffect(() => {
         fetchAnalytics()
-    }, [])
+    }, [sourceFilter])
 
     const fetchAnalytics = async () => {
         setLoading(true)
         setError(null)
 
+        // Build source query param
+        const sourceParam = sourceFilter ? `?source=${sourceFilter}` : ''
+
         try {
             // Fetch quick stats
-            const quickRes = await fetch('http://localhost:8000/analytics/quick-stats')
+            const quickRes = await fetch(`http://localhost:8000/analytics/quick-stats${sourceParam}`)
             if (quickRes.ok) {
                 const data = await quickRes.json()
                 setQuickStats(data)
             }
 
             // Fetch detailed summary
-            const summaryRes = await fetch('http://localhost:8000/analytics/summary')
+            const summaryRes = await fetch(`http://localhost:8000/analytics/summary${sourceParam}`)
             if (summaryRes.ok) {
                 const data = await summaryRes.json()
                 if (data.status === 'success') {
@@ -73,7 +77,7 @@ export default function Analytics() {
             }
 
             // Fetch by setup
-            const setupRes = await fetch('http://localhost:8000/analytics/by-setup')
+            const setupRes = await fetch(`http://localhost:8000/analytics/by-setup${sourceParam}`)
             if (setupRes.ok) {
                 const data = await setupRes.json()
                 if (data.status === 'success') {
@@ -133,6 +137,16 @@ export default function Analytics() {
                         <h1 className={styles.title}>📈 Performance Analytics</h1>
                     </div>
                     <div className={styles.headerRight}>
+                        <select
+                            value={sourceFilter}
+                            onChange={(e) => setSourceFilter(e.target.value)}
+                            className={styles.sourceFilter}
+                        >
+                            <option value="">All Trades</option>
+                            <option value="nac">NAC Only</option>
+                            <option value="manual">Manual Only</option>
+                            <option value="external">External Only</option>
+                        </select>
                         <button
                             onClick={fetchAnalytics}
                             className={styles.refreshBtn}
