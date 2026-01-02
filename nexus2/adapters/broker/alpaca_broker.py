@@ -117,7 +117,13 @@ class AlpacaBroker:
             return response.json() if response.content else None
             
         except httpx.HTTPStatusError as e:
-            raise AlpacaBrokerError(f"Alpaca API error: {e.response.status_code}")
+            # Include response body for detailed error info
+            try:
+                error_body = e.response.json()
+                error_detail = error_body.get('message', str(error_body))
+            except:
+                error_detail = e.response.text
+            raise AlpacaBrokerError(f"Alpaca API error {e.response.status_code}: {error_detail}")
         except Exception as e:
             raise AlpacaBrokerError(f"Alpaca request error: {e}")
     
