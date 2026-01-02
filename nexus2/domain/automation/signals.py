@@ -46,7 +46,10 @@ class Signal:
     @property
     def stop_distance(self) -> Decimal:
         """Distance from entry to stop."""
-        return self.entry_price - self.tactical_stop
+        # Ensure Decimal types for safe subtraction
+        entry = Decimal(str(self.entry_price)) if not isinstance(self.entry_price, Decimal) else self.entry_price
+        stop = Decimal(str(self.tactical_stop)) if not isinstance(self.tactical_stop, Decimal) else self.tactical_stop
+        return entry - stop
     
     @property
     def stop_percent(self) -> float:
