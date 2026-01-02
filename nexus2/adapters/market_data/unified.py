@@ -136,6 +136,27 @@ class UnifiedMarketData:
             return (avg_range / last_close) * 100
         return None
     
+    def get_opening_range(
+        self,
+        symbol: str,
+        timeframe_minutes: int = 5,
+        date: Optional[str] = None,
+    ) -> Optional[tuple[Decimal, Decimal]]:
+        """
+        Get the opening range (high, low) for the first N minutes of trading.
+        
+        Used for EP tactical stop calculation.
+        
+        Args:
+            symbol: Stock symbol
+            timeframe_minutes: Opening range timeframe (1, 5, 15, 30)
+            date: Date in YYYY-MM-DD format (defaults to today)
+            
+        Returns:
+            (opening_range_high, opening_range_low) or None if unavailable
+        """
+        return self.fmp.get_opening_range(symbol, timeframe_minutes, date)
+    
     def get_average_volume(self, symbol: str, period: int = 20) -> Optional[int]:
         """Get average volume over period."""
         bars = self.get_daily_bars(symbol, limit=period + 5)
