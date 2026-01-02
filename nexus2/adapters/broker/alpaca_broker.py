@@ -164,6 +164,21 @@ class AlpacaBroker:
         stop_price: Optional[Decimal] = None,
     ) -> BrokerOrder:
         """Submit order to Alpaca."""
+        
+        # CRITICAL SAFETY CHECK: Prevent selling without existing long position
+        # KK-style trading is LONG ONLY - never short
+        if side.lower() == "sell":
+            positions = self.get_positions()
+            position = positions.get(symbol)
+            if not position:
+                error_msg = f"BLOCKED: Attempted to sell {symbol} but no long position exists. This would create a short position."
+                print(f"🛑 [SAFETY] {error_msg}")
+                raise AlpacaBrokerError(error_msg)
+            if position.quantity < quantity:
+                error_msg = f"BLOCKED: Attempted to sell {quantity} shares of {symbol} but only hold {position.quantity}. This would create a short position."
+                print(f"🛑 [SAFETY] {error_msg}")
+                raise AlpacaBrokerError(error_msg)
+        
         payload = {
             "symbol": symbol,
             "qty": str(quantity),
