@@ -8,11 +8,15 @@ Per KK methodology:
 - Focus on 1-month performance (emerging leaders)
 - Top percentiles (97-99) indicate strongest stocks
 - Cache results daily to avoid repeated API calls
+- Persist cache to file for fast startup after server restart
 """
 
+import json
 import logging
-from dataclasses import dataclass, field
+import os
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 
@@ -53,10 +57,16 @@ class RSService:
     WEIGHT_1M = 0.60
     WEIGHT_3M = 0.40
     
+    # File cache path (in domain/logs directory)
+    CACHE_FILE = Path(__file__).parent.parent / "logs" / "rs_cache.json"
+    
     def __init__(self):
         self._universe: Dict[str, RSData] = {}
         self._last_refresh: Optional[datetime] = None
         self._fmp = None  # Lazy load
+        
+        # Try to load from file cache on startup
+        self._load_cache()
     
     @property
     def fmp(self):
@@ -65,6 +75,74 @@ class RSService:
             from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
             self._fmp = FMPAdapter()
         return self._fmp
+    
+    def _save_cache(self) -> None:
+        """Save RS universe to file cache."""
+        try:
+            # Ensure directory exists
+            self.CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            
+            cache_data = {
+                "last_refresh": self._last_refresh.isoformat() if self._last_refresh else None,
+                "universe": {
+                    symbol: {
+                        "symbol": data.symbol,
+                        "perf_1m": data.perf_1m,
+                        "perf_3m": data.perf_3m,
+                        "percentile": data.percentile,
+                        "calculated_at": data.calculated_at.isoformat(),
+                    }
+                    for symbol, data in self._universe.items()
+                }
+            }
+            
+            with open(self.CACHE_FILE, "w") as f:
+                json.dump(cache_data, f)
+            
+            logger.info(f"[RS] Saved cache: {len(self._universe)} stocks to {self.CACHE_FILE}")
+        except Exception as e:
+            logger.warning(f"[RS] Failed to save cache: {e}")
+    
+    def _load_cache(self) -> bool:
+        """Load RS universe from file cache. Returns True if loaded successfully."""
+        try:
+            if not self.CACHE_FILE.exists():
+                logger.info("[RS] No cache file found")
+                return False
+            
+            with open(self.CACHE_FILE, "r") as f:
+                cache_data = json.load(f)
+            
+            # Parse last_refresh
+            if cache_data.get("last_refresh"):
+                self._last_refresh = datetime.fromisoformat(cache_data["last_refresh"])
+                
+                # Check if cache is still valid
+                if datetime.now() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
+                    logger.info("[RS] Cache file expired, will refresh")
+                    return False
+            else:
+                return False
+            
+            # Load universe
+            universe_data = cache_data.get("universe", {})
+            self._universe = {}
+            
+            for symbol, data in universe_data.items():
+                self._universe[symbol] = RSData(
+                    symbol=data["symbol"],
+                    perf_1m=data["perf_1m"],
+                    perf_3m=data["perf_3m"],
+                    percentile=data["percentile"],
+                    calculated_at=datetime.fromisoformat(data["calculated_at"]),
+                )
+            
+            logger.info(f"[RS] Loaded cache: {len(self._universe)} stocks from {self.CACHE_FILE}")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"[RS] Failed to load cache: {e}")
+            return False
     
     def get_rs_percentile(self, symbol: str) -> int:
         """
@@ -157,6 +235,9 @@ class RSService:
             )
         
         self._last_refresh = datetime.now()
+        
+        # Save to file cache for persistence across restarts
+        self._save_cache()
         
         if verbose:
             logger.info(f"[RS] Universe refresh complete: {len(self._universe)} stocks ranked")
