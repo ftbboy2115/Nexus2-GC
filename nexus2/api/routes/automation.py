@@ -1033,7 +1033,9 @@ async def start_scheduler(
         if broker and not engine.config.sim_only:
             # Submit market sell order
             try:
+                from uuid import uuid4
                 result = broker.submit_order(
+                    client_order_id=uuid4(),
                     symbol=signal.symbol,
                     quantity=signal.shares_to_exit,
                     side="sell",
