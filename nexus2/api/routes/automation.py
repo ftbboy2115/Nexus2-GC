@@ -987,35 +987,123 @@ async def force_scheduler_scan(
     finally:
         db.close()
     
-    # Configure engine scanner with sim_mode
-    engine._scanner_func = await create_unified_scanner_callback(
-        min_quality=min_quality,
-        max_stop_percent=max_stop_percent,
-        stop_mode=stop_mode,
-        max_stop_atr=max_stop_atr,
-        scan_modes=scan_modes,
-        htf_frequency=htf_frequency,
-        sim_mode=sim_mode,
-    )
-    
     logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
     
-    # Run the scan cycle
-    scan_result = await engine.run_scan_cycle()
+    # =============================
+    # SIM MODE: Run scanner directly (bypass engine callback issues)
+    # =============================
+    if sim_mode:
+        from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+        from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
+        from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
+        from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
+        from nexus2.domain.automation.unified_scanner import (
+            UnifiedScannerService,
+            UnifiedScanSettings,
+            ScanMode,
+        )
+        
+        clock = get_simulation_clock()
+        data = get_mock_market_data()
+        
+        # Ensure clock is connected
+        if data._sim_clock is None:
+            data.set_clock(clock)
+        
+        logger.info(f"[ForceScan SIM] Using MockMarketData (clock={clock.get_trading_day()}, symbols={data.get_symbols()})")
+        
+        # Use relaxed sim settings for EP
+        sim_ep_settings = EPScanSettings(
+            min_gap=3.0,
+            min_rvol=0.5,
+            min_price=5.0,
+            min_dollar_vol=1_000_000,
+        )
+        
+        # Create scanners with MockMarketData
+        ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=data)
+        breakout_scanner = BreakoutScannerService(market_data=data)
+        htf_scanner = HTFScannerService(market_data=data)
+        
+        # Use settings from database
+        enabled_modes = []
+        for mode_str in scan_modes:
+            if mode_str.lower() == "ep":
+                enabled_modes.append(ScanMode.EP_ONLY)
+            elif mode_str.lower() == "breakout":
+                enabled_modes.append(ScanMode.BREAKOUT_ONLY)
+            elif mode_str.lower() == "htf":
+                enabled_modes.append(ScanMode.HTF_ONLY)
+        
+        settings = UnifiedScanSettings(
+            modes=enabled_modes if enabled_modes else [ScanMode.EP_ONLY, ScanMode.BREAKOUT_ONLY, ScanMode.HTF_ONLY],
+            min_quality_score=min_quality,
+            stop_mode=stop_mode,
+            max_stop_atr=max_stop_atr,
+            max_stop_percent=max_stop_percent,
+        )
+        
+        scanner = UnifiedScannerService(
+            settings=settings,
+            ep_scanner=ep_scanner,
+            breakout_scanner=breakout_scanner,
+            htf_scanner=htf_scanner,
+        )
+        
+        # Run scan directly
+        scan_result = scanner.scan(verbose=False)
+        signals = scan_result.signals
+        
+        logger.info(f"[ForceScan SIM] Found {len(signals)} signals")
+    else:
+        # =============================
+        # LIVE MODE: Use engine callback as before
+        # =============================
+        engine._scanner_func = await create_unified_scanner_callback(
+            min_quality=min_quality,
+            max_stop_percent=max_stop_percent,
+            stop_mode=stop_mode,
+            max_stop_atr=max_stop_atr,
+            scan_modes=scan_modes,
+            htf_frequency=htf_frequency,
+            sim_mode=False,
+        )
+        
+        # Run the scan cycle
+        scan_result = await engine.run_scan_cycle()
+        
+        # Get signals from result
+        signals = []
+        if hasattr(scan_result, 'signals'):
+            signals = scan_result.signals if scan_result.signals else []
+        elif isinstance(scan_result, list):
+            signals = scan_result
     
-    # Get signals from context
-    signals = []
-    if hasattr(scan_result, 'signals'):
-        signals = [s.to_dict() if hasattr(s, 'to_dict') else str(s) for s in scan_result.signals]
-    elif isinstance(scan_result, dict) and 'signals' in scan_result:
-        signals = scan_result['signals']
+    # Format signals for response
+    formatted_signals = []
+    for s in signals[:10]:
+        if hasattr(s, 'symbol'):
+            # Signal object - convert to dict manually
+            formatted_signals.append({
+                "symbol": s.symbol,
+                "setup_type": s.setup_type.value if hasattr(s.setup_type, 'value') else str(s.setup_type),
+                "entry_price": float(s.entry_price) if s.entry_price else None,
+                "tactical_stop": float(s.tactical_stop) if s.tactical_stop else None,
+                "quality_score": s.quality_score,
+                "tier": s.tier,
+                "scanner_mode": getattr(s, 'scanner_mode', 'unknown'),
+            })
+        elif isinstance(s, dict):
+            formatted_signals.append(s)
+        else:
+            formatted_signals.append(str(s))
     
     result = {
         "status": "scan_complete",
         "sim_mode": sim_mode,
         "auto_execute": auto_execute,
         "signals_count": len(signals),
-        "signals": signals[:10],  # Limit to first 10 for display
+        "signals": formatted_signals,
     }
     
     # If auto_execute and we have signals, execute top signal

@@ -91,7 +91,7 @@ async def reset_simulation(
     
     if load_synthetic:
         for sym in symbols:
-            data.generate_synthetic(sym, days=60, base_price=150.0)
+            data.load_synthetic_data(sym, start_price=150.0, days=60)
     
     # Create mock broker
     broker = MockBroker(initial_cash=initial_cash)
@@ -117,6 +117,7 @@ async def reset_simulation(
 async def debug_simulation():
     """
     Debug endpoint - shows what get_gainers() and get_actives() return.
+    Also shows EP session snapshots to debug gap calculations.
     """
     from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
     
@@ -127,12 +128,192 @@ async def debug_simulation():
     if data._sim_clock is None:
         data.set_clock(clock)
     
+    gainers = data.get_gainers()[:5]
+    
+    # Build EP snapshots for top gainers to show gap vs change
+    ep_snapshots = []
+    for g in gainers:
+        snap = data.build_ep_session_snapshot(g["symbol"])
+        if snap:
+            # Calculate gap (open vs yesterday close)
+            gap_pct = ((snap["session_open"] - snap["yesterday_close"]) / snap["yesterday_close"]) * 100
+            ep_snapshots.append({
+                "symbol": g["symbol"],
+                "yesterday_close": snap["yesterday_close"],
+                "session_open": snap["session_open"],
+                "session_close": snap["last_price"],
+                "gap_pct": round(gap_pct, 2),  # THIS is what EP scanner checks
+                "change_pct": round(g["change_percent"], 2),  # This is close vs yesterday
+            })
+    
     return {
         "clock": clock.get_trading_day(),
         "is_market_hours": clock.is_market_hours(),
-        "gainers": data.get_gainers()[:5],  # Top 5 gainers
-        "actives": data.get_actives()[:5],  # Top 5 actives
+        "gainers": gainers,
+        "actives": data.get_actives()[:5],
         "symbols": data.get_symbols(),
+        "ep_snapshots": ep_snapshots,  # NEW: Shows gap vs change
+    }
+
+
+@router.post("/simulation/diagnostic_scan", response_model=dict)
+async def diagnostic_scan():
+    """
+    Run EP scanner directly with MockMarketData and capture all debug output.
+    
+    This shows exactly why candidates are being rejected.
+    """
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
+    import io
+    import sys
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    # Ensure clock is connected
+    if data._sim_clock is None:
+        data.set_clock(clock)
+    
+    # Use relaxed sim_mode settings
+    sim_ep_settings = EPScanSettings(
+        min_gap=3.0,    # 3% gap minimum 
+        min_rvol=0.5,   # 0.5x relative volume
+        min_price=5.0,
+        min_dollar_vol=1_000_000,  # Lower for simulation
+    )
+    
+    # Create scanner with MockMarketData
+    ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=data)
+    
+    # Capture stdout for verbose output
+    old_stdout = sys.stdout
+    sys.stdout = captured = io.StringIO()
+    
+    try:
+        # Run scan with verbose=True
+        result = ep_scanner.scan(verbose=True)
+    finally:
+        sys.stdout = old_stdout
+    
+    verbose_output = captured.getvalue()
+    
+    return {
+        "clock": clock.get_trading_day(),
+        "candidates_found": len(result.candidates),
+        "processed_count": result.processed_count,
+        "filtered_count": result.filtered_count,
+        "candidates": [
+            {
+                "symbol": c.symbol,
+                "gap_percent": float(c.gap_percent) if c.gap_percent else None,
+                "relative_volume": float(c.relative_volume) if c.relative_volume else None,
+                "status": c.status.value if c.status else None,
+            }
+            for c in result.candidates
+        ],
+        "verbose_output": verbose_output.split("\n") if verbose_output else [],
+    }
+
+
+@router.post("/simulation/diagnostic_unified_scan", response_model=dict)
+async def diagnostic_unified_scan():
+    """
+    Run UnifiedScannerService directly with MockMarketData and verbose mode.
+    
+    Mirrors how force_scan works but captures all verbose output to diagnose issues.
+    """
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
+    from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
+    from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
+    from nexus2.domain.automation.unified_scanner import (
+        UnifiedScannerService,
+        UnifiedScanSettings,
+        ScanMode,
+    )
+    import io
+    import sys
+    
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    # Ensure clock is connected
+    if data._sim_clock is None:
+        data.set_clock(clock)
+    
+    # Use relaxed sim settings
+    sim_ep_settings = EPScanSettings(
+        min_gap=3.0,
+        min_rvol=0.5,
+        min_price=5.0,
+        min_dollar_vol=1_000_000,
+    )
+    
+    # Create scanners with MockMarketData
+    ep_scanner = EPScannerService(settings=sim_ep_settings, market_data=data)
+    breakout_scanner = BreakoutScannerService(market_data=data)
+    htf_scanner = HTFScannerService(market_data=data)
+    
+    # Use same settings as force_scan
+    settings = UnifiedScanSettings(
+        modes=[ScanMode.EP_ONLY, ScanMode.BREAKOUT_ONLY, ScanMode.HTF_ONLY],
+        min_quality_score=5,  # Relaxed for sim
+        stop_mode="atr",
+        max_stop_atr=1.5,
+        max_stop_percent=8.0,
+    )
+    
+    scanner = UnifiedScannerService(
+        settings=settings,
+        ep_scanner=ep_scanner,
+        breakout_scanner=breakout_scanner,
+        htf_scanner=htf_scanner,
+    )
+    
+    # Capture verbose output
+    old_stdout = sys.stdout
+    sys.stdout = captured = io.StringIO()
+    
+    try:
+        result = scanner.scan(verbose=True)
+    finally:
+        sys.stdout = old_stdout
+    
+    verbose_output = captured.getvalue()
+    
+    return {
+        "clock": clock.get_trading_day(),
+        "symbols_loaded": data.get_symbols(),
+        "total_signals": result.total_signals,
+        "ep_count": result.ep_count,
+        "breakout_count": result.breakout_count,
+        "htf_count": result.htf_count,
+        "signals": [
+            {
+                "symbol": s.symbol,
+                "setup_type": s.setup_type.value,
+                "quality_score": s.quality_score,
+                "entry_price": float(s.entry_price),
+                "tactical_stop": float(s.tactical_stop),
+                "tier": s.tier,
+            }
+            for s in result.signals
+        ],
+        "diagnostics": [
+            {
+                "scanner": d.scanner,
+                "enabled": d.enabled,
+                "candidates_found": d.candidates_found,
+                "candidates_passed": d.candidates_passed,
+                "rejections": [
+                    {"symbol": r.symbol, "reason": r.reason, "threshold": r.threshold, "actual": r.actual_value}
+                    for r in d.rejections
+                ] if d.rejections else [],
+            }
+            for d in result.diagnostics
+        ],
+        "verbose_output": verbose_output.split("\n") if verbose_output else [],
     }
 
 

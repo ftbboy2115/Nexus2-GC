@@ -106,12 +106,9 @@ async def create_unified_scanner_callback(
     # Pre-compute the enabled modes from settings
     base_scan_modes = scan_modes.copy()
     
-    # Get market data provider (MockMarketData for sim, live for production)
-    market_data = None
+    # Log configuration (sim_mode determines market_data source at SCAN TIME, not here)
     if sim_mode:
-        from nexus2.adapters.simulation import get_mock_market_data
-        market_data = get_mock_market_data()
-        logger.info(f"Scanner configured: modes={scan_modes}, SIMULATION MODE (using MockMarketData)")
+        logger.info(f"Scanner configured: modes={scan_modes}, SIMULATION MODE (MockMarketData will be fetched fresh each scan)")
     else:
         logger.info(f"Scanner configured: modes={scan_modes}, stop_mode={stop_mode}, min_quality={min_quality}, htf_frequency={htf_frequency}")
     
@@ -162,12 +159,22 @@ async def create_unified_scanner_callback(
             htf_limit=limit,
         )
         
-        # Create scanner with optional market_data override for simulation
-        if market_data is not None:
-            # SIM MODE: Create scanners with MockMarketData
+        # Create scanner - for sim_mode, get FRESH MockMarketData each scan to avoid stale closure
+        if sim_mode:
+            # SIM MODE: Fetch MockMarketData FRESH here (not from closure!)
+            from nexus2.adapters.simulation import get_mock_market_data, get_simulation_clock
             from nexus2.domain.scanner.ep_scanner_service import EPScannerService, EPScanSettings
             from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
             from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
+            
+            market_data = get_mock_market_data()
+            clock = get_simulation_clock()
+            
+            # Ensure clock is connected
+            if market_data._sim_clock is None:
+                market_data.set_clock(clock)
+            
+            logger.info(f"[SIM] Scan using MockMarketData (clock={clock.get_trading_day()}, symbols={market_data.get_symbols()})")
             
             # Use relaxed settings for simulation (limited data may not show 8%+ gaps)
             sim_ep_settings = EPScanSettings(
@@ -186,7 +193,6 @@ async def create_unified_scanner_callback(
                 breakout_scanner=breakout_scanner,
                 htf_scanner=htf_scanner,
             )
-            logger.info(f"[SIM] Using MockMarketData for scan")
         else:
             # LIVE MODE: Use default singletons
             scanner = UnifiedScannerService(settings=settings)
