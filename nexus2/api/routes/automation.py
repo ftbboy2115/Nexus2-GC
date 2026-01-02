@@ -43,6 +43,20 @@ from nexus2.api.routes.automation_helpers import (
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
+# Module-level MockBroker reference for sim mode
+_sim_broker = None
+
+def _get_sim_broker():
+    """Get the MockBroker instance used in sim_mode."""
+    return _sim_broker
+
+def _set_sim_broker(broker):
+    """Set the MockBroker instance for sim_mode."""
+    global _sim_broker
+    _sim_broker = broker
+
+
+
 
 # Wrapper functions to provide dependencies to helpers
 async def auto_start_checker():
@@ -747,9 +761,35 @@ async def start_scheduler(
                 continue
             
             # Check if broker is available
-            if broker is None:
+            if broker is None and not sim_mode:
                 logger.error("[AutoExec] No broker configured!")
                 return {"status": "failed", "error": "No broker configured", "executed": executed}
+            
+            # In sim_mode, use MockBroker instead of live broker
+            if sim_mode:
+                from nexus2.adapters.simulation import get_mock_market_data
+                from nexus2.adapters.simulation.mock_broker import MockBroker
+                
+                # Get or create global MockBroker (stored at module level)
+                global _sim_broker
+                if _sim_broker is None:
+                    _sim_broker = MockBroker(initial_cash=100_000.0)
+                    logger.info("[SIM] Created new MockBroker with $100k initial cash")
+                
+                # Set current price from MockMarketData for each symbol
+                mock_data = get_mock_market_data()
+                current_price = mock_data.get_last_price(signal.symbol)
+                if current_price:
+                    _sim_broker.set_price(signal.symbol, float(current_price))
+                else:
+                    print(f"⚠️ [SIM] No price available for {signal.symbol} - skipping")
+                    skipped.append({"symbol": signal.symbol, "reason": "No sim price available"})
+                    continue
+                
+                active_broker = _sim_broker
+                print(f"🧪 [SIM] Using MockBroker for {signal.symbol}")
+            else:
+                active_broker = broker
             
             # Submit bracket order through broker
             try:
@@ -761,7 +801,7 @@ async def start_scheduler(
                 print(f"📊 [AutoExec] Signal: {signal.symbol} | Score: {signal.quality_score} | Type: {setup_name} | Mode: {signal.scanner_mode} | Tier: {signal.tier}")
                 print(f"🤖 [AutoExec] Submitting bracket order: {signal.symbol} x {shares} @ stop ${stop_price}")
                 
-                result = broker.submit_bracket_order(
+                result = active_broker.submit_bracket_order(
                     client_order_id=client_order_id,
                     symbol=signal.symbol,
                     quantity=shares,

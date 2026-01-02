@@ -163,6 +163,10 @@ class MockMarketData:
         
         return self._current_prices.get(symbol)
     
+    def get_last_price(self, symbol: str) -> Optional[float]:
+        """Alias for get_current_price - used by MockBroker."""
+        return self.get_current_price(symbol)
+    
     def get_quote(self, symbol: str) -> Optional[Dict]:
         """
         Get quote (bid/ask/last) for symbol.

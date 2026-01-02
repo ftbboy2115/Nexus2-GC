@@ -132,54 +132,74 @@ class MockBroker:
     
     def submit_bracket_order(
         self,
+        client_order_id,  # UUID
         symbol: str,
-        side: str,
-        qty: int,
-        stop_price: float,
-        take_profit_price: Optional[float] = None,
-    ) -> MockBracketOrderResult:
+        quantity: int,
+        stop_loss_price,  # Decimal
+        limit_price=None,  # Optional[Decimal]
+        take_profit_price=None,  # Optional[Decimal]
+    ):
         """
         Submit bracket order (entry + stop + optional TP).
         
+        Interface matches AlpacaBroker for seamless swapping in sim_mode.
+        
         Args:
+            client_order_id: Unique client order ID (UUID)
             symbol: Stock symbol
-            side: 'buy' or 'sell'
-            qty: Number of shares
-            stop_price: Stop loss price
+            quantity: Number of shares
+            stop_loss_price: Stop loss price
+            limit_price: Optional limit price (not used in sim)
             take_profit_price: Take profit price (optional)
         
         Returns:
-            MockBracketOrderResult with fill info
+            BrokerOrder matching AlpacaBroker's return type
         """
+        from nexus2.adapters.broker.protocol import BrokerOrder, BrokerOrderStatus
+        from decimal import Decimal
+        
         current_price = self._current_prices.get(symbol)
         
         if current_price is None:
-            return MockBracketOrderResult(
-                is_accepted=False,
-                error=f"No price available for {symbol}"
+            # Return rejected order
+            return BrokerOrder(
+                client_order_id=client_order_id,
+                broker_order_id=str(uuid4()),
+                symbol=symbol,
+                side="buy",
+                quantity=quantity,
+                order_type="market",
+                status=BrokerOrderStatus.REJECTED,
             )
         
         # Check buying power
-        order_value = current_price * qty
-        if side.lower() == "buy" and order_value > self._cash:
-            return MockBracketOrderResult(
-                is_accepted=False,
-                error=f"Insufficient buying power: need ${order_value:.2f}, have ${self._cash:.2f}"
+        order_value = current_price * quantity
+        if order_value > self._cash:
+            return BrokerOrder(
+                client_order_id=client_order_id,
+                broker_order_id=str(uuid4()),
+                symbol=symbol,
+                side="buy",
+                quantity=quantity,
+                order_type="market",
+                status=BrokerOrderStatus.REJECTED,
             )
         
-        # Create entry order (assume market order, fill immediately)
+        # Create and fill entry order immediately (sim behavior)
         entry_order_id = str(uuid4())
-        fill_price = current_price  # In sim, fill at current price
+        fill_price = current_price
+        stop_price = float(stop_loss_price)
         
+        # Store internal mock order for tracking
         entry_order = MockOrder(
             id=entry_order_id,
             symbol=symbol,
-            side=side,
-            qty=qty,
+            side="buy",
+            qty=quantity,
             order_type="market",
             status=MockOrderStatus.FILLED,
             avg_fill_price=fill_price,
-            filled_qty=qty,
+            filled_qty=quantity,
             filled_at=datetime.utcnow(),
         )
         
@@ -188,8 +208,8 @@ class MockBroker:
         stop_order = MockOrder(
             id=stop_order_id,
             symbol=symbol,
-            side="sell" if side == "buy" else "buy",
-            qty=qty,
+            side="sell",
+            qty=quantity,
             order_type="stop",
             status=MockOrderStatus.PENDING,
             stop_price=stop_price,
@@ -203,36 +223,41 @@ class MockBroker:
         self._orders[stop_order_id] = stop_order
         
         # Update cash
-        if side.lower() == "buy":
-            self._cash -= fill_price * qty
-        else:
-            self._cash += fill_price * qty
+        self._cash -= fill_price * quantity
         
         # Create/update position
         if symbol in self._positions:
             pos = self._positions[symbol]
             # Average up (simplified)
-            total_qty = pos.qty + qty
-            total_cost = (pos.avg_entry_price * pos.qty) + (fill_price * qty)
+            total_qty = pos.qty + quantity
+            total_cost = (pos.avg_entry_price * pos.qty) + (fill_price * quantity)
             pos.qty = total_qty
             pos.avg_entry_price = total_cost / total_qty
             pos.stop_price = stop_price
         else:
             self._positions[symbol] = MockPosition(
                 symbol=symbol,
-                qty=qty,
+                qty=quantity,
                 avg_entry_price=fill_price,
                 current_price=fill_price,
                 stop_price=stop_price,
             )
         
-        logger.info(f"[MockBroker] Filled {side.upper()} {qty}x {symbol} @ ${fill_price:.2f}")
+        logger.info(f"[MockBroker] Filled BUY {quantity}x {symbol} @ ${fill_price:.2f}")
         
-        return MockBracketOrderResult(
-            is_accepted=True,
-            entry_order_id=entry_order_id,
-            avg_fill_price=fill_price,
-            filled_qty=qty,
+        # Return BrokerOrder (same type as AlpacaBroker)
+        return BrokerOrder(
+            client_order_id=client_order_id,
+            broker_order_id=entry_order_id,
+            symbol=symbol,
+            side="buy",
+            quantity=quantity,
+            order_type="market",
+            status=BrokerOrderStatus.FILLED,
+            filled_quantity=quantity,
+            avg_fill_price=Decimal(str(fill_price)),
+            submitted_at=datetime.utcnow(),
+            filled_at=datetime.utcnow(),
         )
     
     def cancel_order(self, order_id: str) -> bool:

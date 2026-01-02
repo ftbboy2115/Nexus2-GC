@@ -28,22 +28,66 @@ async def get_simulation_status():
         get_simulation_clock, 
         get_mock_market_data
     )
-    from nexus2.adapters.simulation.mock_broker import MockBroker
     
     clock = get_simulation_clock()
     data = get_mock_market_data()
     
-    # Get global mock broker if exists
+    # Get mock broker from execute_callback if it exists
     broker_state = None
-    if hasattr(get_simulation_status, '_mock_broker'):
-        broker = get_simulation_status._mock_broker
-        broker_state = broker.to_dict()
+    try:
+        # Import and check the execute_callback for _mock_broker
+        from nexus2.api.routes.automation import start_scheduler
+        # The mock broker is attached to execute_callback inside start_scheduler's closure
+        # We'll access it through a module-level reference instead
+        from nexus2.api.routes.automation import _get_sim_broker
+        mock_broker = _get_sim_broker()
+        if mock_broker:
+            broker_state = mock_broker.to_dict()
+    except Exception:
+        pass
     
     return {
         "clock": clock.to_dict(),
         "market_data": data.to_dict(),
         "broker": broker_state,
     }
+
+
+@router.get("/simulation/positions", response_model=dict)
+async def get_sim_positions():
+    """
+    Get positions from MockBroker (sim mode only).
+    
+    Returns simulated positions, account balance, and P&L.
+    """
+    try:
+        from nexus2.api.routes.automation import _get_sim_broker
+        mock_broker = _get_sim_broker()
+        
+        if not mock_broker:
+            return {
+                "status": "no_broker",
+                "message": "MockBroker not initialized. Start scheduler in sim_mode first.",
+                "positions": [],
+                "count": 0,
+            }
+        
+        positions = mock_broker.get_positions()
+        account = mock_broker.get_account()
+        
+        return {
+            "status": "ok",
+            "positions": positions,
+            "count": len(positions),
+            "account": account,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "positions": [],
+            "count": 0,
+        }
 
 
 @router.post("/simulation/reset", response_model=dict)
