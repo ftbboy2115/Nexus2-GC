@@ -502,6 +502,75 @@ async def diagnostic_unified_scan():
     }
 
 
+@router.post("/simulation/debug_execute_path", response_model=dict)
+async def debug_execute_path():
+    """
+    Debug endpoint that mimics exactly what execute_callback does.
+    This helps trace where MockMarketData stops being used.
+    """
+    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+    from nexus2.domain.automation.services import create_unified_scanner_callback
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    
+    debug_info = {}
+    
+    # Step 1: Read settings exactly like execute_callback
+    db = SessionLocal()
+    try:
+        settings_repo = SchedulerSettingsRepository(db)
+        sched_settings = settings_repo.get()
+        
+        sim_mode_setting = getattr(sched_settings, 'sim_mode', False)
+        debug_info["sim_mode_raw"] = str(sim_mode_setting)
+        debug_info["sim_mode_type"] = type(sim_mode_setting).__name__
+        
+        sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
+        debug_info["sim_mode_final"] = sim_mode
+        
+        scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
+        debug_info["scan_modes"] = scan_modes
+        
+    finally:
+        db.close()
+    
+    # Step 2: Create scanner callback
+    scanner_func = await create_unified_scanner_callback(
+        min_quality=5,
+        max_stop_percent=8.0,
+        stop_mode="atr",
+        max_stop_atr=1.5,
+        scan_modes=scan_modes,
+        htf_frequency="every_cycle",
+        sim_mode=sim_mode,
+    )
+    
+    # Step 3: Call the scanner
+    result = await scanner_func()
+    
+    # Step 4: Check if MockMarketData was used
+    clock = get_simulation_clock()
+    mock_data = get_mock_market_data()
+    debug_info["clock_date"] = clock.get_trading_day()
+    debug_info["mock_symbols"] = mock_data.get_symbols()
+    
+    # Step 5: Return results
+    signals = []
+    if hasattr(result, 'signals'):
+        for sig in result.signals:
+            signals.append({
+                "symbol": getattr(sig, 'symbol', ''),
+                "setup_type": str(getattr(sig, 'setup_type', '')),
+                "quality_score": getattr(sig, 'quality_score', 0),
+            })
+    
+    return {
+        "debug_info": debug_info,
+        "signals_count": len(signals),
+        "signals": signals,
+    }
+
+
+
 @router.post("/simulation/advance", response_model=dict)
 async def advance_simulation(
     minutes: int = 0,

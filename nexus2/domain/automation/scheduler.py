@@ -28,11 +28,13 @@ class AutomationScheduler:
         market_close: dt_time = dt_time(16, 0),
         eod_check_time: dt_time = dt_time(15, 45),  # 3:45 PM ET for MA trailing
         auto_execute: bool = False,  # Default to scan-only, no execution
+        sim_mode: bool = False,  # Use simulation clock for market hours
     ):
         self.interval_minutes = interval_minutes
         self.market_open = market_open
         self.market_close = market_close
         self.eod_check_time = eod_check_time
+        self.sim_mode = sim_mode
         self.auto_execute = auto_execute
         
         self._running = False
@@ -68,11 +70,23 @@ class AutomationScheduler:
         """
         Check if market is currently open.
         
-        Uses Alpaca clock API for accurate detection of holidays and early closes.
+        In sim_mode, uses the simulation clock.
+        Otherwise uses Alpaca clock API for accurate detection.
         """
+        # In sim_mode, use the simulation clock
+        if self.sim_mode:
+            try:
+                from nexus2.adapters.simulation import get_simulation_clock
+                clock = get_simulation_clock()
+                return clock.is_market_hours()
+            except Exception:
+                # If sim clock not available, treat as market hours for testing
+                return True
+        
+        # Real time: use Alpaca calendar
         try:
             from nexus2.adapters.market_data.market_calendar import get_market_calendar
-            calendar = get_market_calendar(paper=True)  # Scheduler uses paper by default
+            calendar = get_market_calendar(paper=True)
             return calendar.is_market_open()
         except Exception:
             # Fallback to basic time check
@@ -153,25 +167,35 @@ class AutomationScheduler:
             try:
                 now = datetime.now()
                 
-                # Check if market hours
+                # Check if market hours (uses sim clock if sim_mode)
                 if self.is_market_hours:
                     # During market hours: run cycle and sleep normal interval
                     await self._run_cycle()
                     
-                    # Check if EOD window and haven't run today
-                    await self._check_eod()
+                    # Check if EOD window and haven't run today (skip in sim_mode)
+                    if not self.sim_mode:
+                        await self._check_eod()
                     
-                    # Normal interval wait
+                    # Normal interval wait (shorter in sim_mode for faster testing)
                     interval_seconds = self.interval_minutes * 60
-                    self.next_run = datetime.now()
+                    if self.sim_mode:
+                        # In sim_mode, use 5 second intervals for rapid testing
+                        interval_seconds = 5
+                    self.next_run = datetime.now() + timedelta(seconds=interval_seconds)
                     await asyncio.sleep(interval_seconds)
                     
                 else:
-                    # Outside market hours: use smart waiting
-                    await self._smart_wait_for_market_open(now)
-                    
-                    # Reset EOD flag at midnight
-                    self._reset_eod_flag_if_new_day()
+                    if self.sim_mode:
+                        # In sim_mode, don't wait for market - run anyway
+                        logger.info("[SIM] Outside sim market hours but running anyway")
+                        await self._run_cycle()
+                        await asyncio.sleep(5)  # Short interval for sim
+                    else:
+                        # Real time: outside market hours, use smart waiting
+                        await self._smart_wait_for_market_open(now)
+                        
+                        # Reset EOD flag at midnight
+                        self._reset_eod_flag_if_new_day()
                 
             except asyncio.CancelledError:
                 break

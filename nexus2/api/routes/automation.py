@@ -662,6 +662,10 @@ async def start_scheduler(
         scan_duration = time.time() - scan_start
         print(f"🤖 [AutoExec] Scan returned {len(signals) if signals else 0} signals (took {scan_duration:.1f}s)")
         
+        # Store signals in scheduler for UI display (even in auto_execute mode)
+        scheduler.last_signals = signals if signals else []
+        scheduler.last_signals_at = datetime.now()
+        
         # Log summary of all signals received for diagnostics
         if signals:
             print("📋 [AutoExec] Signal Summary:")

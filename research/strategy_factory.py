@@ -9,7 +9,8 @@ Changelog:
           Added STRICT anti-hallucination rules (No c_under).
 """
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 # 1. SETUP
@@ -18,7 +19,10 @@ api_key = os.environ.get("GOOGLE_API_KEY")
 if not api_key:
     print("❌ GOOGLE_API_KEY not found.")
 
-genai.configure(api_key=api_key)
+# New logic for new SDK
+client = genai.Client(api_key=api_key)
+# Deprecated
+# genai.configure(api_key=api_key)
 # Using Flash for speed/cost, Pro for reasoning if needed
 MODEL_NAME = "gemini-2.0-flash"
 
@@ -35,6 +39,9 @@ def run_manager_agent(topic, context=""):
 
     prompt = f"TASK: Design a strategy for '{topic}'.\n\nCONTEXT:\n{context}"
 
+    # Need to finish building this out
+    # https://github.com/googleapis/python-genai
+    print("Clay: Inspect this line of code to finish swtiching to new SDK for genai")
     model = genai.GenerativeModel(MODEL_NAME, system_instruction=system)
     try:
         response = model.generate_content(prompt)

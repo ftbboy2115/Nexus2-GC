@@ -171,8 +171,9 @@ async def configure_scanner_from_settings(engine, scheduler):
         sim_mode_setting = getattr(sched_settings, 'sim_mode', 'false')
         sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
         
-        # Set scheduler auto_execute flag
+        # Set scheduler flags
         scheduler.auto_execute = auto_execute
+        scheduler.sim_mode = sim_mode  # Use sim clock for market hours
         
         # Configure engine scanner (with sim_mode for MockMarketData injection)
         engine._scanner_func = await create_unified_scanner_callback(

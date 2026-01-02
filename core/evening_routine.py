@@ -34,12 +34,12 @@ VERSION = "1.0.1"
 TASKS = [
     {
         "name": "HTF Scanner",
-        "path": os.path.join("core", "scan_high_tight_flag.py"),
+        "path": os.path.join("core", "scan_htf.py"),
         "desc": "Scanning for High Tight Flags (Structure)..."
     },
     {
         "name": "Momentum Scanner",
-        "path": os.path.join("core", "real_time_scanner.py"),
+        "path": os.path.join("core", "scan_trend_daily.py"),
         "desc": "Scanning for Momentum/Squeezes (Trend)..."
     },
     {

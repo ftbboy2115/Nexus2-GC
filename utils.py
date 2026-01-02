@@ -138,13 +138,13 @@ def run_script(script_path, name, args=None):
 # 4. BACKGROUND LAUNCHERS
 # ==============================================================================
 def launch_ep_scanner_background():
-    return start_task("EP_Scanner", os.path.join("core", "scan_episodic_pivots.py"))
+    return start_task("EP_Scanner", os.path.join("core", "scan_ep.py"))
 
 def launch_scanner_background():
-    return start_task("Momentum_Scanner", os.path.join("core", "real_time_scanner.py"))
+    return start_task("Momentum_Scanner", os.path.join("core", "scan_trend_daily.py"))
 
 def launch_htf_background():
-    return start_task("HTF_Scanner", os.path.join("core", "scan_high_tight_flag.py"))
+    return start_task("HTF_Scanner", os.path.join("core", "scan_htf.py"))
 
 def launch_sniper():
     return start_task("Sniper_Bot", os.path.join("core", "sniper.py"))
