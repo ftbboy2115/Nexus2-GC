@@ -65,8 +65,9 @@ async def lifespan(app: FastAPI):
     print("[Startup] Automation engine initialized")
     
     # Create shared FMP adapter for unified API tracking
-    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
+    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, set_fmp_adapter
     app.state.market_data = FMPAdapter()
+    set_fmp_adapter(app.state.market_data)  # Set global singleton for all get_fmp_adapter calls
     print("[Startup] Market data adapter (FMP) initialized")
     
     # Inject shared FMP adapter into RS service (for unified rate limiting)

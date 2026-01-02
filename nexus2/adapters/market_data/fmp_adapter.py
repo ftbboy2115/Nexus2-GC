@@ -776,5 +776,12 @@ def get_fmp_adapter() -> FMPAdapter:
     global _fmp_singleton
     if _fmp_singleton is None:
         _fmp_singleton = FMPAdapter()
+        print("[FMP] Created new singleton adapter")
     return _fmp_singleton
 
+
+def set_fmp_adapter(adapter: FMPAdapter) -> None:
+    """Set the singleton FMP adapter. Call this at startup to share rate limiting."""
+    global _fmp_singleton
+    _fmp_singleton = adapter
+    print("[FMP] Singleton adapter set from external source")
