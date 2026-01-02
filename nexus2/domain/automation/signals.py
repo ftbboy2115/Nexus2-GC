@@ -66,7 +66,10 @@ class Signal:
         """Calculate position size based on risk."""
         if self.stop_distance <= 0:
             return 0
-        return int(risk_dollars / self.stop_distance)
+        # Ensure Decimal types for safe division
+        risk = Decimal(str(risk_dollars)) if not isinstance(risk_dollars, Decimal) else risk_dollars
+        stop_dist = Decimal(str(self.stop_distance)) if not isinstance(self.stop_distance, Decimal) else self.stop_distance
+        return int(risk / stop_dist)
     
     def is_valid(
         self, 

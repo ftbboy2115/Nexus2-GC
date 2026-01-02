@@ -766,7 +766,8 @@ async def start_scheduler(
             
             # Cap position size to max_per_symbol setting
             if signal.entry_price > 0:
-                max_shares_from_cap = int(max_per_symbol / signal.entry_price)
+                max_shares_from_cap = int(max_per_symbol / float(signal.entry_price))
+                print(f"📊 [DEBUG] {signal.symbol}: entry_price={signal.entry_price}, max_per_symbol={max_per_symbol}, max_shares={max_shares_from_cap}")
                 if shares > max_shares_from_cap:
                     print(f"🔒 [AutoExec] Capping {signal.symbol} shares from {shares} to {max_shares_from_cap} (max ${max_per_symbol})")
                     shares = max_shares_from_cap
