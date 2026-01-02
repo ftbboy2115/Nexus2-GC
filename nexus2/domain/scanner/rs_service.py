@@ -63,17 +63,28 @@ class RSService:
     def __init__(self):
         self._universe: Dict[str, RSData] = {}
         self._last_refresh: Optional[datetime] = None
-        self._fmp = None  # Lazy load
+        self._fmp = None  # Lazy load or injected
         
         # Try to load from file cache on startup
         self._load_cache()
     
+    def set_fmp_adapter(self, adapter) -> None:
+        """
+        Set a shared FMP adapter instance.
+        
+        This allows RS service to share rate limiting with the dashboard's
+        API usage tracking.
+        """
+        self._fmp = adapter
+        logger.info("[RS] Using shared FMP adapter")
+    
     @property
     def fmp(self):
-        """Lazy load FMP adapter."""
+        """Lazy load FMP adapter if not injected."""
         if self._fmp is None:
             from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
             self._fmp = FMPAdapter()
+            logger.info("[RS] Created new FMP adapter (not shared)")
         return self._fmp
     
     def _save_cache(self) -> None:
