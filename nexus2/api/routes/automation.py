@@ -18,6 +18,12 @@ from nexus2.db.repository import PositionRepository
 import logging
 logger = logging.getLogger(__name__)
 
+# Persistent file logging for scan history
+from nexus2.domain.automation.automation_logger import (
+    log_scan_start, log_scan_result, log_position_sizing,
+    log_execution_decision, log_cycle_summary,
+)
+
 # Import from new modular structure
 from nexus2.api.routes.automation_state import (
     get_engine, set_engine, get_scheduler, get_monitor,
@@ -674,6 +680,12 @@ async def start_scheduler(
                 min_price=min_price,  # Pass min_price to scanner
             )
             print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}, min_price=${min_price}")
+            
+            # Log scan start to persistent file
+            log_scan_start(scan_modes, {
+                "min_quality": min_quality, "stop_mode": stop_mode,
+                "max_stop_atr": max_stop_atr, "min_price": min_price,
+            })
         finally:
             db_settings.close()
         
@@ -694,6 +706,16 @@ async def start_scheduler(
             for i, sig in enumerate(signals[:10], 1):
                 setup_name = sig.setup_type.value if hasattr(sig.setup_type, 'value') else str(sig.setup_type)
                 print(f"   {i}. {sig.symbol:6} | Score: {sig.quality_score} | Type: {setup_name:8} | Mode: {sig.scanner_mode} | Tier: {sig.tier}")
+            
+            # Log scan results to persistent file
+            log_scan_result(
+                total_signals=len(signals),
+                ep_count=sum(1 for s in signals if hasattr(s, 'setup_type') and getattr(s.setup_type, 'value', '') == 'ep'),
+                breakout_count=sum(1 for s in signals if hasattr(s, 'setup_type') and getattr(s.setup_type, 'value', '') in ('breakout', 'flag')),
+                htf_count=sum(1 for s in signals if hasattr(s, 'setup_type') and getattr(s.setup_type, 'value', '') == 'htf'),
+                duration_ms=int(scan_duration * 1000),
+                signals=signals,
+            )
         
         if not signals:
             logger.info("[AutoExec] No signals from scan")
@@ -779,11 +801,16 @@ async def start_scheduler(
                 print(f"📊 [DEBUG] {signal.symbol}: entry_price={signal.entry_price}, max_per_symbol={max_per_symbol}, max_shares={max_shares_from_cap}")
                 if shares > max_shares_from_cap:
                     print(f"🔒 [AutoExec] Capping {signal.symbol} shares from {shares} to {max_shares_from_cap} (max ${max_per_symbol})")
+                    log_position_sizing(
+                        signal.symbol, float(signal.entry_price), shares, max_shares_from_cap,
+                        float(max_per_symbol), reason="exceeds max_per_symbol cap"
+                    )
                     shares = max_shares_from_cap
             
             if shares < 1:
                 logger.warning(f"[AutoExec] Position too small for {signal.symbol}: {shares} shares")
                 skipped.append({"symbol": signal.symbol, "reason": "Position size < 1 share"})
+                log_execution_decision(signal.symbol, 0, 0, "SKIPPED", reason="Position size < 1 share")
                 continue
             
             # Check if broker is available
@@ -870,6 +897,12 @@ async def start_scheduler(
                     logger.info(f"[AutoExec] SUCCESS: {signal.symbol} x {shares} @ stop ${stop_price}")
                     print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
                     
+                    # Log to persistent file
+                    log_execution_decision(
+                        signal.symbol, shares, float(stop_price), "EXECUTED",
+                        order_id=str(result.broker_order_id)
+                    )
+                    
                     executed.append({
                         "symbol": signal.symbol,
                         "shares": shares,
@@ -882,6 +915,16 @@ async def start_scheduler(
             else:
                 logger.error(f"[AutoExec] Order not accepted for {signal.symbol}: {result}")
                 errors.append({"symbol": signal.symbol, "error": "Order not accepted by broker"})
+                log_execution_decision(signal.symbol, shares, float(stop_price), "ERROR", reason="Order not accepted by broker")
+        
+        # Log cycle summary to persistent file
+        log_cycle_summary(
+            executed_count=len(executed),
+            skipped_count=len(skipped),
+            error_count=len(errors),
+            executed_symbols=[e["symbol"] for e in executed],
+            skipped_symbols=[s["symbol"] for s in skipped],
+        )
         
         print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
         
