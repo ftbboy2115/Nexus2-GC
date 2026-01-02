@@ -199,9 +199,12 @@ async def get_api_stats(request: Request):
     Returns current FMP API usage including calls/minute, remaining, and usage%.
     """
     try:
-        fmp = getattr(request.app.state, 'market_data', None)
-        if not fmp:
-            # Fallback to singleton if not in app state
+        unified = getattr(request.app.state, 'market_data', None)
+        if unified and hasattr(unified, 'fmp'):
+            # UnifiedMarketData wraps FMP
+            fmp = unified.fmp
+        else:
+            # Fallback to singleton
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
         stats = fmp.get_rate_stats()
