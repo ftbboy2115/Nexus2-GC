@@ -627,6 +627,7 @@ async def start_scheduler(
         - Daily loss limit
         - SIM mode enforcement
         """
+        global _sim_broker  # Declare at start to avoid syntax error
         from nexus2.db import SessionLocal, PositionRepository, SchedulerSettingsRepository
         from nexus2.domain.automation.services import create_unified_scanner_callback
         from uuid import uuid4
@@ -717,9 +718,22 @@ async def start_scheduler(
         
         max_per_symbol = scheduler_max if scheduler_max else Decimal(str(settings.max_per_symbol))
         
-        # Get existing positions from Alpaca to avoid adding to existing positions
+        # Get existing positions to avoid adding to existing positions
         existing_symbols = set()
-        if broker:
+        
+        # In sim_mode, check MockBroker positions
+        if sim_mode and _sim_broker is not None:
+            try:
+                sim_positions = _sim_broker.get_positions()
+                # get_positions() returns list of dicts with 'symbol' key
+                for pos in sim_positions:
+                    existing_symbols.add(pos['symbol'].upper())
+                if existing_symbols:
+                    print(f"📍 [SIM] Already holding in MockBroker: {', '.join(sorted(existing_symbols))}")
+            except Exception as e:
+                logger.warning(f"[AutoExec] Could not fetch sim positions: {e}")
+        elif broker:
+            # In live mode, check Alpaca positions
             try:
                 positions = broker.get_positions()
                 # get_positions() returns Dict[str, BrokerPosition] - keys ARE the symbols
@@ -770,8 +784,8 @@ async def start_scheduler(
                 from nexus2.adapters.simulation import get_mock_market_data
                 from nexus2.adapters.simulation.mock_broker import MockBroker
                 
+                
                 # Get or create global MockBroker (stored at module level)
-                global _sim_broker
                 if _sim_broker is None:
                     _sim_broker = MockBroker(initial_cash=100_000.0)
                     logger.info("[SIM] Created new MockBroker with $100k initial cash")

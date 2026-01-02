@@ -129,6 +129,31 @@ interface PositionsData {
     total_pnl: number
 }
 
+// Simulation positions from MockBroker
+interface SimPosition {
+    symbol: string
+    qty: number
+    avg_price: number
+    market_value: number
+    unrealized_pnl: number
+    pnl_percent: number
+    stop_price?: number
+}
+
+interface SimPositionsData {
+    status: string
+    positions: SimPosition[]
+    count: number
+    account?: {
+        cash: number
+        portfolio_value: number
+        buying_power: number
+        realized_pnl: number
+        unrealized_pnl: number
+        position_count: number
+    }
+}
+
 interface ScannerSettings {
     preset: 'strict' | 'relaxed' | 'custom'
     minQuality: number
@@ -192,6 +217,9 @@ export default function Automation() {
     // Broker positions (actual Alpaca positions)
     const [positions, setPositions] = useState<PositionsData | null>(null)
 
+    // Simulation positions (from MockBroker)
+    const [simPositions, setSimPositions] = useState<SimPositionsData | null>(null)
+
     // Scheduler interval selector (5, 10, 15, 30 min)
     const [selectedInterval, setSelectedInterval] = useState<number>(15)
 
@@ -200,7 +228,7 @@ export default function Automation() {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [engineRes, schedulerRes, monitorRes, apiStatsRes, schedulerSignalsRes, diagnosticsRes, positionsRes] = await Promise.all([
+            const [engineRes, schedulerRes, monitorRes, apiStatsRes, schedulerSignalsRes, diagnosticsRes, positionsRes, simPosRes] = await Promise.all([
                 fetch(`${API_BASE}/automation/status`),
                 fetch(`${API_BASE}/automation/scheduler/status`),
                 fetch(`${API_BASE}/automation/monitor/status`),
@@ -208,6 +236,7 @@ export default function Automation() {
                 fetch(`${API_BASE}/automation/scheduler/signals`),
                 fetch(`${API_BASE}/automation/scheduler/diagnostics`),
                 fetch(`${API_BASE}/automation/positions`),
+                fetch(`${API_BASE}/automation/simulation/positions`),  // Sim positions
             ])
 
             if (engineRes.ok) setEngine(await engineRes.json())
@@ -215,6 +244,7 @@ export default function Automation() {
             if (monitorRes.ok) setMonitor(await monitorRes.json())
             if (apiStatsRes.ok) setApiStats(await apiStatsRes.json())
             if (positionsRes.ok) setPositions(await positionsRes.json())
+            if (simPosRes.ok) setSimPositions(await simPosRes.json())  // Sim positions
 
             // If scheduler has signals, REPLACE session signals (latest scan = source of truth)
             if (schedulerSignalsRes.ok) {
@@ -915,61 +945,115 @@ export default function Automation() {
                                 </div>
                             )}
 
-                            {/* Open Positions Card (Alpaca) */}
+                            {/* Open Positions Card (Sim or Live based on mode) */}
                             <div className={styles.card}>
                                 <div className={styles.cardHeader}>
-                                    <h2>📊 Open Positions</h2>
-                                    {positions?.count ? (
+                                    <h2>
+                                        {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
+                                    </h2>
+                                    {schedulerSettings?.sim_mode && simPositions?.count ? (
+                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6' }}>
+                                            {simPositions.count} positions • ${simPositions.account?.portfolio_value?.toFixed(0) || 0}
+                                        </span>
+                                    ) : positions?.count ? (
                                         <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
                                             {positions.count} positions • {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
                                         </span>
                                     ) : null}
                                 </div>
                                 <div className={styles.cardBody}>
-                                    {positions?.positions && positions.positions.length > 0 ? (
-                                        <div style={{ overflowX: 'auto', width: '100%' }}>
-                                            <table className={styles.signalTable}>
-                                                <thead>
-                                                    <tr>
-                                                        <th>Symbol</th>
-                                                        <th>Qty</th>
-                                                        <th>Avg</th>
-                                                        <th>Value</th>
-                                                        <th>P/L$</th>
-                                                        <th>P/L%</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {positions.positions.map((pos) => (
-                                                        <tr key={pos.symbol}>
-                                                            <td className={styles.symbol}>{pos.symbol}</td>
-                                                            <td>{pos.qty}</td>
-                                                            <td>${pos.avg_price.toFixed(2)}</td>
-                                                            <td>${pos.market_value.toFixed(0)}</td>
-                                                            <td style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
-                                                            </td>
-                                                            <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
-                                                            </td>
+                                    {/* SIM MODE: Show MockBroker positions */}
+                                    {schedulerSettings?.sim_mode ? (
+                                        simPositions?.positions && simPositions.positions.length > 0 ? (
+                                            <div style={{ overflowX: 'auto', width: '100%' }}>
+                                                <table className={styles.signalTable}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Symbol</th>
+                                                            <th>Qty</th>
+                                                            <th>Avg</th>
+                                                            <th>Value</th>
+                                                            <th>Stop</th>
+                                                            <th>P/L%</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                            <div className={styles.positionsSummary} style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                                                <span style={{ color: '#9ca3af' }}>Total Value: <strong>${positions.total_value.toFixed(0)}</strong></span>
-                                                <span style={{ color: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                    Total P&L: <strong>{positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}</strong>
+                                                    </thead>
+                                                    <tbody>
+                                                        {simPositions.positions.map((pos) => (
+                                                            <tr key={pos.symbol}>
+                                                                <td className={styles.symbol}>{pos.symbol}</td>
+                                                                <td>{pos.qty}</td>
+                                                                <td>${pos.avg_price.toFixed(2)}</td>
+                                                                <td>${pos.market_value.toFixed(0)}</td>
+                                                                <td style={{ color: '#f59e0b' }}>${pos.stop_price?.toFixed(2) || '-'}</td>
+                                                                <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                    {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                                {simPositions.account && (
+                                                    <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#a78bfa' }}>Cash: <strong>${simPositions.account.cash?.toFixed(0)}</strong></span>
+                                                        <span style={{ color: '#a78bfa' }}>Portfolio: <strong>${simPositions.account.portfolio_value?.toFixed(0)}</strong></span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className={styles.emptySignals}>
+                                                <p>No sim positions yet</p>
+                                                <span className={styles.emptyHint}>
+                                                    Start scheduler in sim mode to execute mock trades.
                                                 </span>
                                             </div>
-                                        </div>
+                                        )
                                     ) : (
-                                        <div className={styles.emptySignals}>
-                                            <p>No open positions</p>
-                                            <span className={styles.emptyHint}>
-                                                Positions opened via automation will appear here.
-                                            </span>
-                                        </div>
+                                        /* LIVE MODE: Show Alpaca positions */
+                                        positions?.positions && positions.positions.length > 0 ? (
+                                            <div style={{ overflowX: 'auto', width: '100%' }}>
+                                                <table className={styles.signalTable}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Symbol</th>
+                                                            <th>Qty</th>
+                                                            <th>Avg</th>
+                                                            <th>Value</th>
+                                                            <th>P/L$</th>
+                                                            <th>P/L%</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {positions.positions.map((pos) => (
+                                                            <tr key={pos.symbol}>
+                                                                <td className={styles.symbol}>{pos.symbol}</td>
+                                                                <td>{pos.qty}</td>
+                                                                <td>${pos.avg_price.toFixed(2)}</td>
+                                                                <td>${pos.market_value.toFixed(0)}</td>
+                                                                <td style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                    {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
+                                                                </td>
+                                                                <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                    {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                                <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#9ca3af' }}>Total Value: <strong>${positions.total_value.toFixed(0)}</strong></span>
+                                                    <span style={{ color: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                        Total P&L: <strong>{positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}</strong>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className={styles.emptySignals}>
+                                                <p>No open positions</p>
+                                                <span className={styles.emptyHint}>
+                                                    Positions opened via automation will appear here.
+                                                </span>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             </div>
