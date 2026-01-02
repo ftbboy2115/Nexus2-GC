@@ -175,6 +175,9 @@ async def configure_scanner_from_settings(engine, scheduler):
         scheduler.auto_execute = auto_execute
         scheduler.sim_mode = sim_mode  # Use sim clock for market hours
         
+        # Sync engine config with settings (fixes trading_mode display)
+        engine.config.sim_only = sim_mode
+        
         # Configure engine scanner (with sim_mode for MockMarketData injection)
         engine._scanner_func = await create_unified_scanner_callback(
             min_quality=min_quality,
