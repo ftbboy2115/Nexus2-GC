@@ -637,7 +637,11 @@ async def start_scheduler(
             scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
             htf_frequency = sched_settings.htf_frequency or "every_cycle"
             
-            # Reconfigure engine scanner with fresh settings
+            # Check sim_mode setting
+            sim_mode_setting = getattr(sched_settings, 'sim_mode', False)
+            sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
+            
+            # Reconfigure engine scanner with fresh settings + sim_mode
             engine._scanner_func = await create_unified_scanner_callback(
                 min_quality=min_quality,
                 max_stop_percent=max_stop_percent,
@@ -645,8 +649,9 @@ async def start_scheduler(
                 max_stop_atr=max_stop_atr,
                 scan_modes=scan_modes,
                 htf_frequency=htf_frequency,
+                sim_mode=sim_mode,  # Pass sim_mode to use MockMarketData
             )
-            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}")
+            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}")
         finally:
             db_settings.close()
         
