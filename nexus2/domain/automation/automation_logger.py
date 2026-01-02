@@ -81,14 +81,24 @@ def log_scan_result(
     
     # Log each signal
     for sig in signals:
-        symbol = getattr(sig, 'symbol', sig.get('symbol', '?'))
-        setup_type = getattr(sig, 'setup_type', sig.get('setup_type', '?'))
+        # Handle both object and dict-style signals
+        if hasattr(sig, 'symbol'):
+            symbol = sig.symbol
+            setup_type = sig.setup_type
+            entry_price = sig.entry_price
+            tactical_stop = sig.tactical_stop
+            quality = sig.quality_score
+            tier = sig.tier
+        else:
+            symbol = sig.get('symbol', '?')
+            setup_type = sig.get('setup_type', '?')
+            entry_price = sig.get('entry_price', 0)
+            tactical_stop = sig.get('tactical_stop', 0)
+            quality = sig.get('quality_score', 0)
+            tier = sig.get('tier', '?')
+        
         if hasattr(setup_type, 'value'):
             setup_type = setup_type.value
-        entry_price = getattr(sig, 'entry_price', sig.get('entry_price', 0))
-        tactical_stop = getattr(sig, 'tactical_stop', sig.get('tactical_stop', 0))
-        quality = getattr(sig, 'quality_score', sig.get('quality_score', 0))
-        tier = getattr(sig, 'tier', sig.get('tier', '?'))
         
         logger.info(
             f"  SIGNAL | {symbol} | type={setup_type} | entry=${entry_price} | "
