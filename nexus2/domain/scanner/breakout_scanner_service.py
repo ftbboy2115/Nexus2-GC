@@ -187,6 +187,11 @@ class BreakoutScannerService:
         sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else sma20
         ma_stacked = current_price > sma10 > sma20 > sma50
         
+        # ENFORCE: Price must be above 20 SMA for flag breakouts
+        # This filters out downtrend stocks (buying into weakness)
+        if current_price < sma20:
+            return None
+        
         # Calculate RS percentile using RS Service (true percentile ranking)
         from nexus2.domain.scanner.rs_service import get_rs_service
         rs_percentile = get_rs_service().get_rs_percentile(symbol)
