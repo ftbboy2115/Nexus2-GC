@@ -185,17 +185,22 @@ class MockMarketData:
             "volume": 0,  # Would need intraday tracking
         }
     
-    def get_daily_bars(self, symbol: str, days: int = 60) -> List[OHLCV]:
+    def get_daily_bars(self, symbol: str, days: int = 60, limit: int = None) -> List[OHLCV]:
         """
         Get historical daily bars.
         
         Args:
             symbol: Stock symbol
             days: Number of days to return
+            limit: Alias for days (Breakout scanner uses this)
         
         Returns:
             List of OHLCV bars (most recent first)
         """
+        # Use limit if provided (Breakout scanner compatibility)
+        if limit is not None:
+            days = limit
+            
         if symbol not in self._data:
             return []
         
@@ -549,6 +554,101 @@ class MockMarketData:
             })
         
         return results
+    
+    # ==========================================================================
+    # BREAKOUT SCANNER METHODS
+    # These methods are required for Breakout scanner compatibility
+    # ==========================================================================
+    
+    def get_daily_bars_with_limit(self, symbol: str, limit: int = 60) -> List[OHLCV]:
+        """
+        Get daily bars with limit parameter (alias for Breakout scanner).
+        
+        The Breakout scanner calls get_daily_bars(symbol, limit=60).
+        """
+        return self.get_daily_bars(symbol, days=limit)
+    
+    def get_quote(self, symbol: str):
+        """
+        Get quote object for Breakout scanner.
+        
+        Returns a quote-like object with .price attribute.
+        """
+        price = self.get_current_price(symbol)
+        if price is None:
+            return None
+        
+        # Return a simple object with price attribute
+        class Quote:
+            pass
+        
+        q = Quote()
+        q.price = price
+        q.bid = price * 0.999
+        q.ask = price * 1.001
+        q.volume = 0
+        return q
+    
+    def get_stock_info(self, symbol: str):
+        """
+        Get stock info for Breakout scanner.
+        
+        Returns object with .name attribute.
+        """
+        if symbol not in self._data:
+            return None
+        
+        class StockInfo:
+            pass
+        
+        info = StockInfo()
+        info.name = symbol  # Use symbol as name in sim
+        info.symbol = symbol
+        return info
+    
+    # ==========================================================================
+    # HTF SCANNER METHODS
+    # These methods are required for HTF scanner compatibility
+    # ==========================================================================
+    
+    def get_trend_leaders(self, limit: int = 100) -> List[str]:
+        """
+        Get trend leader symbols for HTF scanner.
+        
+        In simulation, returns all loaded symbols (they're pre-selected as candidates).
+        """
+        return list(self._data.keys())[:limit]
+    
+    def get_historical_prices(self, symbol: str, days: int = 60) -> List[Dict]:
+        """
+        Get historical prices as list of dicts for HTF scanner.
+        
+        Returns list of dicts with open, high, low, close, volume keys.
+        """
+        bars = self.get_daily_bars(symbol, days=days)
+        if not bars:
+            return []
+        
+        # Convert OHLCV objects to dicts (HTF scanner expects dicts)
+        return [
+            {
+                "date": b.date,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+            }
+            for b in bars
+        ]
+    
+    def get_company_name(self, symbol: str) -> Optional[str]:
+        """
+        Get company name for HTF scanner.
+        
+        In simulation, just returns the symbol.
+        """
+        return symbol if symbol in self._data else None
 
 
 # Global instance
