@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 class RSData:
     """RS data for a single symbol."""
     symbol: str
-    perf_1m: float  # 1-month % change
-    perf_3m: float  # 3-month % change
+    perf_1m: float  # 1-month % change (20 days)
+    perf_3m: float  # 3-month % change (63 days)
+    perf_6m: float  # 6-month % change (126 days) - KK methodology
     percentile: int  # 0-100 percentile ranking
     calculated_at: datetime = field(default_factory=datetime.now)
 
@@ -53,9 +54,10 @@ class RSService:
     # (RS uses EOD data which only updates after market close)
     CACHE_HOURS = 24
     
-    # Weighting (simplified: 60% 1M, 40% 3M)
-    WEIGHT_1M = 0.60
-    WEIGHT_3M = 0.40
+    # Weighting (KK-style: balanced across timeframes)
+    WEIGHT_1M = 0.40
+    WEIGHT_3M = 0.30
+    WEIGHT_6M = 0.30
     
     # File cache path (in domain/logs directory)
     CACHE_FILE = Path(__file__).parent.parent / "logs" / "rs_cache.json"
@@ -100,6 +102,7 @@ class RSService:
                         "symbol": data.symbol,
                         "perf_1m": data.perf_1m,
                         "perf_3m": data.perf_3m,
+                        "perf_6m": data.perf_6m,
                         "percentile": data.percentile,
                         "calculated_at": data.calculated_at.isoformat(),
                     }
@@ -144,6 +147,7 @@ class RSService:
                     symbol=data["symbol"],
                     perf_1m=data["perf_1m"],
                     perf_3m=data["perf_3m"],
+                    perf_6m=data.get("perf_6m", data["perf_3m"]),  # Fallback for old cache
                     percentile=data["percentile"],
                     calculated_at=datetime.fromisoformat(data["calculated_at"]),
                 )
@@ -201,7 +205,7 @@ class RSService:
             return 0
         
         # Calculate performance for each stock (batch quotes for efficiency)
-        performance_data: List[Tuple[str, float, float]] = []  # (symbol, perf_1m, perf_3m)
+        performance_data: List[Tuple[str, float, float, float]] = []  # (symbol, perf_1m, perf_3m, perf_6m)
         
         # Process in batches of 100 (FMP batch limit)
         batch_size = 100
@@ -220,21 +224,21 @@ class RSService:
             logger.warning("[RS] No performance data calculated")
             return 0
         
-        # Calculate composite score (weighted 1M + 3M)
+        # Calculate composite score (weighted 1M + 3M + 6M per KK methodology)
         scored_data = []
-        for symbol, perf_1m, perf_3m in performance_data:
+        for symbol, perf_1m, perf_3m, perf_6m in performance_data:
             if perf_1m is not None:
-                composite = (perf_1m * self.WEIGHT_1M) + (perf_3m * self.WEIGHT_3M)
-                scored_data.append((symbol, perf_1m, perf_3m, composite))
+                composite = (perf_1m * self.WEIGHT_1M) + (perf_3m * self.WEIGHT_3M) + (perf_6m * self.WEIGHT_6M)
+                scored_data.append((symbol, perf_1m, perf_3m, perf_6m, composite))
         
         # Sort by composite score (descending)
-        scored_data.sort(key=lambda x: x[3], reverse=True)
+        scored_data.sort(key=lambda x: x[4], reverse=True)
         
         # Assign percentiles
         total = len(scored_data)
         self._universe.clear()
         
-        for rank, (symbol, perf_1m, perf_3m, _) in enumerate(scored_data, 1):
+        for rank, (symbol, perf_1m, perf_3m, perf_6m, _) in enumerate(scored_data, 1):
             # Percentile: 99 = best, 1 = worst
             percentile = max(1, min(99, int(100 - (rank / total * 100))))
             
@@ -242,6 +246,7 @@ class RSService:
                 symbol=symbol,
                 perf_1m=perf_1m,
                 perf_3m=perf_3m,
+                perf_6m=perf_6m,
                 percentile=percentile,
             )
         
@@ -284,23 +289,24 @@ class RSService:
             logger.error(f"[RS] Failed to get stock universe: {e}")
             return []
     
-    def _get_batch_performance(self, symbols: List[str]) -> List[Tuple[str, float, float]]:
+    def _get_batch_performance(self, symbols: List[str]) -> List[Tuple[str, float, float, float]]:
         """
-        Get 1-month and 3-month performance for a batch of symbols.
+        Get 1-month, 3-month, and 6-month performance for a batch of symbols.
         
-        Returns list of (symbol, perf_1m, perf_3m) tuples.
+        Returns list of (symbol, perf_1m, perf_3m, perf_6m) tuples.
+        Per KK methodology: 20, 63, and 126 trading days.
         """
         result = []
         
         for symbol in symbols:
             try:
-                bars = self.fmp.get_daily_bars(symbol, limit=63)  # ~3 months
+                bars = self.fmp.get_daily_bars(symbol, limit=130)  # ~6 months + buffer
                 if not bars or len(bars) < 21:
                     continue
                 
                 current = float(bars[0].close)
                 
-                # 1-month (21 trading days)
+                # 1-month (20 trading days)
                 price_1m = float(bars[min(20, len(bars)-1)].close)
                 perf_1m = ((current - price_1m) / price_1m) * 100 if price_1m > 0 else 0
                 
@@ -311,7 +317,14 @@ class RSService:
                 else:
                     perf_3m = perf_1m  # Use 1M if 3M not available
                 
-                result.append((symbol, perf_1m, perf_3m))
+                # 6-month (126 trading days) - KK methodology
+                if len(bars) >= 126:
+                    price_6m = float(bars[125].close)
+                    perf_6m = ((current - price_6m) / price_6m) * 100 if price_6m > 0 else 0
+                else:
+                    perf_6m = perf_3m  # Use 3M if 6M not available
+                
+                result.append((symbol, perf_1m, perf_3m, perf_6m))
                 
             except Exception as e:
                 # Skip symbols that fail
