@@ -232,7 +232,7 @@ export default function Automation() {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [engineRes, schedulerRes, monitorRes, apiStatsRes, schedulerSignalsRes, diagnosticsRes, positionsRes, simPosRes] = await Promise.all([
+            const [engineRes, schedulerRes, monitorRes, apiStatsRes, schedulerSignalsRes, diagnosticsRes, positionsRes, simPosRes, settingsRes] = await Promise.all([
                 fetch(`${API_BASE}/automation/status`),
                 fetch(`${API_BASE}/automation/scheduler/status`),
                 fetch(`${API_BASE}/automation/monitor/status`),
@@ -241,6 +241,7 @@ export default function Automation() {
                 fetch(`${API_BASE}/automation/scheduler/diagnostics`),
                 fetch(`${API_BASE}/automation/positions`),
                 fetch(`${API_BASE}/automation/simulation/positions`),  // Sim positions
+                fetch(`${API_BASE}/automation/scheduler/settings`),    // Scheduler settings (for sim_mode)
             ])
 
             if (engineRes.ok) setEngine(await engineRes.json())
@@ -249,6 +250,7 @@ export default function Automation() {
             if (apiStatsRes.ok) setApiStats(await apiStatsRes.json())
             if (positionsRes.ok) setPositions(await positionsRes.json())
             if (simPosRes.ok) setSimPositions(await simPosRes.json())  // Sim positions
+            if (settingsRes.ok) setSchedulerSettings(await settingsRes.json())  // Scheduler settings
 
             // If scheduler has signals, REPLACE session signals (latest scan = source of truth)
             if (schedulerSignalsRes.ok) {
@@ -955,9 +957,9 @@ export default function Automation() {
                                     <h2>
                                         {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
                                     </h2>
-                                    {schedulerSettings?.sim_mode && simPositions?.count ? (
+                                    {schedulerSettings?.sim_mode ? (
                                         <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
-                                            {simPositions.count} positions • ${simPositions.account?.portfolio_value?.toFixed(0) || 0}
+                                            {simPositions?.count || 0} positions • ${simPositions?.account?.portfolio_value?.toFixed(0) || '100,000'}
                                         </span>
                                     ) : positions?.count ? (
                                         <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff' }}>
