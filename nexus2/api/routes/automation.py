@@ -976,18 +976,16 @@ async def start_scheduler(
     # AUTO-START POSITION MONITOR
     # =============================
     # This handles Day 3-5 partials and intraday stop checks
-    from nexus2.domain.automation.monitor import PositionMonitor
+    from nexus2.api.routes.automation_state import get_monitor
     from nexus2.api.routes.settings import get_settings
     
-    global _monitor
     saved_settings = get_settings()
     
-    _monitor = PositionMonitor(
-        check_interval_seconds=60,  # Check every minute
-        kk_style_partials=True,
-        partial_exit_days=saved_settings.partial_exit_days,
-        partial_exit_fraction=saved_settings.partial_exit_fraction,
-    )
+    # Get the shared monitor singleton (same instance used by /monitor/status)
+    _monitor = get_monitor()
+    _monitor.kk_style_partials = True
+    _monitor.partial_exit_days = saved_settings.partial_exit_days
+    _monitor.partial_exit_fraction = saved_settings.partial_exit_fraction
     
     # Callback: Get open positions
     async def get_monitor_positions():

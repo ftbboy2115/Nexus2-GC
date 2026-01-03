@@ -385,7 +385,7 @@ class PositionMonitor:
         if not self._streaming_client or not self._get_positions:
             return
         
-        positions = self._get_positions()
+        positions = await self._get_positions()
         symbols = [p.get("symbol") for p in positions if p.get("symbol")]
         
         if symbols:
@@ -413,7 +413,7 @@ class PositionMonitor:
         if not self._get_positions:
             return
         
-        positions = self._get_positions()
+        positions = await self._get_positions()
         
         # Find position for this symbol
         position = next((p for p in positions if p.get("symbol") == symbol), None)
