@@ -262,14 +262,18 @@ class HTFScannerService:
         else:
             status = HTFStatus.FORMING  # Still pulling back
         
-        # Calculate entry/stop zones
+        # Calculate entry zone
         # Entry: break of recent consolidation high (use last 5 days)
         recent_highs = highs[-5:] if len(highs) >= 5 else highs
         entry_price = max(recent_highs)
         
-        # Stop: low of flag (last 10 days or configurable)
-        flag_lows = lows[-10:] if len(lows) >= 10 else lows
-        stop_price = min([l for l in flag_lows if l > 0])
+        # NOTE: Stop is NOT calculated here
+        # KK methodology: stop = low of entry candle (determined at execution time)
+        # The execution handler will set the real tactical stop based on:
+        # - Opening range low (for intraday entry)
+        # - Entry day low (for EOD entry)
+        # - ATR constraint (must be ≤1 ATR from entry)
+        stop_price = None  # To be calculated at entry time
         
         # Get company name (if available)
         try:
@@ -288,7 +292,7 @@ class HTFScannerService:
             dollar_volume=dollar_vol,
             status=status,
             entry_price=entry_price,
-            stop_price=stop_price,
+            stop_price=stop_price,  # None - calculated at entry
         )
     
     def get_htf_trend(self, symbol: str, sector: str = "Unknown") -> dict:

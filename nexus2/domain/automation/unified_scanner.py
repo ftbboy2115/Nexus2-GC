@@ -453,8 +453,16 @@ class UnifiedScannerService:
         try:
             entry_price = candidate.entry_price or candidate.price
             entry_price = Decimal(str(entry_price))  # Ensure Decimal
-            tactical_stop = candidate.stop_price
-            tactical_stop = Decimal(str(tactical_stop)) if tactical_stop else (entry_price * Decimal("0.90"))
+            
+            # KK methodology: Stop = entry day low (calculated at execution time)
+            # For now, use a placeholder based on typical HTF volatility (~3%)
+            # The execution handler will override with actual entry candle low
+            if candidate.stop_price:
+                tactical_stop = Decimal(str(candidate.stop_price))
+            else:
+                # Placeholder: 3% below entry (typical tight HTF flag)
+                # This will be replaced by execution handler with real stop
+                tactical_stop = entry_price * Decimal("0.97")
             
             # Calculate quality based on HTF metrics
             quality = 6  # HTF patterns start higher quality
