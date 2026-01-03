@@ -125,6 +125,8 @@
     border-radius: 16px;
     padding: 20px;
     backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
 }
 
 .cardHeader {
@@ -212,7 +214,8 @@
 
 /* Card Actions */
 .cardActions {
-    margin-top: 20px;
+    margin-top: auto;
+    padding-top: 20px;
     display: flex;
     gap: 10px;
 }
