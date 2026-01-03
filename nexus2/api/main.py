@@ -4,6 +4,9 @@ Nexus 2 API
 FastAPI application for the Nexus trading platform.
 """
 
+import asyncio
+import signal
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +22,21 @@ from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
 
+def _shutdown_fmp_handler(signum, frame):
+    """Signal handler to immediately set FMP shutdown flag on Ctrl+C."""
+    print("\n[Shutdown] Ctrl+C received - setting shutdown flag...")
+    try:
+        from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+        fmp = get_fmp_adapter()
+        fmp._shutdown = True
+        print("[Shutdown] FMP shutdown flag set - scan will abort shortly")
+        print("[Shutdown] Press Ctrl+C again to stop server")
+    except Exception as e:
+        print(f"[Shutdown] FMP flag error: {e}")
+    # Restore default handler so next Ctrl+C stops the server
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -28,6 +46,11 @@ async def lifespan(app: FastAPI):
     """
     # Initialize database
     init_db()
+    
+    # Register signal handler for graceful shutdown
+    # This runs BEFORE uvicorn's handler, setting FMP shutdown flag immediately
+    signal.signal(signal.SIGINT, _shutdown_fmp_handler)
+    print("[Startup] Graceful shutdown signal handler registered")
     
     # Startup
     app.state.order_service = OrderService()
@@ -89,6 +112,48 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown - cleanup
+    print("[Shutdown] Stopping automation services...")
+    
+    # Signal FMP adapter to stop waiting on rate limits
+    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+    try:
+        fmp = get_fmp_adapter()
+        fmp._shutdown = True
+        print("[Shutdown] FMP adapter shutdown flag set")
+    except Exception as e:
+        print(f"[Shutdown] FMP shutdown flag error: {e}")
+    
+    # Stop scheduler
+    from nexus2.api.routes.automation_state import get_scheduler, get_monitor
+    try:
+        scheduler = get_scheduler()
+        if scheduler.is_running:
+            await scheduler.stop()
+            print("[Shutdown] Scheduler stopped")
+    except Exception as e:
+        print(f"[Shutdown] Scheduler stop error: {e}")
+    
+    # Stop monitor
+    try:
+        monitor = get_monitor()
+        if monitor._running:
+            await monitor.stop()
+            print("[Shutdown] Monitor stopped")
+    except Exception as e:
+        print(f"[Shutdown] Monitor stop error: {e}")
+    
+    # Cancel auto-start checker
+    from nexus2.api.routes.automation_state import get_auto_start_task
+    auto_start_task = get_auto_start_task()
+    if auto_start_task and not auto_start_task.done():
+        auto_start_task.cancel()
+        try:
+            await auto_start_task
+        except asyncio.CancelledError:
+            pass
+        print("[Shutdown] Auto-start checker cancelled")
+    
+    print("[Shutdown] Cleanup complete")
 
 
 def create_app() -> FastAPI:

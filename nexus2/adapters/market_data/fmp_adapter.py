@@ -98,6 +98,7 @@ class FMPAdapter:
         
         self._client = httpx.Client(timeout=self.config.timeout)
         self.rate_limiter = RateLimitTracker(self.config.rate_limit_per_minute)
+        self._shutdown = False  # Flag for graceful shutdown
     
     def __del__(self):
         if hasattr(self, '_client'):
@@ -111,26 +112,43 @@ class FMPAdapter:
         """Make GET request to FMP API with rate limiting."""
         import time
         
-        # Throttle: wait if approaching limit (< 10 remaining)
-        while self.rate_limiter.remaining < 10:
-            wait_time = 5  # Wait 5 seconds
-            print(f"[FMP] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
-            time.sleep(wait_time)
-        
-        # Hard stop if at limit
-        if self.rate_limiter.remaining <= 0:
-            print(f"[FMP] Rate limit reached! Waiting 60s...")
-            time.sleep(60)
-        
-        url = f"{self.config.base_url}/{endpoint}"
-        params = params or {}
-        params["apikey"] = self.config.api_key
-        
         try:
+            # Throttle: wait if approaching limit (< 10 remaining)
+            while self.rate_limiter.remaining < 10 and not self._shutdown:
+                wait_time = 5  # Total wait 5 seconds
+                print(f"[FMP] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
+                # Use short intervals so we can respond to shutdown quickly
+                for _ in range(10):  # 10 x 0.5s = 5s total
+                    if self._shutdown:
+                        print("[FMP] Shutdown detected, aborting request")
+                        return None
+                    time.sleep(0.5)
+            
+            # Hard stop if at limit
+            if self.rate_limiter.remaining <= 0 and not self._shutdown:
+                print(f"[FMP] Rate limit reached! Waiting 60s...")
+                # Use short intervals for interruptibility
+                for _ in range(120):  # 120 x 0.5s = 60s total
+                    if self._shutdown:
+                        print("[FMP] Shutdown detected, aborting request")
+                        return None
+                    time.sleep(0.5)
+            
+            if self._shutdown:
+                return None
+            
+            url = f"{self.config.base_url}/{endpoint}"
+            params = params or {}
+            params["apikey"] = self.config.api_key
+            
             self.rate_limiter.record_call()
             response = self._client.get(url, params=params)
             response.raise_for_status()
             return response.json()
+        except KeyboardInterrupt:
+            print("[FMP] Keyboard interrupt received, aborting")
+            self._shutdown = True
+            return None
         except Exception as e:
             print(f"[FMP] Request error: {e}")
             return None
