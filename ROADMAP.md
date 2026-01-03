@@ -60,6 +60,7 @@ Last updated: 2026-01-03
 
 - [ ] **Equity Curve & Drawdown Charts** — Visualize portfolio performance over time
 - [ ] **Calendar Heatmap** — Daily P&L visualization
+- [ ] **Async RS Refresh** — Background job for RS universe refresh (non-blocking)
 
 ---
 
