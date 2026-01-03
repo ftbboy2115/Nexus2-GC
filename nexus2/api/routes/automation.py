@@ -46,9 +46,9 @@ from nexus2.api.routes.automation_helpers import (
     start_auto_start_checker as _start_auto_start_checker,
     configure_scanner_from_settings as _configure_scanner_from_settings,
     create_eod_callback as _create_eod_callback,
-    create_execute_callback as _create_execute_callback,
     configure_and_start_scheduler as _configure_and_start_scheduler,
 )
+from nexus2.api.routes.execution_handler import create_execute_callback as _create_execute_callback_factory
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
@@ -797,7 +797,6 @@ async def start_scheduler(
             if not engine.can_open_position():
                 logger.warning(f"[AutoExec] Position limit reached, stopping at {len(executed)} trades")
                 break
-            
             
             # Calculate position size based on risk
             shares = signal.calculate_shares(engine.config.risk_per_trade)
