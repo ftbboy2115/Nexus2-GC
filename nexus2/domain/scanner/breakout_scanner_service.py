@@ -187,9 +187,9 @@ class BreakoutScannerService:
         sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else sma20
         ma_stacked = current_price > sma10 > sma20 > sma50
         
-        # ENFORCE: Price must be above 20 SMA for flag breakouts
-        # This filters out downtrend stocks (buying into weakness)
-        if current_price < sma20:
+        # ENFORCE: MAs must be stacked for flag breakouts (KK-style)
+        # This filters out downtrend bounces (e.g., CMCSA above 20 but below 50)
+        if not ma_stacked:
             return None
         
         # Calculate RS percentile using RS Service (true percentile ranking)
