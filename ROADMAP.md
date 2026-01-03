@@ -28,7 +28,7 @@ Last updated: 2026-01-03
 - [x] **Graceful Shutdown** — Two-stage Ctrl+C, FMP rate limit interruptible
 - [x] **Singleton Cleanup** — Removed duplicate `global _monitor`, use `get_monitor()`
 - [x] **Extract `execute_callback`** — Moved to `execution_handler.py` + 3 more modules (65% reduction)
-- [ ] **`_sim_broker` thread safety** — Document or fix concurrency concerns
+- [x] **`_sim_broker` thread safety** — Centralized in automation_state.py with threading.Lock
 
 ---
 
