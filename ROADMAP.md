@@ -13,7 +13,7 @@ Last updated: 2026-01-03
 
 ## 🔧 Features
 
-- [ ] **HTF Simulation Testing** — Fix HTF candidate → signal conversion
+- [x] **HTF Simulation Testing** — Verified: scanner works, added configurable extended threshold
 - [ ] **VPS Deployment** — Set up on DigitalOcean droplet
 - [ ] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint

@@ -59,6 +59,9 @@ class UnifiedScanSettings:
     ep_limit: int = 20
     breakout_limit: int = 20
     htf_limit: int = 20
+    
+    # Testing: include extended HTF candidates (not KK-recommended)
+    include_extended_htf: bool = False  # Default: exclude extended
 
 
 @dataclass
@@ -355,8 +358,14 @@ class UnifiedScannerService:
         
         signals = []
         for candidate in result.candidates:
-            # Only include complete or forming status (not extended)
-            if candidate.status in (HTFStatus.COMPLETE, HTFStatus.FORMING):
+            # Filter by status:
+            # - COMPLETE/FORMING are always included
+            # - EXTENDED only if include_extended_htf is True
+            valid_statuses = [HTFStatus.COMPLETE, HTFStatus.FORMING]
+            if self.settings.include_extended_htf:
+                valid_statuses.append(HTFStatus.EXTENDED)
+            
+            if candidate.status in valid_statuses:
                 signal = self._htf_candidate_to_signal(candidate)
                 if signal:
                     signals.append(signal)
@@ -455,7 +464,9 @@ class UnifiedScannerService:
                 quality += 1
             if candidate.status == HTFStatus.COMPLETE:
                 quality += 2
-            quality = min(10, quality)
+            elif candidate.status == HTFStatus.EXTENDED:
+                quality -= 2  # Penalty for extended (not KK-recommended)
+            quality = max(4, min(10, quality))  # Clamp 4-10
             
             # Get actual RS percentile from RS service
             from nexus2.domain.scanner.rs_service import get_rs_service

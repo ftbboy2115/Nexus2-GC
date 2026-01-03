@@ -40,6 +40,10 @@ class HTFScanSettings:
     
     # Tightness (optional, for ranking)
     min_tightness_score: Decimal = Decimal("0.0")  # 0-100
+    
+    # Extended threshold (KK-style: stocks <5% from high are "extended")
+    # Lower this for testing (e.g., 2.0) to include more candidates
+    extended_threshold_pct: Decimal = Decimal("5.0")  # Default: KK-recommended
 
 
 class HTFStatus(Enum):
@@ -250,7 +254,8 @@ class HTFScannerService:
             return None
         
         # Determine status
-        if pullback_pct < Decimal("5"):
+        # Stocks very close to highs are "extended" — not ideal entries
+        if pullback_pct < self.settings.extended_threshold_pct:
             status = HTFStatus.EXTENDED  # Very near highs, might be extended
         elif pullback_pct < Decimal("15"):
             status = HTFStatus.COMPLETE  # Ideal flag depth
