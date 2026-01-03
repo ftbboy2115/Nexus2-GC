@@ -1102,8 +1102,6 @@ async def stop_scheduler(
     engine: AutomationEngine = Depends(get_engine),
 ):
     """Stop the background scheduler, engine, and position monitor."""
-    global _monitor
-    
     scheduler = get_scheduler()
     result = await scheduler.stop()
     
@@ -1111,9 +1109,10 @@ async def stop_scheduler(
     engine.stop()
     logger.info("[Scheduler] Engine stopped")
     
-    # Also stop the position monitor
-    if _monitor:
-        await _monitor.stop()
+    # Also stop the position monitor (using shared singleton)
+    monitor = get_monitor()
+    if monitor._running:
+        await monitor.stop()
         logger.info("[Scheduler] PositionMonitor stopped")
     
     return {**result, "engine_stopped": True, "monitor_stopped": True}
