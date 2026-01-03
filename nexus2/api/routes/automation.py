@@ -295,6 +295,7 @@ async def scan_all(
         stop_mode=request.stop_mode,
         max_stop_atr=request.max_stop_atr,
         max_stop_percent=request.max_stop_percent,
+        include_extended_htf=request.include_extended_htf,  # For testing
     )
     scanner = UnifiedScannerService(settings=settings)
     

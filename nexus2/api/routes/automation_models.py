@@ -46,6 +46,7 @@ class ScanAllRequest(BaseModel):
     stop_mode: str = "atr"  # "atr" (KK-style) or "percent"
     max_stop_atr: float = 1.0  # KK uses 1.0-1.5 ATR
     max_stop_percent: float = 5.0  # Fallback for percent mode
+    include_extended_htf: bool = False  # Include extended HTF candidates (for testing)
 
 
 class ExecuteRequest(BaseModel):
