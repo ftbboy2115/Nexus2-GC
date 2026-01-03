@@ -5,7 +5,9 @@ Global instances and accessors for automation components.
 Extracted from automation.py for cleaner separation of concerns.
 """
 
+import threading
 from typing import Optional, TYPE_CHECKING
+
 from fastapi import HTTPException
 
 if TYPE_CHECKING:
@@ -23,6 +25,10 @@ _app = None
 # Auto-start checker state
 _auto_start_task = None
 _auto_start_triggered_today = False
+
+# Simulation broker singleton (thread-safe)
+_sim_broker = None
+_sim_broker_lock = threading.Lock()
 
 
 def get_engine() -> "AutomationEngine":
@@ -87,3 +93,40 @@ def set_auto_start_triggered_today(value: bool):
     """Set whether auto-start has triggered today."""
     global _auto_start_triggered_today
     _auto_start_triggered_today = value
+
+
+# ==================== SIMULATION BROKER ====================
+
+def get_sim_broker():
+    """
+    Get the simulation broker instance (thread-safe).
+    
+    Returns None if not initialized yet.
+    """
+    with _sim_broker_lock:
+        return _sim_broker
+
+
+def set_sim_broker(broker):
+    """
+    Set the simulation broker instance (thread-safe).
+    
+    This is called when creating a new MockBroker for simulation trading.
+    """
+    global _sim_broker
+    with _sim_broker_lock:
+        _sim_broker = broker
+
+
+def get_or_create_sim_broker(initial_cash: float = 100_000.0):
+    """
+    Get existing sim broker or create a new one (thread-safe).
+    
+    Use this for lazy initialization in execute_callback.
+    """
+    global _sim_broker
+    with _sim_broker_lock:
+        if _sim_broker is None:
+            from nexus2.adapters.broker.mock_broker import MockBroker
+            _sim_broker = MockBroker(initial_cash=initial_cash)
+        return _sim_broker

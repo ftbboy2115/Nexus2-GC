@@ -39,8 +39,8 @@ async def get_simulation_status():
         from nexus2.api.routes.automation import start_scheduler
         # The mock broker is attached to execute_callback inside start_scheduler's closure
         # We'll access it through a module-level reference instead
-        from nexus2.api.routes.automation import _get_sim_broker
-        mock_broker = _get_sim_broker()
+        from nexus2.api.routes.automation_state import get_sim_broker
+        mock_broker = get_sim_broker()
         if mock_broker:
             broker_state = mock_broker.to_dict()
     except Exception:
@@ -61,8 +61,8 @@ async def get_sim_positions():
     Returns simulated positions, account balance, and P&L.
     """
     try:
-        from nexus2.api.routes.automation import _get_sim_broker
-        mock_broker = _get_sim_broker()
+        from nexus2.api.routes.automation_state import get_sim_broker
+        mock_broker = get_sim_broker()
         
         if not mock_broker:
             return {

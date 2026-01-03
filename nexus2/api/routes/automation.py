@@ -33,6 +33,7 @@ from nexus2.api.routes.automation_state import (
     set_app, get_app,
     get_auto_start_task, set_auto_start_task,
     get_auto_start_triggered_today, set_auto_start_triggered_today,
+    get_sim_broker, set_sim_broker,  # Thread-safe sim broker
 )
 from nexus2.api.routes.automation_models import (
     StartRequest, EngineStatusResponse, ActionResponse,
@@ -52,18 +53,8 @@ from nexus2.api.routes.execution_handler import create_execute_callback as _crea
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
-# Module-level MockBroker reference for sim mode
-_sim_broker = None
-
-def _get_sim_broker():
-    """Get the MockBroker instance used in sim_mode."""
-    return _sim_broker
-
-def _set_sim_broker(broker):
-    """Set the MockBroker instance for sim_mode."""
-    global _sim_broker
-    _sim_broker = broker
-
+# NOTE: _sim_broker moved to automation_state.py for thread safety
+# Use get_sim_broker() and set_sim_broker() from automation_state
 
 
 

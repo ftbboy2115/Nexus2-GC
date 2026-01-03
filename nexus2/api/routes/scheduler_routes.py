@@ -11,7 +11,10 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Depends, HTTPException
 
 from nexus2.domain.automation.engine import AutomationEngine
-from nexus2.api.routes.automation_state import get_engine, get_scheduler, get_monitor
+from nexus2.api.routes.automation_state import (
+    get_engine, get_scheduler, get_monitor,
+    get_sim_broker, set_sim_broker,  # Thread-safe sim broker
+)
 from nexus2.api.routes.automation_models import (
     SchedulerStartRequest,
     SchedulerToggleRequest,
@@ -31,15 +34,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
-# Module-level sim broker (for closure access)
-_sim_broker = None
-
-def _get_sim_broker():
-    return _sim_broker
-
-def _set_sim_broker(broker):
-    global _sim_broker
-    _sim_broker = broker
+# NOTE: _sim_broker moved to automation_state.py for thread safety
+# Use get_sim_broker() and set_sim_broker() instead
 
 
 @router.post("/scheduler/start", response_model=dict)
@@ -82,8 +78,8 @@ async def start_scheduler(
         engine=engine,
         scheduler=scheduler,
         broker=broker,
-        get_sim_broker=_get_sim_broker,
-        set_sim_broker=_set_sim_broker,
+        get_sim_broker=get_sim_broker,  # From automation_state.py (thread-safe)
+        set_sim_broker=set_sim_broker,  # From automation_state.py (thread-safe)
         req=req,
     )
     
