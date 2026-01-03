@@ -1,0 +1,72 @@
+# Nexus 2 Roadmap
+
+Last updated: 2026-01-03
+
+> **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
+
+## Legend
+- [ ] Not started
+- [/] In progress
+- [x] Completed
+
+---
+
+## 🔧 Features
+
+- [ ] **HTF Simulation Testing** — Fix HTF candidate → signal conversion
+- [ ] **VPS Deployment** — Set up on DigitalOcean droplet
+- [ ] **Liquidate All Button** — Quick exit for paper mode testing
+  - Backend: `POST /automation/liquidate-all` endpoint
+  - GUI: Add button next to Emergency Stop, confirmation modal
+
+---
+
+## 🛠 Technical Debt
+
+- [x] **Graceful Shutdown** — Two-stage Ctrl+C, FMP rate limit interruptible
+- [x] **Singleton Cleanup** — Removed duplicate `global _monitor`, use `get_monitor()`
+- [ ] **Extract `execute_callback`** — Move ~400 line function to separate file
+- [ ] **`_sim_broker` thread safety** — Document or fix concurrency concerns
+
+---
+
+## 📋 Audit Items
+
+- [ ] **DB session context managers** — Add `with` blocks for proper cleanup
+- [ ] **`orders_filled` increment timing** — Verify correct increment logic
+- [ ] **Hardcoded values to settings** — Move `MAX_TRADES_PER_CYCLE`, sim interval to config
+
+---
+
+## 📝 UI / UX
+
+- [ ] **API Usage card sync** — Verify it shows real FMP rate limit stats
+- [ ] **Discord notifications** — Not firing for executed trades
+- [ ] **Total P&L % in Open Positions** — Add to positions card
+
+---
+
+## 🧪 Scanner Improvements
+
+- [ ] **RS percentile calculation** — Compare stock vs SPY 20/50/200 day returns
+- [ ] **Setup classification tags** — Each scanner tags its type: ep, breakout, htf, flag
+- [ ] **Full E2E simulation test** — After fixing HTF signal conversion
+
+---
+
+## 🔮 Future / Low Priority
+
+- [ ] **Equity Curve & Drawdown Charts** — Visualize portfolio performance over time
+- [ ] **Calendar Heatmap** — Daily P&L visualization
+
+---
+
+## ✅ Completed (Recent)
+
+- [x] Sim mode display on page load
+- [x] MA stacking filter in breakout scanner (price > SMA10 > SMA20 > SMA50)
+- [x] Monitor auto-start with scheduler (await fix + singleton unification)
+- [x] Button alignment on control cards (flexbox)
+- [x] Graceful shutdown (Ctrl+C handling)
+- [x] Singleton cleanup
+- [x] EP Scanner infrastructure (catalyst patterns, CatalystType.NEWS, opening range)
