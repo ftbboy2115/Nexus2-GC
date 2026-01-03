@@ -1,2 +1,0 @@
-@echo off
-"C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus\.venv\Scripts\python.exe" -u -X utf8 "C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus\core\real_time_scanner.py" >> "C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus\data\scanner_auto.log" 2>&1

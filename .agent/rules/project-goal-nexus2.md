@@ -124,3 +124,9 @@ CONSTRAINTS & STYLE
 
 PRIMARY MISSION
 Lead the complete, safe, maintainable rewrite of the Nexus trading platform within this Antigravity workspace, ensuring every change moves the system toward a robust, testable, observable, and future-extensible architecture suitable for a trading platform builder.
+
+
+DOCUMENT SYNC PATTERN
+- [ROADMAP.md](cci:7://file:///c:/Users/ftbbo/Nextcloud4/OneDrive%20Backup/Documents%20%28sync%27d%29/Development/Nexus/ROADMAP.md:0:0-0:0) in project root is the user-facing task list (version controlled).
+- KI artifacts contain detailed architecture/implementation notes (AI memory).
+- When completing roadmap items or adding new ones, keep both in sync.

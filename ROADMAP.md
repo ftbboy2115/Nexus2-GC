@@ -18,6 +18,8 @@ Last updated: 2026-01-03
 - [ ] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint
   - GUI: Add button next to Emergency Stop, confirmation modal
+- [ ] **Project README** — Startup instructions (backend, frontend, env setup)
+- [ ] **User Guide / Wiki** — How to use the system, operational playbook
 
 ---
 
