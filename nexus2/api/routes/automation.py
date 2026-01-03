@@ -592,6 +592,74 @@ async def scan_and_execute(
     }
 
 
+# ==================== RS SERVICE ENDPOINTS ====================
+
+@router.post("/rs/refresh", response_model=dict)
+async def refresh_rs_universe(request: Request):
+    """
+    Refresh the RS (Relative Strength) universe.
+    
+    This calculates 1M/3M/6M performance for ~2000 stocks and ranks them.
+    Uses the shared FMP adapter so API usage is tracked in the dashboard.
+    
+    ⚠️ Warning: This makes many API calls and may take 5-10 minutes.
+    """
+    from nexus2.domain.scanner.rs_service import get_rs_service
+    
+    rs_service = get_rs_service()
+    
+    # Get the shared FMP adapter from app state (for usage tracking)
+    fmp_adapter = getattr(request.app.state, 'market_data', None)
+    if fmp_adapter:
+        # Use the adapter's underlying FMP if it's a wrapper
+        if hasattr(fmp_adapter, '_fmp'):
+            rs_service.set_fmp_adapter(fmp_adapter._fmp)
+        elif hasattr(fmp_adapter, 'fmp'):
+            rs_service.set_fmp_adapter(fmp_adapter.fmp)
+        else:
+            rs_service.set_fmp_adapter(fmp_adapter)
+    
+    try:
+        count = rs_service.refresh_universe(verbose=True)
+        return {
+            "status": "success",
+            "stocks_ranked": count,
+            "message": f"Refreshed RS rankings for {count} stocks with 6M performance data",
+        }
+    except Exception as e:
+        logger.error(f"[RS] Refresh failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/rs/status", response_model=dict)
+async def get_rs_status():
+    """Get current RS universe status and sample data."""
+    from nexus2.domain.scanner.rs_service import get_rs_service
+    
+    rs = get_rs_service()
+    
+    # Get top 5 stocks by percentile
+    top_stocks = sorted(
+        rs._universe.values(),
+        key=lambda x: x.percentile,
+        reverse=True
+    )[:5]
+    
+    return {
+        "universe_size": len(rs._universe),
+        "last_refresh": rs._last_refresh.isoformat() if rs._last_refresh else None,
+        "top_5": [
+            {
+                "symbol": s.symbol,
+                "perf_1m": round(s.perf_1m, 2),
+                "perf_3m": round(s.perf_3m, 2),
+                "perf_6m": round(s.perf_6m, 2),
+                "percentile": s.percentile,
+            }
+            for s in top_stocks
+        ],
+    }
+
 
 # ==================== SCHEDULER ENDPOINTS ====================
 # Scheduler endpoints have been moved to scheduler_routes.py

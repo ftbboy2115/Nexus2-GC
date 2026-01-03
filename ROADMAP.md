@@ -50,7 +50,7 @@ Last updated: 2026-01-03
 
 ## 🧪 Scanner Improvements
 
-- [ ] **RS percentile calculation** — Compare stock vs SPY 20/50/200 day returns
+- [x] **RS percentile calculation** — Added 6M (126d) per KK methodology
 - [ ] **Setup classification tags** — Each scanner tags its type: ep, breakout, htf, flag
 - [ ] **Full E2E simulation test** — After fixing HTF signal conversion
 
