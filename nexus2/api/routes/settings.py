@@ -38,6 +38,9 @@ class TradeSettings(BaseModel):
     trailing_ma_type: str = "auto"  # auto, ema_10, ema_20, sma_10, sma_20, lower_10, lower_20
     adr_threshold: float = 5.0  # ADR% threshold for fast vs slow (auto mode)
     min_days_for_trailing: int = 5  # Days before MA trailing applies
+    # Automation Settings
+    max_trades_per_cycle: int = 10  # Max trades to execute per scan cycle
+    sim_initial_cash: float = 100_000.0  # Initial cash for simulation mode
 
 
 class BrokerStatus(BaseModel):
@@ -70,6 +73,9 @@ def get_default_settings() -> TradeSettings:
         trailing_ma_type="auto",
         adr_threshold=5.0,
         min_days_for_trailing=5,
+        # Automation defaults
+        max_trades_per_cycle=10,
+        sim_initial_cash=100_000.0,
     )
 
 
@@ -129,6 +135,9 @@ class UpdateSettings(BaseModel):
     trailing_ma_type: str | None = None  # auto, ema_10, lower_10, etc.
     adr_threshold: float | None = None  # ADR% threshold (5.0 = KK default)
     min_days_for_trailing: int | None = None  # Days before trailing
+    # Automation Settings
+    max_trades_per_cycle: int | None = None  # Max trades per scan cycle
+    sim_initial_cash: float | None = None  # Initial cash for sim mode
 
 
 @router.put("", response_model=TradeSettings)
@@ -174,6 +183,13 @@ async def update_settings(request: Request, updates: UpdateSettings):
     if updates.min_days_for_trailing is not None:
         if 1 <= updates.min_days_for_trailing <= 30:
             current.min_days_for_trailing = updates.min_days_for_trailing
+    # Automation Settings
+    if updates.max_trades_per_cycle is not None:
+        if 1 <= updates.max_trades_per_cycle <= 50:  # Reasonable range
+            current.max_trades_per_cycle = updates.max_trades_per_cycle
+    if updates.sim_initial_cash is not None:
+        if 1_000 <= updates.sim_initial_cash <= 10_000_000:  # $1k - $10M
+            current.sim_initial_cash = updates.sim_initial_cash
     
     _runtime_settings = current
     

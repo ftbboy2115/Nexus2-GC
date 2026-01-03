@@ -118,15 +118,20 @@ def set_sim_broker(broker):
         _sim_broker = broker
 
 
-def get_or_create_sim_broker(initial_cash: float = 100_000.0):
+def get_or_create_sim_broker(initial_cash: float | None = None):
     """
     Get existing sim broker or create a new one (thread-safe).
     
     Use this for lazy initialization in execute_callback.
+    If initial_cash is None, uses settings.sim_initial_cash.
     """
     global _sim_broker
     with _sim_broker_lock:
         if _sim_broker is None:
             from nexus2.adapters.broker.mock_broker import MockBroker
+            # Use settings if no explicit initial_cash provided
+            if initial_cash is None:
+                from nexus2.api.routes.settings import get_settings
+                initial_cash = get_settings().sim_initial_cash
             _sim_broker = MockBroker(initial_cash=initial_cash)
         return _sim_broker

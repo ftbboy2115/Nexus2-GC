@@ -11,5 +11,7 @@
   "active_account": "A",
   "trailing_ma_type": "lower_10",
   "adr_threshold": 6.0,
-  "min_days_for_trailing": 5
+  "min_days_for_trailing": 5,
+  "max_trades_per_cycle": 10,
+  "sim_initial_cash": 100000.0
 }

@@ -140,14 +140,13 @@ def create_execute_callback(
         
         # =============================
         # PROCESS ALL QUALIFIED SIGNALS
-        # Execute up to max_trades_per_cycle (cap at 10 for safety)
+        # Execute up to max_trades_per_cycle from settings
         # =============================
-        MAX_TRADES_PER_CYCLE = 10
-        
         from nexus2.api.routes.settings import get_settings
         from nexus2.db import SessionLocal, SchedulerSettingsRepository
         
         settings = get_settings()
+        MAX_TRADES_PER_CYCLE = settings.max_trades_per_cycle  # From settings (default: 10)
         
         # Get sim_broker reference
         _sim_broker = get_sim_broker()

@@ -36,14 +36,13 @@ Last updated: 2026-01-03
 
 - [ ] **DB session context managers** — Add `with` blocks for proper cleanup
 - [ ] **`orders_filled` increment timing** — Verify correct increment logic
-- [ ] **Hardcoded values to settings** — Move `MAX_TRADES_PER_CYCLE`, sim interval to config
+- [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
 
 ---
 
 ## 📝 UI / UX
 
-- [ ] **API Usage card sync** — Verify it shows real FMP rate limit stats
-- [ ] **Discord notifications** — Not firing for executed trades
+- [x] **API Usage card sync** — Verified: shows real FMP rate limit stats
 - [ ] **Total P&L % in Open Positions** — Add to positions card
 
 ---
