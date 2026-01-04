@@ -1,5 +1,7 @@
 # Mock Market Simulation Environment
 
+> **Last Updated:** January 3, 2026
+
 ## Purpose
 
 The Mock Market provides a simulated trading environment for testing the Nexus Automation Controller (NAC) when the real market is closed. Since the market is open only ~6.5 hours/day, this allows 24/7 development and testing.

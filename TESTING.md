@@ -1,5 +1,7 @@
 # Nexus 2 Testing Guide
 
+> **Last Updated:** January 3, 2026
+
 ## Simulation Tests Overview
 
 The simulation test suite validates the mock trading environment without using real money.
