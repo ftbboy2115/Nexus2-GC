@@ -121,25 +121,30 @@ async def run_full_simulation():
     # Create order callback that routes to MockBroker
     async def mock_order_callback(symbol: str, shares: int, stop_price: float, setup_type: str):
         """Route orders to MockBroker instead of Alpaca."""
+        from uuid import uuid4
         print(f"   📝 Order: {symbol} x {shares} @ market, stop=${stop_price:.2f}")
         
-        result = broker.submit_bracket_order(
-            symbol=symbol,
-            side="buy",
-            qty=shares,
-            stop_price=stop_price,
-        )
-        
-        if result.is_accepted:
-            print(f"   ✅ Filled: {shares} @ ${result.avg_fill_price:.2f}")
-            return {
-                "symbol": symbol,
-                "shares": shares,
-                "fill_price": result.avg_fill_price,
-                "order_id": result.entry_order_id,
-            }
-        else:
-            print(f"   ❌ Rejected: {result.error}")
+        try:
+            result = broker.submit_bracket_order(
+                client_order_id=uuid4(),
+                symbol=symbol,
+                quantity=shares,
+                stop_loss_price=stop_price,
+            )
+            
+            if result.status.value == "filled":
+                print(f"   ✅ Filled: {shares} @ ${result.avg_fill_price:.2f}")
+                return {
+                    "symbol": symbol,
+                    "shares": shares,
+                    "fill_price": float(result.avg_fill_price),
+                    "order_id": result.broker_order_id,
+                }
+            else:
+                print(f"   ❌ Rejected: {result.status}")
+                return None
+        except Exception as e:
+            print(f"Order submission failed: {e}")
             return None
     
     # Create engine with sim callbacks
