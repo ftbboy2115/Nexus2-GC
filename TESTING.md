@@ -6,13 +6,25 @@
 
 The simulation test suite validates the mock trading environment without using real money.
 
-### Test Files Comparison
+### Test Files
 
-| Test File | Purpose | Run Command |
-|-----------|---------|-------------|
-| `test_simulation_e2e.py` | Scanner → Signals (no execution) | `python -m nexus2.tests.test_simulation_e2e` |
-| `test_full_simulation.py` | Full loop: Scanner → Engine → MockBroker → Positions → P&L | `python -m nexus2.tests.test_full_simulation` |
-| `test_nac_simulation_integration.py` | API-based test via HTTP requests | `python nexus2/tests/test_nac_simulation_integration.py` |
+| Test File                            | Purpose                              |
+|--------------------------------------|--------------------------------------|
+| `test_simulation_e2e.py`             | Scanner → Signals (no execution)     |
+| `test_full_simulation.py`            | Full trading loop with MockBroker    |
+| `test_nac_simulation_integration.py` | API endpoint integration testing     |
+
+**Run Commands:**
+```powershell
+# Scanner-only test
+python -m nexus2.tests.test_simulation_e2e
+
+# Full trading loop test  
+python -m nexus2.tests.test_full_simulation
+
+# API integration test (requires server)
+python nexus2/tests/test_nac_simulation_integration.py
+```
 
 ---
 
