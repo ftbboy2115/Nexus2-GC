@@ -209,7 +209,7 @@ async def configure_scanner_from_settings(engine, scheduler):
 
 # ==================== EOD CALLBACK FACTORY ====================
 
-def create_eod_callback(market_data, broker):
+def create_eod_callback(market_data, broker, sim_mode: bool = False):
     """
     Create the EOD callback function for 3:45 PM MA trailing stop check.
     
@@ -219,6 +219,7 @@ def create_eod_callback(market_data, broker):
     Args:
         market_data: Market data provider for quotes and MAs
         broker: Broker for submitting exit orders
+        sim_mode: If True, use MockBroker for positions instead of database
     
     Returns:
         Async callback function for EOD check
@@ -227,7 +228,8 @@ def create_eod_callback(market_data, broker):
         """Run MA check at end of day for trailing stops."""
         from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
         
-        logger.info("[EOD] Running automatic MA trailing stop check...")
+        mode_indicator = "[SIM EOD]" if sim_mode else "[EOD]"
+        logger.info(f"{mode_indicator} Running automatic MA trailing stop check...")
         
         # Create job with AUTO MA selection (KK-style: ADR% determines 10 vs 20 MA)
         job = MACheckJob(
@@ -238,6 +240,37 @@ def create_eod_callback(market_data, broker):
         
         # Callback: Get open positions
         async def get_positions():
+            # In sim_mode, get positions from MockBroker
+            if sim_mode:
+                try:
+                    from nexus2.api.routes.automation_state import get_sim_broker
+                    from nexus2.adapters.simulation import get_simulation_clock
+                    
+                    sim_broker = get_sim_broker()
+                    clock = get_simulation_clock()
+                    
+                    if sim_broker:
+                        positions = sim_broker.get_positions()
+                        sim_positions = []
+                        for symbol, pos_data in positions.items():
+                            # Estimate opened_at as 5 days ago in sim time for testing
+                            # In production sim, this would be tracked
+                            from datetime import timedelta
+                            sim_opened_at = clock.current_time - timedelta(days=5)
+                            sim_positions.append({
+                                "id": f"sim_{symbol}",
+                                "symbol": symbol,
+                                "opened_at": sim_opened_at,
+                                "remaining_shares": pos_data.get("qty", 0),
+                                "entry_price": pos_data.get("avg_price", 0),
+                            })
+                        logger.info(f"{mode_indicator} Found {len(sim_positions)} MockBroker positions")
+                        return sim_positions
+                except Exception as e:
+                    logger.warning(f"{mode_indicator} Error getting MockBroker positions: {e}")
+                return []
+            
+            # Normal mode: get from database
             db = SessionLocal()
             try:
                 position_repo = PositionRepository(db)
@@ -592,7 +625,8 @@ async def configure_and_start_scheduler(engine, scheduler, get_app_fn):
         logger.info("[Scheduler] Auto-start: scan-only mode (no broker or auto_execute disabled)")
     
     # Create EOD callback using shared helper (for 3:45 PM MA trailing stop check)
-    eod_callback = create_eod_callback(market_data, broker)
+    sim_mode = settings.get("sim_mode", False)
+    eod_callback = create_eod_callback(market_data, broker, sim_mode=sim_mode)
     
     # Set callbacks (scan + optional execute + EOD)
     scheduler.set_callbacks(scan_callback, execute_callback, eod_callback)

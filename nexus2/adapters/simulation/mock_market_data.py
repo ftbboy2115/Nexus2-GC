@@ -614,6 +614,43 @@ class MockMarketData:
         
         return sum(adr_values) / len(adr_values)
     
+    def get_ema(self, symbol: str, period: int = 10) -> Optional[float]:
+        """
+        Calculate Exponential Moving Average for symbol.
+        
+        Uses standard EMA formula: EMA = Close * k + EMA_prev * (1 - k)
+        where k = 2 / (period + 1)
+        """
+        bars = self.get_daily_bars(symbol, days=period * 3)  # Extra bars for warmup
+        if not bars or len(bars) < period:
+            return None
+        
+        # Bars are newest-first, reverse for calculation (oldest-first)
+        closes = [b.close for b in reversed(bars)]
+        
+        # Start with SMA for initial EMA value
+        ema = sum(closes[:period]) / period
+        
+        # EMA multiplier
+        k = 2 / (period + 1)
+        
+        # Calculate EMA for remaining bars
+        for close in closes[period:]:
+            ema = close * k + ema * (1 - k)
+        
+        return round(ema, 2)
+    
+    def get_sma(self, symbol: str, period: int = 10) -> Optional[float]:
+        """
+        Calculate Simple Moving Average for symbol.
+        """
+        bars = self.get_daily_bars(symbol, days=period)
+        if not bars or len(bars) < period:
+            return None
+        
+        closes = [b.close for b in bars[:period]]
+        return round(sum(closes) / len(closes), 2)
+    
     def get_opening_range(self, symbol: str, timeframe_minutes: int = 5) -> Optional[tuple]:
         """
         Get opening range (simulated from daily bar).

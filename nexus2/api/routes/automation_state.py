@@ -128,7 +128,7 @@ def get_or_create_sim_broker(initial_cash: float | None = None):
     global _sim_broker
     with _sim_broker_lock:
         if _sim_broker is None:
-            from nexus2.adapters.broker.mock_broker import MockBroker
+            from nexus2.adapters.simulation.mock_broker import MockBroker
             # Use settings if no explicit initial_cash provided
             if initial_cash is None:
                 from nexus2.api.routes.settings import get_settings

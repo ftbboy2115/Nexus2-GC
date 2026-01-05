@@ -84,7 +84,8 @@ async def start_scheduler(
     )
     
     # EOD callback using shared helper (avoids code duplication)
-    eod_callback = create_eod_callback(market_data, broker)
+    sim_mode = settings.get("sim_mode", False)
+    eod_callback = create_eod_callback(market_data, broker, sim_mode=sim_mode)
     
     scheduler.set_callbacks(scan_callback, execute_callback, eod_callback)
     

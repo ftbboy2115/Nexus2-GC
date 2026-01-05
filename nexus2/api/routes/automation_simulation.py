@@ -15,6 +15,144 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/automation", tags=["simulation"])
 
 
+def _generate_synthetic_loser_data(
+    start_date: str,
+    end_date: str,
+    setup_date: str,
+    config: dict
+) -> list:
+    """
+    Generate synthetic price data for a "loser" EP test case.
+    
+    Creates a controlled price pattern:
+    1. Pre-setup: 60+ days of stable prices for MA warmup
+    2. Setup day (gap day): Big gap up on "earnings"
+    3. Consolidation: 3-5 days drifting higher (building hope)
+    4. Breakdown: Sharp reversal, closes below MA each day
+    5. Continuation: Continues lower (confirming exit was right)
+    """
+    from datetime import datetime, timedelta
+    import random
+    
+    bars = []
+    
+    # Parse dates
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    setup = datetime.strptime(setup_date, "%Y-%m-%d")
+    
+    # Extract config values with defaults
+    gap_open = config.get("gap_day_open", 100.0)
+    gap_close = config.get("gap_day_close", 108.0)
+    gap_high = config.get("gap_day_high", 112.0)
+    gap_low = config.get("gap_day_low", 99.0)
+    consolidation_days = config.get("consolidation_days", 5)
+    consolidation_high = config.get("consolidation_high", 115.0)
+    breakdown_days = config.get("breakdown_days", 5)
+    breakdown_target = config.get("breakdown_target", 85.0)
+    continuation_target = config.get("continuation_target", 70.0)
+    
+    # Pre-gap baseline price (used for MA warmup)
+    pre_gap_price = gap_open * 0.88  # Stock was ~12% lower before gap
+    
+    current = start
+    day_count = 0
+    
+    while current <= end:
+        # Skip weekends
+        if current.weekday() >= 5:
+            current += timedelta(days=1)
+            continue
+        
+        date_str = current.strftime("%Y-%m-%d")
+        
+        if current < setup:
+            # Pre-setup: Stable prices around baseline (for MA warmup)
+            noise = random.uniform(-0.02, 0.02)
+            close = pre_gap_price * (1 + noise)
+            high = close * 1.01
+            low = close * 0.99
+            bars.append({
+                "date": date_str,
+                "open": round(close * 0.998, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "close": round(close, 2),
+                "volume": random.randint(500000, 2000000),
+            })
+        
+        elif current == setup:
+            # Gap day: Big move up
+            bars.append({
+                "date": date_str,
+                "open": round(gap_open, 2),
+                "high": round(gap_high, 2),
+                "low": round(gap_low, 2),
+                "close": round(gap_close, 2),
+                "volume": random.randint(5000000, 15000000),  # High volume on gap
+            })
+            day_count = 0
+        
+        elif day_count < consolidation_days:
+            # Consolidation: Drift higher, building hope
+            day_count += 1
+            progress = day_count / consolidation_days
+            close = gap_close + (consolidation_high - gap_close) * progress
+            noise = random.uniform(-0.01, 0.02)
+            close *= (1 + noise)
+            high = close * 1.02
+            low = close * 0.98
+            bars.append({
+                "date": date_str,
+                "open": round(close * 0.995, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "close": round(close, 2),
+                "volume": random.randint(1000000, 3000000),
+            })
+        
+        elif day_count < consolidation_days + breakdown_days:
+            # Breakdown: Sharp reversal - closes BELOW 10MA each day
+            day_count += 1
+            breakdown_progress = (day_count - consolidation_days) / breakdown_days
+            close = consolidation_high - (consolidation_high - breakdown_target) * breakdown_progress
+            # Add slight noise but keep trending down
+            noise = random.uniform(-0.02, 0.01)
+            close *= (1 + noise)
+            high = close * 1.03  # Opens higher, sells off
+            low = close * 0.97
+            bars.append({
+                "date": date_str,
+                "open": round(high * 0.99, 2),  # Gap down open
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "close": round(close, 2),
+                "volume": random.randint(3000000, 8000000),  # High volume on breakdown
+            })
+        
+        else:
+            # Continuation: Keep going lower (confirming exit was right)
+            day_count += 1
+            continuation_progress = min(1.0, (day_count - consolidation_days - breakdown_days) / 10)
+            close = breakdown_target - (breakdown_target - continuation_target) * continuation_progress
+            noise = random.uniform(-0.02, 0.02)
+            close *= (1 + noise)
+            high = close * 1.02
+            low = close * 0.98
+            bars.append({
+                "date": date_str,
+                "open": round(close * 1.01, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "close": round(close, 2),
+                "volume": random.randint(1000000, 4000000),
+            })
+        
+        current += timedelta(days=1)
+    
+    return bars
+
+
 # ==================== SIMULATION ENDPOINTS ====================
 
 @router.get("/simulation/status", response_model=dict)
@@ -687,6 +825,172 @@ async def advance_simulation(
     }
 
 
+@router.post("/simulation/run_eod", response_model=dict)
+async def run_simulation_eod():
+    """
+    Manually trigger EOD MA trailing stop check for simulation positions.
+    
+    This bypasses the 3:45 PM timing requirement and runs the MA check immediately
+    on all MockBroker positions. Useful for testing trailing stop logic.
+    """
+    from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
+    from nexus2.api.routes.automation_state import get_sim_broker
+    from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+    from datetime import datetime
+    
+    sim_broker = get_sim_broker()
+    clock = get_simulation_clock()
+    data = get_mock_market_data()
+    
+    if not sim_broker:
+        return {"error": "MockBroker not initialized. Start scheduler in sim_mode first."}
+    
+    print(f"🌅 [SIM EOD] Manual EOD MA check triggered at {clock.current_time}")
+    
+    # Create job with AUTO MA selection
+    job = MACheckJob(
+        min_days_for_trailing=1,
+        default_ma_type=TrailingMAType.AUTO,
+        require_timing_window=False,  # Manual trigger - skip window check
+    )
+    
+    # Get positions from MockBroker (returns List[Dict])
+    positions = sim_broker.get_positions()
+    sim_positions = []
+    from datetime import timedelta
+    for pos_data in positions:
+        # Estimate opened_at as 5 days ago for testing
+        sim_opened_at = clock.current_time - timedelta(days=5)
+        sym = pos_data.get("symbol", "")
+        sim_positions.append({
+            "id": f"sim_{sym}",
+            "symbol": sym,
+            "opened_at": sim_opened_at,
+            "remaining_shares": pos_data.get("qty", 0),
+            "entry_price": pos_data.get("avg_price", 0),
+        })
+    
+    if not sim_positions:
+        return {"status": "no_positions", "message": "No MockBroker positions to check"}
+    
+    print(f"🌅 [SIM EOD] Checking {len(sim_positions)} positions: {[p['symbol'] for p in sim_positions]}")
+    
+    # Set callbacks
+    async def get_positions():
+        return sim_positions
+    
+    async def get_daily_close(symbol: str):
+        price = data.get_current_price(symbol)
+        print(f"🌅 [SIM EOD] {symbol} close: ${price}")
+        return price
+    
+    async def get_ema(symbol: str, period: int):
+        ema = data.get_ema(symbol, period)
+        print(f"🌅 [SIM EOD] {symbol} EMA{period}: ${ema}")
+        return ema
+    
+    async def get_sma(symbol: str, period: int):
+        sma = data.get_sma(symbol, period)
+        print(f"🌅 [SIM EOD] {symbol} SMA{period}: ${sma}")
+        return sma
+    
+    async def get_adr_percent(symbol: str, period: int):
+        adr = data.get_adr_percent(symbol, period)
+        print(f"🌅 [SIM EOD] {symbol} ADR%: {adr:.2f}%")
+        return adr
+    
+    async def get_price_history(symbol: str, days: int):
+        bars = data.get_historical_prices(symbol, days)
+        if bars:
+            return [{"close": float(b.close), "high": float(b.high), "low": float(b.low)} for b in bars]
+        return None
+    
+    async def execute_exit(position_id: str, shares: int, reason: str):
+        # In simulation, we'd sell via MockBroker
+        symbol = position_id.replace("sim_", "")
+        print(f"🚨 [SIM EOD] EXIT SIGNAL: {symbol} x {shares} - {reason}")
+        # For now just log - actual exit would be: sim_broker.submit_order(...)
+        return True
+    
+    def get_current_date():
+        """Return simulation trading day for days_held calculation."""
+        return datetime.strptime(clock.get_trading_day(), "%Y-%m-%d").date()
+    
+    job.set_callbacks(
+        get_positions=get_positions,
+        get_daily_close=get_daily_close,
+        get_ema=get_ema,
+        get_sma=get_sma,
+        get_adr_percent=get_adr_percent,
+        get_price_history=get_price_history,
+        get_current_date=get_current_date,
+        execute_exit=execute_exit,
+    )
+    
+    result = await job.run(dry_run=True)  # Dry run - just show what would happen
+    
+    return {
+        "status": "completed",
+        "sim_time": clock.current_time.isoformat(),
+        "positions_checked": result.positions_checked,
+        "exit_signals": [
+            {
+                "symbol": sig.symbol,
+                "close": float(sig.daily_close),
+                "ma_value": float(sig.ma_value),
+                "ma_type": str(sig.ma_type),
+                "days_held": sig.days_held,
+            }
+            for sig in result.exit_signals
+        ],
+        "errors": result.errors,
+    }
+
+
+@router.post("/simulation/inject_position", response_model=dict)
+async def inject_position(
+    symbol: str,
+    qty: int = 10,
+    entry_price: float = 100.0,
+    stop_price: float = None,
+):
+    """
+    Manually inject a position into MockBroker for testing.
+    
+    Useful for testing exit logic without needing scanner to detect the signal.
+    """
+    from nexus2.api.routes.automation_state import get_or_create_sim_broker
+    from nexus2.adapters.simulation import get_mock_market_data
+    
+    # Auto-create broker if not exists
+    sim_broker = get_or_create_sim_broker()
+    
+    data = get_mock_market_data()
+    current_price = data.get_current_price(symbol) if data else entry_price
+    
+    # Create position directly in MockBroker
+    from nexus2.adapters.simulation.mock_broker import MockPosition
+    position = MockPosition(
+        symbol=symbol,
+        qty=qty,
+        avg_entry_price=entry_price,
+        current_price=current_price,
+        stop_price=stop_price or entry_price * 0.95,  # Default 5% stop
+    )
+    sim_broker._positions[symbol] = position
+    
+    print(f"💉 [SIM] Injected position: {symbol} x {qty} @ ${entry_price}")
+    
+    return {
+        "status": "injected",
+        "symbol": symbol,
+        "qty": qty,
+        "entry_price": entry_price,
+        "current_price": current_price,
+        "stop_price": position.stop_price,
+    }
+
+
 @router.get("/simulation/broker", response_model=dict)
 async def get_simulation_broker():
     """Get simulation broker state (positions, orders, P&L)."""
@@ -874,15 +1178,46 @@ async def load_test_case(case_id: str):
     if market_data._sim_clock is None:
         market_data.set_clock(clock)
     
-    # Calculate days needed
-    from datetime import datetime
+    # Calculate extended start date (need 60+ days before setup for MA warmup)
+    from datetime import datetime, timedelta
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
-    days = (end - start).days + 60  # Extra buffer
     
-    # Fetch from FMP using date range (not limit) for historical backtesting
-    logger.info(f"[TestCase] Loading historical data for {symbol} from {start_date} to {end_date}...")
-    bars = fmp.get_daily_bars(symbol.upper(), from_date=start_date, to_date=end_date)
+    # Check if this is a synthetic test case
+    if case.get("synthetic", False):
+        # Generate synthetic data based on config
+        synthetic_config = case.get("synthetic_config", {})
+        bar_dicts = _generate_synthetic_loser_data(
+            start_date=start_date,
+            end_date=end_date,
+            setup_date=case.get("setup_date", start_date),
+            config=synthetic_config
+        )
+        bars_loaded = market_data.load_data(symbol, bar_dicts)
+        
+        # Set clock to setup date
+        setup_date = case.get("setup_date", start_date)
+        clock.set_time(datetime.strptime(setup_date, "%Y-%m-%d").replace(hour=9, minute=30))
+        
+        return {
+            "status": "loaded",
+            "case_id": case_id,
+            "symbol": symbol,
+            "setup_type": case.get("setup_type"),
+            "outcome": case.get("outcome"),
+            "description": case.get("description", ""),
+            "bars_loaded": bars_loaded,
+            "synthetic": True,
+            "date_range": {"start": start_date, "end": end_date},
+            "expected": case.get("expected", {}),
+        }
+    
+    extended_start = start - timedelta(days=90)  # 90 calendar days ≈ 60 trading days
+    extended_start_str = extended_start.strftime("%Y-%m-%d")
+    
+    # Fetch from FMP using extended date range for MA calculation warmup
+    logger.info(f"[TestCase] Loading historical data for {symbol} from {extended_start_str} to {end_date} (extended for MA warmup)...")
+    bars = fmp.get_daily_bars(symbol.upper(), from_date=extended_start_str, to_date=end_date)
     
     if not bars:
         return {
@@ -914,6 +1249,18 @@ async def load_test_case(case_id: str):
     ET = pytz.timezone("US/Eastern")
     setup_dt = datetime.strptime(setup_date, "%Y-%m-%d")
     clock.set_time(ET.localize(setup_dt.replace(hour=9, minute=30)))
+    
+    # Create MockBroker if not already created
+    from nexus2.api.routes.automation_state import get_sim_broker, set_sim_broker
+    from nexus2.adapters.simulation.mock_broker import MockBroker
+    if not get_sim_broker():
+        broker = MockBroker(initial_cash=100_000.0)
+        set_sim_broker(broker)
+        # Set initial prices
+        price = market_data.get_current_price(symbol.upper())
+        if price:
+            broker.set_price(symbol.upper(), price)
+        logger.info(f"[TestCase] Created MockBroker for test case")
     
     logger.info(f"[TestCase] Loaded case '{case_id}': {symbol}, {count} bars, setup={setup_date}")
     

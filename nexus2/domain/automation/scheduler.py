@@ -102,6 +102,16 @@ class AutomationScheduler:
     @property
     def is_eod_window(self) -> bool:
         """Check if currently within EOD check window (3:45-4:00 PM)."""
+        # In sim_mode, use the simulation clock
+        if self.sim_mode:
+            try:
+                from nexus2.adapters.simulation import get_simulation_clock
+                clock = get_simulation_clock()
+                return clock.is_eod_window()
+            except Exception:
+                pass
+        
+        # Real time check
         now = datetime.now()
         current_time = now.time()
         weekday = now.weekday()
@@ -172,9 +182,9 @@ class AutomationScheduler:
                     # During market hours: run cycle and sleep normal interval
                     await self._run_cycle()
                     
-                    # Check if EOD window and haven't run today (skip in sim_mode)
-                    if not self.sim_mode:
-                        await self._check_eod()
+                    # Check if EOD window and haven't run today
+                    # Run in both live AND simulation mode (same logic, different data sources)
+                    await self._check_eod()
                     
                     # Normal interval wait (shorter in sim_mode for faster testing)
                     interval_seconds = self.interval_minutes * 60
@@ -315,21 +325,33 @@ class AutomationScheduler:
         if not self.is_eod_window:
             return
         
-        today = datetime.now().strftime("%Y-%m-%d")
+        # Get today's date (use sim clock in sim_mode)
+        if self.sim_mode:
+            try:
+                from nexus2.adapters.simulation import get_simulation_clock
+                clock = get_simulation_clock()
+                today = clock.get_trading_day()
+            except Exception:
+                today = datetime.now().strftime("%Y-%m-%d")
+        else:
+            today = datetime.now().strftime("%Y-%m-%d")
+        
         if self._eod_check_done_date == today:
             # Already ran EOD check today
             return
         
         # Run EOD check
-        logger.info("[EOD] Running end-of-day MA check...")
+        mode_indicator = "[SIM EOD]" if self.sim_mode else "[EOD]"
+        logger.info(f"{mode_indicator} Running end-of-day MA check...")
+        print(f"🌅 {mode_indicator} Running EOD MA trailing stop check for {today}")
         try:
             result = await self._eod_callback()
             self._eod_check_done_date = today
             self.eod_checks_run += 1
             self.last_eod_run = datetime.now()
-            logger.info(f"[EOD] MA check result: {result}")
+            logger.info(f"{mode_indicator} MA check result: {result}")
         except Exception as e:
-            logger.error(f"[EOD] MA check error: {e}")
+            logger.error(f"{mode_indicator} MA check error: {e}")
             self.last_error = f"EOD: {e}"
     
     async def _run_cycle(self):

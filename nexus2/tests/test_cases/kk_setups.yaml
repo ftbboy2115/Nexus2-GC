@@ -68,12 +68,44 @@ test_cases:
     description: "UPST earnings gap that reversed - test stop execution"
     date_range:
       start: "2023-11-01"
-      end: "2024-01-31"
+      end: "2024-06-30"
     setup_date: "2023-11-08"
     expected:
       entry_near: 40.0
       stop_near: 35.0
       stopped_at: 34.0
+      loss_pct: -15
+
+  - id: synthetic_ep_loser
+    symbol: SYNL
+    setup_type: ep
+    outcome: loser
+    synthetic: true  # Use generated data, not FMP
+    description: "Synthetic EP loser - gap up then sharp reversal to test MA stop-out"
+    date_range:
+      start: "2024-01-01"
+      end: "2024-02-28"
+    setup_date: "2024-01-15"
+    synthetic_config:
+      # Day 0: Gap up 12% on "earnings"
+      gap_day_open: 100.0
+      gap_day_close: 108.0
+      gap_day_high: 112.0
+      gap_day_low: 99.0
+      # Days 1-5: Drift slightly higher (building hope)
+      consolidation_days: 5
+      consolidation_high: 115.0
+      consolidation_low: 103.0
+      # Days 6-10: Sharp reversal, close below 10MA each day
+      breakdown_start_day: 6
+      breakdown_days: 5
+      breakdown_target: 85.0  # -21% from peak
+      # Days 11+: Continue lower (confirming exit was right)
+      continuation_target: 70.0
+    expected:
+      entry_near: 108.0  # Entry at gap day close
+      stop_near: 99.0    # Stop at gap day low
+      ma_stop_trigger_day: 8  # Should trigger around day 8
       loss_pct: -15
 
   # ==========================================================================

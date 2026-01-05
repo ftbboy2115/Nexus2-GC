@@ -194,11 +194,22 @@ export default function Simulation() {
     }
 
     const advanceDays = (days: number) => {
-        handleAction(
-            `Advance ${days}d`,
-            `/automation/simulation/advance?days=${days}`,
-            'POST'
-        )
+        if (days > 0) {
+            // For positive days, advance to next market open (9:30 AM)
+            // This is what users expect when clicking "Day +1"
+            handleAction(
+                `Next Market Open`,
+                `/automation/simulation/advance?to_market_open=true`,
+                'POST'
+            )
+        } else {
+            // For negative days, just subtract time
+            handleAction(
+                `Advance ${days}d`,
+                `/automation/simulation/advance?days=${days}`,
+                'POST'
+            )
+        }
     }
 
     const advanceToTime = (targetTime: string) => {

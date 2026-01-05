@@ -112,6 +112,7 @@ class MACheckJob:
         self._get_sma: Optional[Callable] = None  # (symbol, period) -> Decimal
         self._get_adr_percent: Optional[Callable] = None  # (symbol, period) -> Decimal for auto-select
         self._get_price_history: Optional[Callable] = None  # (symbol, days) -> List[dict] for affinity
+        self._get_current_date: Optional[Callable] = None  # () -> date (for simulation clock)
         self._execute_exit: Optional[Callable] = None  # (position_id, shares, reason) -> None
         
         # Position-specific MA affinity (overrides AUTO selection)
@@ -130,6 +131,7 @@ class MACheckJob:
         get_sma: Callable = None,
         get_adr_percent: Callable = None,
         get_price_history: Callable = None,
+        get_current_date: Callable = None,
         execute_exit: Callable = None,
     ):
         """Set callbacks for data access and execution."""
@@ -145,6 +147,8 @@ class MACheckJob:
             self._get_adr_percent = get_adr_percent
         if get_price_history:
             self._get_price_history = get_price_history
+        if get_current_date:
+            self._get_current_date = get_current_date
         if execute_exit:
             self._execute_exit = execute_exit
     
@@ -288,7 +292,12 @@ class MACheckJob:
         else:
             opened_at = datetime.utcnow()  # Fallback
         
-        days_held = (date.today() - opened_at.date()).days
+        # Use simulation date if callback provided, otherwise real date
+        if self._get_current_date:
+            current_date = self._get_current_date()
+        else:
+            current_date = date.today()
+        days_held = (current_date - opened_at.date()).days
         
         # Only apply MA trailing after min_days
         if days_held < self.min_days_for_trailing:
