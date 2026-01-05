@@ -30,6 +30,8 @@ class Quote:
     change_percent: Decimal
     volume: int
     timestamp: datetime
+    day_low: Optional[Decimal] = None  # Today's low (for KK-style LOD stop)
+    day_high: Optional[Decimal] = None  # Today's high
 
 
 @dataclass

@@ -227,6 +227,17 @@ class HTFScannerService:
         if dollar_vol < self.settings.min_dollar_vol:
             return None
         
+        # KK-style MA stacking check: price > SMA10 > SMA20 > SMA50
+        # This ensures stock is in a proper uptrend, not just a bounce
+        closes = [Decimal(str(d.get("close", 0))) for d in window]
+        if len(closes) >= 50:
+            sma10 = sum(closes[-10:]) / 10
+            sma20 = sum(closes[-20:]) / 20
+            sma50 = sum(closes[-50:]) / 50
+            ma_stacked = current_close > sma10 > sma20 > sma50
+            if not ma_stacked:
+                return None  # Not in proper uptrend
+        
         # Calculate move (pole size)
         highs = [Decimal(str(d.get("high", 0))) for d in window]
         lows = [Decimal(str(d.get("low", 0))) for d in window]
@@ -267,13 +278,10 @@ class HTFScannerService:
         recent_highs = highs[-5:] if len(highs) >= 5 else highs
         entry_price = max(recent_highs)
         
-        # NOTE: Stop is NOT calculated here
-        # KK methodology: stop = low of entry candle (determined at execution time)
-        # The execution handler will set the real tactical stop based on:
-        # - Opening range low (for intraday entry)
-        # - Entry day low (for EOD entry)
-        # - ATR constraint (must be ≤1 ATR from entry)
-        stop_price = None  # To be calculated at entry time
+        # KK methodology: stop = flag low (recent consolidation low)
+        # This is the same pattern as breakout scanner (consolidation_low)
+        recent_lows = lows[-5:] if len(lows) >= 5 else lows
+        stop_price = min(recent_lows)  # Flag low
         
         # Get company name (if available)
         try:

@@ -133,6 +133,54 @@ uvicorn nexus2.api.main:app --reload
 - `POST /trade` — Quick trade (order + execute + position)
 - `POST /scanner/run` — Run scanner
 
+## Automation Architecture
+
+The automation system has three coordinated components:
+
+### Component Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ POST /automation/scheduler/start                            │
+│                                                             │
+│ Automatically starts:                                       │
+│ 1. Engine (scan execution)                                  │
+│ 2. PositionMonitor (intraday checks)                        │
+│ 3. EOD Callback (3:45 PM MA trailing check)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Scheduler
+- **Runs**: Every 15 minutes (configurable)
+- **Purpose**: Execute scan cycles (EP, Breakout, HTF scanners)
+- **Auto-execute**: If enabled, places bracket orders on top signals
+
+### Position Monitor  
+- **Runs**: Every 60 seconds (polling mode)
+- **Purpose**: Intraday position protection
+- **Checks**:
+  - Stop-loss hits → Full exit
+  - 1R profit → Move stop to breakeven
+  - 3+ days + in profit → KK-style partial exit (50%)
+
+### EOD MA Check
+- **Runs**: Once daily at 3:45 PM ET
+- **Purpose**: KK-style trailing stop (trend character change)
+- **Checks**: Positions 5+ days old, compares daily close to 10/20 EMA
+- **Logic**: AUTO mode selects MA based on ADR%:
+  - ADR ≥ 5% → Use 10 EMA (tighter trailing for hot stocks)
+  - ADR < 5% → Use 20 EMA (wider trailing for slower movers)
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /automation/scheduler/start` | Start all automation |
+| `POST /automation/scheduler/stop` | Stop all automation |
+| `GET /automation/scheduler/status` | Scheduler status |
+| `GET /automation/monitor/status` | Monitor status |
+| `POST /automation/ma-check` | Manual EOD check |
+
 **Swagger UI:** http://localhost:8000/docs
 
 ## Frontend Dashboard

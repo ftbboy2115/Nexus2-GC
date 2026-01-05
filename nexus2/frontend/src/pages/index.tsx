@@ -420,6 +420,9 @@ export default function Home() {
                         <Link href="/simulation" className={styles.navLink}>
                             🧪 Sim
                         </Link>
+                        <Link href="/docs" className={styles.navLink}>
+                            📚 Docs
+                        </Link>
                     </div>
                     <div className={styles.headerRight}>
                         {settings && (

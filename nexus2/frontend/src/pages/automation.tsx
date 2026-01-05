@@ -187,6 +187,7 @@ interface SchedulerSettingsData {
     nac_account: string  // A or B (default A for Automation)
     sim_mode: boolean  // Enable simulation mode (uses MockBroker)
     min_price: number  // Minimum stock price filter ($2-10)
+    discord_alerts_enabled: boolean  // Enable Discord notifications
 }
 
 const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
@@ -1290,6 +1291,36 @@ export default function Automation() {
                                 </label>
                                 <p className={styles.settingHint}>
                                     When ON, trades use MockBroker (no real orders). Reset sim via API first.
+                                </p>
+                            </div>
+                            {/* Discord Alerts Toggle */}
+                            <div className={styles.settingGroup}>
+                                <label className={styles.toggleLabel}>
+                                    <span>🔔 Discord Alerts</span>
+                                    <button
+                                        className={`${styles.toggleBtn} ${schedulerSettings?.discord_alerts_enabled !== false ? styles.toggleActive : ''}`}
+                                        onClick={async () => {
+                                            const newValue = !(schedulerSettings?.discord_alerts_enabled !== false)
+                                            try {
+                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ discord_alerts_enabled: newValue })
+                                                })
+                                                if (res.ok) {
+                                                    const data = await res.json()
+                                                    setSchedulerSettings(data)
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to update discord_alerts_enabled:', err)
+                                            }
+                                        }}
+                                    >
+                                        {(schedulerSettings?.discord_alerts_enabled !== false) ? '✅ ON' : '❌ OFF'}
+                                    </button>
+                                </label>
+                                <p className={styles.settingHint}>
+                                    Send Discord notifications for entries and exits (requires DISCORD_WEBHOOK_URL).
                                 </p>
                             </div>
                             <div className={styles.settingGroup}>

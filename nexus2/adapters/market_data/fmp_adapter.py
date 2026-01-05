@@ -171,6 +171,8 @@ class FMPAdapter:
             change_percent=Decimal(str(q.get("changesPercentage", 0))),
             volume=int(q.get("volume", 0)),
             timestamp=datetime.now(timezone.utc),
+            day_low=Decimal(str(q.get("dayLow", 0))) if q.get("dayLow") else None,
+            day_high=Decimal(str(q.get("dayHigh", 0))) if q.get("dayHigh") else None,
         )
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:

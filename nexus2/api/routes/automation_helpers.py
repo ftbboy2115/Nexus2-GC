@@ -394,10 +394,13 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                 
                 # Update position
                 new_remaining = position.remaining_shares - shares
-                position_repo.update(position_id, {
+                update_data = {
                     "remaining_shares": new_remaining,
                     "status": "closed" if new_remaining <= 0 else "open",
-                })
+                }
+                if new_remaining <= 0:
+                    update_data["closed_at"] = datetime.utcnow()
+                position_repo.update(position_id, update_data)
                 
                 logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
             finally:

@@ -247,6 +247,9 @@ class SchedulerSettingsModel(Base):
     # Minimum stock price filter for scanner (defaults to $5 if not set)
     min_price = Column(String(10), nullable=True, default=None)
     
+    # Discord notification settings
+    discord_alerts_enabled = Column(String(5), default="true")  # "true" or "false"
+    
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
@@ -269,6 +272,7 @@ class SchedulerSettingsModel(Base):
             "nac_account": self.nac_account or "A",
             "sim_mode": self.sim_mode == "true",
             "min_price": float(self.min_price) if self.min_price else 5.0,
+            "discord_alerts_enabled": self.discord_alerts_enabled == "true",
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 

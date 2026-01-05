@@ -348,6 +348,34 @@ class PositionMonitor:
             try:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
+                
+                # Send Discord notification for exit
+                try:
+                    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+                    from nexus2.adapters.notifications import DiscordNotifier
+                    
+                    db = SessionLocal()
+                    try:
+                        settings_repo = SchedulerSettingsRepository(db)
+                        settings = settings_repo.get()
+                        discord_enabled = getattr(settings, 'discord_alerts_enabled', 'true') == 'true'
+                        sim_mode = getattr(settings, 'sim_mode', 'false') == 'true'
+                    finally:
+                        db.close()
+                    
+                    if discord_enabled:
+                        notifier = DiscordNotifier()
+                        mode_label = "🧪 SIM" if sim_mode else "🔴 LIVE"
+                        pnl_emoji = "✅" if signal.pnl_estimate >= 0 else "❌"
+                        
+                        reason_label = signal.reason.value.upper().replace("_", " ")
+                        notifier.send_trade_alert(
+                            message=f"{mode_label} | EXIT: {signal.symbol} x {signal.shares_to_exit}\n{reason_label} | P&L: {pnl_emoji} ${signal.pnl_estimate:.2f}",
+                            trade_id=signal.position_id[:8] if signal.position_id else "N/A"
+                        )
+                except Exception as e:
+                    logger.warning(f"Discord exit notification failed: {e}")
+                    
             except Exception as e:
                 logger.error(f"Exit execution failed: {e}")
                 self.last_error = str(e)

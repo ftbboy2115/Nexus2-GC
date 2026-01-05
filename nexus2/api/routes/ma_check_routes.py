@@ -176,10 +176,13 @@ async def run_ma_check(
             
             # Update position
             new_remaining = position.remaining_shares - shares
-            position_repo.update(position_id, {
+            update_data = {
                 "remaining_shares": new_remaining,
                 "status": "closed" if new_remaining <= 0 else "open",
-            })
+            }
+            if new_remaining <= 0:
+                update_data["closed_at"] = datetime.utcnow()
+            position_repo.update(position_id, update_data)
             
             logger.info(f"[MACheck] Exited {position.symbol}: {shares} shares")
         finally:

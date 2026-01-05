@@ -39,8 +39,8 @@ async def start_monitor(
     monitor.enable_trailing_stops = request.enable_trailing_stops
     monitor.enable_partial_exits = request.enable_partial_exits
     
-    # Get positions callback
-    def get_positions():
+    # Get positions callback (must be async for monitor.py)
+    async def get_positions():
         db = SessionLocal()
         try:
             repo = PositionRepository(db)

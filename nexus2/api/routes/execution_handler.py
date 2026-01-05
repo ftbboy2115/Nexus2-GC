@@ -82,6 +82,10 @@ def create_execute_callback(
             min_price_setting = getattr(sched_settings, 'min_price', None)
             min_price = float(min_price_setting) if min_price_setting else 5.0
             
+            # Get discord_alerts_enabled (default True if not set)
+            discord_alerts_setting = getattr(sched_settings, 'discord_alerts_enabled', 'true')
+            discord_alerts_enabled = discord_alerts_setting == "true" if isinstance(discord_alerts_setting, str) else bool(discord_alerts_setting)
+            
             # Reconfigure engine scanner with fresh settings + sim_mode
             preset = sched_settings.preset or "strict"
             engine._scanner_func = await create_unified_scanner_callback(
@@ -260,7 +264,20 @@ def create_execute_callback(
             # Submit bracket order through broker
             try:
                 client_order_id = uuid4()
-                stop_price = Decimal(str(signal.tactical_stop))
+                
+                # KK methodology: stop = LOD (Low of Day so far)
+                # Get today's low from FMP quote
+                from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
+                fmp = FMPAdapter()
+                quote = fmp.get_quote(signal.symbol)
+                
+                if quote and quote.day_low and quote.day_low > 0:
+                    stop_price = quote.day_low
+                    print(f"📍 [AutoExec] Using LOD stop: ${stop_price} (today's low)")
+                else:
+                    # Fallback to signal's tactical stop
+                    stop_price = Decimal(str(signal.tactical_stop))
+                    print(f"⚠️ [AutoExec] LOD unavailable, using tactical_stop: ${stop_price}")
                 
                 # Log signal details for diagnostics
                 setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
@@ -316,18 +333,20 @@ def create_execute_callback(
                         order_id=str(result.broker_order_id)
                     )
                     
-                    # Send Discord notification
-                    try:
-                        discord = DiscordNotifier()
-                        setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
-                        entry_price = float(signal.entry_price)
-                        order_total = entry_price * shares
-                        discord.send_trade_alert(
-                            message=f"ENTRY: {signal.symbol} x {shares} @ ${entry_price:.2f} = ${order_total:.2f}\n{setup_name.upper()} | Stop ${stop_price:.2f} | Score: {signal.quality_score}",
-                            trade_id=str(result.broker_order_id)
-                        )
-                    except Exception as e:
-                        logger.warning(f"Discord notification failed: {e}")
+                    # Send Discord notification (if enabled)
+                    if discord_alerts_enabled:
+                        try:
+                            discord = DiscordNotifier()
+                            setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
+                            entry_price = float(signal.entry_price)
+                            order_total = entry_price * shares
+                            mode_label = "🧪 SIM" if sim_mode else "🔴 LIVE"
+                            discord.send_trade_alert(
+                                message=f"{mode_label} | ENTRY: {signal.symbol} x {shares} @ ${entry_price:.2f} = ${order_total:.2f}\n{setup_name.upper()} | Stop ${stop_price:.2f} | Score: {signal.quality_score}",
+                                trade_id=str(result.broker_order_id)
+                            )
+                        except Exception as e:
+                            logger.warning(f"Discord notification failed: {e}")
                     
                     executed.append({
                         "symbol": signal.symbol,
