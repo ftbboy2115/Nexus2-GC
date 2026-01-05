@@ -165,7 +165,19 @@ class RSService:
         
         Returns cached value if available, otherwise calculates
         individual RS based on available data.
+        
+        In sim_mode (detected by MockMarketData), returns mock RS to avoid API calls.
         """
+        # Check if we're in sim_mode (MockMarketData is being used)
+        try:
+            from nexus2.adapters.simulation import get_mock_market_data
+            mock_data = get_mock_market_data()
+            if mock_data and symbol.upper() in [s.upper() for s in mock_data.get_symbols()]:
+                # In sim mode with this symbol - return mock RS (85th percentile = strong stock)
+                return 85
+        except Exception:
+            pass  # Not in sim mode
+        
         # Check if we need to refresh universe
         self._maybe_refresh_universe()
         

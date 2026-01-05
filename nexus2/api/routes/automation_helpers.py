@@ -469,9 +469,9 @@ def create_execute_callback(engine, broker, get_app_fn):
                     
                     if sim_mode:
                         # Use MockBroker for simulation
-                        from nexus2.api.routes.automation import get_simulation_status
-                        if hasattr(get_simulation_status, '_mock_broker'):
-                            mock_broker = get_simulation_status._mock_broker
+                        from nexus2.api.routes.automation_state import get_sim_broker
+                        mock_broker = get_sim_broker()
+                        if mock_broker is not None:
                             # Set current price for the symbol (use signal entry price)
                             mock_broker.set_price(signal.symbol, float(signal.entry_price))
                             

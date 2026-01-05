@@ -179,8 +179,30 @@ class AutomationScheduler:
                     # Normal interval wait (shorter in sim_mode for faster testing)
                     interval_seconds = self.interval_minutes * 60
                     if self.sim_mode:
-                        # In sim_mode, use 5 second intervals for rapid testing
+                        # In sim_mode: advance sim clock by interval, then short real wait
+                        from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
+                        from nexus2.api.routes.automation_state import get_sim_broker
+                        
+                        clock = get_simulation_clock()
+                        data = get_mock_market_data()
+                        broker = get_sim_broker()
+                        
+                        # Advance sim clock by scan interval
+                        clock.advance(minutes=self.interval_minutes)
+                        
+                        # Update prices for new time
+                        if broker:
+                            for sym in data.get_symbols():
+                                price = data.get_current_price(sym)
+                                if price:
+                                    broker.set_price(sym, price)
+                                    broker._check_stop_orders(sym)
+                        
+                        print(f"⏰ [SIM] Clock advanced to {clock.current_time.strftime('%Y-%m-%d %H:%M')}")
+                        
+                        # Short real wait (5 seconds) for rapid testing
                         interval_seconds = 5
+                        
                     self.next_run = datetime.now() + timedelta(seconds=interval_seconds)
                     await asyncio.sleep(interval_seconds)
                     

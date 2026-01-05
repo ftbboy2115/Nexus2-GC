@@ -417,6 +417,9 @@ export default function Home() {
                         <Link href="/analytics" className={styles.navLink}>
                             📈 Analytics
                         </Link>
+                        <Link href="/simulation" className={styles.navLink}>
+                            🧪 Sim
+                        </Link>
                     </div>
                     <div className={styles.headerRight}>
                         {settings && (

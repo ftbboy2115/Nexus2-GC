@@ -1,0 +1,615 @@
+2026-01-02 12:55:11 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 12:57:32 | INFO | SCAN_COMPLETE | signals=9 (EP:2, BO:7, HTF:0) | duration=141507ms
+2026-01-02 13:00:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:03:33 | INFO | SCAN_COMPLETE | signals=9 (EP:2, BO:7, HTF:0) | duration=173554ms
+2026-01-02 13:03:33 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.415 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | MU | type=ep | entry=$309.48 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | GS | type=flag | entry=$913.32 | stop=$874.7 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:03:33 | INFO | SIZING_CAP | MU | price=$309.48 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:03:33 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:03:33 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:03:33 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:03:33 | INFO | SIZING_CAP | GS | price=$913.32 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:03:33 | INFO | TRADE_SKIPPED | GS | reason=Position size < 1 share
+2026-01-02 13:03:33 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:03:33 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:03:33 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:03:33 | INFO | CYCLE_SUMMARY | executed=0 | skipped=8 | errors=1
+2026-01-02 13:03:33 | INFO |   Skipped: ONDS, MU, GEV, MFG, GS, SNPS, CMCSA, BN
+2026-01-02 13:03:33 | INFO | ------------------------------------------------------------
+2026-01-02 13:08:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:11:06 | INFO | SCAN_COMPLETE | signals=10 (EP:3, BO:7, HTF:0) | duration=153287ms
+2026-01-02 13:11:06 | INFO |   SIGNAL | SMX | type=ep | entry=$20.7915 | stop=$19.26 | quality=8 | tier=FOCUS
+2026-01-02 13:11:06 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.3899 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | MU | type=ep | entry=$309.745 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | GS | type=flag | entry=$913.32 | stop=$874.7 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:11:06 | INFO | SIZING_CAP | SMX | price=$20.79 | calculated=65 → capped=12 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:06 | INFO | TRADE_EXECUTED | SMX x 12 @ stop=$19.26 | order_id=5eb42007-f506-4497-b9bc-c90ef4b8722f
+2026-01-02 13:11:07 | INFO | SIZING_CAP | MU | price=$309.75 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:07 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:11:07 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:07 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:11:07 | INFO | SIZING_CAP | GS | price=$913.32 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:07 | INFO | TRADE_SKIPPED | GS | reason=Position size < 1 share
+2026-01-02 13:11:07 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:07 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:11:07 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:11:07 | INFO | CYCLE_SUMMARY | executed=1 | skipped=8 | errors=1
+2026-01-02 13:11:07 | INFO |   Executed: SMX
+2026-01-02 13:11:07 | INFO |   Skipped: ONDS, MU, GEV, MFG, GS, SNPS, CMCSA, BN
+2026-01-02 13:11:07 | INFO | ------------------------------------------------------------
+2026-01-02 13:16:07 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:18:49 | INFO | SCAN_COMPLETE | signals=10 (EP:3, BO:7, HTF:0) | duration=162170ms
+2026-01-02 13:18:49 | INFO |   SIGNAL | SMX | type=ep | entry=$20.11 | stop=$19.26 | quality=8 | tier=FOCUS
+2026-01-02 13:18:49 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.45 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | MU | type=ep | entry=$310.0095 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | GS | type=flag | entry=$913.32 | stop=$874.7 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:18:49 | INFO | SIZING_CAP | MU | price=$310.01 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:18:49 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:18:49 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:18:49 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:18:49 | INFO | SIZING_CAP | GS | price=$913.32 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:18:49 | INFO | TRADE_SKIPPED | GS | reason=Position size < 1 share
+2026-01-02 13:18:49 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:18:49 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:18:49 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:18:49 | INFO | CYCLE_SUMMARY | executed=0 | skipped=9 | errors=1
+2026-01-02 13:18:49 | INFO |   Skipped: SMX, ONDS, MU, GEV, MFG, GS, SNPS, CMCSA, BN
+2026-01-02 13:18:49 | INFO | ------------------------------------------------------------
+2026-01-02 13:19:52 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:22:25 | INFO | SCAN_COMPLETE | signals=9 (EP:3, BO:6, HTF:0) | duration=152954ms
+2026-01-02 13:22:25 | INFO |   SIGNAL | SMX | type=ep | entry=$20.23 | stop=$19.26 | quality=8 | tier=FOCUS
+2026-01-02 13:22:25 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.545 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | MU | type=ep | entry=$310.94 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | GS | type=flag | entry=$913.32 | stop=$874.7 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:22:25 | INFO | SIZING_CAP | MU | price=$310.94 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:22:25 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:22:25 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:22:25 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:22:25 | INFO | SIZING_CAP | GS | price=$913.32 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:22:25 | INFO | TRADE_SKIPPED | GS | reason=Position size < 1 share
+2026-01-02 13:22:25 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:22:25 | INFO | CYCLE_SUMMARY | executed=0 | skipped=8 | errors=1
+2026-01-02 13:22:25 | INFO |   Skipped: SMX, ONDS, MU, GEV, MFG, GS, CMCSA, BN
+2026-01-02 13:22:25 | INFO | ------------------------------------------------------------
+2026-01-02 13:27:25 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:29:50 | INFO | SCAN_COMPLETE | signals=8 (EP:2, BO:6, HTF:0) | duration=144681ms
+2026-01-02 13:29:50 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.545 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | MU | type=ep | entry=$311.116 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:29:50 | INFO | SIZING_CAP | MU | price=$311.12 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:29:50 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:29:50 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:29:50 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:29:50 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:29:50 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:29:50 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:29:50 | INFO | CYCLE_SUMMARY | executed=0 | skipped=7 | errors=1
+2026-01-02 13:29:50 | INFO |   Skipped: ONDS, MU, GEV, MFG, SNPS, CMCSA, BN
+2026-01-02 13:29:50 | INFO | ------------------------------------------------------------
+2026-01-02 13:34:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$5.0 | stop_mode=atr
+2026-01-02 13:37:22 | INFO | SCAN_COMPLETE | signals=7 (EP:2, BO:5, HTF:0) | duration=151968ms
+2026-01-02 13:37:22 | INFO |   SIGNAL | ONDS | type=ep | entry=$10.505 | stop=$10.03 | quality=7 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | MU | type=ep | entry=$312.18 | stop=$295.02 | quality=7 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:37:22 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:37:22 | INFO | SIZING_CAP | MU | price=$312.18 | calculated=5 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:37:22 | INFO | TRADE_SKIPPED | MU | reason=Position size < 1 share
+2026-01-02 13:37:22 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:37:22 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:37:22 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:37:22 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:37:22 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:37:22 | INFO | CYCLE_SUMMARY | executed=0 | skipped=6 | errors=1
+2026-01-02 13:37:22 | INFO |   Skipped: ONDS, MU, GEV, MFG, SNPS, BN
+2026-01-02 13:37:22 | INFO | ------------------------------------------------------------
+2026-01-02 13:42:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 13:44:38 | INFO | SCAN_COMPLETE | signals=4 (EP:0, BO:4, HTF:0) | duration=135396ms
+2026-01-02 13:44:38 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:44:38 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:44:38 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:44:38 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:44:38 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:44:38 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:44:38 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:44:38 | INFO | CYCLE_SUMMARY | executed=0 | skipped=3 | errors=1
+2026-01-02 13:44:38 | INFO |   Skipped: GEV, MFG, BN
+2026-01-02 13:44:38 | INFO | ------------------------------------------------------------
+2026-01-02 13:49:38 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 13:51:53 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=135462ms
+2026-01-02 13:51:53 | INFO |   SIGNAL | GEV | type=flag | entry=$678.6 | stop=$636.54 | quality=6 | tier=WIDE
+2026-01-02 13:51:53 | INFO |   SIGNAL | MFG | type=flag | entry=$7.51 | stop=$7.26 | quality=6 | tier=WIDE
+2026-01-02 13:51:53 | INFO |   SIGNAL | SNPS | type=flag | entry=$485.8899 | stop=$454.69 | quality=6 | tier=WIDE
+2026-01-02 13:51:53 | INFO |   SIGNAL | UPS | type=flag | entry=$102.89 | stop=$98.4107 | quality=6 | tier=WIDE
+2026-01-02 13:51:53 | INFO |   SIGNAL | BN | type=flag | entry=$47 | stop=$44.64 | quality=6 | tier=WIDE
+2026-01-02 13:51:53 | INFO | SIZING_CAP | GEV | price=$678.60 | calculated=2 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:51:53 | INFO | TRADE_SKIPPED | GEV | reason=Position size < 1 share
+2026-01-02 13:51:53 | INFO | SIZING_CAP | SNPS | price=$485.89 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:51:53 | INFO | TRADE_SKIPPED | SNPS | reason=Position size < 1 share
+2026-01-02 13:51:53 | INFO | SIZING_CAP | UPS | price=$102.89 | calculated=22 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 13:51:53 | INFO | CYCLE_SUMMARY | executed=0 | skipped=4 | errors=1
+2026-01-02 13:51:53 | INFO |   Skipped: GEV, MFG, SNPS, BN
+2026-01-02 13:51:53 | INFO | ------------------------------------------------------------
+2026-01-02 13:56:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 13:59:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:08:34 | INFO | SCAN_COMPLETE | signals=6 (EP:0, BO:6, HTF:0) | duration=514588ms
+2026-01-02 14:08:34 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO |   SIGNAL | NFLX | type=flag | entry=$95.81 | stop=$90.825 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO |   SIGNAL | CP | type=flag | entry=$75.19 | stop=$73.41 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO |   SIGNAL | MDLZ | type=flag | entry=$55.26 | stop=$53.4113 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO |   SIGNAL | WMB | type=flag | entry=$61 | stop=$58.22 | quality=6 | tier=WIDE
+2026-01-02 14:08:34 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:34 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-02 14:08:34 | INFO | SIZING_CAP | NFLX | price=$95.81 | calculated=20 → capped=2 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:34 | INFO | TRADE_EXECUTED | NFLX x 2 @ stop=$90.83 | order_id=ec683c16-7f38-4bd6-912d-eaef91a3e8cc
+2026-01-02 14:08:35 | INFO | SIZING_CAP | CP | price=$75.19 | calculated=56 → capped=3 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:35 | INFO | TRADE_EXECUTED | CP x 3 @ stop=$73.41 | order_id=be5cb34f-fe5d-4912-8870-2c40190c9942
+2026-01-02 14:08:36 | INFO | SIZING_CAP | MDLZ | price=$55.26 | calculated=54 → capped=4 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:36 | INFO | TRADE_EXECUTED | MDLZ x 4 @ stop=$53.41 | order_id=d390474b-3fc3-4a48-9d40-387b2be49007
+2026-01-02 14:08:36 | INFO | SIZING_CAP | UNH | price=$340.26 | calculated=5 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:36 | INFO | TRADE_SKIPPED | UNH | reason=Position size < 1 share
+2026-01-02 14:08:36 | INFO | SIZING_CAP | WMB | price=$61.00 | calculated=35 → capped=4 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:08:36 | INFO | TRADE_EXECUTED | WMB x 4 @ stop=$58.22 | order_id=fcb60648-f079-4be1-8fb1-86f419fd8c3b
+2026-01-02 14:08:37 | INFO | CYCLE_SUMMARY | executed=4 | skipped=2 | errors=0
+2026-01-02 14:08:37 | INFO |   Executed: NFLX, CP, MDLZ, WMB
+2026-01-02 14:08:37 | INFO |   Skipped: META, UNH
+2026-01-02 14:08:37 | INFO | ------------------------------------------------------------
+2026-01-02 14:13:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:15:55 | INFO | SCAN_COMPLETE | signals=21 (EP:0, BO:21, HTF:0) | duration=137968ms
+2026-01-02 14:15:55 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=7 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | TXN | type=flag | entry=$179.9 | stop=$173.44 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | NFLX | type=flag | entry=$95.81 | stop=$90.825 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | SPOT | type=flag | entry=$588.52 | stop=$562.72 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | PFE | type=flag | entry=$25.52 | stop=$24.83 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | SONY | type=flag | entry=$26.24 | stop=$25.11 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | PBR | type=flag | entry=$11.92 | stop=$11.43 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | CDNS | type=flag | entry=$322.41 | stop=$306.41 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | DASH | type=flag | entry=$239 | stop=$221.32 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | ABT | type=flag | entry=$127.58 | stop=$123.655 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | ICE | type=flag | entry=$164.42 | stop=$159.59 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | UBER | type=flag | entry=$83.66 | stop=$78.31 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | UNP | type=flag | entry=$238.01 | stop=$229.64 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | MDLZ | type=flag | entry=$55.26 | stop=$53.4113 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | T | type=flag | entry=$24.97 | stop=$24.02 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | MDT | type=flag | entry=$99.26 | stop=$95.29 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | SYK | type=flag | entry=$359.81 | stop=$346.09 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO |   SIGNAL | WMB | type=flag | entry=$61.01 | stop=$58.22 | quality=6 | tier=WIDE
+2026-01-02 14:15:55 | INFO | SIZING_CAP | TXN | price=$179.90 | calculated=15 → capped=1 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:55 | INFO | TRADE_EXECUTED | TXN x 1 @ stop=$173.44 | order_id=c868a51e-370a-4506-a6ad-d4935083c89d
+2026-01-02 14:15:55 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:55 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-02 14:15:55 | INFO | SIZING_CAP | BAM | price=$53.76 | calculated=57 → capped=4 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:55 | INFO | TRADE_EXECUTED | BAM x 4 @ stop=$52.01 | order_id=e380fbd8-4dfd-4cd2-a50d-40ac1303b3e7
+2026-01-02 14:15:56 | INFO | SIZING_CAP | SPOT | price=$588.52 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:56 | INFO | TRADE_SKIPPED | SPOT | reason=Position size < 1 share
+2026-01-02 14:15:56 | INFO | SIZING_CAP | PFE | price=$25.52 | calculated=144 → capped=9 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:56 | INFO | TRADE_EXECUTED | PFE x 9 @ stop=$24.83 | order_id=b844ae58-4ecd-4cfd-97ff-4158c7cad891
+2026-01-02 14:15:56 | INFO | SIZING_CAP | SONY | price=$26.24 | calculated=88 → capped=9 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:56 | INFO | TRADE_EXECUTED | SONY x 9 @ stop=$25.11 | order_id=a3abf18d-6b61-4984-9a93-aa7b70742053
+2026-01-02 14:15:57 | INFO | SIZING_CAP | PBR | price=$11.92 | calculated=204 → capped=21 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:57 | INFO | TRADE_EXECUTED | PBR x 21 @ stop=$11.43 | order_id=d7bf1312-1abd-4f63-b43d-b11d69fd633f
+2026-01-02 14:15:57 | INFO | SIZING_CAP | CDNS | price=$322.41 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:15:57 | INFO | TRADE_SKIPPED | CDNS | reason=Position size < 1 share
+2026-01-02 14:15:57 | INFO | CYCLE_SUMMARY | executed=5 | skipped=5 | errors=0
+2026-01-02 14:15:57 | INFO |   Executed: TXN, BAM, PFE, SONY, PBR
+2026-01-02 14:15:57 | INFO |   Skipped: CMCSA, META, NFLX, SPOT, CDNS
+2026-01-02 14:15:57 | INFO | ------------------------------------------------------------
+2026-01-02 14:20:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:23:20 | INFO | SCAN_COMPLETE | signals=22 (EP:0, BO:22, HTF:0) | duration=142358ms
+2026-01-02 14:23:20 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=7 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | TXN | type=flag | entry=$179.9 | stop=$173.44 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | NFLX | type=flag | entry=$95.81 | stop=$90.825 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | SPOT | type=flag | entry=$588.52 | stop=$562.72 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | PFE | type=flag | entry=$25.52 | stop=$24.83 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | SONY | type=flag | entry=$26.24 | stop=$25.11 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | PBR | type=flag | entry=$11.92 | stop=$11.43 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | CDNS | type=flag | entry=$322.41 | stop=$306.41 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | DASH | type=flag | entry=$239 | stop=$221.32 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | ABT | type=flag | entry=$127.58 | stop=$123.655 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | ICE | type=flag | entry=$164.42 | stop=$159.59 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | UBER | type=flag | entry=$83.66 | stop=$78.31 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | UNP | type=flag | entry=$238.01 | stop=$229.64 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | MDLZ | type=flag | entry=$55.26 | stop=$53.4113 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | T | type=flag | entry=$24.97 | stop=$24.02 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | MDT | type=flag | entry=$99.26 | stop=$95.29 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | ITW | type=flag | entry=$254.28 | stop=$244.55 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | SYK | type=flag | entry=$359.81 | stop=$345.83 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO |   SIGNAL | WMB | type=flag | entry=$61.01 | stop=$58.22 | quality=6 | tier=WIDE
+2026-01-02 14:23:20 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:23:20 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-02 14:23:20 | INFO | SIZING_CAP | SPOT | price=$588.52 | calculated=3 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:23:20 | INFO | TRADE_SKIPPED | SPOT | reason=Position size < 1 share
+2026-01-02 14:23:20 | INFO | SIZING_CAP | CDNS | price=$322.41 | calculated=6 → capped=0 | max_per_symbol=$255.00 | exceeds max_per_symbol cap
+2026-01-02 14:23:20 | INFO | TRADE_SKIPPED | CDNS | reason=Position size < 1 share
+2026-01-02 14:23:20 | INFO | CYCLE_SUMMARY | executed=0 | skipped=10 | errors=0
+2026-01-02 14:23:20 | INFO |   Skipped: CMCSA, TXN, META, NFLX, BAM, SPOT, PFE, SONY, PBR, CDNS
+2026-01-02 14:23:20 | INFO | ------------------------------------------------------------
+2026-01-02 14:28:20 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:30:33 | INFO | SCAN_COMPLETE | signals=22 (EP:0, BO:22, HTF:0) | duration=133400ms
+2026-01-02 14:30:33 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=7 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | TXN | type=flag | entry=$179.9 | stop=$173.44 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | NFLX | type=flag | entry=$95.81 | stop=$90.825 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | SPOT | type=flag | entry=$588.52 | stop=$562.72 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | PFE | type=flag | entry=$25.52 | stop=$24.83 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | SONY | type=flag | entry=$26.24 | stop=$25.11 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | PBR | type=flag | entry=$11.92 | stop=$11.43 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | CDNS | type=flag | entry=$322.41 | stop=$306.41 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | DASH | type=flag | entry=$239 | stop=$221.32 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | ABT | type=flag | entry=$127.58 | stop=$123.655 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | ICE | type=flag | entry=$164.42 | stop=$159.59 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | UBER | type=flag | entry=$83.66 | stop=$78.31 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | UNP | type=flag | entry=$238.01 | stop=$229.64 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | MDLZ | type=flag | entry=$55.26 | stop=$53.4113 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | T | type=flag | entry=$24.97 | stop=$24.02 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | MDT | type=flag | entry=$99.26 | stop=$95.29 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | ITW | type=flag | entry=$254.28 | stop=$244.55 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | SYK | type=flag | entry=$359.81 | stop=$345.83 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO |   SIGNAL | WMB | type=flag | entry=$61.01 | stop=$58.22 | quality=6 | tier=WIDE
+2026-01-02 14:30:33 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 14:30:33 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-02 14:30:33 | INFO | SIZING_CAP | SPOT | price=$588.52 | calculated=3 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 14:30:33 | INFO | TRADE_SKIPPED | SPOT | reason=Position size < 1 share
+2026-01-02 14:30:33 | INFO | SIZING_CAP | CDNS | price=$322.41 | calculated=6 → capped=1 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 14:30:33 | INFO | TRADE_EXECUTED | CDNS x 1 @ stop=$306.41 | order_id=982349bd-4b54-4e39-bafb-024661ede929
+2026-01-02 14:30:34 | INFO | CYCLE_SUMMARY | executed=1 | skipped=9 | errors=0
+2026-01-02 14:30:34 | INFO |   Executed: CDNS
+2026-01-02 14:30:34 | INFO |   Skipped: CMCSA, TXN, META, NFLX, BAM, SPOT, PFE, SONY, PBR
+2026-01-02 14:30:34 | INFO | ------------------------------------------------------------
+2026-01-02 14:35:34 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:38:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:46:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 14:58:46 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:06:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:09:48 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:16:15 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:36:24 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:39:42 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=197698ms
+2026-01-02 15:39:42 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 15:39:42 | INFO |   SIGNAL | TXN | type=flag | entry=$179.9 | stop=$173.44 | quality=6 | tier=WIDE
+2026-01-02 15:39:42 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 15:39:42 | INFO |   SIGNAL | T | type=flag | entry=$24.97 | stop=$24.02 | quality=6 | tier=WIDE
+2026-01-02 15:39:42 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 15:39:42 | INFO | SIZING_CAP | ELV | price=$356.94 | calculated=5 → capped=1 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 15:39:42 | INFO | TRADE_EXECUTED | ELV x 1 @ stop=$337.54 | order_id=26efb0e3-66ee-4c30-b861-56b569a69a89
+2026-01-02 15:39:42 | INFO | SIZING_CAP | T | price=$24.97 | calculated=105 → capped=20 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 15:39:42 | INFO | TRADE_EXECUTED | T x 20 @ stop=$24.02 | order_id=148f7027-d514-470c-ba77-d01f401d69f5
+2026-01-02 15:39:43 | INFO | SIZING_CAP | UNH | price=$340.26 | calculated=5 → capped=1 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 15:39:43 | INFO | TRADE_EXECUTED | UNH x 1 @ stop=$321.65 | order_id=42e0d220-0f5b-4c1c-9f98-2ecf22c77488
+2026-01-02 15:39:43 | INFO | CYCLE_SUMMARY | executed=3 | skipped=2 | errors=0
+2026-01-02 15:39:43 | INFO |   Executed: ELV, T, UNH
+2026-01-02 15:39:43 | INFO |   Skipped: TXN, CMCSA
+2026-01-02 15:39:43 | INFO | ------------------------------------------------------------
+2026-01-02 15:43:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:47:12 | INFO | SCAN_COMPLETE | signals=4 (EP:0, BO:4, HTF:0) | duration=192852ms
+2026-01-02 15:47:12 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 15:47:12 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 15:47:12 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 15:47:12 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 15:47:12 | INFO | CYCLE_SUMMARY | executed=0 | skipped=4 | errors=0
+2026-01-02 15:47:12 | INFO |   Skipped: ELV, BAM, CMCSA, UNH
+2026-01-02 15:47:12 | INFO | ------------------------------------------------------------
+2026-01-02 15:52:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 15:54:29 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=136281ms
+2026-01-02 15:54:29 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 15:54:29 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 15:54:29 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 15:54:29 | INFO |   SIGNAL | ECL | type=flag | entry=$267.99 | stop=$259.14 | quality=6 | tier=WIDE
+2026-01-02 15:54:29 | INFO |   SIGNAL | UNH | type=flag | entry=$340.2578 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 15:54:29 | INFO | SIZING_CAP | ECL | price=$267.99 | calculated=11 → capped=1 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 15:54:29 | INFO | TRADE_EXECUTED | ECL x 1 @ stop=$259.14 | order_id=9974766b-2ba9-4d16-a35e-8cb34428854f
+2026-01-02 15:54:30 | INFO | CYCLE_SUMMARY | executed=1 | skipped=4 | errors=0
+2026-01-02 15:54:30 | INFO |   Executed: ECL
+2026-01-02 15:54:30 | INFO |   Skipped: ELV, BAM, CMCSA, UNH
+2026-01-02 15:54:30 | INFO | ------------------------------------------------------------
+2026-01-02 15:59:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:16 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:21 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:26 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:31 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:42 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:52 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:46:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:02 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:07 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:12 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:28 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:38 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:43 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:48 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:47:58 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:04 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:09 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:14 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:24 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:29 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:34 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:44 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:49 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:48:55 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:00 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:05 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:10 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:15 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:20 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:25 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:35 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:40 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:46 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:49:56 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:01 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:06 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:11 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:16 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:21 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:26 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:31 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:42 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:52 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:50:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:03 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:08 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:28 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:38 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:43 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:48 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:54 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:51:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:04 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:09 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:14 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:24 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:29 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:34 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:45 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:52:55 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:00 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:05 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:10 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:15 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:20 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:25 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:36 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:41 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:46 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:53:56 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:01 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:06 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:12 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:17 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:27 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:32 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:42 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:54:58 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:03 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:08 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:28 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:44 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:49 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:54 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:55:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:04 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:09 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:14 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:24 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:35 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:40 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:45 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:56:55 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:00 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:05 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:10 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:16 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:21 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:26 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:31 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:36 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:41 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:52 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:57:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:02 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:07 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:12 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:17 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:27 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:38 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:43 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:48 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:58:58 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:03 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:08 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:29 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:34 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:44 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:49 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:54 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 18:59:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:06 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:11 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:17 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:27 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:32 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:37 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:42 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:00:58 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:03 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:08 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:29 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:34 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:39 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:44 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:49 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:54 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:01:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:04 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:09 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:14 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:24 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:30 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:35 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:40 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:45 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:02:55 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:00 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:05 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:11 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:16 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:21 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:26 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:31 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:36 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:41 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:46 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:03:56 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:04:01 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:04:06 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:07:14 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=187921ms
+2026-01-02 19:07:14 | INFO |   SIGNAL | BLK | type=flag | entry=$1094.33 | stop=$1057.45 | quality=7 | tier=WIDE
+2026-01-02 19:07:14 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 19:07:14 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 19:07:14 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 19:07:14 | INFO |   SIGNAL | UNH | type=flag | entry=$340.26 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 19:07:14 | INFO | SIZING_CAP | BLK | price=$1094.33 | calculated=2 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 19:07:14 | INFO | TRADE_SKIPPED | BLK | reason=Position size < 1 share
+2026-01-02 19:07:14 | INFO | CYCLE_SUMMARY | executed=0 | skipped=5 | errors=0
+2026-01-02 19:07:14 | INFO |   Skipped: BLK, ELV, BAM, CMCSA, UNH
+2026-01-02 19:07:14 | INFO | ------------------------------------------------------------
+2026-01-02 19:07:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:09:59 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=159314ms
+2026-01-02 19:09:59 | INFO |   SIGNAL | BLK | type=flag | entry=$1094.33 | stop=$1057.45 | quality=7 | tier=WIDE
+2026-01-02 19:09:59 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 19:09:59 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 19:09:59 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 19:09:59 | INFO |   SIGNAL | UNH | type=flag | entry=$340.26 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 19:09:59 | INFO | SIZING_CAP | BLK | price=$1094.33 | calculated=2 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 19:09:59 | INFO | TRADE_SKIPPED | BLK | reason=Position size < 1 share
+2026-01-02 19:09:59 | INFO | CYCLE_SUMMARY | executed=0 | skipped=5 | errors=0
+2026-01-02 19:09:59 | INFO |   Skipped: BLK, ELV, BAM, CMCSA, UNH
+2026-01-02 19:09:59 | INFO | ------------------------------------------------------------
+2026-01-02 19:10:04 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:12:53 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=169084ms
+2026-01-02 19:12:53 | INFO |   SIGNAL | BLK | type=flag | entry=$1094.33 | stop=$1057.45 | quality=7 | tier=WIDE
+2026-01-02 19:12:53 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 19:12:53 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 19:12:53 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 19:12:53 | INFO |   SIGNAL | UNH | type=flag | entry=$340.26 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 19:12:53 | INFO | SIZING_CAP | BLK | price=$1094.33 | calculated=2 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 19:12:53 | INFO | TRADE_SKIPPED | BLK | reason=Position size < 1 share
+2026-01-02 19:12:53 | INFO | CYCLE_SUMMARY | executed=0 | skipped=5 | errors=0
+2026-01-02 19:12:53 | INFO |   Skipped: BLK, ELV, BAM, CMCSA, UNH
+2026-01-02 19:12:53 | INFO | ------------------------------------------------------------
+2026-01-02 19:12:58 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:15:36 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=157919ms
+2026-01-02 19:15:36 | INFO |   SIGNAL | BLK | type=flag | entry=$1094.33 | stop=$1057.45 | quality=7 | tier=WIDE
+2026-01-02 19:15:36 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 19:15:36 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 19:15:36 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 19:15:36 | INFO |   SIGNAL | UNH | type=flag | entry=$340.26 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 19:15:36 | INFO | SIZING_CAP | BLK | price=$1094.33 | calculated=2 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 19:15:36 | INFO | TRADE_SKIPPED | BLK | reason=Position size < 1 share
+2026-01-02 19:15:36 | INFO | CYCLE_SUMMARY | executed=0 | skipped=5 | errors=0
+2026-01-02 19:15:36 | INFO |   Skipped: BLK, ELV, BAM, CMCSA, UNH
+2026-01-02 19:15:36 | INFO | ------------------------------------------------------------
+2026-01-02 19:15:41 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr
+2026-01-02 19:18:11 | INFO | SCAN_COMPLETE | signals=5 (EP:0, BO:5, HTF:0) | duration=149934ms
+2026-01-02 19:18:11 | INFO |   SIGNAL | BLK | type=flag | entry=$1094.33 | stop=$1057.45 | quality=7 | tier=WIDE
+2026-01-02 19:18:11 | INFO |   SIGNAL | ELV | type=flag | entry=$356.94 | stop=$337.54 | quality=7 | tier=WIDE
+2026-01-02 19:18:11 | INFO |   SIGNAL | BAM | type=flag | entry=$53.76 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-02 19:18:11 | INFO |   SIGNAL | CMCSA | type=flag | entry=$30.43 | stop=$29 | quality=6 | tier=WIDE
+2026-01-02 19:18:11 | INFO |   SIGNAL | UNH | type=flag | entry=$340.26 | stop=$321.65 | quality=6 | tier=WIDE
+2026-01-02 19:18:11 | INFO | SIZING_CAP | BLK | price=$1094.33 | calculated=2 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-02 19:18:11 | INFO | TRADE_SKIPPED | BLK | reason=Position size < 1 share
+2026-01-02 19:18:11 | INFO | CYCLE_SUMMARY | executed=0 | skipped=5 | errors=0
+2026-01-02 19:18:11 | INFO |   Skipped: BLK, ELV, BAM, CMCSA, UNH
+2026-01-02 19:18:11 | INFO | ------------------------------------------------------------
+2026-01-02 19:18:16 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=6 | min_price=$3.0 | stop_mode=atr

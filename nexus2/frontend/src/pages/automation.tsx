@@ -378,6 +378,7 @@ export default function Automation() {
                 <header className={styles.header}>
                     <div className={styles.headerLeft}>
                         <Link href="/" className={styles.backLink}>← Dashboard</Link>
+                        <Link href="/simulation" className={styles.backLink}>🧪 Sim</Link>
                         <h1>🤖 Automation Control</h1>
                     </div>
                     <div className={styles.headerRight}>
@@ -1441,6 +1442,67 @@ export default function Automation() {
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            {/* Stop Threshold - shows based on stop_mode */}
+                                            {schedulerSettings?.stop_mode === 'atr' && (
+                                                <div className={styles.settingGroup}>
+                                                    <label>Max Stop ATR: {schedulerSettings?.max_stop_atr ?? 1.0}x</label>
+                                                    <input
+                                                        type="range"
+                                                        min="0.5"
+                                                        max="3.0"
+                                                        step="0.1"
+                                                        value={schedulerSettings?.max_stop_atr ?? 1.0}
+                                                        className={styles.slider}
+                                                        onChange={async (e) => {
+                                                            const value = parseFloat(e.target.value)
+                                                            try {
+                                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                                    method: 'PATCH',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ max_stop_atr: value })
+                                                                })
+                                                                if (res.ok) {
+                                                                    const data = await res.json()
+                                                                    setSchedulerSettings(data)
+                                                                }
+                                                            } catch (err) {
+                                                                console.error('Failed to update max_stop_atr:', err)
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {schedulerSettings?.stop_mode === 'percent' && (
+                                                <div className={styles.settingGroup}>
+                                                    <label>Max Stop %: {schedulerSettings?.max_stop_percent ?? 8}%</label>
+                                                    <input
+                                                        type="range"
+                                                        min="1"
+                                                        max="30"
+                                                        step="1"
+                                                        value={schedulerSettings?.max_stop_percent ?? 8}
+                                                        className={styles.slider}
+                                                        onChange={async (e) => {
+                                                            const value = parseFloat(e.target.value)
+                                                            try {
+                                                                const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                                    method: 'PATCH',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ max_stop_percent: value })
+                                                                })
+                                                                if (res.ok) {
+                                                                    const data = await res.json()
+                                                                    setSchedulerSettings(data)
+                                                                }
+                                                            } catch (err) {
+                                                                console.error('Failed to update max_stop_percent:', err)
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
                                         </>
                                     )}
 

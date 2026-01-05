@@ -204,12 +204,28 @@ class FMPAdapter:
     def get_daily_bars(
         self, 
         symbol: str, 
-        limit: int = 60
+        limit: int = 60,
+        from_date: Optional[str] = None,  # YYYY-MM-DD format
+        to_date: Optional[str] = None,    # YYYY-MM-DD format
     ) -> Optional[List[OHLCV]]:
-        """Get daily OHLCV bars."""
+        """
+        Get daily OHLCV bars.
+        
+        Args:
+            symbol: Stock symbol
+            limit: Number of bars to return (ignored if from_date/to_date provided)
+            from_date: Start date in YYYY-MM-DD format (for historical queries)
+            to_date: End date in YYYY-MM-DD format (for historical queries)
+        """
+        # Build params based on whether date range is provided
+        if from_date and to_date:
+            params = {"from": from_date, "to": to_date}
+        else:
+            params = {"timeseries": str(limit)}
+        
         data = self._get(
             f"historical-price-full/{symbol}",
-            params={"timeseries": str(limit)}
+            params=params
         )
         
         if not data or "historical" not in data:
@@ -233,7 +249,7 @@ class FMPAdapter:
             except (KeyError, ValueError, TypeError):
                 continue  # Skip malformed bars
         
-        return bars if len(bars) >= 50 else None  # Require minimum bars
+        return bars if len(bars) >= 10 else None  # Require minimum bars (lowered for date ranges)
     
     def get_intraday_bars(
         self,

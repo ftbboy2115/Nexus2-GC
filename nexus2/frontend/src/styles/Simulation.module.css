@@ -1,0 +1,680 @@
+/* Simulation Page Styles - Mock Market Control Panel */
+
+.container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+    color: #fff;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.headerLeft h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    background: linear-gradient(90deg, #00d4ff, #9b59b6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.backLink {
+    color: #888;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.backLink:hover {
+    color: #00d4ff;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Badges */
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badgeSim {
+    background: rgba(155, 89, 182, 0.2);
+    color: #9b59b6;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+}
+
+.badgeGreen {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+}
+
+.badgeGray {
+    background: rgba(255, 255, 255, 0.1);
+    color: #888;
+}
+
+.badgeSmall {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+}
+
+.badgeDisabled {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: #666;
+}
+
+.refreshBtn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.refreshBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.loading {
+    text-align: center;
+    padding: 60px;
+    color: #888;
+    font-size: 1.2rem;
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards */
+.card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.cardHeader h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.cardBody {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex: 1;
+}
+
+.cardActions {
+    margin-top: auto;
+    padding-top: 15px;
+}
+
+/* Clock Display */
+.clockDisplay {
+    text-align: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.clockDate {
+    font-size: 1.2rem;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.clockTime {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #00d4ff, #9b59b6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Control Row */
+.controlRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.controlLabel {
+    color: #888;
+    font-size: 0.9rem;
+    min-width: 60px;
+}
+
+.controlButtons {
+    display: flex;
+    gap: 8px;
+}
+
+.btnControl {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btnControl:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btnControl:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Quick Advance Buttons */
+.quickAdvance {
+    display: flex;
+    gap: 10px;
+}
+
+.btnQuickAdvance {
+    flex: 1;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.2), rgba(0, 212, 255, 0.2));
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btnQuickAdvance:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.3), rgba(0, 212, 255, 0.3));
+    transform: translateY(-2px);
+}
+
+.btnQuickAdvance:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Buttons */
+.btnPrimary {
+    padding: 12px 20px;
+    background: linear-gradient(90deg, #00d4ff, #00ff88);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.btnPrimary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+}
+
+.btnPrimary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btnDanger {
+    padding: 12px 20px;
+    background: linear-gradient(90deg, #ff6b6b, #ff4444);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.btnDanger:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255, 68, 68, 0.4);
+}
+
+.btnDanger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btnSecondary {
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.btnSecondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btnSecondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.statBox {
+    text-align: center;
+    padding: 15px;
+    background: rgba(0, 212, 255, 0.08);
+    border-radius: 10px;
+}
+
+.statValue {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #00d4ff;
+}
+
+.statLabel {
+    margin-top: 5px;
+    color: #888;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pnlPositive {
+    color: #00ff88 !important;
+}
+
+.pnlNegative {
+    color: #ff6b6b !important;
+}
+
+/* Position Count */
+.positionCount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.positionCount span {
+    color: #888;
+}
+
+.positionCount strong {
+    font-size: 1.2rem;
+    color: #00d4ff;
+}
+
+/* Positions Table */
+.positionsTable {
+    overflow-x: auto;
+    margin-top: 10px;
+}
+
+.positionsTable table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.positionsTable th,
+.positionsTable td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.positionsTable th {
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.symbol {
+    font-weight: 700;
+    color: #00d4ff;
+}
+
+/* Scenario Card */
+.scenarioCard {
+    grid-column: span 1;
+}
+
+.scenarioSection {
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.scenarioSection h3 {
+    margin: 0 0 12px 0;
+    font-size: 0.95rem;
+    color: #aaa;
+}
+
+/* Form Inputs */
+.formRow {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.input {
+    flex: 1;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #00d4ff;
+}
+
+.input::placeholder {
+    color: #666;
+}
+
+.dateSeparator {
+    display: flex;
+    align-items: center;
+    color: #666;
+}
+
+/* Test Case List */
+.testCaseList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.testCaseBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.testCaseBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.testCaseBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tcName {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.tcMeta {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.emptyMessage {
+    color: #666;
+    font-style: italic;
+    margin: 0;
+}
+
+/* Pattern Buttons */
+.patternButtons {
+    display: flex;
+    gap: 10px;
+}
+
+.btnPattern {
+    flex: 1;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btnPattern:hover:not(:disabled) {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+.btnPattern:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Diagnostic Panel */
+.diagnosticButtons {
+    display: flex;
+    gap: 10px;
+}
+
+.diagnosticResults {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.diagnosticResults h4 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.scannerResult {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.scannerHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rejections {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.rejection {
+    margin: 4px 0;
+}
+
+.moreRejections {
+    color: #666;
+    font-style: italic;
+}
+
+/* Market Data Info */
+.marketDataInfo {
+    margin-top: 15px;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.stat span {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.stat strong {
+    color: #fff;
+}
+
+/* Event Log */
+.eventLogCard {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.eventLogCard .cardHeader {
+    margin-bottom: 15px;
+}
+
+.clearBtn {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.clearBtn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.eventLog {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+}
+
+.logEntry {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #aaa;
+}
+
+.logEntry:last-child {
+    border-bottom: none;
+}
+
+.emptyLog {
+    color: #666;
+    text-align: center;
+    font-style: italic;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .statsGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quickAdvance {
+        flex-direction: column;
+    }
+
+    .diagnosticButtons {
+        flex-direction: column;
+    }
+
+    .patternButtons {
+        flex-direction: column;
+    }
+}

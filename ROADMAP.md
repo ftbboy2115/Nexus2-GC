@@ -43,7 +43,7 @@ Last updated: 2026-01-03
 ## 📝 UI / UX
 
 - [x] **API Usage card sync** — Verified: shows real FMP rate limit stats
-- [ ] **Total P&L % in Open Positions** — Add to positions card
+- [x] **Total P&L % in Open Positions** — Already implemented (per-row + total)
 - [ ] **Simulation Control Page** — Mock market GUI with clock, scenarios, event log → [Plan](docs/simulation_plan.md)
 
 ---

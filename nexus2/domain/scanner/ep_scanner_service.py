@@ -185,12 +185,15 @@ class EPScannerService:
             return None
         
         # Range quality check - reject if price in lower portion of range
+        # SKIP this check for big gap days since OR-timing uses OPEN price
+        # (OPEN is naturally low in day's range on gap-up days that run)
+        is_gap_day = gap_pct >= 5.0  # Same threshold as OR-timing logic
         session_high = snapshot["session_high"]
         session_low = snapshot["session_low"]
         last_price = snapshot["last_price"]
         range_len = session_high - session_low
         
-        if range_len > 0:
+        if range_len > 0 and not is_gap_day:
             range_position = (last_price - session_low) / range_len
             if range_position < float(self.settings.min_range_position):
                 if verbose:

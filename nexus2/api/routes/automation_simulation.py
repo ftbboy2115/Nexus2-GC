@@ -138,15 +138,31 @@ async def reset_simulation(
         for sym in symbols:
             data.load_synthetic_data(sym, start_price=150.0, days=60)
     
-    # Create mock broker
+    # Create mock broker (use thread-safe setter)
+    from nexus2.api.routes.automation_state import set_sim_broker
     broker = MockBroker(initial_cash=initial_cash)
-    get_simulation_status._mock_broker = broker
+    set_sim_broker(broker)
     
     # Set initial prices from loaded data
     for sym in data.get_symbols():
         price = data.get_current_price(sym)
         if price:
             broker.set_price(sym, price)
+    
+    # Clear database positions (simulation creates position records)
+    from nexus2.db import SessionLocal, PositionRepository
+    try:
+        db = SessionLocal()
+        position_repo = PositionRepository(db)
+        open_positions = position_repo.get_open()
+        for pos in open_positions:
+            position_repo.close(pos.id, exit_price="0", remaining_shares=0)
+        db.commit()
+        logger.info(f"[Simulation] Cleared {len(open_positions)} database positions")
+    except Exception as e:
+        logger.warning(f"[Simulation] Could not clear DB positions: {e}")
+    finally:
+        db.close()
     
     logger.info(f"[Simulation] Reset: start={start_dt}, cash=${initial_cash:,.0f}, symbols={symbols}")
     
@@ -490,7 +506,7 @@ async def diagnostic_unified_scan():
         min_quality_score=5,  # Relaxed for sim
         stop_mode="atr",
         max_stop_atr=1.5,
-        max_stop_percent=8.0,
+        max_stop_percent=25.0,  # Relaxed for sim (gap days have wide OR)
     )
     
     scanner = UnifiedScannerService(
@@ -650,11 +666,15 @@ async def advance_simulation(
     # Update market data prices for new date
     new_prices = data.advance_day()
     
-    # Update broker prices if exists
-    if hasattr(get_simulation_status, '_mock_broker'):
-        broker = get_simulation_status._mock_broker
+    # Update broker prices if exists (use the thread-safe getter)
+    from nexus2.api.routes.automation_state import get_sim_broker
+    broker = get_sim_broker()
+    if broker is not None:
         for sym, price in new_prices.items():
             broker.set_price(sym, price)
+            # Check if stop was triggered
+            broker._check_stop_orders(sym)
+        print(f"📊 [SIM] Updated prices: {new_prices}")
     
     logger.info(f"[Simulation] Advanced: {old_time} -> {clock.current_time}")
     
@@ -670,8 +690,9 @@ async def advance_simulation(
 @router.get("/simulation/broker", response_model=dict)
 async def get_simulation_broker():
     """Get simulation broker state (positions, orders, P&L)."""
-    if hasattr(get_simulation_status, '_mock_broker'):
-        broker = get_simulation_status._mock_broker
+    from nexus2.api.routes.automation_state import get_sim_broker
+    broker = get_sim_broker()
+    if broker is not None:
         return broker.to_dict()
     return {"error": "Simulation not initialized. Call /simulation/reset first."}
 
@@ -773,8 +794,9 @@ async def load_historical_data(
             logger.info(f"[Simulation] Clock kept at {current_clock_date} (within data range)")
     
     # Update broker price if exists
-    if hasattr(get_simulation_status, '_mock_broker') and bar_dicts:
-        broker = get_simulation_status._mock_broker
+    from nexus2.api.routes.automation_state import get_sim_broker
+    broker = get_sim_broker()
+    if broker is not None and bar_dicts:
         broker.set_price(symbol.upper(), bar_dicts[-1]["close"])
     
     logger.info(f"[Simulation] Loaded {count} bars for {symbol}")
@@ -858,13 +880,13 @@ async def load_test_case(case_id: str):
     end = datetime.strptime(end_date, "%Y-%m-%d")
     days = (end - start).days + 60  # Extra buffer
     
-    # Fetch from FMP
-    logger.info(f"[TestCase] Loading {days} days of historical data for {symbol}...")
-    bars = fmp.get_daily_bars(symbol.upper(), limit=days)
+    # Fetch from FMP using date range (not limit) for historical backtesting
+    logger.info(f"[TestCase] Loading historical data for {symbol} from {start_date} to {end_date}...")
+    bars = fmp.get_daily_bars(symbol.upper(), from_date=start_date, to_date=end_date)
     
     if not bars:
         return {
-            "error": f"Failed to load data for {symbol}",
+            "error": f"Failed to load data for {symbol} (date range: {start_date} to {end_date})",
             "rate_stats": fmp.get_rate_stats()
         }
     

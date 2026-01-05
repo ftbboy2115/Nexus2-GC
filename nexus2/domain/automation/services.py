@@ -177,7 +177,7 @@ async def create_unified_scanner_callback(
             if market_data._sim_clock is None:
                 market_data.set_clock(clock)
             
-            logger.info(f"[SIM] Scan using MockMarketData (clock={clock.get_trading_day()}, symbols={market_data.get_symbols()})")
+            print(f"🧪 [SIM] Scan using MockMarketData (clock={clock.get_trading_day()}, symbols={market_data.get_symbols()})")
             
             # Use relaxed settings for simulation (limited data may not show 8%+ gaps)
             sim_ep_settings = EPScanSettings(

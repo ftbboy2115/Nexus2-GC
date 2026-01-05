@@ -209,6 +209,10 @@ class MockMarketData:
         Get current price for symbol.
         
         If simulation clock is set, returns price at sim time.
+        
+        For EP gap days (>5% gap) during early market hours (first 30 min),
+        returns OR high instead of close - simulating realistic entry timing.
+        
         Otherwise returns latest loaded price.
         """
         if self._sim_clock and symbol in self._data:
@@ -216,9 +220,39 @@ class MockMarketData:
             sim_date = self._sim_clock.get_trading_day()
             for bar in reversed(self._data[symbol]):
                 if bar.date <= sim_date:
+                    # Check if we're in early market hours (9:30-10:00 AM)
+                    if self._sim_clock.is_market_hours():
+                        sim_time = self._sim_clock.current_time
+                        market_open_minutes = (sim_time.hour - 9) * 60 + (sim_time.minute - 30)
+                        
+                        # First 30 minutes of trading
+                        if 0 <= market_open_minutes <= 30:
+                            # Check if this is a gap day (use previous day's close)
+                            prev_bar = self._get_previous_bar(symbol, bar.date)
+                            if prev_bar:
+                                gap_percent = ((bar.open - prev_bar.close) / prev_bar.close) * 100
+                                
+                                # For gap days (>5%), use OPEN as entry price
+                                # (EP entries happen at/near market open, not day's high)
+                                if gap_percent >= 5.0:
+                                    print(f"📈 [SIM] EP entry timing: {symbol} gap={gap_percent:.1f}%, using OPEN=${bar.open:.2f} (not close=${bar.close:.2f})")
+                                    return bar.open
+                    
                     return bar.close
         
         return self._current_prices.get(symbol)
+    
+    def _get_previous_bar(self, symbol: str, date_str: str) -> Optional[OHLCV]:
+        """Get the bar before a given date."""
+        if symbol not in self._data:
+            return None
+        
+        prev_bar = None
+        for bar in self._data[symbol]:
+            if bar.date >= date_str:
+                return prev_bar
+            prev_bar = bar
+        return prev_bar
     
     def get_last_price(self, symbol: str) -> Optional[float]:
         """Alias for get_current_price - used by MockBroker."""
@@ -492,6 +526,7 @@ class MockMarketData:
         
         This provides the data structure expected by EPScannerService.
         """
+        
         if symbol not in self._data:
             return None
         
@@ -532,7 +567,8 @@ class MockMarketData:
             "session_open": today_bar.open,
             "session_high": today_bar.high,
             "session_low": today_bar.low,
-            "last_price": today_bar.close,
+            # Use get_current_price() to apply OR-timing logic (open vs close based on time)
+            "last_price": self.get_current_price(symbol) or today_bar.close,
             "session_volume": today_bar.volume,
             "avg_daily_volume": avg_volume,
         }

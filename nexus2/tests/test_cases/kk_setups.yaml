@@ -16,16 +16,16 @@ test_cases:
     symbol: SMCI
     setup_type: ep
     outcome: winner
-    description: "SMCI Dec 2023 EP - Massive AI/datacenter earnings gap"
+    description: "SMCI Jan 2024 EP - Massive AI/datacenter earnings gap (+11.6%)"
     date_range:
       start: "2023-11-01"
       end: "2024-02-28"
-    setup_date: "2023-12-14"
+    setup_date: "2024-01-19"  # Changed from 2023-12-14 - this date has 11.6% gap
     expected:
-      entry_near: 280.0  # Approximate entry range
-      stop_near: 265.0   # Initial stop area
+      entry_near: 380.0  # Updated for Jan 2024 prices
+      stop_near: 350.0   # Initial stop area
       peak_price: 1200.0  # Price ran to ~$1200
-      peak_gain_pct: 300
+      peak_gain_pct: 200
 
   - id: nvda_ep_2024
     symbol: NVDA
