@@ -210,9 +210,18 @@ class PositionMonitor:
         Returns ExitSignal if exit should occur, None otherwise.
         """
         symbol = position.get("symbol", "")
-        entry_price = Decimal(str(position.get("entry_price", 0)))
-        current_stop = Decimal(str(position.get("current_stop", 0)))
-        initial_stop = Decimal(str(position.get("initial_stop", 0)))
+        entry_price = Decimal(str(position.get("entry_price", 0) or 0))
+        
+        # Handle None stop values - positions without stops can't be evaluated
+        raw_current_stop = position.get("current_stop")
+        raw_initial_stop = position.get("initial_stop")
+        
+        if not raw_current_stop and not raw_initial_stop:
+            # External position without stops - skip evaluation
+            return None
+        
+        current_stop = Decimal(str(raw_current_stop or 0))
+        initial_stop = Decimal(str(raw_initial_stop or 0))
         shares = int(position.get("remaining_shares", 0))
         position_id = position.get("id", "")
         
