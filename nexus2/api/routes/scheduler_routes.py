@@ -168,17 +168,36 @@ async def start_scheduler(
                 for p in positions
             ]
     
-    # Callback: Get current price
+    # Callback: Get current price - USE ALPACA FOR REALTIME
+    # FMP quote has delays and may return previous close instead of intraday price
     async def get_monitor_price(symbol: str):
+        # Try Alpaca first (real-time)
+        if broker:
+            try:
+                positions = broker.get_positions()
+                if symbol in positions:
+                    pos = positions[symbol]
+                    # current_price from Alpaca account positions
+                    price = getattr(pos, 'current_price', None)
+                    if price:
+                        logger.debug(f"[Monitor Price] {symbol}: ${price} (Alpaca position)")
+                        return price
+            except Exception as e:
+                logger.warning(f"[Monitor Price] {symbol}: Alpaca position check failed: {e}")
+        
+        # Fallback to unified market data (may use FMP)
         if market_data:
             try:
-                quote = market_data.get_quote(symbol)
+                # Prefer Alpaca quotes via the unified adapter's alpaca client
+                quote = market_data.alpaca.get_quote(symbol)
                 if quote:
                     price = quote.price if hasattr(quote, 'price') else quote.close
-                    logger.debug(f"[Monitor Price] {symbol}: ${price}")
+                    logger.debug(f"[Monitor Price] {symbol}: ${price} (Alpaca quote)")
                     return price
             except Exception as e:
-                logger.warning(f"[Monitor Price] {symbol}: Failed to get quote: {e}")
+                logger.warning(f"[Monitor Price] {symbol}: Alpaca quote failed: {e}")
+        
+        logger.warning(f"[Monitor Price] {symbol}: No price available")
         return None
     
     # Callback: Update stop (move to breakeven)
