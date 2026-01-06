@@ -2,199 +2,23 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/Automation.module.css'
-
-interface EngineStatus {
-    state: string
-    sim_only: boolean
-    is_market_hours: boolean
-    trading_mode: string
-    mode_description: string
-    broker_available: boolean
-    broker_type: string
-    broker_display: string
-    active_account: string
-    settings_risk_per_trade: number
-    config: {
-        scanner_interval: number
-        min_quality: number
-        max_positions: number
-        risk_per_trade: string
-        daily_loss_limit: string
-    }
-    stats: {
-        started_at: string | null
-        scans_run: number
-        signals_generated: number
-        orders_submitted: number
-        orders_filled: number
-        daily_pnl: string
-        last_scan_at: string | null
-        last_error: string | null
-    }
-}
-
-interface SchedulerStatus {
-    running: boolean
-    interval_minutes: number
-    auto_execute: boolean
-    is_market_hours: boolean
-    cycles_run: number
-    last_run: string | null
-    last_error: string | null
-}
-
-interface MonitorStatus {
-    running: boolean
-    check_interval_seconds: number
-    checks_run: number
-    exits_triggered: number
-    last_check: string | null
-    last_error: string | null
-}
-
-interface ApiStats {
-    status: string
-    provider: string
-    calls_this_minute: number
-    limit_per_minute: number
-    remaining: number
-    usage_percent: number
-}
-
-interface Signal {
-    symbol: string
-    setup_type: string
-    quality_score: number
-    tier: string
-    entry_price: string
-    tactical_stop: string
-    stop_percent: number
-    rs_percentile: number
-    shares: number
-    risk_amount: string
-    found_at?: string  // Timestamp when signal was found
-}
-
-interface ScanResult {
-    status: string
-    total_signals: number
-    breakdown: { ep: number; breakout: number; htf: number }
-    scanned_at: string
-    signals: Signal[]
-}
-
-interface ScanRejection {
-    symbol: string
-    reason: string
-    threshold: number
-    actual_value: number
-}
-
-interface ScannerDiagnostic {
-    scanner: string
-    enabled: boolean
-    candidates_found: number
-    candidates_passed: number
-    rejections: ScanRejection[]
-    error: string | null
-}
-
-interface ScanDiagnostics {
-    available: boolean
-    message?: string
-    scanned_at?: string
-    duration_ms?: number
-    total_signals?: number
-    total_processed?: number
-    ep_count?: number
-    breakout_count?: number
-    htf_count?: number
-    diagnostics?: ScannerDiagnostic[]
-}
-
-interface BrokerPosition {
-    symbol: string
-    qty: number
-    avg_price: number
-    market_value: number
-    unrealized_pnl: number
-    pnl_percent: number
-}
-
-interface PositionsData {
-    status: string
-    positions: BrokerPosition[]
-    count: number
-    total_value: number
-    total_pnl: number
-}
-
-// Simulation positions from MockBroker
-interface SimPosition {
-    symbol: string
-    qty: number
-    avg_price: number
-    market_value: number
-    unrealized_pnl: number
-    pnl_percent: number
-    stop_price?: number
-}
-
-interface SimPositionsData {
-    status: string
-    positions: SimPosition[]
-    count: number
-    account?: {
-        cash: number
-        portfolio_value: number
-        buying_power: number
-        realized_pnl: number
-        unrealized_pnl: number
-        position_count: number
-    }
-}
-
-interface ScannerSettings {
-    preset: 'strict' | 'relaxed' | 'custom'
-    minQuality: number
-    stopMode: 'atr' | 'percent'  // KK uses ATR
-    maxStopAtr: number           // Default: 1.0 ATR
-    maxStopPercent: number       // Fallback option
-    scanModes: string[]          // Which scanners to run: ep, breakout, htf
-    htfFrequency: 'every_cycle' | 'market_open'  // How often to run HTF
-}
-
-const PRESET_MODES: Record<string, ScannerSettings> = {
-    strict: { preset: 'strict', minQuality: 7, stopMode: 'atr', maxStopAtr: 1.0, maxStopPercent: 5, scanModes: ['ep', 'breakout'], htfFrequency: 'market_open' },
-    relaxed: { preset: 'relaxed', minQuality: 5, stopMode: 'atr', maxStopAtr: 1.5, maxStopPercent: 8, scanModes: ['ep', 'breakout', 'htf'], htfFrequency: 'market_open' },
-    custom: { preset: 'custom', minQuality: 6, stopMode: 'atr', maxStopAtr: 1.0, maxStopPercent: 6, scanModes: ['ep', 'breakout'], htfFrequency: 'market_open' },
-}
-
-interface SchedulerSettingsData {
-    adopt_quick_actions: boolean
-    preset: 'strict' | 'relaxed' | 'custom'
-    min_quality: number
-    stop_mode: 'atr' | 'percent'
-    max_stop_atr: number
-    max_stop_percent: number
-    scan_modes: string[]  // ["ep", "breakout", "htf"]
-    htf_frequency: 'every_cycle' | 'market_open'
-    max_position_value: number | null  // Automation-specific capital limit (null = use global)
-    nac_max_positions: number | null  // Max concurrent positions for NAC (null = unlimited)
-    auto_start_enabled: boolean  // Enable auto-start for headless operation
-    auto_start_time: string | null  // HH:MM format (ET timezone)
-    auto_execute: boolean  // Auto-execute trades when scheduler runs
-    nac_broker_type: string  // alpaca_paper, alpaca_live
-    nac_account: string  // A or B (default A for Automation)
-    sim_mode: boolean  // Enable simulation mode (uses MockBroker)
-    min_price: number  // Minimum stock price filter ($2-10)
-    discord_alerts_enabled: boolean  // Enable Discord notifications
-}
-
-const SCHEDULER_PRESET_DEFAULTS: Record<string, Partial<SchedulerSettingsData>> = {
-    strict: { min_quality: 7, stop_mode: 'atr', max_stop_atr: 1.0, max_stop_percent: 5 },
-    relaxed: { min_quality: 5, stop_mode: 'percent', max_stop_atr: 1.5, max_stop_percent: 8 },
-}
+import {
+    EngineStatus,
+    SchedulerStatus,
+    MonitorStatus,
+    ApiStats,
+    Signal,
+    ScanResult,
+    ScanDiagnostics,
+    BrokerPosition,
+    PositionsData,
+    SimPosition,
+    SimPositionsData,
+    ScannerSettings,
+    SchedulerSettingsData,
+    PRESET_MODES,
+    SCHEDULER_PRESET_DEFAULTS,
+} from '@/types/automation'
 
 
 export default function Automation() {
