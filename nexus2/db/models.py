@@ -326,3 +326,22 @@ class WatchlistCandidateModel(Base):
             "scanned_at": self.scanned_at.isoformat() if self.scanned_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class UserPreferencesModel(Base):
+    """User preferences for UI settings like table column layouts."""
+    __tablename__ = "user_preferences"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)  # e.g., "dashboard_columns", "automation_columns"
+    value = Column(Text, nullable=False)  # JSON string
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        """Convert to dictionary."""
+        import json
+        return {
+            "key": self.key,
+            "value": json.loads(self.value) if self.value else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

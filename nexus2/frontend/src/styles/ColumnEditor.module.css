@@ -1,0 +1,130 @@
+/* Column Editor Modal Styles */
+
+.editor {
+    background: var(--card-bg, #1a1a2e);
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 300px;
+}
+
+.title {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    color: var(--text-primary, #fff);
+}
+
+.hint {
+    margin: 0 0 16px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #888);
+}
+
+.columnList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.columnItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface-bg, #16213e);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    cursor: grab;
+}
+
+.columnItem:active {
+    cursor: grabbing;
+}
+
+.columnItem.visible {
+    opacity: 1;
+}
+
+.columnItem.hidden {
+    opacity: 0.5;
+}
+
+.dragHandle {
+    color: var(--text-muted, #666);
+    font-size: 1.2rem;
+    cursor: grab;
+    user-select: none;
+}
+
+.columnLabel {
+    flex: 1;
+    font-size: 0.95rem;
+    color: var(--text-primary, #fff);
+}
+
+.visibilityToggle {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.visibilityToggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color, #333);
+}
+
+.resetBtn,
+.cancelBtn,
+.saveBtn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.resetBtn {
+    background: transparent;
+    border: 1px solid var(--border-color, #444);
+    color: var(--text-muted, #888);
+    margin-right: auto;
+}
+
+.resetBtn:hover {
+    border-color: var(--text-muted, #888);
+    color: var(--text-primary, #fff);
+}
+
+.cancelBtn {
+    background: transparent;
+    border: 1px solid var(--border-color, #444);
+    color: var(--text-primary, #fff);
+}
+
+.cancelBtn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.saveBtn {
+    background: linear-gradient(135deg, #00d9ff, #00ff88);
+    border: none;
+    color: #000;
+    font-weight: 600;
+}
+
+.saveBtn:hover {
+    filter: brightness(1.1);
+}
