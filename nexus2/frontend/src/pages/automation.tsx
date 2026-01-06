@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/Automation.module.css'
+import ColumnEditor from '@/components/ColumnEditor'
+import { useColumnConfig, AUTOMATION_COLUMNS } from '@/hooks/useColumnConfig'
 import {
     EngineStatus,
     SchedulerStatus,
@@ -57,6 +59,10 @@ export default function Automation() {
     const [showLiquidateModal, setShowLiquidateModal] = useState(false)
     const [liquidateConfirm, setLiquidateConfirm] = useState('')
     const [liquidateResult, setLiquidateResult] = useState<{ status: string; message: string; closed?: number } | null>(null)
+
+    // Column configuration for Open Positions table
+    const columnConfig = useColumnConfig('automation_positions', AUTOMATION_COLUMNS)
+    const [showColumnEditor, setShowColumnEditor] = useState(false)
 
     const API_BASE = 'http://localhost:8000'
 
@@ -828,6 +834,13 @@ export default function Automation() {
                                 <div className={styles.cardHeader}>
                                     <h2>
                                         {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
+                                        <button
+                                            onClick={() => setShowColumnEditor(true)}
+                                            style={{ marginLeft: '8px', padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            title="Configure columns"
+                                        >
+                                            ⚙️
+                                        </button>
                                     </h2>
                                     {schedulerSettings?.sim_mode ? (
                                         <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
@@ -1705,6 +1718,17 @@ export default function Automation() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Column Editor Modal */}
+            {showColumnEditor && (
+                <ColumnEditor
+                    columns={columnConfig.editColumns}
+                    onColumnsChange={columnConfig.setEditColumns}
+                    onSave={() => { columnConfig.saveEdit(); setShowColumnEditor(false) }}
+                    onCancel={() => setShowColumnEditor(false)}
+                    onReset={columnConfig.resetEdit}
+                />
             )}
         </>
     )
