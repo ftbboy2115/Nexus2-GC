@@ -17,6 +17,7 @@ from nexus2.domain.automation.automation_logger import (
     log_scan_start, log_scan_result, log_execution_decision,
     log_position_sizing, log_cycle_summary,
 )
+from nexus2.api.routes.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,8 @@ def create_execute_callback(
                         "tier": signal.tier,
                         "rs_percentile": signal.rs_percentile,
                         "adr_percent": str(signal.adr_percent) if signal.adr_percent else None,
+                        "broker_type": get_settings().broker_type,
+                        "account": get_settings().active_account,
                     })
                     
                     # Update engine stats
