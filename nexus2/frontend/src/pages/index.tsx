@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/Home.module.css'
+import ColumnEditor from '@/components/ColumnEditor'
+import { useColumnConfig, DASHBOARD_COLUMNS } from '@/hooks/useColumnConfig'
 
 interface HealthStatus {
     status: string
@@ -107,6 +109,10 @@ export default function Home() {
     // Position selection for bulk actions
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(() => new Set())
     const [closingPositions, setClosingPositions] = useState(false)
+
+    // Column customization
+    const columnConfig = useColumnConfig('dashboard_columns', DASHBOARD_COLUMNS)
+    const [showColumnEditor, setShowColumnEditor] = useState(false)
 
     // Keep ref in sync with state
     useEffect(() => {
@@ -679,6 +685,13 @@ export default function Home() {
                                 >
                                     ↻
                                 </button>
+                                <button
+                                    className={styles.refreshBtn}
+                                    onClick={() => setShowColumnEditor(true)}
+                                    title="Customize columns"
+                                >
+                                    ⚙️
+                                </button>
                             </h2>
 
                             {positions.length === 0 ? (
@@ -973,6 +986,24 @@ export default function Home() {
                                             Save
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Column Editor Modal */}
+                        {showColumnEditor && (
+                            <div className={styles.modalOverlay} onClick={() => setShowColumnEditor(false)}>
+                                <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                                    <ColumnEditor
+                                        columns={columnConfig.editColumns}
+                                        onColumnsChange={columnConfig.setEditColumns}
+                                        onSave={() => {
+                                            columnConfig.saveEdit()
+                                            setShowColumnEditor(false)
+                                        }}
+                                        onCancel={() => setShowColumnEditor(false)}
+                                        onReset={columnConfig.resetEdit}
+                                    />
                                 </div>
                             </div>
                         )}
