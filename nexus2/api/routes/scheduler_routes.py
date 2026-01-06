@@ -171,24 +171,17 @@ async def start_scheduler(
     # Callback: Get current price - USE ALPACA FOR REALTIME
     # FMP quote has delays and may return previous close instead of intraday price
     async def get_monitor_price(symbol: str):
-        # Try Alpaca first (real-time)
+        # Try Alpaca positions first (real-time, no extra API call)
         if broker:
             try:
                 positions = broker.get_positions()
-                logger.info(f"[Monitor Price] {symbol}: Alpaca has {len(positions)} positions")
                 if symbol in positions:
                     pos = positions[symbol]
-                    # Log what attributes the position has
-                    logger.info(f"[Monitor Price] {symbol}: Position attrs = {dir(pos)}")
-                    # current_price from Alpaca account positions
-                    price = getattr(pos, 'current_price', None)
-                    if price:
-                        logger.info(f"[Monitor Price] {symbol}: ${price} (Alpaca position)")
-                        return price
-                    else:
-                        logger.warning(f"[Monitor Price] {symbol}: No current_price attr, pos={pos}")
-                else:
-                    logger.info(f"[Monitor Price] {symbol}: Not in Alpaca positions, keys={list(positions.keys())}")
+                    # Calculate current price from market_value / quantity
+                    if pos.quantity and pos.quantity > 0 and pos.market_value:
+                        price = pos.market_value / pos.quantity
+                        logger.info(f"[Monitor Price] {symbol}: ${price:.2f} (Alpaca position)")
+                        return float(price)
             except Exception as e:
                 logger.warning(f"[Monitor Price] {symbol}: Alpaca position check failed: {e}")
         
