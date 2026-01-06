@@ -21,6 +21,15 @@ from nexus2.api.routes import health, orders, positions, scanner, trade, setting
 from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
+# Configure logging with timestamps
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(message)s',
+    datefmt='%H:%M:%S'
+)
+
+
 
 def _shutdown_fmp_handler(signum, frame):
     """Signal handler to immediately set FMP shutdown flag on Ctrl+C."""
