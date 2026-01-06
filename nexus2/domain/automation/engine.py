@@ -227,12 +227,10 @@ class AutomationEngine:
         
         try:
             # Run scanner
-            print(f"🔎 [Engine] About to call scanner_func: {type(self._scanner_func)}")
             results = await self._scanner_func(
                 mode=self.config.scanner_mode,
                 limit=self.config.scanner_limit,
             )
-            print(f"🔎 [Engine] Scanner returned: {type(results)}, len={len(results.signals) if hasattr(results, 'signals') else len(results) if results else 0}")
             
             self.stats.scans_run += 1
             self.stats.last_scan_at = datetime.utcnow()
