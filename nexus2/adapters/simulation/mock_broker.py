@@ -54,18 +54,23 @@ class MockPosition:
     avg_entry_price: float
     current_price: float
     stop_price: Optional[float] = None
+    opened_at: Optional[datetime] = None  # Track actual entry time for days_held
     
     @property
     def market_value(self) -> float:
+        if self.current_price is None:
+            return self.qty * self.avg_entry_price
         return self.qty * self.current_price
     
     @property
     def unrealized_pnl(self) -> float:
+        if self.current_price is None:
+            return 0.0
         return (self.current_price - self.avg_entry_price) * self.qty
     
     @property
     def unrealized_pnl_percent(self) -> float:
-        if self.avg_entry_price == 0:
+        if self.avg_entry_price == 0 or self.current_price is None:
             return 0.0
         return ((self.current_price - self.avg_entry_price) / self.avg_entry_price) * 100
 

@@ -308,3 +308,53 @@ class AlpacaBroker:
             raise AlpacaBrokerError("Could not get account info")
         
         return Decimal(str(data.get("equity", 0)))
+    
+    def get_position_entry_dates(self, symbols: list[str] = None) -> Dict[str, datetime]:
+        """
+        Get the earliest fill date for each open position.
+        
+        Alpaca positions API doesn't return entry dates, so we query
+        the orders API to find when each position was originally opened.
+        
+        Args:
+            symbols: Optional list of symbols to check. If None, checks all open positions.
+            
+        Returns:
+            Dict mapping symbol -> earliest fill datetime
+        """
+        # Get all filled buy orders (last 90 days by default)
+        try:
+            data = self._request("GET", "orders?status=filled&limit=500")
+        except Exception as e:
+            print(f"[AlpacaBroker] Failed to fetch orders for entry dates: {e}")
+            return {}
+        
+        if not data:
+            return {}
+        
+        # Find earliest fill date per symbol for buy orders
+        entry_dates: Dict[str, datetime] = {}
+        
+        for order in data:
+            symbol = order.get("symbol")
+            side = order.get("side", "").lower()
+            filled_at_str = order.get("filled_at")
+            
+            # Only consider buy orders (positions are opened by buys)
+            if side != "buy" or not filled_at_str:
+                continue
+            
+            # Filter by requested symbols if provided
+            if symbols and symbol not in symbols:
+                continue
+            
+            try:
+                filled_at = datetime.fromisoformat(filled_at_str.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+            
+            # Keep the earliest fill date per symbol
+            if symbol not in entry_dates or filled_at < entry_dates[symbol]:
+                entry_dates[symbol] = filled_at
+        
+        return entry_dates

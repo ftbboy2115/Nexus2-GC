@@ -226,17 +226,16 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
     """
     async def eod_callback():
         """Run MA check at end of day for trailing stops."""
-        from nexus2.domain.automation.ema_check_job import MACheckJob, TrailingMAType
+        from nexus2.domain.automation.ema_check_job import get_ma_check_job, TrailingMAType
         
         mode_indicator = "[SIM EOD]" if sim_mode else "[EOD]"
         logger.info(f"{mode_indicator} Running automatic MA trailing stop check...")
         
-        # Create job with AUTO MA selection (KK-style: ADR% determines 10 vs 20 MA)
-        job = MACheckJob(
-            min_days_for_trailing=5,
-            default_ma_type=TrailingMAType.AUTO,  # Dynamic based on ADR%
-            require_timing_window=False,  # Already in window, so don't require it again
-        )
+        # Use singleton to ensure stats are visible in /ma-check/status endpoint
+        job = get_ma_check_job()
+        job.min_days_for_trailing = 5
+        job.default_ma_type = TrailingMAType.AUTO  # Dynamic based on ADR%
+        job.require_timing_window = False  # Already in window, so don't require it again
         
         # Callback: Get open positions
         async def get_positions():

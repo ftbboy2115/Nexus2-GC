@@ -273,10 +273,22 @@ async def sync_positions(
     local_symbols = {p.symbol for p in local_positions}
     broker_symbols = set(broker_positions.keys())
     
+    # Get actual entry dates from Alpaca orders API
+    external_symbols = broker_symbols - local_symbols
+    entry_dates = {}
+    if external_symbols:
+        try:
+            entry_dates = broker.get_position_entry_dates(list(external_symbols))
+        except Exception as e:
+            errors.append(f"Failed to fetch entry dates: {e}")
+    
     # 1. Add external positions (at broker but not local)
     for symbol, bp in broker_positions.items():
         if symbol not in local_symbols:
             try:
+                # Use actual fill date from Alpaca, fallback to now if not found
+                opened_at = entry_dates.get(symbol, datetime.utcnow())
+                
                 position_repo.create({
                     "id": str(uuid4()),
                     "symbol": symbol,
@@ -288,7 +300,7 @@ async def sync_positions(
                     "initial_stop": None,
                     "current_stop": None,
                     "realized_pnl": "0",
-                    "opened_at": datetime.utcnow(),
+                    "opened_at": opened_at,
                     "broker_type": settings.broker_type,
                     "account": settings.active_account,
                 })

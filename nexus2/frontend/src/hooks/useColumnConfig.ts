@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ColumnConfig } from '@/components/ColumnEditor'
 
-const API_BASE = '/api'
+const API_BASE = 'http://localhost:8000/api'
 
 export function useColumnConfig(
     preferenceKey: string,

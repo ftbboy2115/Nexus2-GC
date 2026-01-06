@@ -60,6 +60,9 @@ async def run_ma_check(
     # Get market data adapter for MA calculations
     market_data = getattr(request.app.state, 'market_data', None)
     
+    # Get broker for submitting exit orders
+    broker = getattr(request.app.state, 'broker', None)
+    
     # Load saved settings for defaults
     from nexus2.api.routes.settings import get_settings
     saved_settings = get_settings()
@@ -163,6 +166,22 @@ async def run_ma_check(
             
             if not current_price:
                 current_price = position.entry_price  # Fallback
+            
+            # Submit sell order through broker if available
+            if broker:
+                try:
+                    broker.submit_order(
+                        client_order_id=uuid4(),
+                        symbol=position.symbol,
+                        quantity=shares,
+                        side="sell",
+                        order_type="market",
+                    )
+                    logger.info(f"[MACheck] Submitted sell order for {position.symbol} x {shares}")
+                except Exception as e:
+                    logger.error(f"[MACheck] Failed to submit sell order for {position.symbol}: {e}")
+                    # Don't update DB if broker order failed
+                    return
             
             # Record exit
             exit_repo.create({

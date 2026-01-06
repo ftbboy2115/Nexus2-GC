@@ -854,20 +854,22 @@ async def run_simulation_eod():
         require_timing_window=False,  # Manual trigger - skip window check
     )
     
-    # Get positions from MockBroker (returns List[Dict])
-    positions = sim_broker.get_positions()
+    # Get positions from MockBroker (returns List[Dict] but we need opened_at from MockPosition)
     sim_positions = []
     from datetime import timedelta
-    for pos_data in positions:
-        # Estimate opened_at as 5 days ago for testing
-        sim_opened_at = clock.current_time - timedelta(days=5)
-        sym = pos_data.get("symbol", "")
+    for sym, pos_obj in sim_broker._positions.items():
+        # Use actual opened_at from position, fallback to 5 days ago if not set
+        if pos_obj.opened_at:
+            pos_opened_at = pos_obj.opened_at
+        else:
+            pos_opened_at = clock.current_time - timedelta(days=5)
+        
         sim_positions.append({
             "id": f"sim_{sym}",
             "symbol": sym,
-            "opened_at": sim_opened_at,
-            "remaining_shares": pos_data.get("qty", 0),
-            "entry_price": pos_data.get("avg_price", 0),
+            "opened_at": pos_opened_at,
+            "remaining_shares": pos_obj.qty,
+            "entry_price": pos_obj.avg_entry_price,
         })
     
     if not sim_positions:
@@ -960,15 +962,16 @@ async def inject_position(
     Useful for testing exit logic without needing scanner to detect the signal.
     """
     from nexus2.api.routes.automation_state import get_or_create_sim_broker
-    from nexus2.adapters.simulation import get_mock_market_data
+    from nexus2.adapters.simulation import get_mock_market_data, get_simulation_clock
     
     # Auto-create broker if not exists
     sim_broker = get_or_create_sim_broker()
     
     data = get_mock_market_data()
+    clock = get_simulation_clock()
     current_price = data.get_current_price(symbol) if data else entry_price
     
-    # Create position directly in MockBroker
+    # Create position directly in MockBroker with sim clock time for proper days_held
     from nexus2.adapters.simulation.mock_broker import MockPosition
     position = MockPosition(
         symbol=symbol,
@@ -976,6 +979,7 @@ async def inject_position(
         avg_entry_price=entry_price,
         current_price=current_price,
         stop_price=stop_price or entry_price * 0.95,  # Default 5% stop
+        opened_at=clock.current_time,  # Use sim clock time, not real time
     )
     sim_broker._positions[symbol] = position
     

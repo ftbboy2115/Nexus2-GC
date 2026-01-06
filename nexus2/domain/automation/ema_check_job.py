@@ -290,19 +290,26 @@ class MACheckJob:
         elif isinstance(opened_at, datetime):
             pass
         else:
-            opened_at = datetime.utcnow()  # Fallback
+            # Fallback: use current Eastern Time (market time) 
+            from zoneinfo import ZoneInfo
+            et = ZoneInfo("America/New_York")
+            opened_at = datetime.now(et)
         
-        # Use simulation date if callback provided, otherwise real date
+        # Use simulation date if callback provided, otherwise use Eastern Time
         if self._get_current_date:
             current_date = self._get_current_date()
         else:
-            current_date = date.today()
-        days_held = (current_date - opened_at.date()).days
+            # Use Eastern Time (market time) for day calculations
+            from zoneinfo import ZoneInfo
+            et = ZoneInfo("America/New_York")
+            current_date = datetime.now(et).date()
         
-        # Only apply MA trailing after min_days
-        if days_held < self.min_days_for_trailing:
-            logger.debug(f"[MACheck] {symbol}: Day {days_held} - too early for MA trailing")
-            return None
+        # Convert opened_at to date for comparison (handle timezone-naive datetimes)
+        opened_date = opened_at.date() if isinstance(opened_at, datetime) else opened_at
+        days_held = (current_date - opened_date).days
+        
+        # Determine if position is "mature" for full MA trailing logic
+        is_mature = days_held >= self.min_days_for_trailing
         
         # Get daily close
         if not self._get_daily_close:
@@ -317,37 +324,67 @@ class MACheckJob:
             logger.warning(f"[MACheck] Could not get daily close for {symbol}: {e}")
             return None
         
-        # Determine MA type (auto-select or use default)
-        ma_type = self.default_ma_type
-        adr_percent = None
-        
-        if ma_type == TrailingMAType.AUTO:
-            ma_type, adr_percent = await self._auto_select_ma(symbol, position_id)
-            # Note: _auto_select_ma now logs the selection reason
-        
-        # Get MA value
-        ma_value = await self._get_ma_value(symbol, ma_type)
-        
-        if ma_value is None:
+        if is_mature:
+            # Day 5+: Full MA trailing with auto-selected MA type
+            ma_type = self.default_ma_type
+            adr_percent = None
+            
+            if ma_type == TrailingMAType.AUTO:
+                ma_type, adr_percent = await self._auto_select_ma(symbol, position_id)
+            
+            ma_value = await self._get_ma_value(symbol, ma_type)
+            
+            if ma_value is None:
+                return None
+            
+            if daily_close < ma_value:
+                logger.info(
+                    f"[MACheck] {symbol}: Day {days_held} - Close ${daily_close} < {ma_type.value} ${ma_value} - EXIT SIGNAL"
+                )
+                return MAExitSignal(
+                    position_id=position_id,
+                    symbol=symbol,
+                    daily_close=daily_close,
+                    ma_value=ma_value,
+                    ma_type=ma_type,
+                    days_held=days_held,
+                )
+            
+            logger.debug(
+                f"[MACheck] {symbol}: Day {days_held} - Close ${daily_close} >= {ma_type.value} ${ma_value} - HOLD"
+            )
             return None
         
-        # Check if close is below MA
-        if daily_close < ma_value:
-            logger.info(
-                f"[MACheck] {symbol}: Close ${daily_close} < {ma_type.value} ${ma_value} - EXIT SIGNAL"
+        else:
+            # Day 0-4: Check for CHARACTER CHANGE (close below BOTH 10 and 20 EMA)
+            # Per KK: A daily close below MA = character change = exit regardless of days held
+            # The min_days buffer is for partial profit-taking, not for ignoring trend breakdowns
+            
+            ema_10 = await self._get_ma_value(symbol, TrailingMAType.EMA_10)
+            ema_20 = await self._get_ma_value(symbol, TrailingMAType.EMA_20)
+            
+            if ema_10 is None or ema_20 is None:
+                logger.debug(f"[MACheck] {symbol}: Day {days_held} - Could not get MAs, skipping")
+                return None
+            
+            # Only exit if close is below BOTH MAs (clear trend breakdown)
+            if daily_close < ema_10 and daily_close < ema_20:
+                logger.warning(
+                    f"[MACheck] {symbol}: Day {days_held} - CHARACTER CHANGE "
+                    f"(close ${daily_close} < 10EMA ${ema_10} AND < 20EMA ${ema_20}) - EXIT SIGNAL"
+                )
+                return MAExitSignal(
+                    position_id=position_id,
+                    symbol=symbol,
+                    daily_close=daily_close,
+                    ma_value=ema_10,  # Use tighter MA as reference
+                    ma_type=TrailingMAType.EMA_10,
+                    days_held=days_held,
+                )
+            
+            logger.debug(
+                f"[MACheck] {symbol}: Day {days_held} - Close ${daily_close} (10EMA=${ema_10}, 20EMA=${ema_20}) - trend intact"
             )
-            return MAExitSignal(
-                position_id=position_id,
-                symbol=symbol,
-                daily_close=daily_close,
-                ma_value=ma_value,
-                ma_type=ma_type,
-                days_held=days_held,
-            )
-        
-        logger.debug(
-            f"[MACheck] {symbol}: Close ${daily_close} >= {ma_type.value} ${ma_value} - HOLD"
-        )
         return None
     
     async def _auto_select_ma(self, symbol: str, position_id: str = None) -> tuple[TrailingMAType, float]:
