@@ -56,6 +56,20 @@ Last updated: 2026-01-03
 
 ---
 
+## 🧪 R&D Labs (Low Priority)
+
+> Experimental multi-agent AI system for autonomous strategy discovery and optimization.
+
+- [ ] **Strategy Discovery Engine** — Multi-Agent AI system with feedback loop
+  - Autonomous exploration of alternative scan modes and strategies
+  - Self-evaluating agents that test, score, and iterate on trading patterns
+  - Feedback loop from live/sim results to refine discovery
+- [ ] **User-Defined Momentum Screener** — TradingView-style filter (RSI>80, 1M>25%, stacked MAs)
+  - [Spec](.agent/rules/user-defined-momentum-screener.md)
+- [ ] **Backtesting Framework** — Historical signal validation with P&L simulation
+
+---
+
 ## 🔮 Future / Low Priority
 
 - [ ] **Equity Curve & Drawdown Charts** — Visualize portfolio performance over time
