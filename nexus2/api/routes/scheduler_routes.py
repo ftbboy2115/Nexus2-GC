@@ -174,9 +174,11 @@ async def start_scheduler(
             try:
                 quote = market_data.get_quote(symbol)
                 if quote:
-                    return quote.price if hasattr(quote, 'price') else quote.close
-            except Exception:
-                pass
+                    price = quote.price if hasattr(quote, 'price') else quote.close
+                    logger.debug(f"[Monitor Price] {symbol}: ${price}")
+                    return price
+            except Exception as e:
+                logger.warning(f"[Monitor Price] {symbol}: Failed to get quote: {e}")
         return None
     
     # Callback: Update stop (move to breakeven)

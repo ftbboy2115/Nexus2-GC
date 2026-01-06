@@ -248,7 +248,12 @@ class PositionMonitor:
         r_multiple = float(current_gain / risk_per_share)
         
         # Check 1: Stop-loss hit
+        # DEBUG: Log every price check for troubleshooting
         if current_price <= current_stop:
+            logger.warning(
+                f"[STOP CHECK] {symbol}: price=${current_price} <= stop=${current_stop} "
+                f"(entry=${entry_price}) -> TRIGGERING EXIT"
+            )
             pnl = (current_price - entry_price) * shares
             return ExitSignal(
                 position_id=position_id,
@@ -258,6 +263,11 @@ class PositionMonitor:
                 shares_to_exit=shares,
                 pnl_estimate=pnl,
                 stop_price=current_stop,
+            )
+        else:
+            # Log non-triggering checks at debug level
+            logger.debug(
+                f"[STOP CHECK] {symbol}: price=${current_price} > stop=${current_stop} -> OK"
             )
         
         # Check 2: Trailing stop (move to breakeven at 1R)
