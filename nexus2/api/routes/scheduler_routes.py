@@ -160,6 +160,9 @@ async def start_scheduler(
     
     # Callback: Execute exit
     async def execute_monitor_exit(signal):
+        logger.info(f"[Monitor] execute_monitor_exit called: {signal.symbol} x {signal.shares_to_exit}, reason={signal.reason}")
+        logger.info(f"[Monitor] Broker: {broker}, sim_only: {engine.config.sim_only}")
+        
         if broker and not engine.config.sim_only:
             # Submit market sell order
             try:
