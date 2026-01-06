@@ -125,10 +125,12 @@ async def start_scheduler(
             positions = position_repo.get_open()
             
             # Sync with broker: close positions no longer at broker
+            print(f"[DEBUG] get_monitor_positions called, broker={broker is not None}")
             if broker:
                 try:
                     broker_positions = broker.get_positions()
                     broker_symbols = set(broker_positions.keys())
+                    logger.info(f"[Monitor] Broker sync: {len(positions)} DB open, {len(broker_symbols)} at broker")
                     
                     for p in positions:
                         if p.symbol not in broker_symbols and p.remaining_shares > 0:
@@ -140,6 +142,9 @@ async def start_scheduler(
                                 "remaining_shares": 0,
                                 "closed_at": datetime.utcnow(),
                             })
+                    
+                    # Commit sync changes before refresh
+                    db.commit()
                     
                     # Refresh positions after sync
                     positions = position_repo.get_open()
