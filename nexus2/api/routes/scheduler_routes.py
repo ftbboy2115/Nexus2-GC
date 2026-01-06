@@ -67,6 +67,9 @@ async def start_scheduler(
     settings = await configure_scanner_from_settings(engine, scheduler)
     auto_execute = settings["auto_execute"]
     
+    # Apply auto_execute from saved settings (override request default)
+    scheduler.auto_execute = auto_execute
+    
     print(f"🔧 [Scheduler] Scanner configured: {settings}")
     
     # Set up callbacks
@@ -215,7 +218,7 @@ async def start_scheduler(
     return {
         **result,
         "message": f"Scheduler running every {req.interval_minutes} min with auto MA check at 3:45 PM",
-        "auto_execute": req.auto_execute,
+        "auto_execute": scheduler.auto_execute,  # Use actual value from DB settings
         "broker_connected": broker is not None,
         "monitor_running": True,
     }
