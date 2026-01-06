@@ -25,21 +25,85 @@ nexus2/
 └── tests/            # Test suites
 ```
 
+## Prerequisites
+
+- **Python 3.10+** (tested on 3.14)
+- **Node.js 18+** (for frontend)
+- **API Keys:**
+  - [Financial Modeling Prep](https://financialmodelingprep.com/) (FMP) - market data
+  - [Alpaca](https://alpaca.markets/) - paper/live trading (optional for SIM mode)
+  - Discord webhook URL (optional - for trade alerts)
+
 ## Quick Start
 
-```bash
+### 1. Clone and Setup Backend
+
+```powershell
+# Windows (PowerShell)
+git clone https://github.com/ftbboy2115/Nexus2.git
+cd Nexus
+
 # Create virtual environment
 python -m venv .venv
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Configure API keys
-cp .env.example .env
-# Edit .env with your FMP_API_KEY and ALPACA_KEY/SECRET
 ```
+
+```bash
+# Linux/Mac
+git clone https://github.com/ftbboy2115/Nexus2.git
+cd Nexus
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+
+```powershell
+# Copy example config
+Copy-Item .env.example .env  # Windows
+# cp .env.example .env       # Linux/Mac
+
+# Edit .env with your keys
+```
+
+**Required `.env` settings:**
+```env
+FMP_API_KEY=your_fmp_key_here
+APCA_API_KEY_ID=your_alpaca_key_here
+APCA_API_SECRET_KEY=your_alpaca_secret_here
+TRADING_MODE=PAPER
+```
+
+> Aliases also accepted: `ALPACA_KEY`/`ALPACA_SECRET` or `FMP_KEY`
+
+**Optional settings:**
+```env
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
+```
+
+### 3. Start Backend
+
+```powershell
+uvicorn nexus2.api.main:app --reload
+```
+
+API available at: http://localhost:8000  
+Swagger docs at: http://localhost:8000/docs
+
+### 4. Start Frontend
+
+```powershell
+cd nexus2\frontend
+npm install
+npm run dev
+```
+
+Dashboard at: http://localhost:3000
+
 
 ## CLI Scanners
 
@@ -185,20 +249,14 @@ The automation system has three coordinated components:
 
 ## Frontend Dashboard
 
-```bash
-cd nexus2/frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:3000
+See [Quick Start Step 4](#4-start-frontend) to run the frontend.
 
 **Features:**
-- Create trades
-- View open positions
-- Take partial profits
-- Close positions
-- Real-time updates
+- Dashboard with open positions
+- Automation control panel
+- Scanner results + signal stream
+- Trade execution
+- Position management (partial/close)
 
 ## Project Status
 
@@ -207,6 +265,48 @@ Open http://localhost:3000
 | Domain (Scanner, EP, Risk, Orders, Positions) | ✅ Complete |
 | Adapters (Market Data, Broker, Notifications) | ✅ Complete |
 | API (FastAPI) | ✅ Complete |
-| Frontend (Next.js) | ✅ Basic dashboard |
+| Frontend (Next.js) | ✅ Dashboard + Automation |
 | Tests | ✅ 115 passing |
 
+## Development Workflow
+
+### Daily Development
+
+```powershell
+# Terminal 1: Backend (from project root)
+.venv\Scripts\activate
+uvicorn nexus2.api.main:app --reload
+
+# Terminal 2: Frontend (from nexus2/frontend)
+npm run dev
+```
+
+### Running Tests
+
+```powershell
+pytest                          # Run all tests
+pytest --cov=nexus2             # With coverage
+pytest tests/test_scanner.py    # Specific file
+```
+
+### Database Location
+
+The SQLite database is at `data/nexus.db`. Contains positions, orders, and settings.
+
+> ⚠️ **Do not delete unless troubleshooting schema errors**. Deleting wipes all trade history.
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **FMP rate limit errors** | Check your plan limits. Paid tier: 300/min. |
+| **Alpaca connection failed** | Check ALPACA_KEY/SECRET in `.env` |
+| **Frontend not loading** | Ensure backend is running first |
+| **"No such column" errors** | Database schema changed - delete `data/nexus.db` |
+| **WebSocket disconnects** | Normal browser behavior - auto-reconnects |
+
+## Links
+
+- [FMP API Documentation](https://site.financialmodelingprep.com/developer/docs)
+- [Alpaca API Documentation](https://docs.alpaca.markets/)
+- [Roadmap](../ROADMAP.md)
