@@ -39,6 +39,7 @@ Last updated: 2026-01-03
   - ✅ scheduler_routes.py refactored (3 instances)
   - ⏳ ~33 instances remaining across routes/
 - [ ] **`orders_filled` increment timing** — Verify correct increment logic
+- [ ] **API server restart** — Test ability to restart uvicorn from API without manual intervention
 - [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
 
 ---
