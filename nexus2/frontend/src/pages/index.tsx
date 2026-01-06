@@ -717,79 +717,104 @@ export default function Home() {
                                         <table className={styles.table}>
                                             <thead>
                                                 <tr>
-                                                    <th className={styles.checkboxCol}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedPositions.size === positions.length && positions.length > 0}
-                                                            onChange={toggleSelectAll}
-                                                            title="Select all"
-                                                        />
-                                                    </th>
-                                                    <th>Symbol</th>
-                                                    <th>Setup</th>
-                                                    <th>Entry</th>
-                                                    <th>Shares</th>
-                                                    <th>Stop</th>
-                                                    <th>P&L</th>
-                                                    <th>Days</th>
-                                                    <th>Status</th>
-                                                    <th>Actions</th>
+                                                    {/* Dynamic headers based on column config */}
+                                                    {columnConfig.columns.map((col) => {
+                                                        if (col.id === 'checkbox') {
+                                                            return (
+                                                                <th key={col.id} className={styles.checkboxCol}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedPositions.size === positions.length && positions.length > 0}
+                                                                        onChange={toggleSelectAll}
+                                                                        title="Select all"
+                                                                    />
+                                                                </th>
+                                                            )
+                                                        }
+                                                        return <th key={col.id}>{col.label}</th>
+                                                    })}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {positions.map((pos) => (
                                                     <tr key={pos.id} className={selectedPositions.has(pos.id) ? styles.selectedRow : ''}>
-                                                        <td className={styles.checkboxCol}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedPositions.has(pos.id)}
-                                                                onChange={() => togglePositionSelection(pos.id)}
-                                                            />
-                                                        </td>
-                                                        <td className={styles.symbol}>{pos.symbol}</td>
-                                                        <td>{pos.setup_type}</td>
-                                                        <td>${parseFloat(pos.entry_price).toFixed(2)}</td>
-                                                        <td>{pos.remaining_shares}/{pos.shares}</td>
-                                                        <td>${parseFloat(pos.current_stop).toFixed(2)}</td>
-                                                        <td className={parseFloat(pos.realized_pnl) >= 0 ? styles.profit : styles.loss}>
-                                                            ${parseFloat(pos.realized_pnl).toFixed(2)}
-                                                        </td>
-                                                        <td>
-                                                            <span
-                                                                className={`${styles.daysIndicator} ${pos.days_held >= 5 ? styles.daysCritical :
-                                                                    pos.days_held >= 4 ? styles.daysAlert :
-                                                                        pos.days_held >= 3 ? styles.daysWarning : ''
-                                                                    }`}
-                                                                title={pos.days_held >= 3 ? 'Consider partial exit (KK 3-5 day rule)' : ''}
-                                                            >
-                                                                {pos.days_held}d
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <span className={styles.badge} data-status={pos.status}>
-                                                                {pos.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className={styles.actions}>
-                                                            {pos.remaining_shares > 0 && (
-                                                                <>
-                                                                    <button
-                                                                        className={styles.actionBtn}
-                                                                        onClick={() => openActionModal('partial', pos)}
-                                                                        title="Take partial profit"
-                                                                    >
-                                                                        Partial
-                                                                    </button>
-                                                                    <button
-                                                                        className={`${styles.actionBtn} ${styles.closeBtn}`}
-                                                                        onClick={() => openActionModal('close', pos)}
-                                                                        title="Close position"
-                                                                    >
-                                                                        Close
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </td>
+                                                        {columnConfig.columns.map((col) => {
+                                                            switch (col.id) {
+                                                                case 'checkbox':
+                                                                    return (
+                                                                        <td key={col.id} className={styles.checkboxCol}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={selectedPositions.has(pos.id)}
+                                                                                onChange={() => togglePositionSelection(pos.id)}
+                                                                            />
+                                                                        </td>
+                                                                    )
+                                                                case 'symbol':
+                                                                    return <td key={col.id} className={styles.symbol}>{pos.symbol}</td>
+                                                                case 'setup_type':
+                                                                    return <td key={col.id}>{pos.setup_type}</td>
+                                                                case 'entry_price':
+                                                                    return <td key={col.id}>${parseFloat(pos.entry_price).toFixed(2)}</td>
+                                                                case 'shares':
+                                                                    return <td key={col.id}>{pos.remaining_shares}/{pos.shares}</td>
+                                                                case 'current_stop':
+                                                                    return <td key={col.id}>${parseFloat(pos.current_stop).toFixed(2)}</td>
+                                                                case 'realized_pnl':
+                                                                    return (
+                                                                        <td key={col.id} className={parseFloat(pos.realized_pnl) >= 0 ? styles.profit : styles.loss}>
+                                                                            ${parseFloat(pos.realized_pnl).toFixed(2)}
+                                                                        </td>
+                                                                    )
+                                                                case 'days_held':
+                                                                    return (
+                                                                        <td key={col.id}>
+                                                                            <span
+                                                                                className={`${styles.daysIndicator} ${pos.days_held >= 5 ? styles.daysCritical :
+                                                                                    pos.days_held >= 4 ? styles.daysAlert :
+                                                                                        pos.days_held >= 3 ? styles.daysWarning : ''
+                                                                                    }`}
+                                                                                title={pos.days_held >= 3 ? 'Consider partial exit (KK 3-5 day rule)' : ''}
+                                                                            >
+                                                                                {pos.days_held}d
+                                                                            </span>
+                                                                        </td>
+                                                                    )
+                                                                case 'status':
+                                                                    return (
+                                                                        <td key={col.id}>
+                                                                            <span className={styles.badge} data-status={pos.status}>
+                                                                                {pos.status}
+                                                                            </span>
+                                                                        </td>
+                                                                    )
+                                                                case 'actions':
+                                                                    return (
+                                                                        <td key={col.id} className={styles.actions}>
+                                                                            {pos.remaining_shares > 0 && (
+                                                                                <>
+                                                                                    <button
+                                                                                        className={styles.actionBtn}
+                                                                                        onClick={() => openActionModal('partial', pos)}
+                                                                                        title="Take partial profit"
+                                                                                    >
+                                                                                        Partial
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className={`${styles.actionBtn} ${styles.closeBtn}`}
+                                                                                        onClick={() => openActionModal('close', pos)}
+                                                                                        title="Close position"
+                                                                                    >
+                                                                                        Close
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </td>
+                                                                    )
+                                                                default:
+                                                                    return <td key={col.id}>-</td>
+                                                            }
+                                                        })}
                                                     </tr>
                                                 ))}
                                             </tbody>
