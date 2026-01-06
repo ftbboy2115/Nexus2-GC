@@ -175,13 +175,20 @@ async def start_scheduler(
         if broker:
             try:
                 positions = broker.get_positions()
+                logger.info(f"[Monitor Price] {symbol}: Alpaca has {len(positions)} positions")
                 if symbol in positions:
                     pos = positions[symbol]
+                    # Log what attributes the position has
+                    logger.info(f"[Monitor Price] {symbol}: Position attrs = {dir(pos)}")
                     # current_price from Alpaca account positions
                     price = getattr(pos, 'current_price', None)
                     if price:
-                        logger.debug(f"[Monitor Price] {symbol}: ${price} (Alpaca position)")
+                        logger.info(f"[Monitor Price] {symbol}: ${price} (Alpaca position)")
                         return price
+                    else:
+                        logger.warning(f"[Monitor Price] {symbol}: No current_price attr, pos={pos}")
+                else:
+                    logger.info(f"[Monitor Price] {symbol}: Not in Alpaca positions, keys={list(positions.keys())}")
             except Exception as e:
                 logger.warning(f"[Monitor Price] {symbol}: Alpaca position check failed: {e}")
         
@@ -192,12 +199,23 @@ async def start_scheduler(
                 quote = market_data.alpaca.get_quote(symbol)
                 if quote:
                     price = quote.price if hasattr(quote, 'price') else quote.close
-                    logger.debug(f"[Monitor Price] {symbol}: ${price} (Alpaca quote)")
+                    logger.info(f"[Monitor Price] {symbol}: ${price} (Alpaca quote fallback)")
                     return price
             except Exception as e:
                 logger.warning(f"[Monitor Price] {symbol}: Alpaca quote failed: {e}")
         
-        logger.warning(f"[Monitor Price] {symbol}: No price available")
+        # Last resort: FMP (may be stale)
+        if market_data:
+            try:
+                quote = market_data.fmp.get_quote(symbol)
+                if quote:
+                    price = quote.price
+                    logger.warning(f"[Monitor Price] {symbol}: ${price} (FMP FALLBACK - may be stale!)")
+                    return price
+            except Exception as e:
+                logger.warning(f"[Monitor Price] {symbol}: FMP quote failed: {e}")
+        
+        logger.warning(f"[Monitor Price] {symbol}: No price available from any source")
         return None
     
     # Callback: Update stop (move to breakeven)
