@@ -87,6 +87,7 @@ class SchedulerSettingsRequest(BaseModel):
     scan_modes: Optional[List[str]] = None  # ["ep", "breakout", "htf"]
     htf_frequency: Optional[str] = None  # every_cycle or market_open
     max_position_value: Optional[float] = None  # Automation-specific capital limit per position
+    nac_max_positions: Optional[int] = None  # NAC-specific max concurrent positions (None = unlimited)
     auto_start_enabled: Optional[bool] = None  # Enable auto-start for headless operation
     auto_start_time: Optional[str] = None  # HH:MM format (ET timezone)
     auto_execute: Optional[bool] = None  # Enable auto-execute for autonomous trading

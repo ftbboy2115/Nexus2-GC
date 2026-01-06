@@ -467,13 +467,13 @@ def create_execute_callback(engine, broker, get_app_fn):
                     settings_repo = SchedulerSettingsRepository(db)
                     sched_settings = settings_repo.get()
                     
-                    # Position limit check
+                    # Position limit check (NAC-specific, None = unlimited)
                     position_repo = PositionRepository(db)
                     open_positions = position_repo.get_open()
-                    max_positions = int(sched_settings.max_positions) if sched_settings.max_positions else 5
+                    nac_max_positions = int(sched_settings.nac_max_positions) if sched_settings.nac_max_positions else None
                     
-                    if len(open_positions) >= max_positions:
-                        skipped.append({"symbol": signal.symbol, "reason": "max_positions_reached"})
+                    if nac_max_positions is not None and len(open_positions) >= nac_max_positions:
+                        skipped.append({"symbol": signal.symbol, "reason": f"max_positions_reached ({len(open_positions)}/{nac_max_positions})"})
                         continue
                     
                     # Calculate position size based on risk

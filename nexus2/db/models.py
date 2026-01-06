@@ -233,6 +233,9 @@ class SchedulerSettingsModel(Base):
     # Stored as string to handle Decimal, None means use global setting
     max_position_value = Column(String(20), nullable=True, default=None)
     
+    # NAC-specific max concurrent positions (None or empty = unlimited)
+    nac_max_positions = Column(String(10), nullable=True, default=None)
+    
     # Auto-start settings for headless operation
     auto_start_enabled = Column(String(5), default="false")  # "true" or "false"
     auto_start_time = Column(String(5), nullable=True, default=None)  # HH:MM format (ET timezone)
@@ -266,6 +269,7 @@ class SchedulerSettingsModel(Base):
             "htf_frequency": self.htf_frequency,
             "auto_execute": self.auto_execute == "true",
             "max_position_value": float(self.max_position_value) if self.max_position_value else None,
+            "nac_max_positions": int(self.nac_max_positions) if self.nac_max_positions else None,
             "auto_start_enabled": self.auto_start_enabled == "true",
             "auto_start_time": self.auto_start_time,
             "nac_broker_type": self.nac_broker_type or "alpaca_paper",
