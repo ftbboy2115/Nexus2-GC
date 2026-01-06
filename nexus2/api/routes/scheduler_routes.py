@@ -168,47 +168,50 @@ async def start_scheduler(
                 for p in positions
             ]
     
-    # Callback: Get current price - USE ALPACA FOR REALTIME
-    # FMP quote has delays and may return previous close instead of intraday price
+    # Callback: Get current price with cross-validation
+    # Uses Alpaca as primary source, validates against FMP
     async def get_monitor_price(symbol: str):
-        # Try Alpaca positions first (real-time, no extra API call)
+        alpaca_price = None
+        fmp_price = None
+        
+        # 1. Get Alpaca price from positions (primary - no API call)
         if broker:
             try:
                 positions = broker.get_positions()
                 if symbol in positions:
                     pos = positions[symbol]
-                    # Calculate current price from market_value / quantity
                     if pos.quantity and pos.quantity > 0 and pos.market_value:
-                        price = pos.market_value / pos.quantity
-                        logger.info(f"[Monitor Price] {symbol}: ${price:.2f} (Alpaca position)")
-                        return float(price)
+                        alpaca_price = float(pos.market_value / pos.quantity)
             except Exception as e:
-                logger.warning(f"[Monitor Price] {symbol}: Alpaca position check failed: {e}")
+                logger.debug(f"[Monitor Price] {symbol}: Alpaca position error: {e}")
         
-        # Fallback to unified market data (may use FMP)
-        if market_data:
-            try:
-                # Prefer Alpaca quotes via the unified adapter's alpaca client
-                quote = market_data.alpaca.get_quote(symbol)
-                if quote:
-                    price = quote.price if hasattr(quote, 'price') else quote.close
-                    logger.info(f"[Monitor Price] {symbol}: ${price} (Alpaca quote fallback)")
-                    return price
-            except Exception as e:
-                logger.warning(f"[Monitor Price] {symbol}: Alpaca quote failed: {e}")
-        
-        # Last resort: FMP (may be stale)
+        # 2. Get FMP price for cross-validation
         if market_data:
             try:
                 quote = market_data.fmp.get_quote(symbol)
-                if quote:
-                    price = quote.price
-                    logger.warning(f"[Monitor Price] {symbol}: ${price} (FMP FALLBACK - may be stale!)")
-                    return price
+                if quote and quote.price:
+                    fmp_price = float(quote.price)
             except Exception as e:
-                logger.warning(f"[Monitor Price] {symbol}: FMP quote failed: {e}")
+                logger.debug(f"[Monitor Price] {symbol}: FMP quote error: {e}")
         
-        logger.warning(f"[Monitor Price] {symbol}: No price available from any source")
+        # 3. Cross-validate and return
+        if alpaca_price and fmp_price:
+            # Check for divergence (>1% difference is suspicious)
+            pct_diff = abs(alpaca_price - fmp_price) / alpaca_price * 100
+            if pct_diff > 1.0:
+                logger.warning(
+                    f"[Monitor Price] {symbol}: DIVERGENCE! Alpaca=${alpaca_price:.2f} vs FMP=${fmp_price:.2f} ({pct_diff:.1f}%)"
+                )
+            logger.debug(f"[Monitor Price] {symbol}: ${alpaca_price:.2f} (Alpaca) ✓ FMP=${fmp_price:.2f}")
+            return alpaca_price
+        elif alpaca_price:
+            logger.debug(f"[Monitor Price] {symbol}: ${alpaca_price:.2f} (Alpaca only)")
+            return alpaca_price
+        elif fmp_price:
+            logger.info(f"[Monitor Price] {symbol}: ${fmp_price:.2f} (FMP only - no Alpaca position)")
+            return fmp_price
+        
+        logger.warning(f"[Monitor Price] {symbol}: No price from any source")
         return None
     
     # Callback: Update stop (move to breakeven)
