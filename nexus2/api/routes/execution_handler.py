@@ -327,6 +327,10 @@ def create_execute_callback(
                     engine.stats.orders_submitted += 1
                     engine.stats.orders_filled += 1
                     
+                    # Clear from recent exits (re-entry complete)
+                    from nexus2.api.routes.automation_state import clear_recent_exit
+                    clear_recent_exit(signal.symbol)
+                    
                     logger.info(f"[AutoExec] SUCCESS: {signal.symbol} x {shares} @ stop ${stop_price}")
                     print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
                     

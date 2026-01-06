@@ -229,11 +229,17 @@ async def create_unified_scanner_callback(
             else:
                 scanner = UnifiedScannerService(settings=settings)
         
+        # Get recent exits for re-entry evaluation
+        from nexus2.api.routes.automation_state import get_recent_exit_symbols
+        include_symbols = get_recent_exit_symbols()
+        if include_symbols:
+            logger.info(f"[ReEntry] Including {len(include_symbols)} recent exits in scan: {include_symbols}")
+        
         # Run scan (sync call wrapped for async)
         import asyncio
         result = await asyncio.get_event_loop().run_in_executor(
             None, 
-            lambda: scanner.scan(verbose=False)
+            lambda: scanner.scan(verbose=False, include_symbols=include_symbols)
         )
         
         logger.info(f"Unified scan: {result.total_signals} signals (EP:{result.ep_count}, BO:{result.breakout_count}, HTF:{result.htf_count})")

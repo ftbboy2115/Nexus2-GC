@@ -30,6 +30,12 @@ _auto_start_triggered_today = False
 _sim_broker = None
 _sim_broker_lock = threading.Lock()
 
+# Recent exits for re-entry scanning (thread-safe)
+# Format: [{"symbol": str, "closed_at": datetime, "setup_type": str}]
+_recent_exits = []
+_recent_exits_lock = threading.Lock()
+RECENT_EXITS_MAX_DAYS = 7  # Auto-expire after 7 days
+
 
 def get_engine() -> "AutomationEngine":
     """Get the automation engine instance."""
@@ -135,3 +141,56 @@ def get_or_create_sim_broker(initial_cash: float | None = None):
                 initial_cash = get_settings().sim_initial_cash
             _sim_broker = MockBroker(initial_cash=initial_cash)
         return _sim_broker
+
+
+# ==================== RECENT EXITS (Re-entry Scanning) ====================
+
+def add_recent_exit(symbol: str, setup_type: str = "unknown"):
+    """
+    Add a symbol to recent exits for potential re-entry (thread-safe).
+    
+    Called when a position closes (stop hit, manual, or sync).
+    """
+    from datetime import datetime
+    global _recent_exits
+    with _recent_exits_lock:
+        # Remove if already exists (update timestamp)
+        _recent_exits = [e for e in _recent_exits if e["symbol"] != symbol]
+        _recent_exits.append({
+            "symbol": symbol,
+            "closed_at": datetime.utcnow(),
+            "setup_type": setup_type,
+        })
+        print(f"[ReEntry] Added {symbol} to recent exits ({len(_recent_exits)} total)")
+
+
+def get_recent_exit_symbols() -> list[str]:
+    """
+    Get symbols from recent exits that haven't expired (thread-safe).
+    
+    Returns list of symbols closed within RECENT_EXITS_MAX_DAYS.
+    """
+    from datetime import datetime, timedelta
+    with _recent_exits_lock:
+        cutoff = datetime.utcnow() - timedelta(days=RECENT_EXITS_MAX_DAYS)
+        valid_exits = [e for e in _recent_exits if e["closed_at"] > cutoff]
+        return [e["symbol"] for e in valid_exits]
+
+
+def clear_recent_exit(symbol: str):
+    """
+    Remove a symbol from recent exits (thread-safe).
+    
+    Called when a position is successfully re-entered.
+    """
+    global _recent_exits
+    with _recent_exits_lock:
+        _recent_exits = [e for e in _recent_exits if e["symbol"] != symbol]
+        print(f"[ReEntry] Removed {symbol} from recent exits")
+
+
+def get_recent_exits_count() -> int:
+    """Get count of symbols in recent exits queue."""
+    with _recent_exits_lock:
+        return len(_recent_exits)
+

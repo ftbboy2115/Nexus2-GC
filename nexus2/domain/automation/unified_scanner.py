@@ -158,6 +158,7 @@ class UnifiedScannerService:
         self,
         modes: Optional[List[ScanMode]] = None,
         verbose: bool = False,
+        include_symbols: Optional[List[str]] = None,
     ) -> UnifiedScanResult:
         """
         Run unified scan across all configured scanners.
@@ -165,6 +166,7 @@ class UnifiedScannerService:
         Args:
             modes: Which scanners to run. None = use settings.modes
             verbose: Print verbose output
+            include_symbols: Additional symbols to evaluate (e.g., recent exits)
             
         Returns:
             UnifiedScanResult with all signals
@@ -209,7 +211,7 @@ class UnifiedScannerService:
             try:
                 if verbose:
                     print("[Unified] Running Breakout scanner...")
-                breakout_signals, bo_processed = self._run_breakout_scan(verbose)
+                breakout_signals, bo_processed = self._run_breakout_scan(verbose, include_symbols)
                 total_processed += bo_processed
                 for sig in breakout_signals:
                     if sig.symbol not in seen_symbols:
@@ -338,9 +340,10 @@ class UnifiedScannerService:
         
         return signals, result.processed_count
     
-    def _run_breakout_scan(self, verbose: bool = False) -> tuple[List[Signal], int]:
+    def _run_breakout_scan(self, verbose: bool = False, include_symbols: Optional[List[str]] = None) -> tuple[List[Signal], int]:
         """Run Breakout scanner and convert to signals."""
-        result = self.breakout_scanner.scan(verbose=verbose)
+        # Pass include_symbols to scanner
+        result = self.breakout_scanner.scan(symbols=include_symbols, verbose=verbose)
         
         signals = []
         for candidate in result.candidates:

@@ -142,6 +142,9 @@ async def start_scheduler(
                                 "remaining_shares": 0,
                                 "closed_at": datetime.utcnow(),
                             })
+                            # Add to recent exits for potential re-entry
+                            from nexus2.api.routes.automation_state import add_recent_exit
+                            add_recent_exit(p.symbol, getattr(p, 'setup_type', 'unknown'))
                     
                     # Commit sync changes before refresh
                     db.commit()

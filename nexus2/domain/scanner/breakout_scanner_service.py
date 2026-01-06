@@ -102,33 +102,38 @@ class BreakoutScannerService:
         Scan for breakout candidates.
         
         Args:
-            symbols: List of symbols to scan. If None, uses gainers + trend leaders.
+            symbols: Additional symbols to include (merged with screener universe)
             verbose: Print verbose output
             
         Returns:
             BreakoutScanResult with candidates
         """
-        # Get universe if not provided
-        if not symbols:
-            # Use trend leaders - stocks already showing strength
-            candidates = self.market_data.fmp.screen_stocks(
-                min_market_cap=500_000_000,
-                min_price=float(self.settings.min_price),
-                min_volume=500_000,
-                limit=200,
-            )
-            symbols = [c["symbol"] for c in candidates]
+        # Get universe from screener
+        candidates = self.market_data.fmp.screen_stocks(
+            min_market_cap=500_000_000,
+            min_price=float(self.settings.min_price),
+            min_volume=500_000,
+            limit=200,
+        )
+        universe = [c["symbol"] for c in candidates]
+        
+        # Merge with extra symbols (e.g., recent exits for re-entry)
+        if symbols:
+            extra_count = len([s for s in symbols if s not in universe])
+            universe = list(set(universe + symbols))
+            if verbose and extra_count > 0:
+                print(f"[Breakout] Added {extra_count} extra symbols for re-entry eval")
         
         if verbose:
-            print(f"[Breakout] Scanning {len(symbols)} symbols...")
+            print(f"[Breakout] Scanning {len(universe)} symbols...")
         
         results = []
         processed = 0
         
-        for symbol in symbols:
+        for symbol in universe:
             processed += 1
             if verbose and processed % 20 == 0:
-                print(f"[Breakout] Processing {processed}/{len(symbols)}...")
+                print(f"[Breakout] Processing {processed}/{len(universe)}...")
             
             try:
                 candidate = self._evaluate_symbol(symbol, verbose)
