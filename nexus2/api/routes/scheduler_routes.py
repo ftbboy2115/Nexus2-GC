@@ -115,12 +115,37 @@ async def start_scheduler(
     _monitor.partial_exit_days = saved_settings.partial_exit_days
     _monitor.partial_exit_fraction = saved_settings.partial_exit_fraction
     
-    # Callback: Get open positions
+    # Callback: Get open positions (with broker sync)
     async def get_monitor_positions():
         from nexus2.db.database import get_session
+        from datetime import datetime
+        
         with get_session() as db:
             position_repo = PositionRepository(db)
             positions = position_repo.get_open()
+            
+            # Sync with broker: close positions no longer at broker
+            if broker:
+                try:
+                    broker_positions = broker.get_positions()
+                    broker_symbols = set(broker_positions.keys())
+                    
+                    for p in positions:
+                        if p.symbol not in broker_symbols and p.remaining_shares > 0:
+                            # Position closed at broker (stop hit or manual) - close locally
+                            # Preserve metadata by only updating status, not overwriting other fields
+                            logger.info(f"[Monitor] Syncing closed position: {p.symbol} (no longer at broker)")
+                            position_repo.update(p.id, {
+                                "status": "closed",
+                                "remaining_shares": 0,
+                                "closed_at": datetime.utcnow(),
+                            })
+                    
+                    # Refresh positions after sync
+                    positions = position_repo.get_open()
+                except Exception as e:
+                    logger.warning(f"[Monitor] Broker sync failed: {e}")
+            
             return [
                 {
                     "id": p.id,
