@@ -15,9 +15,9 @@ Last updated: 2026-01-03
 
 - [x] **HTF Simulation Testing** — Verified: scanner works, added configurable extended threshold
 - [ ] **VPS Deployment** — Set up on DigitalOcean droplet
-- [ ] **Liquidate All Button** — Quick exit for paper mode testing
+- [x] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint
-  - GUI: Add button next to Emergency Stop, confirmation modal
+  - GUI: Button in Quick Actions with confirmation modal
 - [ ] **Project README** — Startup instructions (backend, frontend, env setup)
 - [ ] **User Guide / Wiki** — How to use the system, operational playbook
 
