@@ -37,7 +37,26 @@ Base = declarative_base()
 
 
 def get_db():
-    """Dependency to get database session."""
+    """Dependency to get database session (for FastAPI route injection)."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def get_session():
+    """
+    Context manager for database sessions.
+    
+    Use this for manual session management outside FastAPI routes:
+        with get_session() as db:
+            repo = SomeRepo(db)
+            result = repo.get()
+    """
     db = SessionLocal()
     try:
         yield db

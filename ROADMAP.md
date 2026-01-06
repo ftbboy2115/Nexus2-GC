@@ -18,7 +18,7 @@ Last updated: 2026-01-03
 - [x] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint
   - GUI: Button in Quick Actions with confirmation modal
-- [ ] **Project README** — Startup instructions (backend, frontend, env setup)
+- [x] **Project README** — Startup instructions (backend, frontend, env setup)
 - [ ] **User Guide / Wiki** — How to use the system, operational playbook
 
 ---
@@ -34,7 +34,10 @@ Last updated: 2026-01-03
 
 ## 📋 Audit Items
 
-- [ ] **DB session context managers** — Add `with` blocks for proper cleanup
+- [/] **DB session context managers** — Add `with` blocks for automatic cleanup
+  - ✅ Created `get_session()` in database.py
+  - ✅ scheduler_routes.py refactored (3 instances)
+  - ⏳ ~33 instances remaining across routes/
 - [ ] **`orders_filled` increment timing** — Verify correct increment logic
 - [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
 

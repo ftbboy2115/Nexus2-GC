@@ -114,8 +114,8 @@ async def start_scheduler(
     
     # Callback: Get open positions
     async def get_monitor_positions():
-        db = SessionLocal()
-        try:
+        from nexus2.db.database import get_session
+        with get_session() as db:
             position_repo = PositionRepository(db)
             positions = position_repo.get_open()
             return [
@@ -131,8 +131,6 @@ async def start_scheduler(
                 }
                 for p in positions
             ]
-        finally:
-            db.close()
     
     # Callback: Get current price
     async def get_monitor_price(symbol: str):
@@ -147,16 +145,14 @@ async def start_scheduler(
     
     # Callback: Update stop (move to breakeven)
     async def update_stop(position_id: str, new_stop_price):
-        db = SessionLocal()
-        try:
+        from nexus2.db.database import get_session
+        with get_session() as db:
             position_repo = PositionRepository(db)
             position_repo.update(position_id, {
                 "current_stop": str(new_stop_price),
                 "partial_taken": True,  # Mark partial as taken
             })
             logger.info(f"[Monitor] Updated stop for {position_id} to ${new_stop_price}")
-        finally:
-            db.close()
     
     # Callback: Execute exit
     async def execute_monitor_exit(signal):
@@ -178,28 +174,28 @@ async def start_scheduler(
                 
                 # Record exit data in database
                 try:
-                    db = SessionLocal()
-                    position_repo = PositionRepository(db)
-                    # Find open position for this symbol
-                    positions = position_repo.get_open()
-                    for pos in positions:
-                        if pos.symbol == signal.symbol:
-                            exit_price = str(result.avg_fill_price) if result.avg_fill_price else None
-                            remaining = pos.remaining_shares - signal.shares_to_exit
-                            updates = {
-                                "remaining_shares": max(0, remaining),
-                                "exit_price": exit_price,
-                                "exit_date": datetime.utcnow(),
-                            }
-                            # If fully closed, update status
-                            if remaining <= 0:
-                                updates["status"] = "closed"
-                                updates["closed_at"] = datetime.utcnow()
-                            position_repo.update(pos.id, updates)
-                            logger.info(f"[Monitor] Position updated: {signal.symbol} remaining={remaining}")
-                            break
-                    db.commit()
-                    db.close()
+                    from nexus2.db.database import get_session
+                    with get_session() as db:
+                        position_repo = PositionRepository(db)
+                        # Find open position for this symbol
+                        positions = position_repo.get_open()
+                        for pos in positions:
+                            if pos.symbol == signal.symbol:
+                                exit_price = str(result.avg_fill_price) if result.avg_fill_price else None
+                                remaining = pos.remaining_shares - signal.shares_to_exit
+                                updates = {
+                                    "remaining_shares": max(0, remaining),
+                                    "exit_price": exit_price,
+                                    "exit_date": datetime.utcnow(),
+                                }
+                                # If fully closed, update status
+                                if remaining <= 0:
+                                    updates["status"] = "closed"
+                                    updates["closed_at"] = datetime.utcnow()
+                                position_repo.update(pos.id, updates)
+                                logger.info(f"[Monitor] Position updated: {signal.symbol} remaining={remaining}")
+                                break
+                        db.commit()
                 except Exception as db_err:
                     logger.warning(f"[Monitor] DB update failed: {db_err}")
                     
