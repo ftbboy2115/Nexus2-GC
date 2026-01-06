@@ -28,6 +28,8 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(message)s',
     datefmt='%H:%M:%S'
 )
+# Suppress httpx INFO logs to prevent API key exposure in URLs
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 
