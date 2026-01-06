@@ -228,6 +228,11 @@ export default function Automation() {
     // Scheduler interval selector (5, 10, 15, 30 min)
     const [selectedInterval, setSelectedInterval] = useState<number>(15)
 
+    // Liquidate All modal state
+    const [showLiquidateModal, setShowLiquidateModal] = useState(false)
+    const [liquidateConfirm, setLiquidateConfirm] = useState('')
+    const [liquidateResult, setLiquidateResult] = useState<{ status: string; message: string; closed?: number } | null>(null)
+
     const API_BASE = 'http://localhost:8000'
 
 
@@ -330,6 +335,30 @@ export default function Automation() {
             await fetchStatus()
         } catch (err) {
             console.error('Error toggling auto-execute:', err)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // Handle Liquidate All with confirmation
+    const handleLiquidateAll = async () => {
+        if (liquidateConfirm.toLowerCase() !== 'yes') {
+            setLiquidateResult({ status: 'error', message: 'Type "yes" to confirm' })
+            return
+        }
+
+        setActionLoading('liquidate')
+        try {
+            const res = await fetch(`${API_BASE}/automation/liquidate-all?confirm=yes`, {
+                method: 'POST',
+            })
+            const data = await res.json()
+            setLiquidateResult(data)
+            if (data.status === 'ok' || data.status === 'partial') {
+                await fetchStatus()
+            }
+        } catch (err) {
+            setLiquidateResult({ status: 'error', message: 'Failed to liquidate' })
         } finally {
             setActionLoading(null)
         }
@@ -882,6 +911,14 @@ export default function Automation() {
                                             title="Check all open positions against their stops. Triggers exits if stop prices are breached."
                                         >
                                             {actionLoading === 'check' ? '...' : '🔎 Check Positions'}
+                                        </button>
+                                        <button
+                                            onClick={() => setShowLiquidateModal(true)}
+                                            className={styles.btnDanger}
+                                            disabled={actionLoading === 'liquidate'}
+                                            title="Sell all open positions with market orders. Requires confirmation."
+                                        >
+                                            {actionLoading === 'liquidate' ? '...' : '💥 Liquidate All'}
                                         </button>
                                     </div>
                                 </div>
@@ -1744,6 +1781,61 @@ export default function Automation() {
                         <div className={styles.modalFooter}>
                             <button className={styles.btnPrimary} onClick={() => setShowSchedulerModal(false)}>
                                 Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Liquidate All Confirmation Modal */}
+            {showLiquidateModal && (
+                <div className={styles.modalOverlay} onClick={() => { setShowLiquidateModal(false); setLiquidateConfirm(''); setLiquidateResult(null) }}>
+                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h3>💥 Liquidate All Positions</h3>
+                            <button className={styles.closeBtn} onClick={() => { setShowLiquidateModal(false); setLiquidateConfirm(''); setLiquidateResult(null) }}>×</button>
+                        </div>
+                        <div className={styles.modalBody}>
+                            <p style={{ color: '#ef4444', fontWeight: 'bold', marginBottom: '1rem' }}>
+                                ⚠️ WARNING: This will sell ALL open positions with market orders!
+                            </p>
+                            <p style={{ marginBottom: '1rem' }}>
+                                Type <strong>"yes"</strong> to confirm:
+                            </p>
+                            <input
+                                type="text"
+                                value={liquidateConfirm}
+                                onChange={(e) => setLiquidateConfirm(e.target.value)}
+                                placeholder='Type "yes" to confirm'
+                                className={styles.numberInput}
+                                style={{ width: '100%', marginBottom: '1rem' }}
+                            />
+                            {liquidateResult && (
+                                <div style={{
+                                    padding: '0.75rem',
+                                    borderRadius: '6px',
+                                    backgroundColor: liquidateResult.status === 'ok' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                    color: liquidateResult.status === 'ok' ? '#22c55e' : '#ef4444',
+                                    marginBottom: '1rem'
+                                }}>
+                                    {liquidateResult.message}
+                                    {liquidateResult.closed !== undefined && ` (${liquidateResult.closed} positions closed)`}
+                                </div>
+                            )}
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button
+                                className={styles.btnSecondary}
+                                onClick={() => { setShowLiquidateModal(false); setLiquidateConfirm(''); setLiquidateResult(null) }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className={styles.btnDanger}
+                                onClick={handleLiquidateAll}
+                                disabled={actionLoading === 'liquidate'}
+                            >
+                                {actionLoading === 'liquidate' ? 'Liquidating...' : '💥 Liquidate All'}
                             </button>
                         </div>
                     </div>

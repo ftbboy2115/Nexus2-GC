@@ -611,3 +611,97 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
             return repo.get().to_dict()
     finally:
         db.close()
+
+
+# ==================== LIQUIDATE ALL ENDPOINT ====================
+
+@router.post("/liquidate-all", response_model=dict)
+async def liquidate_all_positions(
+    request: Request,
+    confirm: str = "",
+):
+    """
+    Liquidate all open positions with market sell orders.
+    
+    This is a destructive action! Requires confirmation.
+    Pass confirm="yes" (case-insensitive) to execute.
+    
+    Returns:
+        Dict with results of liquidation attempt
+    """
+    # Require confirmation
+    if confirm.lower() != "yes":
+        return {
+            "status": "confirmation_required",
+            "message": "Pass confirm='yes' to liquidate all positions",
+            "positions_to_close": 0,
+        }
+    
+    broker = getattr(request.app.state, 'broker', None)
+    if not broker:
+        return {
+            "status": "error",
+            "message": "No broker connected",
+        }
+    
+    try:
+        # Get all positions from broker
+        positions = broker.get_positions()
+        
+        if not positions:
+            return {
+                "status": "ok",
+                "message": "No positions to liquidate",
+                "closed": 0,
+            }
+        
+        results = []
+        closed = 0
+        errors = 0
+        
+        for symbol, pos in positions.items():
+            if pos.quantity <= 0:
+                continue
+                
+            try:
+                from uuid import uuid4
+                order = broker.submit_order(
+                    client_order_id=uuid4(),
+                    symbol=symbol,
+                    quantity=pos.quantity,
+                    side="sell",
+                    order_type="market",
+                )
+                closed += 1
+                results.append({
+                    "symbol": symbol,
+                    "shares": pos.quantity,
+                    "status": "submitted",
+                    "order_id": order.broker_order_id,
+                })
+                logger.info(f"[Liquidate] Sold {pos.quantity} {symbol}")
+            except Exception as e:
+                errors += 1
+                results.append({
+                    "symbol": symbol,
+                    "shares": pos.quantity,
+                    "status": "error",
+                    "error": str(e),
+                })
+                logger.error(f"[Liquidate] Failed to sell {symbol}: {e}")
+        
+        return {
+            "status": "ok" if errors == 0 else "partial",
+            "message": f"Liquidated {closed}/{len(positions)} positions",
+            "closed": closed,
+            "errors": errors,
+            "results": results,
+        }
+        
+    except Exception as e:
+        logger.error(f"[Liquidate] Error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+
