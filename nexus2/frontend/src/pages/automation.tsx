@@ -180,6 +180,7 @@ interface SchedulerSettingsData {
     scan_modes: string[]  // ["ep", "breakout", "htf"]
     htf_frequency: 'every_cycle' | 'market_open'
     max_position_value: number | null  // Automation-specific capital limit (null = use global)
+    nac_max_positions: number | null  // Max concurrent positions for NAC (null = unlimited)
     auto_start_enabled: boolean  // Enable auto-start for headless operation
     auto_start_time: string | null  // HH:MM format (ET timezone)
     auto_execute: boolean  // Auto-execute trades when scheduler runs
@@ -1688,6 +1689,38 @@ export default function Automation() {
                                         />
                                         <p className={styles.settingHint}>
                                             Cap per position for automation. Leave empty to use global max_per_symbol from Settings.
+                                        </p>
+                                    </div>
+
+                                    {/* NAC Max Concurrent Positions */}
+                                    <div className={styles.settingGroup}>
+                                        <label>Max Concurrent Positions</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            placeholder="Unlimited"
+                                            defaultValue={schedulerSettings?.nac_max_positions || ''}
+                                            onBlur={async (e) => {
+                                                const value = e.target.value ? parseInt(e.target.value) : null;
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ nac_max_positions: value })
+                                                    });
+                                                    if (res.ok) {
+                                                        const data = await res.json();
+                                                        setSchedulerSettings(data);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to update nac_max_positions:', err);
+                                                }
+                                            }}
+                                            className={styles.numberInput}
+                                        />
+                                        <p className={styles.settingHint}>
+                                            Max number of positions NAC can hold simultaneously. Leave empty for unlimited.
                                         </p>
                                     </div>
                                 </>
