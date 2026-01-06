@@ -192,10 +192,18 @@ async def start_scheduler(
         logger.info(f"[Monitor] execute_monitor_exit called: {signal.symbol} x {signal.shares_to_exit}, reason={signal.reason}")
         logger.info(f"[Monitor] Broker: {broker}, sim_only: {engine.config.sim_only}")
         
+        # SAFETY: Check market hours before submitting exit orders
+        from nexus2.adapters.market_data.market_calendar import MarketCalendar
+        calendar = MarketCalendar()
+        if not calendar.is_market_open():
+            logger.warning(f"[Monitor] BLOCKED: Exit order for {signal.symbol} blocked - market closed. Will retry next check cycle.")
+            return  # Don't submit orders outside market hours
+        
         if broker and not engine.config.sim_only:
             # Submit market sell order
             try:
                 from uuid import uuid4
+                logger.info(f"[Monitor] Submitting sell order: {signal.symbol} x {signal.shares_to_exit}")
                 result = broker.submit_order(
                     client_order_id=uuid4(),
                     symbol=signal.symbol,
