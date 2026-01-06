@@ -34,6 +34,7 @@ class ExitSignal:
     exit_price: Decimal
     shares_to_exit: int  # Can be partial
     pnl_estimate: Decimal
+    stop_price: Decimal = Decimal("0")  # For stop hit notifications
     generated_at: datetime = None
     # Analytics fields for trade review
     days_held: int = 0  # Days from open to exit
@@ -256,6 +257,7 @@ class PositionMonitor:
                 exit_price=current_price,
                 shares_to_exit=shares,
                 pnl_estimate=pnl,
+                stop_price=current_stop,
             )
         
         # Check 2: Trailing stop (move to breakeven at 1R)
@@ -378,8 +380,9 @@ class PositionMonitor:
                         pnl_emoji = "✅" if signal.pnl_estimate >= 0 else "❌"
                         
                         reason_label = signal.reason.value.upper().replace("_", " ")
+                        stop_info = f" @ ${signal.stop_price}" if signal.stop_price else ""
                         notifier.send_trade_alert(
-                            message=f"{mode_label} | EXIT: {signal.symbol} x {signal.shares_to_exit}\n{reason_label} | P&L: {pnl_emoji} ${signal.pnl_estimate:.2f}",
+                            message=f"{mode_label} | EXIT: {signal.symbol} x {signal.shares_to_exit}\n{reason_label}{stop_info} | P&L: {pnl_emoji} ${signal.pnl_estimate:.2f}",
                             trade_id=signal.position_id[:8] if signal.position_id else "N/A"
                         )
                 except Exception as e:

@@ -245,6 +245,7 @@ async def start_scheduler(
                     
             except Exception as e:
                 logger.error(f"[Monitor] Exit failed: {e}")
+                raise  # Re-raise so monitor.py knows exit failed and won't send Discord
     
     _monitor.set_callbacks(
         get_positions=get_monitor_positions,
