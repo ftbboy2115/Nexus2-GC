@@ -351,7 +351,11 @@ export default function Automation() {
                                     </div>
                                     <div className={styles.stat}>
                                         <span>Max Positions:</span>
-                                        <strong>{schedulerSettings?.nac_max_positions ?? '∞'}</strong>
+                                        <strong>
+                                            {schedulerSettings?.nac_max_positions
+                                                ? schedulerSettings.nac_max_positions
+                                                : `${engine?.config?.max_positions ?? 5} (Dashboard)`}
+                                        </strong>
                                     </div>
                                     <div className={styles.stat}>
                                         <span>Last Run:</span>

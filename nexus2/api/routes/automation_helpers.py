@@ -467,12 +467,22 @@ def create_execute_callback(engine, broker, get_app_fn):
                     settings_repo = SchedulerSettingsRepository(db)
                     sched_settings = settings_repo.get()
                     
-                    # Position limit check (NAC-specific, None = unlimited)
+                    # Position limit check (NAC-specific, falls back to Dashboard max_positions)
                     position_repo = PositionRepository(db)
                     open_positions = position_repo.get_open()
-                    nac_max_positions = int(sched_settings.nac_max_positions) if sched_settings.nac_max_positions else None
                     
-                    if nac_max_positions is not None and len(open_positions) >= nac_max_positions:
+                    # Get Dashboard settings for fallback
+                    from nexus2.api.routes.settings import get_settings
+                    dashboard_settings = get_settings()
+                    
+                    # NAC uses its own limit if set, otherwise falls back to Dashboard's max_positions
+                    nac_max_positions = (
+                        int(sched_settings.nac_max_positions) 
+                        if sched_settings.nac_max_positions 
+                        else dashboard_settings.max_positions
+                    )
+                    
+                    if len(open_positions) >= nac_max_positions:
                         skipped.append({"symbol": signal.symbol, "reason": f"max_positions_reached ({len(open_positions)}/{nac_max_positions})"})
                         continue
                     
