@@ -350,6 +350,10 @@ export default function Automation() {
                                         <strong>{scheduler?.cycles_run || 0}</strong>
                                     </div>
                                     <div className={styles.stat}>
+                                        <span>Max Positions:</span>
+                                        <strong>{schedulerSettings?.nac_max_positions ?? '∞'}</strong>
+                                    </div>
+                                    <div className={styles.stat}>
                                         <span>Last Run:</span>
                                         <strong>{formatTime(scheduler?.last_run)}</strong>
                                     </div>
