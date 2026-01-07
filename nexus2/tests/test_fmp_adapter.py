@@ -218,8 +218,8 @@ class TestGetDailyBars:
             assert len(bars) >= 50
             assert isinstance(bars[0], OHLCV)
     
-    def test_returns_none_on_insufficient_data(self, fmp_adapter):
-        """Should return None if less than 50 bars."""
+    def test_returns_data_even_with_few_bars(self, fmp_adapter):
+        """Should return whatever bars are available (consumer decides if enough)."""
         short_response = {
             "symbol": "AAPL",
             "historical": [
@@ -228,7 +228,9 @@ class TestGetDailyBars:
         }
         with patch.object(fmp_adapter, '_get', return_value=short_response):
             bars = fmp_adapter.get_daily_bars("AAPL", limit=60)
-            assert bars is None
+            # Adapter returns bars, consumer decides if sufficient
+            assert bars is not None
+            assert len(bars) == 10
     
     def test_returns_none_on_missing_historical(self, fmp_adapter):
         """Should return None if historical key missing."""

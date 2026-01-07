@@ -10,6 +10,7 @@ End-to-end test of the simulation environment:
 6. Advance time and check P&L
 """
 
+import pytest
 import requests
 import json
 import time
@@ -21,6 +22,7 @@ def log(msg):
     print(f"[TEST] {msg}")
 
 
+@pytest.mark.skip(reason="Integration test requires running API server (run manually)")
 def test_integration():
     """Run full NAC integration test."""
     
