@@ -742,7 +742,9 @@ async def get_broker_positions(request: Request):
                 "side": side,
                 "days_held": days_held,
                 "today_pnl": float(pos.today_pnl) if pos.today_pnl else None,
-                "change_today": change_today,
+                # Calculate today_pnl_percent from today_pnl (position-based, not stock daily change)
+                # This ensures Today P/L % matches Today P/L $ (both are position-specific)
+                "change_today": (float(pos.today_pnl) / (avg_price * qty) * 100) if (pos.today_pnl and avg_price and qty) else None,
             })
             
             total_value += market_value
