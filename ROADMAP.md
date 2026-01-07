@@ -64,6 +64,8 @@ Last updated: 2026-01-06
 - [x] **RS percentile calculation** — Added 6M (126d) per KK methodology
 - [ ] **Setup classification tags** — Each scanner tags its type: ep, breakout, htf, flag
 - [ ] **Full E2E simulation test** — After fixing HTF signal conversion
+- [ ] **RVOL filtering for Breakout scanner** — Per KK methodology, breakouts should require 2-3x average volume
+  - Currently only EP scanner uses RVOL; Breakout/HTF do not check volume
 
 ---
 
