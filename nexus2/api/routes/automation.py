@@ -712,17 +712,15 @@ async def get_broker_positions(request: Request):
             if avg_price and qty:
                 pnl_percent = (unrealized_pnl / (avg_price * qty) * 100)
             
-            # Get current price from market value / quantity
-            current_price = None
-            if qty and qty > 0:
-                current_price = market_value / qty
+            # Get current price and change_today from broker
+            current_price = float(pos.current_price) if pos.current_price else (market_value / qty if qty > 0 else None)
+            change_today = float(pos.change_today) if pos.change_today else None
             
             # Merge with local Position record if available
             local_pos = local_by_symbol.get(symbol)
             stop_price = None
             days_held = None
             side = "long"  # Alpaca positions are typically long
-            change_today = None  # TODO: Would need market data for this
             
             if local_pos:
                 # Get stop from local record

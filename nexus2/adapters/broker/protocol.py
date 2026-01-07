@@ -81,6 +81,9 @@ class BrokerPosition:
     avg_price: Decimal
     market_value: Decimal
     unrealized_pnl: Decimal
+    # Optional fields for expanded view
+    current_price: Optional[Decimal] = None
+    change_today: Optional[Decimal] = None  # Today's % change
 
 
 class BrokerProtocol(Protocol):

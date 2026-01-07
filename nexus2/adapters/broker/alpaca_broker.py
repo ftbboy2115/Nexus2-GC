@@ -291,12 +291,23 @@ class AlpacaBroker:
         
         positions = {}
         for p in data:
+            # Calculate current price from market value / quantity
+            qty = int(p["qty"])
+            market_value = Decimal(str(p["market_value"]))
+            current_price = market_value / qty if qty > 0 else None
+            
+            # Alpaca provides change_today as a decimal (e.g., 0.0234 for 2.34%)
+            change_today_raw = p.get("change_today")
+            change_today = Decimal(str(change_today_raw)) * 100 if change_today_raw else None
+            
             positions[p["symbol"]] = BrokerPosition(
                 symbol=p["symbol"],
-                quantity=int(p["qty"]),
+                quantity=qty,
                 avg_price=Decimal(str(p["avg_entry_price"])),
-                market_value=Decimal(str(p["market_value"])),
+                market_value=market_value,
                 unrealized_pnl=Decimal(str(p["unrealized_pl"])),
+                current_price=current_price,
+                change_today=change_today,
             )
         
         return positions
