@@ -10,7 +10,8 @@ from decimal import Decimal
 from typing import Optional, List
 from fastapi import APIRouter, Query, Depends
 
-from nexus2.db import SessionLocal, PositionRepository
+from nexus2.db import PositionRepository
+from nexus2.db.database import get_session
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -26,8 +27,7 @@ def _get_positions_from_db(source: Optional[str] = None, status: Optional[str] =
     Returns:
         List of position dicts with calculated P&L
     """
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         repo = PositionRepository(db)
         positions = repo.get_by_source(source=source, status=status)
         
@@ -52,8 +52,6 @@ def _get_positions_from_db(source: Optional[str] = None, status: Optional[str] =
             result.append(data)
         
         return result
-    finally:
-        db.close()
 
 
 @router.get("/summary")
@@ -220,8 +218,7 @@ async def get_trade_history(
     
     New endpoint for browsing individual trades.
     """
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         repo = PositionRepository(db)
         positions = repo.get_by_source(source=source, status=status, limit=limit)
         
@@ -262,5 +259,3 @@ async def get_trade_history(
             "count": len(trades),
             "filter": {"source": source or "all", "status": status or "all"},
         }
-    finally:
-        db.close()

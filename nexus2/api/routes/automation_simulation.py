@@ -288,19 +288,18 @@ async def reset_simulation(
             broker.set_price(sym, price)
     
     # Clear database positions (simulation creates position records)
-    from nexus2.db import SessionLocal, PositionRepository
+    from nexus2.db import PositionRepository
+    from nexus2.db.database import get_session
     try:
-        db = SessionLocal()
-        position_repo = PositionRepository(db)
-        open_positions = position_repo.get_open()
-        for pos in open_positions:
-            position_repo.close(pos.id, exit_price="0", remaining_shares=0)
-        db.commit()
-        logger.info(f"[Simulation] Cleared {len(open_positions)} database positions")
+        with get_session() as db:
+            position_repo = PositionRepository(db)
+            open_positions = position_repo.get_open()
+            for pos in open_positions:
+                position_repo.close(pos.id, exit_price="0", remaining_shares=0)
+            db.commit()
+            logger.info(f"[Simulation] Cleared {len(open_positions)} database positions")
     except Exception as e:
         logger.warning(f"[Simulation] Could not clear DB positions: {e}")
-    finally:
-        db.close()
     
     logger.info(f"[Simulation] Reset: start={start_dt}, cash=${initial_cash:,.0f}, symbols={symbols}")
     
@@ -706,15 +705,15 @@ async def debug_execute_path():
     Debug endpoint that mimics exactly what execute_callback does.
     This helps trace where MockMarketData stops being used.
     """
-    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+    from nexus2.db import SchedulerSettingsRepository
+    from nexus2.db.database import get_session
     from nexus2.domain.automation.services import create_unified_scanner_callback
     from nexus2.adapters.simulation import get_simulation_clock, get_mock_market_data
     
     debug_info = {}
     
     # Step 1: Read settings exactly like execute_callback
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         settings_repo = SchedulerSettingsRepository(db)
         sched_settings = settings_repo.get()
         
@@ -727,9 +726,6 @@ async def debug_execute_path():
         
         scan_modes = sched_settings.scan_modes.split(",") if sched_settings.scan_modes else ["ep", "breakout", "htf"]
         debug_info["scan_modes"] = scan_modes
-        
-    finally:
-        db.close()
     
     # Step 2: Create scanner callback
     scanner_func = await create_unified_scanner_callback(

@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from nexus2.domain.automation.engine import AutomationEngine, EngineConfig, EngineState
 from nexus2.domain.automation.scheduler import AutomationScheduler
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
 
 import logging
@@ -482,8 +482,7 @@ async def scan_and_execute(
             if validation.reasons:
                 print(f"[Automation] {trade['symbol']} warnings: {validation.reasons}")
             
-            db = SessionLocal()
-            try:
+            with get_session() as db:
                 order_repo = OrderRepository(db)
                 position_repo = PositionRepository(db)
                 
@@ -566,9 +565,6 @@ async def scan_and_execute(
                 engine.stats.orders_submitted += 1
                 if fill_status == "filled":
                     engine.stats.orders_filled += 1
-                
-            finally:
-                db.close()
                 
         except Exception as e:
             errors.append({
@@ -686,15 +682,12 @@ async def get_broker_positions(request: Request):
         positions_dict = broker.get_positions()
         
         # Query local Position records for correlation
-        db = SessionLocal()
-        try:
+        with get_session() as db:
             position_repo = PositionRepository(db)
             # Get all open positions from local DB
             local_positions = position_repo.get_open()
             # Create lookup by symbol
             local_by_symbol = {p.symbol: p for p in local_positions}
-        finally:
-            db.close()
         
         # Convert to list format for frontend
         positions_list = []
