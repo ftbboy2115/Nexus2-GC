@@ -34,6 +34,13 @@ Last updated: 2026-01-06
 
 ## 📋 Audit Items
 
+- [ ] **ADR showing 0.0% — HIGH IMPACT** — Investigate why ADR is 0.0% for all positions
+  - **Findings (Jan 7):** ECL, BA, BN, ELV, MFG, MS, ONDS, TXN, UNH, VALE all showed ADR=0.0%
+  - **Impact 1:** Scanner filtering - stocks could be incorrectly rejected if `min_adr_percent > 0`
+  - **Impact 2:** MA Affinity - all stocks default to 20 EMA (wider) instead of 10 EMA for fast movers
+  - **Impact 3:** Stop management - 6%+ ADR triggers different logic, not happening
+  - **Impact 4:** Could explain missed leaders (ERAS) - high-volatility stocks filtered incorrectly
+  - **Location:** `ma_affinity.py:281` calls `get_adr_percent` but returns 0.0
 - [/] **DB session context managers** — Add `with` blocks for automatic cleanup
   - ✅ Created `get_session()` in database.py
   - ✅ scheduler_routes.py refactored (3 instances)
@@ -46,10 +53,6 @@ Last updated: 2026-01-06
   - Learned from Jan 7 post-mortem of pre-fix trades
 - [ ] **Rejection logging** — Log WHY stocks are rejected (e.g., "sector blacklist: defense")
   - Currently scanner silently skips; diagnostics should record rejection reasons
-- [ ] **ADR showing 0.0% in MA check** — Investigate why ADR is 0.0% for all positions
-  - Jan 7 examples: ECL, BA, BN, ELV, MFG, MS, ONDS, TXN, UNH, VALE all showed ADR=0.0%
-  - MA affinity logic defaults to LOWER_20 when ADR is slow (0.0%)
-  - Likely missing historical data in ADR calculation or wrong data source
 
 ---
 
