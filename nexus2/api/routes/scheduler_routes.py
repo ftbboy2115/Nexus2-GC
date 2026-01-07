@@ -362,6 +362,10 @@ async def force_scheduler_scan(
         
         # Get preset for EP scanner settings
         preset = getattr(sched_settings, 'preset', 'relaxed') or 'relaxed'
+        
+        # Get min_price and min_rvol from settings
+        min_price = float(sched_settings.min_price) if sched_settings.min_price else 5.0
+        min_rvol = float(sched_settings.min_rvol) if sched_settings.min_rvol else 1.5
     
     logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
     
@@ -388,11 +392,11 @@ async def force_scheduler_scan(
         
         logger.info(f"[ForceScan SIM] Using MockMarketData (clock={clock.get_trading_day()}, symbols={data.get_symbols()})")
         
-        # Use relaxed sim settings for EP
+        # Use relaxed sim settings for EP with configurable values
         sim_ep_settings = EPScanSettings(
             min_gap=3.0,
-            min_rvol=0.5,
-            min_price=5.0,
+            min_rvol=min_rvol,
+            min_price=min_price,
             min_dollar_vol=1_000_000,
         )
         
@@ -444,6 +448,8 @@ async def force_scheduler_scan(
             htf_frequency=htf_frequency,
             sim_mode=False,
             preset=preset,  # Use preset from settings for EP criteria
+            min_price=min_price,
+            min_rvol=min_rvol,
         )
         
         # Run the scan cycle
@@ -661,11 +667,11 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
         for field in ["adopt_quick_actions", "min_quality", "stop_mode", 
                       "max_stop_atr", "max_stop_percent", "scan_modes", "htf_frequency",
                       "max_position_value", "nac_max_positions", "auto_start_enabled", "auto_start_time", "auto_execute",
-                      "nac_broker_type", "nac_account", "sim_mode", "min_price", "discord_alerts_enabled"]:
+                      "nac_broker_type", "nac_account", "sim_mode", "min_price", "min_rvol", "discord_alerts_enabled"]:
             value = getattr(req, field, None)
             if value is not None:
                 # Convert numeric to string for DB storage
-                if field in ["max_stop_atr", "max_stop_percent", "max_position_value", "min_price", "nac_max_positions"]:
+                if field in ["max_stop_atr", "max_stop_percent", "max_position_value", "min_price", "min_rvol", "nac_max_positions"]:
                     updates[field] = str(value)
                 elif field in ["auto_start_enabled", "auto_execute", "sim_mode", "discord_alerts_enabled"]:
                     updates[field] = "true" if value else "false"

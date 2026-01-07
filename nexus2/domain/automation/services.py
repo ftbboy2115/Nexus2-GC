@@ -57,7 +57,8 @@ async def create_unified_scanner_callback(
     htf_frequency: str = "every_cycle",
     sim_mode: bool = False,  # Use MockMarketData when True
     preset: str = "strict",  # "relaxed" applies looser EP criteria
-    min_price: float = 5.0,  # NEW: Minimum stock price filter
+    min_price: float = 5.0,  # Minimum stock price filter
+    min_rvol: float = 1.5,  # Minimum relative volume
 ):
     """
     Create a scanner callback that uses the UnifiedScannerService.
@@ -182,7 +183,7 @@ async def create_unified_scanner_callback(
             # Use relaxed settings for simulation (limited data may not show 8%+ gaps)
             sim_ep_settings = EPScanSettings(
                 min_gap=3.0,    # Lower from 8% - sim data may not have big gaps
-                min_rvol=0.5,   # Lower from 2.0 - volume calculation may vary
+                min_rvol=min_rvol,   # Use configurable min_rvol
                 min_price=min_price,  # Use configurable min_price
             )
             
@@ -207,11 +208,11 @@ async def create_unified_scanner_callback(
             if preset.lower() in ("relaxed", "custom"):
                 ep_settings = EPScanSettings(
                     min_gap=Decimal("3.0"),    # Lower from 8% 
-                    min_rvol=Decimal("1.5"),   # Require 1.5x average volume
+                    min_rvol=Decimal(str(min_rvol)),   # Use configurable min_rvol
                     min_price=Decimal(str(min_price)),  # Use configurable min_price
                     min_range_position=Decimal("0.30"),  # Lower from 0.40
                 )
-                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=1.5x, min_price=${min_price})")
+                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol={min_rvol}x, min_price=${min_price})")
                 ep_scanner = EPScannerService(settings=ep_settings)
             else:
                 # Strict mode - use defaults (8% gap, 2x RVOL)

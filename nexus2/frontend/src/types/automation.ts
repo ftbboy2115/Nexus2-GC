@@ -200,6 +200,7 @@ export interface SchedulerSettingsData {
     nac_account: string  // A or B (default A for Automation)
     sim_mode: boolean  // Enable simulation mode (uses MockBroker)
     min_price: number  // Minimum stock price filter ($2-10)
+    min_rvol: number  // Minimum relative volume (default 1.5x)
     discord_alerts_enabled: boolean  // Enable Discord notifications
 }
 

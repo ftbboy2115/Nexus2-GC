@@ -1380,6 +1380,37 @@ export default function Automation() {
                                                 />
                                             </div>
 
+                                            {/* Min RVOL Slider */}
+                                            <div className={styles.settingGroup}>
+                                                <label>Min RVOL: {schedulerSettings?.min_rvol || 1.5}x</label>
+                                                <input
+                                                    type="range"
+                                                    min="0.5"
+                                                    max="3.0"
+                                                    step="0.1"
+                                                    value={schedulerSettings?.min_rvol || 1.5}
+                                                    onChange={async (e) => {
+                                                        const min_rvol = parseFloat(e.target.value)
+                                                        try {
+                                                            const res = await fetch(`${API_BASE}/automation/scheduler/settings`, {
+                                                                method: 'PATCH',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ min_rvol })
+                                                            })
+                                                            if (res.ok) {
+                                                                const data = await res.json()
+                                                                setSchedulerSettings(data)
+                                                            }
+                                                        } catch (err) {
+                                                            console.error('Failed to update min_rvol:', err)
+                                                        }
+                                                    }}
+                                                />
+                                                <p className={styles.settingHint}>
+                                                    Minimum relative volume (1.5x = 50% above average)
+                                                </p>
+                                            </div>
+
                                             {/* Stop Mode */}
                                             <div className={styles.settingGroup}>
                                                 <label>Stop Mode</label>

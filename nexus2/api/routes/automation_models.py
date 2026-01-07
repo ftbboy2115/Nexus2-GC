@@ -95,6 +95,7 @@ class SchedulerSettingsRequest(BaseModel):
     nac_account: Optional[str] = None  # A or B (default A for Automation)
     sim_mode: Optional[bool] = None  # Enable simulation mode (uses MockBroker)
     min_price: Optional[float] = None  # Minimum stock price filter ($2-10, default $5)
+    min_rvol: Optional[float] = None  # Minimum relative volume (default 1.5x)
     discord_alerts_enabled: Optional[bool] = None  # Enable Discord notifications
 
 
