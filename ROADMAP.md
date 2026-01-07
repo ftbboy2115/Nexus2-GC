@@ -46,6 +46,10 @@ Last updated: 2026-01-06
   - Learned from Jan 7 post-mortem of pre-fix trades
 - [ ] **Rejection logging** — Log WHY stocks are rejected (e.g., "sector blacklist: defense")
   - Currently scanner silently skips; diagnostics should record rejection reasons
+- [ ] **ADR showing 0.0% in MA check** — Investigate why ADR is 0.0% for all positions
+  - Jan 7 examples: ECL, BA, BN, ELV, MFG, MS, ONDS, TXN, UNH, VALE all showed ADR=0.0%
+  - MA affinity logic defaults to LOWER_20 when ADR is slow (0.0%)
+  - Likely missing historical data in ADR calculation or wrong data source
 
 ---
 
