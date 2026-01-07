@@ -54,7 +54,8 @@ def create_execute_callback(
         - Daily loss limit
         - SIM mode enforcement
         """
-        from nexus2.db import SessionLocal, PositionRepository, SchedulerSettingsRepository
+        from nexus2.db import PositionRepository, SchedulerSettingsRepository
+        from nexus2.db.database import get_session
         from nexus2.domain.automation.services import create_unified_scanner_callback
         
         print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Starting execute_callback...")
@@ -63,8 +64,7 @@ def create_execute_callback(
         # DYNAMIC SETTINGS RELOAD
         # Read fresh settings each cycle so changes take effect immediately
         # =============================
-        db_settings = SessionLocal()
-        try:
+        with get_session() as db_settings:
             settings_repo = SchedulerSettingsRepository(db_settings)
             sched_settings = settings_repo.get()
             
@@ -107,8 +107,6 @@ def create_execute_callback(
                 "min_quality": min_quality, "stop_mode": stop_mode,
                 "max_stop_atr": max_stop_atr, "min_price": min_price,
             })
-        finally:
-            db_settings.close()
         
         # Run scan to get signals (with timing)
         import time
@@ -148,7 +146,7 @@ def create_execute_callback(
         # Execute up to max_trades_per_cycle from settings
         # =============================
         from nexus2.api.routes.settings import get_settings
-        from nexus2.db import SessionLocal, SchedulerSettingsRepository
+        from nexus2.db import SchedulerSettingsRepository
         
         settings = get_settings()
         MAX_TRADES_PER_CYCLE = settings.max_trades_per_cycle  # From settings (default: 10)
@@ -159,12 +157,11 @@ def create_execute_callback(
         # Check scheduler-specific max_position_value first, fall back to global
         scheduler_max = None
         try:
-            db = SessionLocal()
-            scheduler_settings = SchedulerSettingsRepository(db).get()
-            if scheduler_settings.max_position_value:
-                scheduler_max = Decimal(scheduler_settings.max_position_value)
-                print(f"📐 [AutoExec] Using scheduler max_position_value: ${scheduler_max}")
-            db.close()
+            with get_session() as db:
+                scheduler_settings = SchedulerSettingsRepository(db).get()
+                if scheduler_settings.max_position_value:
+                    scheduler_max = Decimal(scheduler_settings.max_position_value)
+                    print(f"📐 [AutoExec] Using scheduler max_position_value: ${scheduler_max}")
         except Exception as e:
             logger.warning(f"[AutoExec] Could not read scheduler settings: {e}")
         
@@ -299,8 +296,7 @@ def create_execute_callback(
             # Check if order was accepted
             if result and result.status.value in ("accepted", "filled", "pending"):
                 # Create position record
-                db = SessionLocal()
-                try:
+                with get_session() as db:
                     position_repo = PositionRepository(db)
                     position = position_repo.create({
                         "id": str(uuid4()),
@@ -362,8 +358,6 @@ def create_execute_callback(
                         "order_id": str(result.broker_order_id),
                         "position_id": position.id,
                     })
-                finally:
-                    db.close()
             else:
                 logger.error(f"[AutoExec] Order not accepted for {signal.symbol}: {result}")
                 errors.append({"symbol": signal.symbol, "error": "Order not accepted by broker"})
