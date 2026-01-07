@@ -44,6 +44,8 @@ Last updated: 2026-01-06
 - [ ] **Scanner version tracking** — Add `scanner_version` or `commit_hash` to positions table
   - Enables post-mortem timeline analysis (e.g., "was MA stacking enforced?")
   - Learned from Jan 7 post-mortem of pre-fix trades
+- [ ] **Rejection logging** — Log WHY stocks are rejected (e.g., "sector blacklist: defense")
+  - Currently scanner silently skips; diagnostics should record rejection reasons
 
 ---
 

@@ -29,6 +29,11 @@ Format: `[commit] YYYY-MM-DD - Description`
 - **Fix:** "custom" preset now uses relaxed EP settings (min_gap=3%, min_rvol=1.5x)
 - Live trades executed: GLUE (EP), CCL (FLAG), CDIO (EP), WFC (FLAG)
 
+### Scanner Settings Tracking (Audit Trail)
+- **New:** Added `scanner_settings` column to positions table (JSON)
+- Captures at trade time: preset, min_quality, min_price, scan_modes, scanner_version (git hash)
+- Enables post-mortem analysis: "What settings were used for this trade?"
+
 ### UI/Column Fixes (earlier)
 - `f926f61` - Fix column editor: maximized view respects saved column order
 - `a148070` - Fix column editor: call openEditor() when showing modal

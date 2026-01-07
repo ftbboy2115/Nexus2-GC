@@ -107,6 +107,29 @@ def create_execute_callback(
                 "min_quality": min_quality, "stop_mode": stop_mode,
                 "max_stop_atr": max_stop_atr, "min_price": min_price,
             })
+            
+            # Capture scanner settings for position audit trail
+            import json
+            import subprocess
+            try:
+                git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], 
+                                                   stderr=subprocess.DEVNULL, text=True).strip()
+            except:
+                git_hash = "unknown"
+            
+            scanner_settings_snapshot = json.dumps({
+                "preset": preset,
+                "min_quality": min_quality,
+                "stop_mode": stop_mode,
+                "max_stop_atr": max_stop_atr,
+                "max_stop_percent": max_stop_percent,
+                "min_price": min_price,
+                "scan_modes": scan_modes,
+                "htf_frequency": htf_frequency,
+                "sim_mode": sim_mode,
+                "scanner_version": git_hash,
+                "captured_at": datetime.now().isoformat(),
+            })
         
         # Run scan to get signals (with timing)
         import time
@@ -317,6 +340,7 @@ def create_execute_callback(
                         "adr_percent": str(signal.adr_percent) if signal.adr_percent else None,
                         "broker_type": get_settings().broker_type,
                         "account": get_settings().active_account,
+                        "scanner_settings": scanner_settings_snapshot,  # Audit trail
                     })
                     
                     # Update engine stats

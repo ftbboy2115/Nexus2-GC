@@ -159,6 +159,10 @@ class PositionModel(Base):
     # Trade source tracking (for analytics filtering)
     source = Column(String(20), default="manual")  # "nac", "manual", "external"
     
+    # Scanner settings at trade time (JSON snapshot for audit)
+    # Includes: preset, min_gap, min_rvol, scan_modes, scanner_version, etc.
+    scanner_settings = Column(Text, nullable=True)
+    
     # Exit data (for P&L calculation in analytics)
     exit_price = Column(String(20), nullable=True)
     exit_date = Column(DateTime, nullable=True)
@@ -187,6 +191,7 @@ class PositionModel(Base):
             "adr_percent": self.adr_percent,
             "partial_taken": self.partial_taken,
             "source": self.source,
+            "scanner_settings": self.scanner_settings,  # JSON snapshot for audit
             "exit_price": self.exit_price,
             "exit_date": self.exit_date.isoformat() if self.exit_date else None,
             "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
