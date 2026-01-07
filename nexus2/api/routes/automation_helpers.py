@@ -169,6 +169,14 @@ async def configure_scanner_from_settings(engine, scheduler):
         # Read preset from settings (default: "relaxed" for better EP signal generation)
         preset = getattr(sched_settings, 'preset', 'relaxed') or 'relaxed'
         
+        # Read min_price from settings (default $5)
+        min_price_setting = getattr(sched_settings, 'min_price', None)
+        min_price = float(min_price_setting) if min_price_setting else 5.0
+        
+        # Read min_rvol from settings (default 1.5x)
+        min_rvol_setting = getattr(sched_settings, 'min_rvol', None)
+        min_rvol = float(min_rvol_setting) if min_rvol_setting else 1.5
+        
         # Set scheduler flags
         scheduler.auto_execute = auto_execute
         scheduler.sim_mode = sim_mode  # Use sim clock for market hours
@@ -185,7 +193,9 @@ async def configure_scanner_from_settings(engine, scheduler):
             scan_modes=scan_modes,
             htf_frequency=htf_frequency,
             sim_mode=sim_mode,
-            preset=preset,  # NEW: Use preset from settings for EP criteria
+            preset=preset,
+            min_price=min_price,
+            min_rvol=min_rvol,
         )
         
         settings_used = {
@@ -197,7 +207,9 @@ async def configure_scanner_from_settings(engine, scheduler):
             "htf_frequency": htf_frequency,
             "auto_execute": auto_execute,
             "sim_mode": sim_mode,
-            "preset": preset,  # EP scanner preset (relaxed/strict)
+            "preset": preset,
+            "min_price": min_price,
+            "min_rvol": min_rvol,
         }
         
         logger.info(f"[Scheduler] Scanner configured: {settings_used}")

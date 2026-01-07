@@ -83,6 +83,10 @@ def create_execute_callback(
             min_price_setting = getattr(sched_settings, 'min_price', None)
             min_price = float(min_price_setting) if min_price_setting else 5.0
             
+            # Get min_rvol from settings (default 1.5x if not set)
+            min_rvol_setting = getattr(sched_settings, 'min_rvol', None)
+            min_rvol = float(min_rvol_setting) if min_rvol_setting else 1.5
+            
             # Get discord_alerts_enabled (default True if not set)
             discord_alerts_setting = getattr(sched_settings, 'discord_alerts_enabled', 'true')
             discord_alerts_enabled = discord_alerts_setting == "true" if isinstance(discord_alerts_setting, str) else bool(discord_alerts_setting)
@@ -99,8 +103,9 @@ def create_execute_callback(
                 sim_mode=sim_mode,
                 preset=preset,
                 min_price=min_price,
+                min_rvol=min_rvol,
             )
-            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}, min_price=${min_price}")
+            print(f"🔄 [AutoExec] Reloaded settings: min_quality={min_quality}, stop_mode={stop_mode}, sim_mode={sim_mode}, min_price=${min_price}, min_rvol={min_rvol}x")
             
             # Log scan start to persistent file
             log_scan_start(scan_modes, {
@@ -124,6 +129,7 @@ def create_execute_callback(
                 "max_stop_atr": max_stop_atr,
                 "max_stop_percent": max_stop_percent,
                 "min_price": min_price,
+                "min_rvol": min_rvol,
                 "scan_modes": scan_modes,
                 "htf_frequency": htf_frequency,
                 "sim_mode": sim_mode,
