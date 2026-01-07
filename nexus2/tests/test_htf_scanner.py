@@ -102,15 +102,32 @@ class TestHTFScannerService:
     
     def test_evaluate_passing_htf(self, scanner, mock_market_data):
         """Detects valid HTF pattern."""
-        # Create price history showing +100% move with 10% pullback
-        # Low of 50, high of 110, current at 100
-        mock_market_data.get_historical_prices.return_value = [
-            {"date": f"2024-01-{i:02d}", "open": 50 + i, "high": 50 + i + 1, "low": 50 + i - 1, "close": 50 + i, "volume": 1000000}
-            for i in range(1, 30)
-        ] + [
-            {"date": f"2024-02-{i:02d}", "open": 100 + i, "high": 110, "low": 95, "close": 100, "volume": 1000000}
-            for i in range(1, 35)
-        ]
+        # Create price history showing gradual uptrend with MA stacking
+        # Need: price > sma10 > sma20 > sma50, and 90%+ move, <25% pullback
+        history = []
+        # Days 1-50: Gradual uptrend from 50 to 100 (doubles = 100% move)
+        for i in range(50):
+            price = 50 + i  # 50 -> 100
+            history.append({
+                "date": f"2024-01-{(i % 28) + 1:02d}",
+                "open": price - 0.5,
+                "high": price + 1,
+                "low": price - 1,
+                "close": price,
+                "volume": 1000000
+            })
+        # Days 51-65: Consolidation near highs with close slightly above SMA10
+        for i in range(15):
+            history.append({
+                "date": f"2024-02-{(i % 28) + 1:02d}",
+                "open": 102,
+                "high": 110,  # Highest high
+                "low": 99,
+                "close": 103 + (i * 0.1),  # Trending up slightly, above SMA10
+                "volume": 1000000
+            })
+        
+        mock_market_data.get_historical_prices.return_value = history
         
         candidate = scanner._evaluate_symbol("TEST")
         
@@ -175,14 +192,28 @@ class TestHTFScannerService:
     
     def test_get_htf_trend_api(self, scanner, mock_market_data):
         """get_htf_trend returns legacy-compatible format."""
-        # Valid HTF setup
-        mock_market_data.get_historical_prices.return_value = [
-            {"date": f"2024-01-{i:02d}", "open": 50 + i, "high": 50 + i + 1, "low": 50 + i - 1, "close": 50 + i, "volume": 1000000}
-            for i in range(1, 30)
-        ] + [
-            {"date": f"2024-02-{i:02d}", "open": 100, "high": 110, "low": 95, "close": 100, "volume": 1000000}
-            for i in range(1, 35)
-        ]
+        # Create proper uptrend data with MA stacking
+        history = []
+        for i in range(50):
+            price = 50 + i
+            history.append({
+                "date": f"2024-01-{(i % 28) + 1:02d}",
+                "open": price - 0.5,
+                "high": price + 1,
+                "low": price - 1,
+                "close": price,
+                "volume": 1000000
+            })
+        for i in range(15):
+            history.append({
+                "date": f"2024-02-{(i % 28) + 1:02d}",
+                "open": 102,
+                "high": 110,
+                "low": 99,
+                "close": 103 + (i * 0.1),
+                "volume": 1000000
+            })
+        mock_market_data.get_historical_prices.return_value = history
         
         result = scanner.get_htf_trend("TEST", sector="Technology")
         
@@ -218,10 +249,28 @@ class TestHTFStatusDetermination:
     
     def test_status_extended_near_highs(self, scanner):
         """Status is EXTENDED when very near highs (<5% pullback)."""
-        scanner.market_data.get_historical_prices.return_value = [
-            {"date": f"2024-01-{i:02d}", "open": 50 + i*2, "high": 150, "low": 50, "close": 148, "volume": 1000000}
-            for i in range(1, 65)
-        ]
+        # Create uptrend with MA stacking, ending near highs
+        history = []
+        for i in range(50):
+            price = 50 + i * 2  # 50 -> 148
+            history.append({
+                "date": f"2024-01-{(i % 28) + 1:02d}",
+                "open": price - 0.5,
+                "high": price + 1,
+                "low": price - 1,
+                "close": price,
+                "volume": 1000000
+            })
+        for i in range(15):
+            history.append({
+                "date": f"2024-02-{(i % 28) + 1:02d}",
+                "open": 148,
+                "high": 152,  # Highest high
+                "low": 147,
+                "close": 150 + (i * 0.1),  # Slightly above SMA, near high
+                "volume": 1000000
+            })
+        scanner.market_data.get_historical_prices.return_value = history
         
         candidate = scanner._evaluate_symbol("EXTENDED")
         
@@ -230,10 +279,30 @@ class TestHTFStatusDetermination:
     
     def test_status_complete_ideal_pullback(self, scanner):
         """Status is COMPLETE for ideal 5-15% pullback."""
-        scanner.market_data.get_historical_prices.return_value = [
-            {"date": f"2024-01-{i:02d}", "open": 50 + i*2, "high": 150, "low": 50, "close": 135, "volume": 1000000}
-            for i in range(1, 65)
-        ]
+        # Create uptrend with MA stacking, testing 10% pullback from swing high
+        history = []
+        for i in range(50):
+            price = 50 + i * 3  # 50 -> 197
+            history.append({
+                "date": f"2024-01-{(i % 28) + 1:02d}",
+                "open": price - 0.5,
+                "high": price + 1,
+                "low": price - 1,
+                "close": price,
+                "volume": 1000000
+            })
+        # Consolidation phase: continue trending up but with a spike high for pullback calc
+        for i in range(15):
+            close_price = 200 + (i * 0.5)  # Continue up: 200 -> 207
+            history.append({
+                "date": f"2024-02-{(i % 28) + 1:02d}",
+                "open": close_price - 1,
+                "high": 230 if i == 0 else close_price + 1,  # Spike to 230 creates 10% pullback
+                "low": close_price - 2,
+                "close": close_price,  # Final close 207 = 10% below 230
+                "volume": 1000000
+            })
+        scanner.market_data.get_historical_prices.return_value = history
         
         candidate = scanner._evaluate_symbol("IDEAL")
         
@@ -242,10 +311,30 @@ class TestHTFStatusDetermination:
     
     def test_status_forming_deeper_pullback(self, scanner):
         """Status is FORMING for 15-25% pullback."""
-        scanner.market_data.get_historical_prices.return_value = [
-            {"date": f"2024-01-{i:02d}", "open": 50 + i*2, "high": 150, "low": 50, "close": 120, "volume": 1000000}
-            for i in range(1, 65)
-        ]
+        # Create uptrend with MA stacking, testing 20% pullback from swing high
+        history = []
+        for i in range(50):
+            price = 50 + i * 3  # 50 -> 197
+            history.append({
+                "date": f"2024-01-{(i % 28) + 1:02d}",
+                "open": price - 0.5,
+                "high": price + 1,
+                "low": price - 1,
+                "close": price,
+                "volume": 1000000
+            })
+        # Consolidation phase: continue trending up but with a spike high for pullback calc
+        for i in range(15):
+            close_price = 200 + (i * 0.5)  # Continue up: 200 -> 207
+            history.append({
+                "date": f"2024-02-{(i % 28) + 1:02d}",
+                "open": close_price - 1,
+                "high": 255 if i == 0 else close_price + 1,  # Spike to 255 creates 20% pullback
+                "low": close_price - 2,
+                "close": close_price,  # Final close 207 = 20% below 255
+                "volume": 1000000
+            })
+        scanner.market_data.get_historical_prices.return_value = history
         
         candidate = scanner._evaluate_symbol("FORMING")
         
