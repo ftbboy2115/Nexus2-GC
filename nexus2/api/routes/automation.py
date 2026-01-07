@@ -727,13 +727,14 @@ async def get_broker_positions(request: Request):
                 if local_pos.current_stop:
                     stop_price = float(local_pos.current_stop)
                 
-                # Calculate days held from opened_at
+                # Calculate days held from opened_at (calendar days, not 24hr periods)
                 if local_pos.opened_at:
                     opened_dt = local_pos.opened_at
                     if opened_dt.tzinfo is None:
                         opened_dt = opened_dt.replace(tzinfo=timezone.utc)
                     now = datetime.now(timezone.utc)
-                    days_held = (now - opened_dt).days
+                    # Use date comparison for calendar days (midnight boundary)
+                    days_held = (now.date() - opened_dt.date()).days
             
             positions_list.append({
                 "symbol": pos.symbol,
