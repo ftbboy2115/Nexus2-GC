@@ -981,20 +981,27 @@ export default function Automation() {
                                                                                 return <td key={col.id}>${pos.market_value.toFixed(0)}</td>
                                                                             case 'unrealized_pnl':
                                                                                 return (
-                                                                                    <td key={col.id} style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                    <td key={col.id} style={{ color: pos.unrealized_pnl > 0 ? '#22c55e' : pos.unrealized_pnl < 0 ? '#ef4444' : '#9ca3af' }}>
                                                                                         {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
                                                                                     </td>
                                                                                 )
                                                                             case 'pnl_percent':
                                                                                 return (
-                                                                                    <td key={col.id} style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                    <td key={col.id} style={{ color: pos.pnl_percent > 0 ? '#22c55e' : pos.pnl_percent < 0 ? '#ef4444' : '#9ca3af' }}>
                                                                                         {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
+                                                                                    </td>
+                                                                                )
+                                                                            case 'today_pnl':
+                                                                                const todayPnl = pos.today_pnl || 0
+                                                                                return (
+                                                                                    <td key={col.id} style={{ color: todayPnl > 0 ? '#22c55e' : todayPnl < 0 ? '#ef4444' : '#9ca3af' }}>
+                                                                                        {todayPnl >= 0 ? '+' : ''}${todayPnl.toFixed(2)}
                                                                                     </td>
                                                                                 )
                                                                             case 'change_today':
                                                                                 const changeToday = pos.change_today || 0
                                                                                 return (
-                                                                                    <td key={col.id} style={{ color: changeToday >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                    <td key={col.id} style={{ color: changeToday > 0 ? '#22c55e' : changeToday < 0 ? '#ef4444' : '#9ca3af' }}>
                                                                                         {changeToday >= 0 ? '+' : ''}{changeToday.toFixed(1)}%
                                                                                     </td>
                                                                                 )

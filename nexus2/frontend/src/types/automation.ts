@@ -130,6 +130,7 @@ export interface BrokerPosition {
     side?: string           // 'long' or 'short'
     current_price?: number  // Current market price
     stop_price?: number     // Current stop price
+    today_pnl?: number      // Today's P/L in dollars
     change_today?: number   // Today's % change
     days_held?: number      // Days position has been held
 }

@@ -747,6 +747,7 @@ async def get_broker_positions(request: Request):
                 "stop_price": stop_price,
                 "side": side,
                 "days_held": days_held,
+                "today_pnl": float(pos.today_pnl) if pos.today_pnl else None,
                 "change_today": change_today,
             })
             

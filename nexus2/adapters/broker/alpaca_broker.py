@@ -307,6 +307,10 @@ class AlpacaBroker:
                 if lastday_price > 0:
                     change_today = ((current_price - lastday_price) / lastday_price) * 100
             
+            # Get today's P/L in dollars from Alpaca
+            today_pnl_raw = p.get("unrealized_intraday_pl")
+            today_pnl = Decimal(str(today_pnl_raw)) if today_pnl_raw else None
+            
             positions[p["symbol"]] = BrokerPosition(
                 symbol=p["symbol"],
                 quantity=qty,
@@ -315,6 +319,7 @@ class AlpacaBroker:
                 unrealized_pnl=Decimal(str(p["unrealized_pl"])),
                 current_price=current_price,
                 change_today=change_today,
+                today_pnl=today_pnl,
             )
         
         return positions

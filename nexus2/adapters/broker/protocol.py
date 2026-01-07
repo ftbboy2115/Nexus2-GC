@@ -84,6 +84,7 @@ class BrokerPosition:
     # Optional fields for expanded view
     current_price: Optional[Decimal] = None
     change_today: Optional[Decimal] = None  # Today's % change
+    today_pnl: Optional[Decimal] = None     # Today's P/L in dollars
 
 
 class BrokerProtocol(Protocol):
