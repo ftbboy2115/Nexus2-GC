@@ -166,6 +166,9 @@ async def configure_scanner_from_settings(engine, scheduler):
         sim_mode_setting = getattr(sched_settings, 'sim_mode', 'false')
         sim_mode = sim_mode_setting == "true" if isinstance(sim_mode_setting, str) else bool(sim_mode_setting)
         
+        # Read preset from settings (default: "relaxed" for better EP signal generation)
+        preset = getattr(sched_settings, 'preset', 'relaxed') or 'relaxed'
+        
         # Set scheduler flags
         scheduler.auto_execute = auto_execute
         scheduler.sim_mode = sim_mode  # Use sim clock for market hours
@@ -181,7 +184,8 @@ async def configure_scanner_from_settings(engine, scheduler):
             max_stop_atr=max_stop_atr,
             scan_modes=scan_modes,
             htf_frequency=htf_frequency,
-            sim_mode=sim_mode,  # NEW: Use MockMarketData when True
+            sim_mode=sim_mode,
+            preset=preset,  # NEW: Use preset from settings for EP criteria
         )
         
         settings_used = {
@@ -192,7 +196,8 @@ async def configure_scanner_from_settings(engine, scheduler):
             "scan_modes": scan_modes,
             "htf_frequency": htf_frequency,
             "auto_execute": auto_execute,
-            "sim_mode": sim_mode,  # NEW
+            "sim_mode": sim_mode,
+            "preset": preset,  # EP scanner preset (relaxed/strict)
         }
         
         logger.info(f"[Scheduler] Scanner configured: {settings_used}")

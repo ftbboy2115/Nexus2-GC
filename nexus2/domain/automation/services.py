@@ -202,18 +202,19 @@ async def create_unified_scanner_callback(
             from nexus2.domain.scanner.breakout_scanner_service import BreakoutScannerService
             from nexus2.domain.scanner.htf_scanner_service import HTFScannerService
             
-            # Check if relaxed preset - use looser EP criteria
-            if preset.lower() == "relaxed":
+            # Check if relaxed or custom preset - use looser EP criteria for better signal generation
+            # "strict" is the only preset that uses 8% gap minimum
+            if preset.lower() in ("relaxed", "custom"):
                 ep_settings = EPScanSettings(
                     min_gap=Decimal("3.0"),    # Lower from 8% 
-                    min_rvol=Decimal("0.5"),   # Lower from 2.0
+                    min_rvol=Decimal("1.5"),   # Require 1.5x average volume
                     min_price=Decimal(str(min_price)),  # Use configurable min_price
                     min_range_position=Decimal("0.30"),  # Lower from 0.40
                 )
-                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=0.5x, min_price=${min_price})")
+                logger.info(f"[LIVE] Using RELAXED EP settings (min_gap=3%, min_rvol=1.5x, min_price=${min_price})")
                 ep_scanner = EPScannerService(settings=ep_settings)
             else:
-                # Strict mode - use defaults
+                # Strict mode - use defaults (8% gap, 2x RVOL)
                 ep_scanner = None  # Will use singleton with defaults
             
             # Create scanner with optional custom EP scanner

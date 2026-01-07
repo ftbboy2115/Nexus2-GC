@@ -52,6 +52,8 @@ Last updated: 2026-01-06
 - [x] **API Usage card sync** — Verified: shows real FMP rate limit stats
 - [x] **Total P&L % in Open Positions** — Already implemented (per-row + total)
 - [ ] **Simulation Control Page** — Mock market GUI with clock, scenarios, event log → [Plan](docs/simulation_plan.md)
+- [ ] **Countdown Timer to Next Scan** — Show time remaining until next scheduler cycle
+- [ ] **Score Breakdown Display** — Show how each signal got its quality score (which criteria contributed)
 
 ---
 

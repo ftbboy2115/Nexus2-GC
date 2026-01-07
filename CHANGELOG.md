@@ -24,6 +24,11 @@ Format: `[commit] YYYY-MM-DD - Description`
 - `3b81eeb` - **Fix:** FMP adapter test (updated for current behavior), integration test (marked skip)
 - Result: 228 tests passing, 0 failures
 
+### Scanner Configuration
+- **Fix:** Preset parameter now passed to scanner callback (was defaulting to strict)
+- **Fix:** "custom" preset now uses relaxed EP settings (min_gap=3%, min_rvol=1.5x)
+- Live trades executed: GLUE (EP), CCL (FLAG), CDIO (EP), WFC (FLAG)
+
 ### UI/Column Fixes (earlier)
 - `f926f61` - Fix column editor: maximized view respects saved column order
 - `a148070` - Fix column editor: call openEditor() when showing modal

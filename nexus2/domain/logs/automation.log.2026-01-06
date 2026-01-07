@@ -1,0 +1,141 @@
+2026-01-06 09:31:01 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 09:32:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 09:36:31 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 09:38:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 09:43:49 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 09:45:33 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:03:02 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:20:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:35:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:50:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:51:50 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 10:54:13 | INFO | SCAN_COMPLETE | signals=1 (EP:0, BO:1, HTF:0) | duration=142766ms
+2026-01-06 10:54:13 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 10:54:13 | INFO | SIZING_CAP | DASH | price=$235.98 | calculated=5 → capped=2 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 10:54:14 | INFO | TRADE_EXECUTED | DASH x 2 @ stop=$225.36 | order_id=6b5c1e16-40cf-4562-b272-883ff27f5f63
+2026-01-06 10:54:14 | INFO | CYCLE_SUMMARY | executed=1 | skipped=0 | errors=0
+2026-01-06 10:54:14 | INFO |   Executed: DASH
+2026-01-06 10:54:14 | INFO | ------------------------------------------------------------
+2026-01-06 11:07:51 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 11:25:27 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 11:42:53 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:00:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:02:55 | INFO | SCAN_COMPLETE | signals=2 (EP:1, BO:1, HTF:0) | duration=156627ms
+2026-01-06 12:02:55 | INFO |   SIGNAL | ALMS | type=ep | entry=$16.9692 | stop=$16.4001 | quality=10 | tier=FOCUS
+2026-01-06 12:02:55 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 12:02:56 | INFO | SIZING_CAP | ALMS | price=$16.97 | calculated=175 → capped=29 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 12:02:56 | INFO | TRADE_EXECUTED | ALMS x 29 @ stop=$16.40 | order_id=51dfe116-56a7-4cd0-be77-2f1b22608e76
+2026-01-06 12:02:57 | INFO | CYCLE_SUMMARY | executed=1 | skipped=1 | errors=0
+2026-01-06 12:02:57 | INFO |   Executed: ALMS
+2026-01-06 12:02:57 | INFO |   Skipped: DASH
+2026-01-06 12:02:57 | INFO | ------------------------------------------------------------
+2026-01-06 12:17:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:47:59 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:51:32 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:53:38 | INFO | SCAN_COMPLETE | signals=1 (EP:0, BO:1, HTF:0) | duration=126253ms
+2026-01-06 12:53:38 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 12:53:38 | INFO | CYCLE_SUMMARY | executed=0 | skipped=1 | errors=0
+2026-01-06 12:53:38 | INFO |   Skipped: DASH
+2026-01-06 12:53:38 | INFO | ------------------------------------------------------------
+2026-01-06 12:56:57 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 12:59:19 | INFO | SCAN_COMPLETE | signals=2 (EP:0, BO:2, HTF:0) | duration=141860ms
+2026-01-06 12:59:19 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 12:59:19 | INFO |   SIGNAL | BAM | type=flag | entry=$55.12 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-06 12:59:19 | INFO | CYCLE_SUMMARY | executed=0 | skipped=2 | errors=0
+2026-01-06 12:59:19 | INFO |   Skipped: DASH, BAM
+2026-01-06 12:59:19 | INFO | ------------------------------------------------------------
+2026-01-06 13:14:19 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 13:22:23 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 13:24:49 | INFO | SCAN_COMPLETE | signals=3 (EP:1, BO:2, HTF:0) | duration=145820ms
+2026-01-06 13:24:49 | INFO |   SIGNAL | OS | type=ep | entry=$23.565 | stop=$22.31 | quality=10 | tier=FOCUS
+2026-01-06 13:24:49 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 13:24:49 | INFO |   SIGNAL | BAM | type=flag | entry=$55.12 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-06 13:24:49 | INFO | SIZING_CAP | OS | price=$23.57 | calculated=79 → capped=21 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 13:24:50 | INFO | TRADE_EXECUTED | OS x 21 @ stop=$22.31 | order_id=c933194f-4231-4de3-9b6f-e75abbb1337a
+2026-01-06 13:24:50 | INFO | CYCLE_SUMMARY | executed=1 | skipped=2 | errors=0
+2026-01-06 13:24:50 | INFO |   Executed: OS
+2026-01-06 13:24:50 | INFO |   Skipped: DASH, BAM
+2026-01-06 13:24:50 | INFO | ------------------------------------------------------------
+2026-01-06 13:36:28 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 13:37:43 | INFO | SCAN_COMPLETE | signals=1 (EP:1, BO:0, HTF:0) | duration=74705ms
+2026-01-06 13:37:43 | INFO |   SIGNAL | OS | type=ep | entry=$23.565 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 13:37:43 | INFO | CYCLE_SUMMARY | executed=0 | skipped=1 | errors=0
+2026-01-06 13:37:43 | INFO |   Skipped: OS
+2026-01-06 13:37:43 | INFO | ------------------------------------------------------------
+2026-01-06 13:39:13 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 13:41:34 | INFO | SCAN_COMPLETE | signals=3 (EP:1, BO:2, HTF:0) | duration=140693ms
+2026-01-06 13:41:34 | INFO |   SIGNAL | OS | type=ep | entry=$23.565 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 13:41:34 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 13:41:34 | INFO |   SIGNAL | BAM | type=flag | entry=$55.12 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-06 13:41:34 | INFO | CYCLE_SUMMARY | executed=0 | skipped=3 | errors=0
+2026-01-06 13:41:34 | INFO |   Skipped: OS, DASH, BAM
+2026-01-06 13:41:34 | INFO | ------------------------------------------------------------
+2026-01-06 13:55:22 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 13:57:47 | INFO | SCAN_COMPLETE | signals=4 (EP:1, BO:3, HTF:0) | duration=145071ms
+2026-01-06 13:57:47 | INFO |   SIGNAL | OS | type=ep | entry=$23.595 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 13:57:47 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 13:57:47 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-06 13:57:47 | INFO |   SIGNAL | BAM | type=flag | entry=$55.12 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-06 13:57:47 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 13:57:47 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-06 13:57:47 | INFO | CYCLE_SUMMARY | executed=0 | skipped=4 | errors=0
+2026-01-06 13:57:47 | INFO |   Skipped: OS, DASH, META, BAM
+2026-01-06 13:57:47 | INFO | ------------------------------------------------------------
+2026-01-06 14:12:47 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 14:15:17 | INFO | SCAN_COMPLETE | signals=4 (EP:1, BO:3, HTF:0) | duration=150198ms
+2026-01-06 14:15:17 | INFO |   SIGNAL | OS | type=ep | entry=$23.5845 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 14:15:17 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 14:15:17 | INFO |   SIGNAL | META | type=flag | entry=$673.58 | stop=$643.5 | quality=6 | tier=WIDE
+2026-01-06 14:15:17 | INFO |   SIGNAL | BAM | type=flag | entry=$55.12 | stop=$52.01 | quality=6 | tier=WIDE
+2026-01-06 14:15:17 | INFO | SIZING_CAP | META | price=$673.58 | calculated=3 → capped=0 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 14:15:17 | INFO | TRADE_SKIPPED | META | reason=Position size < 1 share
+2026-01-06 14:15:17 | INFO | CYCLE_SUMMARY | executed=0 | skipped=4 | errors=0
+2026-01-06 14:15:17 | INFO |   Skipped: OS, DASH, META, BAM
+2026-01-06 14:15:17 | INFO | ------------------------------------------------------------
+2026-01-06 14:30:18 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 14:32:40 | INFO | SCAN_COMPLETE | signals=2 (EP:1, BO:1, HTF:0) | duration=142131ms
+2026-01-06 14:32:40 | INFO |   SIGNAL | OS | type=ep | entry=$23.585 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 14:32:40 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 14:32:40 | INFO | CYCLE_SUMMARY | executed=0 | skipped=2 | errors=0
+2026-01-06 14:32:40 | INFO |   Skipped: OS, DASH
+2026-01-06 14:32:40 | INFO | ------------------------------------------------------------
+2026-01-06 14:47:40 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 14:50:08 | INFO | SCAN_COMPLETE | signals=3 (EP:1, BO:2, HTF:0) | duration=147534ms
+2026-01-06 14:50:08 | INFO |   SIGNAL | OS | type=ep | entry=$23.59 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 14:50:08 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 14:50:08 | INFO |   SIGNAL | CRM | type=flag | entry=$269.11 | stop=$252.31 | quality=7 | tier=WIDE
+2026-01-06 14:50:08 | INFO | SIZING_CAP | CRM | price=$269.11 | calculated=5 → capped=1 | max_per_symbol=$500.00 | exceeds max_per_symbol cap
+2026-01-06 14:50:08 | INFO | TRADE_EXECUTED | CRM x 1 @ stop=$253.62 | order_id=6fea480f-7c57-4d6c-bf5e-b7a7df37f779
+2026-01-06 14:50:09 | INFO | CYCLE_SUMMARY | executed=1 | skipped=2 | errors=0
+2026-01-06 14:50:09 | INFO |   Executed: CRM
+2026-01-06 14:50:09 | INFO |   Skipped: OS, DASH
+2026-01-06 14:50:09 | INFO | ------------------------------------------------------------
+2026-01-06 15:05:09 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 15:07:29 | INFO | SCAN_COMPLETE | signals=2 (EP:1, BO:1, HTF:0) | duration=140388ms
+2026-01-06 15:07:29 | INFO |   SIGNAL | OS | type=ep | entry=$23.6 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 15:07:29 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 15:07:29 | INFO | CYCLE_SUMMARY | executed=0 | skipped=2 | errors=0
+2026-01-06 15:07:29 | INFO |   Skipped: OS, DASH
+2026-01-06 15:07:29 | INFO | ------------------------------------------------------------
+2026-01-06 15:22:29 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 15:24:47 | INFO | SCAN_COMPLETE | signals=3 (EP:1, BO:2, HTF:0) | duration=138305ms
+2026-01-06 15:24:47 | INFO |   SIGNAL | OS | type=ep | entry=$23.595 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 15:24:47 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 15:24:47 | INFO |   SIGNAL | CRM | type=flag | entry=$269.11 | stop=$252.31 | quality=7 | tier=WIDE
+2026-01-06 15:24:48 | INFO | CYCLE_SUMMARY | executed=0 | skipped=3 | errors=0
+2026-01-06 15:24:48 | INFO |   Skipped: OS, DASH, CRM
+2026-01-06 15:24:48 | INFO | ------------------------------------------------------------
+2026-01-06 15:39:48 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 15:42:12 | INFO | SCAN_COMPLETE | signals=2 (EP:1, BO:1, HTF:0) | duration=144006ms
+2026-01-06 15:42:12 | INFO |   SIGNAL | OS | type=ep | entry=$23.585 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 15:42:12 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 15:42:12 | INFO | CYCLE_SUMMARY | executed=0 | skipped=2 | errors=0
+2026-01-06 15:42:12 | INFO |   Skipped: OS, DASH
+2026-01-06 15:42:12 | INFO | ------------------------------------------------------------
+2026-01-06 15:57:12 | INFO | SCAN_START | modes=['breakout', 'htf', 'ep'] | min_quality=5 | min_price=$3.0 | stop_mode=percent
+2026-01-06 15:59:28 | INFO | SCAN_COMPLETE | signals=2 (EP:1, BO:1, HTF:0) | duration=136441ms
+2026-01-06 15:59:28 | INFO |   SIGNAL | OS | type=ep | entry=$23.6 | stop=$22.74 | quality=10 | tier=FOCUS
+2026-01-06 15:59:28 | INFO |   SIGNAL | DASH | type=flag | entry=$235.98 | stop=$218.22 | quality=7 | tier=WIDE
+2026-01-06 15:59:28 | INFO | CYCLE_SUMMARY | executed=0 | skipped=2 | errors=0
+2026-01-06 15:59:28 | INFO |   Skipped: OS, DASH
+2026-01-06 15:59:28 | INFO | ------------------------------------------------------------

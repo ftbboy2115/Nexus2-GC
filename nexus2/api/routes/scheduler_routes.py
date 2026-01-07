@@ -359,6 +359,9 @@ async def force_scheduler_scan(
         # Check auto_execute
         auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
         auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
+        
+        # Get preset for EP scanner settings
+        preset = getattr(sched_settings, 'preset', 'relaxed') or 'relaxed'
     
     logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
     
@@ -440,6 +443,7 @@ async def force_scheduler_scan(
             scan_modes=scan_modes,
             htf_frequency=htf_frequency,
             sim_mode=False,
+            preset=preset,  # Use preset from settings for EP criteria
         )
         
         # Run the scan cycle
