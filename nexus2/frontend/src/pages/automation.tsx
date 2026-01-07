@@ -63,6 +63,7 @@ export default function Automation() {
     // Column configuration for Open Positions table
     const columnConfig = useColumnConfig('automation_positions', AUTOMATION_COLUMNS)
     const [showColumnEditor, setShowColumnEditor] = useState(false)
+    const [positionsMaximized, setPositionsMaximized] = useState(false)
 
     const API_BASE = 'http://localhost:8000'
 
@@ -830,24 +831,37 @@ export default function Automation() {
                             )}
 
                             {/* Open Positions Card (Sim or Live based on mode) */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>
-                                        {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
-                                        <button
-                                            onClick={() => setShowColumnEditor(true)}
-                                            style={{ marginLeft: '8px', padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
-                                            title="Configure columns"
-                                        >
-                                            ⚙️
-                                        </button>
-                                    </h2>
+                            <div className={styles.card} style={positionsMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, margin: 0, borderRadius: 0, maxHeight: '100vh', overflow: 'auto' } : {}}>
+                                <div className={styles.cardHeader} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {/* Title row with window controls */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                        <h2 style={{ margin: 0 }}>
+                                            {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
+                                        </h2>
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <button
+                                                onClick={() => setShowColumnEditor(true)}
+                                                style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                                title="Configure columns"
+                                            >
+                                                ⚙️
+                                            </button>
+                                            <button
+                                                onClick={() => setPositionsMaximized(!positionsMaximized)}
+                                                style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                                title={positionsMaximized ? 'Restore' : 'Maximize'}
+                                            >
+                                                {positionsMaximized ? '🗗' : '🗖'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {/* Badge row */}
                                     {schedulerSettings?.sim_mode ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff' }}>
+                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff', alignSelf: 'flex-start' }}>
                                             {simPositions?.count || 0} positions • ${simPositions?.account?.portfolio_value?.toFixed(0) || '100,000'}
                                         </span>
                                     ) : positions?.count ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff' }}>
+                                        <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff', alignSelf: 'flex-start' }}>
                                             {positions.count} positions • {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
                                         </span>
                                     ) : null}
