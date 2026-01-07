@@ -298,14 +298,10 @@ class AlpacaBroker:
             current_price_raw = p.get("current_price")
             current_price = Decimal(str(current_price_raw)) if current_price_raw else (market_value / qty if qty > 0 else None)
             
-            # Calculate change_today manually from current_price and lastday_price
-            # Alpaca paper trading can return stale change_today values
-            lastday_price_raw = p.get("lastday_price")
-            change_today = None
-            if current_price and lastday_price_raw:
-                lastday_price = Decimal(str(lastday_price_raw))
-                if lastday_price > 0:
-                    change_today = ((current_price - lastday_price) / lastday_price) * 100
+            # Get today's P/L % from Alpaca (position-based, not stock daily change)
+            # This is how much YOUR POSITION changed today, from yesterday's close
+            change_today_raw = p.get("unrealized_intraday_plpc")
+            change_today = Decimal(str(change_today_raw)) * 100 if change_today_raw else None  # Convert to %
             
             # Get today's P/L in dollars from Alpaca
             today_pnl_raw = p.get("unrealized_intraday_pl")

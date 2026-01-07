@@ -118,7 +118,7 @@ export const AUTOMATION_COLUMNS: ColumnConfig[] = [
     { id: 'unrealized_pnl', label: 'Total P/L ($)', visible: true },
     { id: 'pnl_percent', label: 'Total P/L (%)', visible: true },
     { id: 'today_pnl', label: "Today's P/L ($)", visible: false },
-    { id: 'change_today', label: "Daily Chg (%)", visible: true },
+    { id: 'change_today', label: "Today's P/L (%)", visible: true },
     { id: 'days_held', label: 'Days', visible: false },
     { id: 'side', label: 'Side', visible: true },
 ]
@@ -135,6 +135,6 @@ export const AUTOMATION_EXPANDED_COLUMNS: ColumnConfig[] = [
     { id: 'unrealized_pnl', label: 'Total P/L ($)', visible: true },
     { id: 'pnl_percent', label: 'Total P/L (%)', visible: true },
     { id: 'today_pnl', label: "Today's P/L ($)", visible: true },
-    { id: 'change_today', label: "Daily Chg (%)", visible: true },
+    { id: 'change_today', label: "Today's P/L (%)", visible: true },
     { id: 'days_held', label: 'Days', visible: true },
 ]

@@ -742,9 +742,8 @@ async def get_broker_positions(request: Request):
                 "side": side,
                 "days_held": days_held,
                 "today_pnl": float(pos.today_pnl) if pos.today_pnl else None,
-                # Use pnl_percent for Today P/L % (same as Total P/L % for consistency)
-                # This shows position-based P/L, not stock daily change
-                "change_today": pnl_percent,
+                # Pass through Alpaca's unrealized_intraday_plpc (position's today P/L %)
+                "change_today": float(pos.change_today) if pos.change_today else None,
             })
             
             total_value += market_value
