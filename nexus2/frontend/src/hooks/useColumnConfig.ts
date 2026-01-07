@@ -112,7 +112,25 @@ export const AUTOMATION_COLUMNS: ColumnConfig[] = [
     { id: 'symbol', label: 'Symbol', visible: true },
     { id: 'qty', label: 'Qty', visible: true },
     { id: 'avg_price', label: 'Avg Price', visible: true },
+    { id: 'current_price', label: 'Current', visible: true },
     { id: 'market_value', label: 'Value', visible: true },
     { id: 'unrealized_pnl', label: 'P&L ($)', visible: true },
     { id: 'pnl_percent', label: 'P&L (%)', visible: true },
+    { id: 'change_today', label: 'Today', visible: true },
+    { id: 'side', label: 'Side', visible: true },
+]
+
+// Columns only shown in maximized/expanded view
+export const AUTOMATION_EXPANDED_COLUMNS: ColumnConfig[] = [
+    { id: 'symbol', label: 'Symbol', visible: true },
+    { id: 'qty', label: 'Qty', visible: true },
+    { id: 'side', label: 'Side', visible: true },
+    { id: 'avg_price', label: 'Entry', visible: true },
+    { id: 'current_price', label: 'Current', visible: true },
+    { id: 'stop_price', label: 'Stop', visible: true },
+    { id: 'market_value', label: 'Value', visible: true },
+    { id: 'unrealized_pnl', label: 'P&L ($)', visible: true },
+    { id: 'pnl_percent', label: 'P&L (%)', visible: true },
+    { id: 'change_today', label: 'Today', visible: true },
+    { id: 'days_held', label: 'Days', visible: true },
 ]

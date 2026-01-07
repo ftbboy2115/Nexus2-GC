@@ -3,7 +3,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/Automation.module.css'
 import ColumnEditor from '@/components/ColumnEditor'
-import { useColumnConfig, AUTOMATION_COLUMNS } from '@/hooks/useColumnConfig'
+import { useColumnConfig, AUTOMATION_COLUMNS, AUTOMATION_EXPANDED_COLUMNS } from '@/hooks/useColumnConfig'
 import {
     EngineStatus,
     SchedulerStatus,
@@ -917,11 +917,11 @@ export default function Automation() {
                                     ) : (
                                         /* LIVE MODE: Show Alpaca positions */
                                         positions?.positions && positions.positions.length > 0 ? (
-                                            <div className={styles.scrollableTable} style={{ overflowX: 'auto', maxHeight: positionsMaximized ? 'none' : '300px', overflowY: 'auto', width: '100%' }}>
-                                                <table className={styles.signalTable}>
-                                                    <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 1 }}>
+                                            <div className={styles.scrollableTable} style={{ overflowX: 'auto', maxHeight: positionsMaximized ? 'calc(100vh - 200px)' : '300px', overflowY: 'auto', width: '100%' }}>
+                                                <table className={styles.signalTable} style={positionsMaximized ? { width: '100%', tableLayout: 'fixed' } : {}}>
+                                                    <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 10 }}>
                                                         <tr>
-                                                            {columnConfig.columns.map(col => (
+                                                            {(positionsMaximized ? AUTOMATION_EXPANDED_COLUMNS : columnConfig.columns).map(col => (
                                                                 <th
                                                                     key={col.id}
                                                                     onClick={() => setPositionSort(prev => ({
@@ -958,14 +958,20 @@ export default function Automation() {
                                                             })
                                                             .map((pos) => (
                                                                 <tr key={pos.symbol}>
-                                                                    {columnConfig.columns.map((col) => {
+                                                                    {(positionsMaximized ? AUTOMATION_EXPANDED_COLUMNS : columnConfig.columns).map((col) => {
                                                                         switch (col.id) {
                                                                             case 'symbol':
                                                                                 return <td key={col.id} className={styles.symbol}>{pos.symbol}</td>
                                                                             case 'qty':
                                                                                 return <td key={col.id}>{pos.qty}</td>
+                                                                            case 'side':
+                                                                                return <td key={col.id}>{pos.side?.toUpperCase() || 'LONG'}</td>
                                                                             case 'avg_price':
                                                                                 return <td key={col.id}>${pos.avg_price.toFixed(2)}</td>
+                                                                            case 'current_price':
+                                                                                return <td key={col.id}>${pos.current_price?.toFixed(2) || '-'}</td>
+                                                                            case 'stop_price':
+                                                                                return <td key={col.id} style={{ color: '#f59e0b' }}>${pos.stop_price?.toFixed(2) || '-'}</td>
                                                                             case 'market_value':
                                                                                 return <td key={col.id}>${pos.market_value.toFixed(0)}</td>
                                                                             case 'unrealized_pnl':
@@ -980,6 +986,15 @@ export default function Automation() {
                                                                                         {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
                                                                                     </td>
                                                                                 )
+                                                                            case 'change_today':
+                                                                                const changeToday = pos.change_today || 0
+                                                                                return (
+                                                                                    <td key={col.id} style={{ color: changeToday >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                        {changeToday >= 0 ? '+' : ''}{changeToday.toFixed(1)}%
+                                                                                    </td>
+                                                                                )
+                                                                            case 'days_held':
+                                                                                return <td key={col.id}>{pos.days_held || 0}d</td>
                                                                             default:
                                                                                 return <td key={col.id}>-</td>
                                                                         }

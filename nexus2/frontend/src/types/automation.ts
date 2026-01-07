@@ -126,6 +126,12 @@ export interface BrokerPosition {
     market_value: number
     unrealized_pnl: number
     pnl_percent: number
+    // Expanded columns for maximized view
+    side?: string           // 'long' or 'short'
+    current_price?: number  // Current market price
+    stop_price?: number     // Current stop price
+    change_today?: number   // Today's % change
+    days_held?: number      // Days position has been held
 }
 
 // Positions data from /automation/positions
