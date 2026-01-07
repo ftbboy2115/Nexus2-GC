@@ -842,7 +842,7 @@ export default function Automation() {
                                     </h2>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <button
-                                            onClick={() => setShowColumnEditor(true)}
+                                            onClick={() => { columnConfig.openEditor(); setShowColumnEditor(true) }}
                                             style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
                                             title="Configure columns"
                                         >
