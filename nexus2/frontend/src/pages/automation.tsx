@@ -905,25 +905,18 @@ export default function Automation() {
                                                 <table className={styles.signalTable}>
                                                     <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 1 }}>
                                                         <tr>
-                                                            {[
-                                                                { key: 'symbol', label: 'Sym' },
-                                                                { key: 'qty', label: 'Qty' },
-                                                                { key: 'avg_price', label: 'Avg' },
-                                                                { key: 'market_value', label: 'Val' },
-                                                                { key: 'unrealized_pnl', label: 'P&L$' },
-                                                                { key: 'pnl_percent', label: 'P&L%' },
-                                                            ].map(col => (
+                                                            {columnConfig.columns.map(col => (
                                                                 <th
-                                                                    key={col.key}
+                                                                    key={col.id}
                                                                     onClick={() => setPositionSort(prev => ({
-                                                                        column: col.key,
-                                                                        direction: prev.column === col.key && prev.direction === 'desc' ? 'asc' : 'desc'
+                                                                        column: col.id,
+                                                                        direction: prev.column === col.id && prev.direction === 'desc' ? 'asc' : 'desc'
                                                                     }))}
                                                                     style={{ cursor: 'pointer', userSelect: 'none' }}
                                                                     title={`Sort by ${col.label}`}
                                                                 >
                                                                     {col.label}
-                                                                    {positionSort.column === col.key && (
+                                                                    {positionSort.column === col.id && (
                                                                         <span style={{ marginLeft: '4px' }}>
                                                                             {positionSort.direction === 'desc' ? '▼' : '▲'}
                                                                         </span>
@@ -949,16 +942,32 @@ export default function Automation() {
                                                             })
                                                             .map((pos) => (
                                                                 <tr key={pos.symbol}>
-                                                                    <td className={styles.symbol}>{pos.symbol}</td>
-                                                                    <td>{pos.qty}</td>
-                                                                    <td>${pos.avg_price.toFixed(2)}</td>
-                                                                    <td>${pos.market_value.toFixed(0)}</td>
-                                                                    <td style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                        {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
-                                                                    </td>
-                                                                    <td style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
-                                                                        {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
-                                                                    </td>
+                                                                    {columnConfig.columns.map((col) => {
+                                                                        switch (col.id) {
+                                                                            case 'symbol':
+                                                                                return <td key={col.id} className={styles.symbol}>{pos.symbol}</td>
+                                                                            case 'qty':
+                                                                                return <td key={col.id}>{pos.qty}</td>
+                                                                            case 'avg_price':
+                                                                                return <td key={col.id}>${pos.avg_price.toFixed(2)}</td>
+                                                                            case 'market_value':
+                                                                                return <td key={col.id}>${pos.market_value.toFixed(0)}</td>
+                                                                            case 'unrealized_pnl':
+                                                                                return (
+                                                                                    <td key={col.id} style={{ color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                        {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
+                                                                                    </td>
+                                                                                )
+                                                                            case 'pnl_percent':
+                                                                                return (
+                                                                                    <td key={col.id} style={{ color: pos.pnl_percent >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                        {pos.pnl_percent >= 0 ? '+' : ''}{pos.pnl_percent.toFixed(1)}%
+                                                                                    </td>
+                                                                                )
+                                                                            default:
+                                                                                return <td key={col.id}>-</td>
+                                                                        }
+                                                                    })}
                                                                 </tr>
                                                             ))}
                                                     </tbody>
@@ -1722,13 +1731,17 @@ export default function Automation() {
 
             {/* Column Editor Modal */}
             {showColumnEditor && (
-                <ColumnEditor
-                    columns={columnConfig.editColumns}
-                    onColumnsChange={columnConfig.setEditColumns}
-                    onSave={() => { columnConfig.saveEdit(); setShowColumnEditor(false) }}
-                    onCancel={() => setShowColumnEditor(false)}
-                    onReset={columnConfig.resetEdit}
-                />
+                <div className={styles.modalOverlay} onClick={() => setShowColumnEditor(false)}>
+                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                        <ColumnEditor
+                            columns={columnConfig.editColumns}
+                            onColumnsChange={columnConfig.setEditColumns}
+                            onSave={() => { columnConfig.saveEdit(); setShowColumnEditor(false) }}
+                            onCancel={() => setShowColumnEditor(false)}
+                            onReset={columnConfig.resetEdit}
+                        />
+                    </div>
+                </div>
             )}
         </>
     )
