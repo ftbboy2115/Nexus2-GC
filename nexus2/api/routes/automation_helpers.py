@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytz
 
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository, PositionExitRepository, SchedulerSettingsRepository
 
 logger = logging.getLogger(__name__)
@@ -60,8 +60,7 @@ async def auto_start_checker(
                 continue
             
             # Check scheduler settings
-            db = SessionLocal()
-            try:
+            with get_session() as db:
                 repo = SchedulerSettingsRepository(db)
                 settings = repo.get()
                 
@@ -112,9 +111,6 @@ async def auto_start_checker(
                     else:
                         logger.debug(f"[AutoStart] Scheduler already running, skipping")
                         set_auto_start_triggered_today(True)
-                        
-            finally:
-                db.close()
                 
         except Exception as e:
             logger.error(f"[AutoStart] Checker error: {e}")
@@ -150,8 +146,7 @@ async def configure_scanner_from_settings(engine, scheduler):
     """
     from nexus2.domain.automation.services import create_unified_scanner_callback
     
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         settings_repo = SchedulerSettingsRepository(db)
         sched_settings = settings_repo.get()
         
@@ -203,8 +198,6 @@ async def configure_scanner_from_settings(engine, scheduler):
         logger.info(f"[Scheduler] Scanner configured: {settings_used}")
         
         return settings_used
-    finally:
-        db.close()
 
 
 # ==================== EOD CALLBACK FACTORY ====================
@@ -270,8 +263,7 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                 return []
             
             # Normal mode: get from database
-            db = SessionLocal()
-            try:
+            with get_session() as db:
                 position_repo = PositionRepository(db)
                 positions = position_repo.get_open()
                 return [
@@ -284,8 +276,6 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                     }
                     for p in positions
                 ]
-            finally:
-                db.close()
         
         # Callback: Get daily close
         async def get_daily_close(symbol: str):
@@ -349,8 +339,7 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
         
         # Callback: Execute exit (use broker if available)
         async def execute_exit(position_id: str, shares: int, reason: str):
-            db = SessionLocal()
-            try:
+            with get_session() as db:
                 position_repo = PositionRepository(db)
                 exit_repo = PositionExitRepository(db)
                 
@@ -402,8 +391,6 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                 position_repo.update(position_id, update_data)
                 
                 logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
-            finally:
-                db.close()
         
         # Set callbacks and run (including affinity callbacks)
         job.set_callbacks(
@@ -461,8 +448,7 @@ def create_execute_callback(engine, broker, get_app_fn):
         for signal in signals:  # Execute all valid signals
             try:
                 # Get fresh settings each cycle
-                db = SessionLocal()
-                try:
+                with get_session() as db:
                     settings_repo = SchedulerSettingsRepository(db)
                     sched_settings = settings_repo.get()
                     
@@ -589,8 +575,6 @@ def create_execute_callback(engine, broker, get_app_fn):
                             logger.warning(f"[AutoExec] Discord notification failed: {discord_err}")
                     else:
                         errors.append({"symbol": signal.symbol, "error": "order_rejected"})
-                finally:
-                    db.close()
             except Exception as e:
                 errors.append({"symbol": signal.symbol, "error": str(e)})
                 logger.error(f"[AutoExec] Error executing {signal.symbol}: {e}")
