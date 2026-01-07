@@ -34,6 +34,11 @@ Format: `[commit] YYYY-MM-DD - Description`
 - Captures at trade time: preset, min_quality, min_price, scan_modes, scanner_version (git hash)
 - Enables post-mortem analysis: "What settings were used for this trade?"
 
+### Position P/L Display Fix
+- `571c773` - **Fix:** Renamed "Today's P/L (%)" to "Daily Chg (%)" - was showing stock daily change, not position P/L
+- `3ab0b89` - **Fix:** "Daily Chg (%)" now shows position P/L (entry vs current), matching "Total P/L %"
+- Both columns now consistently show your position's P/L based on entry price vs current price
+
 ### UI/Column Fixes (earlier)
 - `f926f61` - Fix column editor: maximized view respects saved column order
 - `a148070` - Fix column editor: call openEditor() when showing modal
