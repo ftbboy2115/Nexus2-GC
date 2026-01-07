@@ -668,8 +668,11 @@ async def get_broker_positions(request: Request):
     Get positions from the connected broker (Alpaca).
     
     Returns all open positions with current P&L.
-    This shows actual positions, not session-based engine stats.
+    Merges with local Position records to provide additional metadata
+    like stop_price and days_held for the expanded view.
     """
+    from datetime import datetime, timezone
+    
     broker = getattr(request.app.state, 'broker', None)
     
     if broker is None:
@@ -682,6 +685,17 @@ async def get_broker_positions(request: Request):
     try:
         positions_dict = broker.get_positions()
         
+        # Query local Position records for correlation
+        db = SessionLocal()
+        try:
+            position_repo = PositionRepository(db)
+            # Get all open positions from local DB
+            local_positions = position_repo.get_open_positions()
+            # Create lookup by symbol
+            local_by_symbol = {p.symbol: p for p in local_positions}
+        finally:
+            db.close()
+        
         # Convert to list format for frontend
         positions_list = []
         total_value = 0
@@ -690,15 +704,52 @@ async def get_broker_positions(request: Request):
         for symbol, pos in positions_dict.items():
             market_value = float(pos.market_value) if pos.market_value else 0
             unrealized_pnl = float(pos.unrealized_pnl) if pos.unrealized_pnl else 0
+            avg_price = float(pos.avg_price) if pos.avg_price else 0
+            qty = pos.quantity
+            
+            # Calculate P&L percent
+            pnl_percent = 0
+            if avg_price and qty:
+                pnl_percent = (unrealized_pnl / (avg_price * qty) * 100)
+            
+            # Get current price from market value / quantity
+            current_price = None
+            if qty and qty > 0:
+                current_price = market_value / qty
+            
+            # Merge with local Position record if available
+            local_pos = local_by_symbol.get(symbol)
+            stop_price = None
+            days_held = None
+            side = "long"  # Alpaca positions are typically long
+            change_today = None  # TODO: Would need market data for this
+            
+            if local_pos:
+                # Get stop from local record
+                if local_pos.current_stop:
+                    stop_price = float(local_pos.current_stop)
+                
+                # Calculate days held from opened_at
+                if local_pos.opened_at:
+                    opened_dt = local_pos.opened_at
+                    if opened_dt.tzinfo is None:
+                        opened_dt = opened_dt.replace(tzinfo=timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    days_held = (now - opened_dt).days
             
             positions_list.append({
                 "symbol": pos.symbol,
-                "qty": pos.quantity,
-                "avg_price": float(pos.avg_price),
+                "qty": qty,
+                "avg_price": avg_price,
                 "market_value": market_value,
                 "unrealized_pnl": unrealized_pnl,
-                "pnl_percent": (unrealized_pnl / (float(pos.avg_price) * pos.quantity) * 100) 
-                              if pos.avg_price and pos.quantity else 0,
+                "pnl_percent": pnl_percent,
+                # Expanded columns (from local DB merge)
+                "current_price": current_price,
+                "stop_price": stop_price,
+                "side": side,
+                "days_held": days_held,
+                "change_today": change_today,
             })
             
             total_value += market_value
@@ -716,6 +767,7 @@ async def get_broker_positions(request: Request):
         }
         
     except Exception as e:
+        logger.error(f"[Positions] Error fetching positions: {e}")
         return {
             "status": "error",
             "message": str(e),
