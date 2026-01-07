@@ -1389,6 +1389,7 @@ export default function Automation() {
                                                     max="3.0"
                                                     step="0.1"
                                                     value={schedulerSettings?.min_rvol || 1.5}
+                                                    className={styles.slider}
                                                     onChange={async (e) => {
                                                         const min_rvol = parseFloat(e.target.value)
                                                         try {
