@@ -831,41 +831,43 @@ export default function Automation() {
                             )}
 
                             {/* Open Positions Card (Sim or Live based on mode) */}
-                            <div className={styles.card} style={positionsMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, margin: 0, borderRadius: 0, maxHeight: '100vh', overflow: 'auto' } : {}}>
-                                <div className={styles.cardHeader} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {/* Title row with window controls */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                        <h2 style={{ margin: 0 }}>
-                                            {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
-                                        </h2>
-                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                            <button
-                                                onClick={() => setShowColumnEditor(true)}
-                                                style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
-                                                title="Configure columns"
-                                            >
-                                                ⚙️
-                                            </button>
-                                            <button
-                                                onClick={() => setPositionsMaximized(!positionsMaximized)}
-                                                style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
-                                                title={positionsMaximized ? 'Restore' : 'Maximize'}
-                                            >
-                                                {positionsMaximized ? '🗗' : '🗖'}
-                                            </button>
-                                        </div>
+                            {positionsMaximized && (
+                                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99, backgroundColor: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(4px)' }} onClick={() => setPositionsMaximized(false)} />
+                            )}
+                            <div className={styles.card} style={positionsMaximized ? { position: 'fixed', top: '20px', left: '20px', right: '20px', bottom: '20px', zIndex: 100, margin: 0, borderRadius: '12px', maxHeight: 'calc(100vh - 40px)', overflow: 'auto' } : {}}>                                <div className={styles.cardHeader} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {/* Title row with window controls */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                    <h2 style={{ margin: 0 }}>
+                                        {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
+                                    </h2>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        <button
+                                            onClick={() => setShowColumnEditor(true)}
+                                            style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            title="Configure columns"
+                                        >
+                                            ⚙️
+                                        </button>
+                                        <button
+                                            onClick={() => setPositionsMaximized(!positionsMaximized)}
+                                            style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            title={positionsMaximized ? 'Restore' : 'Maximize'}
+                                        >
+                                            {positionsMaximized ? '🗗' : '🗖'}
+                                        </button>
                                     </div>
-                                    {/* Badge row */}
-                                    {schedulerSettings?.sim_mode ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff', alignSelf: 'flex-start' }}>
-                                            {simPositions?.count || 0} positions • ${simPositions?.account?.portfolio_value?.toFixed(0) || '100,000'}
-                                        </span>
-                                    ) : positions?.count ? (
-                                        <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff', alignSelf: 'flex-start' }}>
-                                            {positions.count} positions • {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
-                                        </span>
-                                    ) : null}
                                 </div>
+                                {/* Badge row */}
+                                {schedulerSettings?.sim_mode ? (
+                                    <span className={`${styles.badge}`} style={{ backgroundColor: '#8b5cf6', color: '#fff', alignSelf: 'flex-start' }}>
+                                        {simPositions?.count || 0} positions • ${simPositions?.account?.portfolio_value?.toFixed(0) || '100,000'}
+                                    </span>
+                                ) : positions?.count ? (
+                                    <span className={`${styles.badge}`} style={{ backgroundColor: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444', color: '#fff', alignSelf: 'flex-start' }}>
+                                        {positions.count} positions • {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
+                                    </span>
+                                ) : null}
+                            </div>
                                 <div className={styles.cardBody}>
                                     {/* SIM MODE: Show MockBroker positions */}
                                     {schedulerSettings?.sim_mode ? (
@@ -915,7 +917,7 @@ export default function Automation() {
                                     ) : (
                                         /* LIVE MODE: Show Alpaca positions */
                                         positions?.positions && positions.positions.length > 0 ? (
-                                            <div className={styles.scrollableTable} style={{ overflowX: 'auto', maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
+                                            <div className={styles.scrollableTable} style={{ overflowX: 'auto', maxHeight: positionsMaximized ? 'none' : '300px', overflowY: 'auto', width: '100%' }}>
                                                 <table className={styles.signalTable}>
                                                     <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 1 }}>
                                                         <tr>
