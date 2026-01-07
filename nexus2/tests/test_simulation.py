@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 # Set test mode
 os.environ["TESTING"] = "true"
 
+from uuid import uuid4
+
 
 class TestSimulationClock:
     """Tests for SimulationClock."""
@@ -139,15 +141,15 @@ class TestMockBroker:
         broker.set_price("NVDA", 500.0)
         
         result = broker.submit_bracket_order(
+            client_order_id=uuid4(),
             symbol="NVDA",
-            side="buy",
-            qty=10,
-            stop_price=480.0,
+            quantity=10,
+            stop_loss_price=480.0,
         )
         
-        assert result.is_accepted is True
-        assert result.avg_fill_price == 500.0
-        assert result.filled_qty == 10
+        assert result.status.value == "filled"
+        assert float(result.avg_fill_price) == 500.0
+        assert result.filled_quantity == 10
     
     def test_position_created(self):
         """Position created after fill."""
@@ -155,7 +157,7 @@ class TestMockBroker:
         
         broker = MockBroker(initial_cash=50_000)
         broker.set_price("NVDA", 500.0)
-        broker.submit_bracket_order("NVDA", "buy", 10, 480.0)
+        broker.submit_bracket_order(uuid4(), "NVDA", 10, 480.0)
         
         positions = broker.get_positions()
         assert len(positions) == 1
@@ -168,7 +170,7 @@ class TestMockBroker:
         
         broker = MockBroker(initial_cash=50_000)
         broker.set_price("AAPL", 150.0)
-        broker.submit_bracket_order("AAPL", "buy", 10, 145.0)  # $1500
+        broker.submit_bracket_order(uuid4(), "AAPL", 10, 145.0)  # $1500
         
         account = broker.get_account()
         assert account["cash"] == 50_000 - 1500
@@ -179,7 +181,7 @@ class TestMockBroker:
         
         broker = MockBroker(initial_cash=50_000)
         broker.set_price("AAPL", 150.0)
-        broker.submit_bracket_order("AAPL", "buy", 10, 145.0)
+        broker.submit_bracket_order(uuid4(), "AAPL", 10, 145.0)
         
         # Price drops below stop
         broker.set_price("AAPL", 140.0)
@@ -195,10 +197,9 @@ class TestMockBroker:
         broker = MockBroker(initial_cash=1_000)
         broker.set_price("TSLA", 200.0)
         
-        result = broker.submit_bracket_order("TSLA", "buy", 100, 190.0)  # $20,000
+        result = broker.submit_bracket_order(uuid4(), "TSLA", 100, 190.0)  # $20,000
         
-        assert result.is_accepted is False
-        assert "Insufficient" in (result.error or "")
+        assert result.status.value == "rejected"
 
 
 class TestMockMarketData:
@@ -270,9 +271,9 @@ class TestSimulationIntegration:
         
         # Entry
         broker.set_price("NVDA", 500.0)
-        result = broker.submit_bracket_order("NVDA", "buy", 10, 490.0)
+        result = broker.submit_bracket_order(uuid4(), "NVDA", 10, 490.0)
         
-        assert result.is_accepted is True
+        assert result.status.value == "filled"
         assert len(broker.get_positions()) == 1
         
         # Price drops to stop
@@ -291,7 +292,7 @@ class TestSimulationIntegration:
         
         broker = MockBroker(initial_cash=10_000)
         broker.set_price("AAPL", 150.0)
-        broker.submit_bracket_order("AAPL", "buy", 10, 145.0)
+        broker.submit_bracket_order(uuid4(), "AAPL", 10, 145.0)
         
         # Price goes up
         broker.set_price("AAPL", 160.0)

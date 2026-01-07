@@ -507,10 +507,10 @@ def create_execute_callback(engine, broker, get_app_fn):
                             mock_broker.set_price(signal.symbol, float(signal.entry_price))
                             
                             result = mock_broker.submit_bracket_order(
+                                client_order_id=uuid4(),
                                 symbol=signal.symbol,
-                                side="buy",
-                                qty=shares,
-                                stop_price=float(signal.stop_price),
+                                quantity=shares,
+                                stop_loss_price=float(signal.stop_price),
                             )
                             logger.info(f"[SIM] Submitted mock order for {signal.symbol}: {result}")
                         else:
