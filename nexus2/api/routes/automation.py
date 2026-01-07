@@ -690,7 +690,7 @@ async def get_broker_positions(request: Request):
         try:
             position_repo = PositionRepository(db)
             # Get all open positions from local DB
-            local_positions = position_repo.get_open_positions()
+            local_positions = position_repo.get_open()
             # Create lookup by symbol
             local_by_symbol = {p.symbol: p for p in local_positions}
         finally:
