@@ -926,7 +926,8 @@ export default function Automation() {
                                                 <table className={styles.signalTable} style={positionsMaximized ? { width: '100%', tableLayout: 'fixed' } : {}}>
                                                     <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 10 }}>
                                                         <tr>
-                                                            {(positionsMaximized ? AUTOMATION_EXPANDED_COLUMNS : columnConfig.columns).map(col => (
+                                                            {/* Maximized: show all columns in user's order; Normal: show visible columns only */}
+                                                            {(positionsMaximized ? columnConfig.allColumns : columnConfig.columns).map(col => (
                                                                 <th
                                                                     key={col.id}
                                                                     onClick={() => setPositionSort(prev => ({
@@ -963,7 +964,7 @@ export default function Automation() {
                                                             })
                                                             .map((pos) => (
                                                                 <tr key={pos.symbol}>
-                                                                    {(positionsMaximized ? AUTOMATION_EXPANDED_COLUMNS : columnConfig.columns).map((col) => {
+                                                                    {(positionsMaximized ? columnConfig.allColumns : columnConfig.columns).map((col) => {
                                                                         switch (col.id) {
                                                                             case 'symbol':
                                                                                 return <td key={col.id} className={styles.symbol}>{pos.symbol}</td>

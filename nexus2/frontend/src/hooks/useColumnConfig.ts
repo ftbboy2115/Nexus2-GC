@@ -42,7 +42,7 @@ export function useColumnConfig(
             }
         }
         loadPreferences()
-    }, [preferenceKey, defaultColumns])
+    }, [preferenceKey]) // Remove defaultColumns from deps - it's stable
 
     // Open editor modal
     const openEditor = useCallback(() => {
