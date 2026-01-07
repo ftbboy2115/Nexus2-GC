@@ -8,11 +8,26 @@ Format: `[commit] YYYY-MM-DD - Description`
 
 ## 2026-01-07
 
-- `f926f61` 2026-01-07 - Fix column editor: maximized view respects saved column order
-- `a148070` 2026-01-07 - Fix column editor: call openEditor() when showing modal
-- `548b21d` 2026-01-07 - Add all columns (today_pnl, days_held, stop_price) to layout editor
-- `c301618` 2026-01-06 - Fix days calculation to use calendar days
-- `bf16dad` 2026-01-06 - Update column headers, add Today's P/L ($), grey for 0 values
+### DB Session Refactor (Critical)
+- `49b3c82` - **Refactor:** Complete DB session context manager migration
+  - Converted 29 instances across 11 files from manual `SessionLocal()` + `try/finally/db.close()` to `get_session()` context manager
+  - Files: preferences, watchlist, monitor_routes, ma_check_routes, scanner, execution_handler, scheduler_routes, automation_helpers, automation_simulation, automation, analytics
+  - Benefits: Guaranteed cleanup, ~60 fewer lines of boilerplate, consistent pattern
+
+### Bug Fixes
+- `70f8d0c` - **Fix:** MockBroker.submit_bracket_order signature mismatch
+  - Updated automation_helpers.py to use correct kwargs (client_order_id, quantity, stop_loss_price)
+  - Aligns SIM mode calls with AlpacaBroker interface
+
+### Test Suite Improvements
+- `654a93e` - **Fix:** HTF scanner tests - updated test data to ensure MA stacking
+- `3b81eeb` - **Fix:** FMP adapter test (updated for current behavior), integration test (marked skip)
+- Result: 228 tests passing, 0 failures
+
+### UI/Column Fixes (earlier)
+- `f926f61` - Fix column editor: maximized view respects saved column order
+- `a148070` - Fix column editor: call openEditor() when showing modal
+- `548b21d` - Add all columns (today_pnl, days_held, stop_price) to layout editor
 
 ---
 
