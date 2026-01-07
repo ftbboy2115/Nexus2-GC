@@ -35,9 +35,9 @@ Format: `[commit] YYYY-MM-DD - Description`
 - Enables post-mortem analysis: "What settings were used for this trade?"
 
 ### Position P/L Display Fix
-- `571c773` - **Fix:** Renamed "Today's P/L (%)" to "Daily Chg (%)" - was showing stock daily change, not position P/L
-- `3ab0b89` - **Fix:** "Daily Chg (%)" now shows position P/L (entry vs current), matching "Total P/L %"
-- Both columns now consistently show your position's P/L based on entry price vs current price
+- `4ad4c03` - **Fix:** "Today's P/L (%)" now uses Alpaca's `unrealized_intraday_plpc`
+- Shows how much your position changed TODAY (from yesterday's close or entry if same-day)
+- Now matches Alpaca's dashboard exactly
 
 ### UI/Column Fixes (earlier)
 - `f926f61` - Fix column editor: maximized view respects saved column order
