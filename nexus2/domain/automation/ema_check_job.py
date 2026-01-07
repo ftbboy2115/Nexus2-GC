@@ -308,8 +308,12 @@ class MACheckJob:
         opened_date = opened_at.date() if isinstance(opened_at, datetime) else opened_at
         days_held = (current_date - opened_date).days
         
-        # Determine if position is "mature" for full MA trailing logic
-        is_mature = days_held >= self.min_days_for_trailing
+        # KK Methodology: Character change logic (close < BOTH EMAs) always applies Days 0-4
+        # Mature trailing (single MA) only starts Day 5+
+        # The min_days_for_trailing setting controls WHEN mature trailing kicks in,
+        # but character change checks must ALWAYS run for early positions
+        CHARACTER_CHANGE_CUTOFF = 5  # Days 0-4 use character change logic
+        is_mature = days_held >= max(self.min_days_for_trailing, CHARACTER_CHANGE_CUTOFF)
         
         # Get daily close
         if not self._get_daily_close:
