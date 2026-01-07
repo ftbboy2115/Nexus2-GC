@@ -113,10 +113,13 @@ export const AUTOMATION_COLUMNS: ColumnConfig[] = [
     { id: 'qty', label: 'Qty', visible: true },
     { id: 'avg_price', label: 'Avg Price', visible: true },
     { id: 'current_price', label: 'Current', visible: true },
+    { id: 'stop_price', label: 'Stop', visible: false },
     { id: 'market_value', label: 'Value', visible: true },
     { id: 'unrealized_pnl', label: 'Total P/L ($)', visible: true },
     { id: 'pnl_percent', label: 'Total P/L (%)', visible: true },
+    { id: 'today_pnl', label: "Today's P/L ($)", visible: false },
     { id: 'change_today', label: "Today's P/L (%)", visible: true },
+    { id: 'days_held', label: 'Days', visible: false },
     { id: 'side', label: 'Side', visible: true },
 ]
 
