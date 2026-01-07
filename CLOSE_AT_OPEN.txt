@@ -1,0 +1,40 @@
+# Positions to Close at Market Open - Jan 7, 2026
+# ONE-TIME MANUAL OVERRIDE
+# =====================================================
+# 
+# These positions broke trend but were missed by the old Monitor logic
+# (Zero Signal Anomaly bug). The bug is now fixed, but we need to
+# manually close these as a one-time cleanup.
+#
+# After today, the fixed Monitor will catch these at 3:45 PM automatically.
+#
+# =====================================================
+
+CONFIRMED EXIT SIGNALS (from MA check at 7:55 AM):
+  CMCSA  - Comcast        - below 10 EMA ($27.42 < $27.68)
+  CP     - Canadian Pacific - below 10 EMA ($73.46 < $73.92)
+  MDLZ   - Mondelez       - below 10 EMA ($52.73 < $53.93)
+  PBR    - Petrobras      - below 10 EMA ($11.57 < $11.75)
+  T      - AT&T           - below 10 EMA ($24.34 < $24.58)
+  WBD    - Warner Bros    - below 10 EMA ($28.47 < $28.64)  ** NEW **
+  WMB    - Williams       - below 10 EMA ($59.50 < $59.92)
+
+NOTE: SONY was in original list but NOT in current exit signals
+
+# =====================================================
+# HOW TO RUN MANUAL MA CHECK:
+# =====================================================
+#
+# Option 1: API call (Postman, curl, etc.)
+#   POST http://localhost:8000/automation/ma-check
+#   Body: {"min_days": 0, "require_timing_window": false}
+#
+# Option 2: Browser (if API is running)
+#   Open: http://localhost:8000/docs
+#   Find: POST /automation/ma-check
+#   Execute with: {"min_days": 0, "require_timing_window": false}
+#
+# This bypasses the 3:45 PM timing window and runs the check immediately.
+# The check will generate sell orders for positions with character change exits.
+#
+# =====================================================
