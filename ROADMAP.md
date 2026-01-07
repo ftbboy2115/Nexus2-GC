@@ -66,6 +66,8 @@ Last updated: 2026-01-06
 - [ ] **Full E2E simulation test** — After fixing HTF signal conversion
 - [ ] **RVOL filtering for Breakout scanner** — Per KK methodology, breakouts should require 2-3x average volume
   - Currently only EP scanner uses RVOL; Breakout/HTF do not check volume
+- [ ] **Investigate ERAS miss (Jan 7)** — Valid EP setup (+25% gap, 52-wk high, catalyst) not detected
+  - Need to determine: Was ERAS in FMP gainer list? If yes, why rejected? If no, expand universe?
 
 ---
 
