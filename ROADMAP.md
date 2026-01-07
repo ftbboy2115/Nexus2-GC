@@ -41,6 +41,9 @@ Last updated: 2026-01-06
 - [ ] **`orders_filled` increment timing** — Verify correct increment logic
 - [ ] **API server restart** — Test ability to restart uvicorn from API without manual intervention
 - [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
+- [ ] **Scanner version tracking** — Add `scanner_version` or `commit_hash` to positions table
+  - Enables post-mortem timeline analysis (e.g., "was MA stacking enforced?")
+  - Learned from Jan 7 post-mortem of pre-fix trades
 
 ---
 

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Optional
 
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.models import UserPreferencesModel
 
 router = APIRouter(prefix="/api", tags=["preferences"])
@@ -31,8 +31,7 @@ async def get_preference(key: str):
     - dashboard_columns: Column layout for Dashboard positions table
     - automation_columns: Column layout for Automation positions table
     """
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         pref = db.query(UserPreferencesModel).filter(
             UserPreferencesModel.key == key
         ).first()
@@ -41,8 +40,6 @@ async def get_preference(key: str):
             return {"key": key, "value": None}
         
         return pref.to_dict()
-    finally:
-        db.close()
 
 
 @router.put("/preferences/{key}")
@@ -52,31 +49,29 @@ async def set_preference(key: str, body: PreferenceValue):
     
     The value can be any JSON-serializable object (e.g., array of column configs).
     """
-    db = SessionLocal()
-    try:
-        # Check if exists
-        pref = db.query(UserPreferencesModel).filter(
-            UserPreferencesModel.key == key
-        ).first()
-        
-        value_json = json.dumps(body.value)
-        
-        if pref:
-            # Update existing
-            pref.value = value_json
-        else:
-            # Create new
-            pref = UserPreferencesModel(key=key, value=value_json)
-            db.add(pref)
-        
-        db.commit()
-        db.refresh(pref)
-        
-        logger.info(f"[Preferences] Saved {key}")
-        return pref.to_dict()
-    except Exception as e:
-        db.rollback()
-        logger.error(f"[Preferences] Error saving {key}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
+    with get_session() as db:
+        try:
+            # Check if exists
+            pref = db.query(UserPreferencesModel).filter(
+                UserPreferencesModel.key == key
+            ).first()
+            
+            value_json = json.dumps(body.value)
+            
+            if pref:
+                # Update existing
+                pref.value = value_json
+            else:
+                # Create new
+                pref = UserPreferencesModel(key=key, value=value_json)
+                db.add(pref)
+            
+            db.commit()
+            db.refresh(pref)
+            
+            logger.info(f"[Preferences] Saved {key}")
+            return pref.to_dict()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"[Preferences] Error saving {key}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))

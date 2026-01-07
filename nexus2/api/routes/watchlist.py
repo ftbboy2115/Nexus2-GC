@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from nexus2.db import SessionLocal, WatchlistRepository
+from nexus2.db import WatchlistRepository
+from nexus2.db.database import get_session
 
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
@@ -19,11 +20,8 @@ router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 def get_db():
     """Get database session."""
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         yield db
-    finally:
-        db.close()
 
 
 # Request/Response models

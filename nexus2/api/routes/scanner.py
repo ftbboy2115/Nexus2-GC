@@ -151,10 +151,10 @@ async def run_scanner(request: ScannerRunRequest):
         # Persist to watchlist (optional - keep existing behavior)
         try:
             from uuid import uuid4
-            from nexus2.db import SessionLocal, WatchlistRepository
+            from nexus2.db import WatchlistRepository
+            from nexus2.db.database import get_session
             
-            db = SessionLocal()
-            try:
+            with get_session() as db:
                 repo = WatchlistRepository(db)
                 persisted_count = 0
                 
@@ -178,8 +178,6 @@ async def run_scanner(request: ScannerRunRequest):
                         persisted_count += 1
                 
                 print(f"[Scanner] Persisted {persisted_count} candidates to watchlist")
-            finally:
-                db.close()
         except Exception as e:
             print(f"[Scanner] Warning: Failed to persist to watchlist: {e}")
         

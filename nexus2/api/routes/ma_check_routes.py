@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Request
 
 from nexus2.api.routes.automation_models import MACheckRequest
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
 
 logger = logging.getLogger(__name__)
@@ -86,8 +86,7 @@ async def run_ma_check(
     
     # Callback: Get open positions
     async def get_positions():
-        db = SessionLocal()
-        try:
+        with get_session() as db:
             position_repo = PositionRepository(db)
             positions = position_repo.get_open()
             return [
@@ -100,8 +99,6 @@ async def run_ma_check(
                 }
                 for p in positions
             ]
-        finally:
-            db.close()
     
     # Callback: Get daily close (use last price as proxy)
     async def get_daily_close(symbol: str):
@@ -149,8 +146,7 @@ async def run_ma_check(
         from datetime import datetime
         from uuid import uuid4
         
-        db = SessionLocal()
-        try:
+        with get_session() as db:
             position_repo = PositionRepository(db)
             exit_repo = PositionExitRepository(db)
             
@@ -204,8 +200,6 @@ async def run_ma_check(
             position_repo.update(position_id, update_data)
             
             logger.info(f"[MACheck] Exited {position.symbol}: {shares} shares")
-        finally:
-            db.close()
     
     # Set callbacks
     job.set_callbacks(

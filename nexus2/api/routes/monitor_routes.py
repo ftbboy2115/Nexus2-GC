@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends
 from nexus2.domain.automation.engine import AutomationEngine
 from nexus2.api.routes.automation_state import get_engine, get_monitor
 from nexus2.api.routes.automation_models import MonitorStartRequest
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
 
 logger = logging.getLogger(__name__)
@@ -41,8 +41,7 @@ async def start_monitor(
     
     # Get positions callback (must be async for monitor.py)
     async def get_positions():
-        db = SessionLocal()
-        try:
+        with get_session() as db:
             repo = PositionRepository(db)
             positions = repo.get_open()
             return [
@@ -56,8 +55,6 @@ async def start_monitor(
                 }
                 for p in positions
             ]
-        finally:
-            db.close()
     
     # Get price callback (uses FMP or returns mock for demo)
     async def get_price(symbol: str):
@@ -78,8 +75,7 @@ async def start_monitor(
         from datetime import datetime
         from decimal import Decimal
         
-        db = SessionLocal()
-        try:
+        with get_session() as db:
             position_repo = PositionRepository(db)
             exit_repo = PositionExitRepository(db)
             
@@ -109,8 +105,6 @@ async def start_monitor(
                 position_repo.update(signal.position_id, updates)
             
             return {"status": "executed", "symbol": signal.symbol}
-        finally:
-            db.close()
     
     monitor.set_callbacks(get_positions, get_price, execute_exit)
     
