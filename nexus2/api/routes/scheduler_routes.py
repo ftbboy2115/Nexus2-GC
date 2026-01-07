@@ -27,7 +27,7 @@ from nexus2.api.routes.automation_helpers import (
     create_eod_callback,
 )
 from nexus2.api.routes.execution_handler import create_execute_callback as _create_execute_callback_factory
-from nexus2.db import SessionLocal
+from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
 
 logger = logging.getLogger(__name__)
@@ -341,8 +341,7 @@ async def force_scheduler_scan(
     from nexus2.domain.automation.services import create_unified_scanner_callback
     
     # Get fresh settings
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         settings_repo = SchedulerSettingsRepository(db)
         sched_settings = settings_repo.get()
         
@@ -360,9 +359,6 @@ async def force_scheduler_scan(
         # Check auto_execute
         auto_execute_setting = getattr(sched_settings, 'auto_execute', 'false')
         auto_execute = auto_execute_setting == "true" if isinstance(auto_execute_setting, str) else bool(auto_execute_setting)
-        
-    finally:
-        db.close()
     
     logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
     
@@ -576,16 +572,13 @@ async def toggle_auto_execute(req: SchedulerToggleRequest):
     scheduler.auto_execute = req.auto_execute
     
     # Persist to database so it survives scheduler restarts
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         repo = SchedulerSettingsRepository(db)
         settings = repo.get()
         settings.auto_execute = "true" if req.auto_execute else "false"
         db.commit()
         logger.info(f"[Scheduler] auto_execute toggled to: {req.auto_execute} (persisted to DB)")
         print(f"🔄 [Scheduler] auto_execute toggled to: {req.auto_execute} (persisted)")
-    finally:
-        db.close()
     
     return {
         "status": "updated",
@@ -630,13 +623,10 @@ async def get_scheduler_settings():
     """
     from nexus2.db import SchedulerSettingsRepository
     
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         repo = SchedulerSettingsRepository(db)
         settings = repo.get()
         return settings.to_dict()
-    finally:
-        db.close()
 
 
 @router.patch("/scheduler/settings", response_model=dict)
@@ -649,8 +639,7 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
     """
     from nexus2.db import SchedulerSettingsRepository
     
-    db = SessionLocal()
-    try:
+    with get_session() as db:
         repo = SchedulerSettingsRepository(db)
         
         # Build updates dict from request (only non-None values)
@@ -685,8 +674,6 @@ async def update_scheduler_settings(req: SchedulerSettingsRequest):
             return settings.to_dict()
         else:
             return repo.get().to_dict()
-    finally:
-        db.close()
 
 
 # ==================== LIQUIDATE ALL ENDPOINT ====================
