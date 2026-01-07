@@ -13,8 +13,8 @@ Last updated: 2026-01-06
 
 ## 🔧 Features
 
+- [ ] **VPS Deployment** — Set up on DigitalOcean droplet (TOP PRIORITY)
 - [x] **HTF Simulation Testing** — Verified: scanner works, added configurable extended threshold
-- [ ] **VPS Deployment** — Set up on DigitalOcean droplet
 - [x] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint
   - GUI: Button in Quick Actions with confirmation modal
