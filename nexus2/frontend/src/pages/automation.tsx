@@ -917,12 +917,11 @@ export default function Automation() {
                                     ) : (
                                         /* LIVE MODE: Show Alpaca positions */
                                         positions?.positions && positions.positions.length > 0 ? (
-                                            <div className={styles.scrollableTable} style={{
+                                            <div className={`${styles.scrollableTable} ${positionsMaximized ? styles.scrollableTableMaximized : ''}`} style={{
                                                 overflowX: 'auto',
                                                 maxHeight: positionsMaximized ? 'calc(100vh - 200px)' : '300px',
                                                 overflowY: positionsMaximized ? 'scroll' : 'auto',
                                                 width: '100%',
-                                                scrollbarGutter: positionsMaximized ? 'stable' : 'auto',
                                             }}>
                                                 <table className={styles.signalTable} style={positionsMaximized ? { width: '100%', tableLayout: 'fixed' } : {}}>
                                                     <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1f2937', zIndex: 10 }}>
