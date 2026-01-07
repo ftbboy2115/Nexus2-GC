@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-03
+Last updated: 2026-01-06
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -60,6 +60,25 @@ Last updated: 2026-01-03
 
 ---
 
+## 🎯 Warrior Trading Strategy (Ross Cameron)
+
+> Day trading methodology: Low-float momentum, gap-and-go setups. [Full Guide](~/.gemini/antigravity/knowledge/trading_strategies_reference/artifacts/strategies/warrior_trading/warrior_trading_strategy_guide.md)
+
+- [ ] **WarriorScanner** — Low-float momentum scanner
+  - [ ] Float filtering (requires FMP extension)
+  - [ ] RVOL calculation (time-of-day adjusted)
+  - [ ] Pre-market highs monitoring
+  - [ ] MACD (12, 26, 9) indicator
+  - [ ] VWAP for pullback entries
+- [ ] **WarriorMonitor** — Day trade management (different from KK swing)
+  - [ ] 1-minute ORB at 9:30 AM
+  - [ ] Multi-session ORB (4am, 6am, 7am)
+  - [ ] 10:00 AM exit time priority
+  - [ ] First red 5-min candle exit signal
+- [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
+
+---
+
 ## 🧪 R&D Labs (Low Priority)
 
 > Experimental multi-agent AI system for autonomous strategy discovery and optimization.
@@ -84,6 +103,9 @@ Last updated: 2026-01-03
 
 ## ✅ Completed (Recent)
 
+- [x] **MA Check Exit Logic** — Fixed order submission, broker reference, character change exits
+- [x] **Position Enrichment Script** — `scripts/enrich_positions.py` repairs orphaned position metadata
+- [x] **Simulation Entry Time Tracking** — MockPosition tracks actual opened_at for correct days_held
 - [x] Sim mode display on page load
 - [x] MA stacking filter in breakout scanner (price > SMA10 > SMA20 > SMA50)
 - [x] Monitor auto-start with scheduler (await fix + singleton unification)
@@ -91,3 +113,4 @@ Last updated: 2026-01-03
 - [x] Graceful shutdown (Ctrl+C handling)
 - [x] Singleton cleanup
 - [x] EP Scanner infrastructure (catalyst patterns, CatalystType.NEWS, opening range)
+
