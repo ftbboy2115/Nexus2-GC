@@ -127,7 +127,6 @@ class UnifiedMarketData:
         """
         bars = self.get_daily_bars(symbol, limit=period + 5)
         if not bars or len(bars) < period:
-            print(f"[ADR DEBUG] {symbol}: Insufficient bars - got {len(bars) if bars else 0}, need {period}")
             return None
         
         recent_bars = bars[-period:]
@@ -136,10 +135,7 @@ class UnifiedMarketData:
         
         last_close = bars[-1].close
         if last_close > 0:
-            adr_pct = (avg_range / last_close) * 100
-            print(f"[ADR DEBUG] {symbol}: bars={len(recent_bars)}, avg_range={avg_range:.4f}, close={last_close:.2f}, ADR%={adr_pct:.2f}")
-            return adr_pct
-        print(f"[ADR DEBUG] {symbol}: last_close is 0 or negative")
+            return (avg_range / last_close) * 100
         return None
     
     def get_opening_range(
