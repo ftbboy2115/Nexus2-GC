@@ -101,7 +101,7 @@ class AutomationScheduler:
     
     @property
     def is_eod_window(self) -> bool:
-        """Check if currently within EOD check window (3:45-4:00 PM)."""
+        """Check if currently within EOD check window (3:45-4:00 PM ET)."""
         # In sim_mode, use the simulation clock
         if self.sim_mode:
             try:
@@ -111,10 +111,12 @@ class AutomationScheduler:
             except Exception:
                 pass
         
-        # Real time check
-        now = datetime.now()
-        current_time = now.time()
-        weekday = now.weekday()
+        # Real time check - MUST use Eastern Time (VPS may be on UTC)
+        import pytz
+        eastern = pytz.timezone('America/New_York')
+        now_et = datetime.now(eastern)
+        current_time = now_et.time()
+        weekday = now_et.weekday()
         
         # Weekends
         if weekday >= 5:
