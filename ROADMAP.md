@@ -38,16 +38,15 @@ Last updated: 2026-01-06
 - [x] **ADR showing 0.0% — FIXED** — Root cause: `unified.py:75` had `>= 50` threshold
   - **Fix (Jan 7):** Changed to dynamic `>= min(10, limit//2)` - commit `14eb988`
   - FMP was returning valid 25-bar data but unified adapter incorrectly fell back to Alpaca (1 bar)
-- [/] **DB session context managers** — Add `with` blocks for automatic cleanup
-  - ✅ Created `get_session()` in database.py
-  - ✅ scheduler_routes.py refactored (3 instances)
-  - ⏳ ~33 instances remaining across routes/
+- [x] **DB session context managers — COMPLETE** — All routes now use `with get_session() as db:`
+  - Created `get_session()` in database.py
+  - Refactored all 29 instances across routes/
 - [ ] **`orders_filled` increment timing** — Verify correct increment logic
 - [ ] **API server restart** — Test ability to restart uvicorn from API without manual intervention
 - [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
-- [ ] **Scanner version tracking** — Add `scanner_version` or `commit_hash` to positions table
-  - Enables post-mortem timeline analysis (e.g., "was MA stacking enforced?")
-  - Learned from Jan 7 post-mortem of pre-fix trades
+- [x] **Scanner version tracking — ALREADY IMPLEMENTED** — Git hash captured in `scanner_settings` JSON
+  - `execution_handler.py:120-137` captures commit hash at trade time
+  - Stored in `PositionModel.scanner_settings` for each position
 - [ ] **Rejection logging** — Log WHY stocks are rejected (e.g., "sector blacklist: defense")
   - Currently scanner silently skips; diagnostics should record rejection reasons
 
