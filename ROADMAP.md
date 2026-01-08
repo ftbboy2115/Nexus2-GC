@@ -26,6 +26,7 @@ Last updated: 2026-01-06
 ## 🛠 Technical Debt
 
 - [x] **Graceful Shutdown** — Two-stage Ctrl+C, FMP rate limit interruptible
+- [ ] **Ctrl+C x3 not stopping server** — Regression: Ctrl+C pressed 3x doesn't reliably stop uvicorn (Jan 7)
 - [x] **Singleton Cleanup** — Removed duplicate `global _monitor`, use `get_monitor()`
 - [x] **Extract `execute_callback`** — Moved to `execution_handler.py` + 3 more modules (65% reduction)
 - [x] **`_sim_broker` thread safety** — Centralized in automation_state.py with threading.Lock
@@ -34,13 +35,9 @@ Last updated: 2026-01-06
 
 ## 📋 Audit Items
 
-- [ ] **ADR showing 0.0% — HIGH IMPACT** — Investigate why ADR is 0.0% for all positions
-  - **Findings (Jan 7):** ECL, BA, BN, ELV, MFG, MS, ONDS, TXN, UNH, VALE all showed ADR=0.0%
-  - **Impact 1:** Scanner filtering - stocks could be incorrectly rejected if `min_adr_percent > 0`
-  - **Impact 2:** MA Affinity - all stocks default to 20 EMA (wider) instead of 10 EMA for fast movers
-  - **Impact 3:** Stop management - 6%+ ADR triggers different logic, not happening
-  - **Impact 4:** Could explain missed leaders (ERAS) - high-volatility stocks filtered incorrectly
-  - **Location:** `ma_affinity.py:281` calls `get_adr_percent` but returns 0.0
+- [x] **ADR showing 0.0% — FIXED** — Root cause: `unified.py:75` had `>= 50` threshold
+  - **Fix (Jan 7):** Changed to dynamic `>= min(10, limit//2)` - commit `14eb988`
+  - FMP was returning valid 25-bar data but unified adapter incorrectly fell back to Alpaca (1 bar)
 - [/] **DB session context managers** — Add `with` blocks for automatic cleanup
   - ✅ Created `get_session()` in database.py
   - ✅ scheduler_routes.py refactored (3 instances)
