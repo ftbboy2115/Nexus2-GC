@@ -21,6 +21,10 @@ from nexus2.domain.setup_detection.ep_detection import (
     EPDetectionService,
     EPSettings,
 )
+from nexus2.domain.automation.rejection_tracker import (
+    get_rejection_tracker,
+    RejectionReason,
+)
 
 
 @dataclass
@@ -164,6 +168,12 @@ class EPScannerService:
         # Get EP session snapshot
         snapshot = self.market_data.build_ep_session_snapshot(symbol)
         if not snapshot:
+            get_rejection_tracker().record(
+                symbol=symbol,
+                scanner="ep",
+                reason=RejectionReason.SNAPSHOT_FAILED,
+                details="Failed to build session snapshot",
+            )
             return None
         
         # Calculate EP metrics
@@ -177,11 +187,28 @@ class EPScannerService:
         dollar_vol = snapshot["last_price"] * session_volume
         
         # Check criteria
+        tracker = get_rejection_tracker()
+        
         if gap_pct < float(self.settings.min_gap):
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.GAP_TOO_SMALL,
+                values={"gap": round(gap_pct, 2), "min": float(self.settings.min_gap)},
+            )
             return None
         if rvol < float(self.settings.min_rvol):
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.RVOL_TOO_LOW,
+                values={"rvol": round(rvol, 2), "min": float(self.settings.min_rvol)},
+            )
             return None
         if dollar_vol < float(self.settings.min_dollar_vol):
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.DOLLAR_VOL_LOW,
+                values={"dollar_vol": round(dollar_vol), "min": float(self.settings.min_dollar_vol)},
+            )
             return None
         
         # Range quality check - reject if price in lower portion of range
@@ -196,6 +223,11 @@ class EPScannerService:
         if range_len > 0 and not is_gap_day:
             range_position = (last_price - session_low) / range_len
             if range_position < float(self.settings.min_range_position):
+                tracker.record(
+                    symbol=symbol, scanner="ep",
+                    reason=RejectionReason.RANGE_POSITION,
+                    values={"position": round(range_position * 100, 1), "min": float(self.settings.min_range_position) * 100},
+                )
                 if verbose:
                     print(f"{symbol}: Rejected - price in lower {range_position*100:.0f}% of range")
                 return None
@@ -210,6 +242,11 @@ class EPScannerService:
         has_catalyst, catalyst_type_str, catalyst_desc = self.market_data.has_recent_catalyst(symbol, days=5)
         
         if not has_catalyst:
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.NO_CATALYST,
+                details=catalyst_desc,
+            )
             if verbose:
                 print(f"{symbol}: Rejected - no catalyst found ({catalyst_desc})")
             return None
@@ -218,6 +255,11 @@ class EPScannerService:
         # 3 days = balanced: catches immediate risk without over-filtering
         has_upcoming, earnings_date = self.market_data.has_upcoming_earnings(symbol, days=3)
         if has_upcoming:
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.UPCOMING_EARNINGS,
+                details=f"Earnings on {earnings_date}",
+            )
             if verbose:
                 print(f"{symbol}: Rejected - upcoming earnings on {earnings_date} (avoid earnings risk)")
             return None
@@ -286,6 +328,11 @@ class EPScannerService:
         # Validate
         validation = self.ep_service.validate_candidate(candidate)
         if validation != EPValidationResult.VALID:
+            tracker.record(
+                symbol=symbol, scanner="ep",
+                reason=RejectionReason.VALIDATION_FAILED,
+                details=validation.value,
+            )
             if verbose:
                 print(f"{symbol}: Rejected - {validation.value}")
             return None

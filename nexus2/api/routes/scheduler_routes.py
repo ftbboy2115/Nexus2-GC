@@ -814,3 +814,35 @@ async def test_discord():
             "status": "error",
             "message": str(e),
         }
+
+
+@router.get("/scheduler/rejections", response_model=dict)
+async def get_rejections(
+    count: int = 100,
+    scanner: str = None,
+):
+    """
+    Get recent scanner rejections for diagnostics.
+    
+    Args:
+        count: Number of rejections to return (default 100, max 500)
+        scanner: Filter by scanner type (ep, breakout, htf)
+    
+    Returns rejections with symbol, reason, and criteria values.
+    """
+    from nexus2.domain.automation.rejection_tracker import get_rejection_tracker
+    
+    tracker = get_rejection_tracker()
+    
+    # Cap at 500
+    count = min(count, 500)
+    
+    rejections = tracker.get_recent(count=count, scanner=scanner)
+    summary = tracker.get_summary()
+    
+    return {
+        "status": "success",
+        "count": len(rejections),
+        "summary": summary,
+        "rejections": rejections,
+    }
