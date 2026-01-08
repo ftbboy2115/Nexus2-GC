@@ -769,6 +769,105 @@ async def get_broker_positions(request: Request):
         }
 
 
+# ==================== POSITION SYNC ENDPOINT ====================
+
+from datetime import datetime, timezone
+from uuid import uuid4
+
+
+class SyncPositionsRequest(BaseModel):
+    """Request to sync positions from broker to local DB."""
+    opened_at: Optional[str] = None  # ISO date string, defaults to today
+    set_stop_percent: Optional[float] = None  # Optional: set initial stop as % below entry
+
+
+@router.post("/sync-positions", response_model=dict)
+async def sync_positions_from_broker(request: SyncPositionsRequest = SyncPositionsRequest()):
+    """
+    Import positions from Alpaca into local Nexus DB.
+    
+    This creates local Position records for positions that exist in Alpaca
+    but not in the local database. Required for days_held tracking.
+    
+    Args:
+        opened_at: When to mark positions as opened (ISO date, default: today)
+        set_stop_percent: If set, creates initial stop at this % below entry
+    
+    Returns:
+        count of synced positions
+    """
+    from nexus2.db.database import get_session
+    from nexus2.db.repository import PositionRepository
+    
+    engine = get_engine()
+    
+    if not engine or not engine.broker:
+        return {"status": "error", "message": "Engine not initialized with broker"}
+    
+    try:
+        # Get positions from broker
+        broker_positions = engine.broker.get_positions()
+        
+        # Parse opened_at or default to now
+        if request.opened_at:
+            opened_at = datetime.fromisoformat(request.opened_at.replace('Z', '+00:00'))
+        else:
+            opened_at = datetime.now(timezone.utc)
+        
+        synced = []
+        skipped = []
+        
+        with get_session() as db:
+            repo = PositionRepository(db)
+            existing = repo.get_open()
+            existing_symbols = {p.symbol for p in existing}
+            
+            for pos in broker_positions:
+                symbol = pos.symbol
+                
+                if symbol in existing_symbols:
+                    skipped.append(symbol)
+                    continue
+                
+                # Calculate stop if requested
+                entry_price = float(pos.avg_entry_price)
+                initial_stop = None
+                if request.set_stop_percent:
+                    initial_stop = round(entry_price * (1 - request.set_stop_percent / 100), 2)
+                
+                # Create local position record
+                position_data = {
+                    "id": str(uuid4()),
+                    "symbol": symbol,
+                    "qty": int(pos.qty),
+                    "entry_price": entry_price,
+                    "initial_stop": initial_stop,
+                    "current_stop": initial_stop,
+                    "remaining_shares": int(pos.qty),
+                    "opened_at": opened_at,
+                    "status": "open",
+                    "side": "long",
+                    "partial_taken": False,
+                }
+                
+                repo.create(position_data)
+                synced.append(symbol)
+                logger.info(f"[Sync] Created local record for {symbol}: entry={entry_price}, stop={initial_stop}")
+        
+        return {
+            "status": "success",
+            "synced_count": len(synced),
+            "skipped_count": len(skipped),
+            "synced": synced,
+            "skipped": skipped,
+            "opened_at": opened_at.isoformat(),
+        }
+        
+    except Exception as e:
+        logger.error(f"[Sync] Error syncing positions: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 # ==================== MA CHECK ENDPOINTS (KK TRAILING) ====================
 # MA check endpoints have been moved to ma_check_routes.py
 # See: nexus2/api/routes/ma_check_routes.py
