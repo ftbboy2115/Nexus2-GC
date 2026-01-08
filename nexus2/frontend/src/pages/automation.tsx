@@ -39,9 +39,22 @@ export default function Automation() {
     const [schedulerSettings, setSchedulerSettings] = useState<SchedulerSettingsData | null>(null)
     const [showSchedulerModal, setShowSchedulerModal] = useState(false)
 
-    // Scanner diagnostics for visibility
+    // Scanner diagnostics for visibility (persisted in localStorage, collapsed by default)
     const [diagnostics, setDiagnostics] = useState<ScanDiagnostics | null>(null)
-    const [showDiagnostics, setShowDiagnostics] = useState(false)
+    const [showDiagnostics, setShowDiagnostics] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('nexus_showDiagnostics') === 'true'
+        }
+        return false
+    })
+
+    // How to Use section collapse state (persisted, collapsed by default)
+    const [showHowToUse, setShowHowToUse] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('nexus_showHowToUse') === 'true'
+        }
+        return false
+    })
 
     // Broker positions (actual Alpaca positions)
     const [positions, setPositions] = useState<PositionsData | null>(null)
@@ -64,6 +77,15 @@ export default function Automation() {
     const columnConfig = useColumnConfig('automation_positions', AUTOMATION_COLUMNS)
     const [showColumnEditor, setShowColumnEditor] = useState(false)
     const [positionsMaximized, setPositionsMaximized] = useState(false)
+
+    // Persist collapse states to localStorage
+    useEffect(() => {
+        localStorage.setItem('nexus_showDiagnostics', String(showDiagnostics))
+    }, [showDiagnostics])
+
+    useEffect(() => {
+        localStorage.setItem('nexus_showHowToUse', String(showHowToUse))
+    }, [showHowToUse])
 
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
@@ -295,28 +317,35 @@ export default function Automation() {
                     <>
                         {/* Getting Started Instructions */}
                         <div className={styles.instructions}>
-                            <details open>
-                                <summary>📖 How to Use Automation</summary>
-                                <div className={styles.instructionContent}>
-                                    <div className={styles.instructionStep}>
-                                        <span className={styles.stepNumber}>1</span>
-                                        <div>
-                                            <strong>Start Scheduler</strong> (recommended)
-                                            <p>Runs scans every 15 min, auto-executes trades, monitors Day 3-5 partials, and runs EOD MA check at 3:45 PM.</p>
+                            <div className={styles.scanDetails}>
+                                <button
+                                    className={styles.scanDetailsToggle}
+                                    onClick={() => setShowHowToUse(!showHowToUse)}
+                                >
+                                    {showHowToUse ? '▼' : '▶'} 📖 How to Use Automation
+                                </button>
+                                {showHowToUse && (
+                                    <div className={styles.instructionContent}>
+                                        <div className={styles.instructionStep}>
+                                            <span className={styles.stepNumber}>1</span>
+                                            <div>
+                                                <strong>Start Scheduler</strong> (recommended)
+                                                <p>Runs scans every 15 min, auto-executes trades, monitors Day 3-5 partials, and runs EOD MA check at 3:45 PM.</p>
+                                            </div>
+                                        </div>
+                                        <div className={styles.instructionStep}>
+                                            <span className={styles.stepNumber}>2</span>
+                                            <div>
+                                                <strong>Or use Manual Mode</strong>
+                                                <p>Start Engine + Monitor separately for more control. Use "Run Scan" to find setups manually.</p>
+                                            </div>
+                                        </div>
+                                        <div className={styles.instructionNote}>
+                                            <strong>💡 KK-Style Automation:</strong> Day 1 stop (LoD via bracket order) → Day 3-5 partial (50%) + breakeven → Day 5+ MA trailing
                                         </div>
                                     </div>
-                                    <div className={styles.instructionStep}>
-                                        <span className={styles.stepNumber}>2</span>
-                                        <div>
-                                            <strong>Or use Manual Mode</strong>
-                                            <p>Start Engine + Monitor separately for more control. Use "Run Scan" to find setups manually.</p>
-                                        </div>
-                                    </div>
-                                    <div className={styles.instructionNote}>
-                                        <strong>💡 KK-Style Automation:</strong> Day 1 stop (LoD via bracket order) → Day 3-5 partial (50%) + breakeven → Day 5+ MA trailing
-                                    </div>
-                                </div>
-                            </details>
+                                )}
+                            </div>
                         </div>
 
                         <div className={styles.grid}>
@@ -398,15 +427,51 @@ export default function Automation() {
                                     </div>
                                 </div>
 
-                                {/* Collapsible Scan Details */}
-                                {diagnostics?.available && scheduler?.running && (
+                                {/* Collapsible Scan Details - visible anytime diagnostics available */}
+                                {diagnostics?.available && (
                                     <div className={styles.scanDetails}>
-                                        <button
-                                            className={styles.scanDetailsToggle}
-                                            onClick={() => setShowDiagnostics(!showDiagnostics)}
-                                        >
-                                            {showDiagnostics ? '▼' : '▶'} Last Scan Details ({diagnostics.duration_ms}ms)
-                                        </button>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <button
+                                                className={styles.scanDetailsToggle}
+                                                onClick={() => setShowDiagnostics(!showDiagnostics)}
+                                            >
+                                                {showDiagnostics ? '▼' : '▶'} Last Scan Details ({diagnostics.duration_ms}ms)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (!diagnostics?.diagnostics) return
+                                                    const headers = ['Scanner', 'Symbol', 'Reason', 'Threshold', 'Actual Value', 'Status']
+                                                    const rows: (string | number)[][] = []
+
+                                                    // Add all rejections
+                                                    diagnostics.diagnostics.forEach(d => {
+                                                        d.rejections.forEach(r => {
+                                                            rows.push([d.scanner.toUpperCase(), r.symbol, r.reason, r.threshold, r.actual_value, 'REJECTED'])
+                                                        })
+                                                    })
+
+                                                    // Add signals that passed (from sessionSignals if available)
+                                                    if (sessionSignals.length > 0) {
+                                                        sessionSignals.forEach(s => {
+                                                            rows.push([s.setup_type.toUpperCase(), s.symbol, 'PASSED_FILTERS', s.quality_score, s.quality_score, 'ACCEPTED'])
+                                                        })
+                                                    }
+
+                                                    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+                                                    const blob = new Blob([csv], { type: 'text/csv' })
+                                                    const url = URL.createObjectURL(blob)
+                                                    const a = document.createElement('a')
+                                                    a.href = url
+                                                    a.download = `scanner_log_${new Date().toISOString().split('T')[0]}.csv`
+                                                    a.click()
+                                                    URL.revokeObjectURL(url)
+                                                }}
+                                                style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                                title="Export scanner log to CSV"
+                                            >
+                                                📥
+                                            </button>
+                                        </div>
                                         {showDiagnostics && (
                                             <div className={styles.scanDetailsContent}>
                                                 <div className={styles.scanSummary}>
