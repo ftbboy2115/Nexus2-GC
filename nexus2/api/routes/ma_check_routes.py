@@ -213,6 +213,63 @@ async def run_ma_check(
     # Run the check
     result = await job.run(dry_run=req.dry_run)
     
+    # =============================
+    # DISCORD NOTIFICATIONS
+    # =============================
+    try:
+        from nexus2.adapters.notifications.discord import DiscordNotifier
+        from nexus2.db import SchedulerSettingsRepository
+        
+        # Check if Discord alerts are enabled
+        with get_session() as db:
+            settings_repo = SchedulerSettingsRepository(db)
+            sched_settings = settings_repo.get()
+            discord_enabled = getattr(sched_settings, 'discord_alerts_enabled', 'true')
+            discord_enabled = discord_enabled == 'true' if isinstance(discord_enabled, str) else bool(discord_enabled)
+        
+        if discord_enabled:
+            notifier = DiscordNotifier()
+            
+            if notifier.config.enabled:
+                # Build completion summary message
+                exit_count = len(result.exit_signals)
+                
+                if req.dry_run:
+                    summary = f"🔍 **[DRY RUN] EOD MA Check Complete**\n"
+                else:
+                    summary = f"🌅 **EOD MA Check Complete**\n"
+                
+                summary += f"• Positions checked: **{result.positions_checked}**\n"
+                summary += f"• Exit signals: **{exit_count}**\n"
+                
+                if result.is_within_timing_window:
+                    summary += "• Timing: ✅ Within 3:45-4:00 PM ET window\n"
+                else:
+                    summary += "• Timing: ⚠️ Outside standard window (manual run)\n"
+                
+                # Add exit signal details if any
+                if exit_count > 0:
+                    summary += "\n**📉 Trend Failures:**\n"
+                    for sig in result.exit_signals[:5]:  # Limit to 5
+                        summary += f"• **{sig.symbol}** - Day {sig.days_held}: ${sig.daily_close} < {sig.ma_type.value} ${sig.ma_value}\n"
+                    
+                    if exit_count > 5:
+                        summary += f"... and {exit_count - 5} more\n"
+                    
+                    if req.dry_run:
+                        summary += "\n_⚠️ DRY RUN - No orders submitted_"
+                    else:
+                        summary += "\n_✅ Exit orders submitted_"
+                else:
+                    summary += "\n✅ All positions holding trend - no exits needed"
+                
+                # Send the notification
+                notifier.send_trade_alert(summary)
+                logger.info(f"[MACheck] Discord notification sent: {exit_count} exit signals")
+                
+    except Exception as e:
+        logger.warning(f"[MACheck] Discord notification failed: {e}")
+    
     return {
         "status": "completed",
         "dry_run": req.dry_run,
