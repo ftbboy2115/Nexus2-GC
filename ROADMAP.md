@@ -13,7 +13,7 @@ Last updated: 2026-01-06
 
 ## 🔧 Features
 
-- [ ] **VPS Deployment** — Set up on DigitalOcean droplet (TOP PRIORITY)
+- [x] **VPS Deployment** — DigitalOcean NYC, $6/mo, Tailscale secured (Jan 8)
 - [x] **HTF Simulation Testing** — Verified: scanner works, added configurable extended threshold
 - [x] **Liquidate All Button** — Quick exit for paper mode testing
   - Backend: `POST /automation/liquidate-all` endpoint
@@ -61,7 +61,8 @@ Last updated: 2026-01-06
 - [ ] **Countdown Timer to Next Scan** — Show time remaining until next scheduler cycle
 - [ ] **Score Breakdown Display** — Show how each signal got its quality score (which criteria contributed)
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history
-  - Entry/exit timeline, scanner settings at entry, P&L breakdown by partial
+  - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
+- [ ] **API Usage card not showing on VPS** — Works locally, blank on VPS (possible CORS or URL issue)
 
 ---
 
