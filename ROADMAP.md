@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-06
+Last updated: 2026-01-08
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -124,6 +124,21 @@ Last updated: 2026-01-06
 
 ## ✅ Completed (Recent)
 
+### Jan 8, 2026 — v0.1.1 through v0.1.12
+- [x] **v0.1.12** — Diagnostics visible without scheduler, collapse states persist, scanner log export
+- [x] **v0.1.11** — CSV export for Open Positions and Trade Log (📥 buttons)
+- [x] **v0.1.10** — Scanner progress indicators (25%/50%/75% logging)
+- [x] **v0.1.9** — DB-backed re-entry cooldown (restart resilient)
+- [x] **v0.1.8** — Hybrid cooldown (30 min + price recovery)
+- [x] **v0.1.7** — NAC settings exposed in status endpoint (transparency fix)
+- [x] **v0.1.6** — `scanner_version` + `tag` columns in positions table
+- [x] **v0.1.5** — No trailing stop on Day 0 (require entry to be D+1 before trailing)
+- [x] **v0.1.4** — Exit deduplication (prevent double-counting partials)
+- [x] **v0.1.3** — Position sync endpoint (`POST /positions/sync`)
+- [x] **v0.1.2** — Monitor callbacks for position updates
+- [x] **v0.1.1** — Rejection logging with file-based tracker
+
+### Earlier
 - [x] **MA Check Exit Logic** — Fixed order submission, broker reference, character change exits
 - [x] **Position Enrichment Script** — `scripts/enrich_positions.py` repairs orphaned position metadata
 - [x] **Simulation Entry Time Tracking** — MockPosition tracks actual opened_at for correct days_held
