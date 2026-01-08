@@ -109,7 +109,8 @@ export default function Simulation() {
     // Event log
     const [eventLog, setEventLog] = useState<string[]>([])
 
-    const API_BASE = 'http://localhost:8000'
+    // Use relative URLs - Next.js rewrites proxy to backend
+    const API_BASE = ''
 
     // ========================================================================
     // Data Fetching

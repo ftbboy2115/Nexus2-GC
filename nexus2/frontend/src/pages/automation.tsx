@@ -65,7 +65,8 @@ export default function Automation() {
     const [showColumnEditor, setShowColumnEditor] = useState(false)
     const [positionsMaximized, setPositionsMaximized] = useState(false)
 
-    const API_BASE = 'http://localhost:8000'
+    // Use relative URLs - Next.js rewrites proxy to backend
+    const API_BASE = ''
 
 
     const fetchStatus = useCallback(async () => {
