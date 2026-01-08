@@ -773,6 +773,11 @@ class FMPAdapter:
             # Growth catalysts
             r'revenue.*growth|sales.*growth|beat.*expectations|surpass|exceeded',
             r'new.*product|launch|expansion|entered.*market',
+            
+            # Investor/Healthcare conferences (ERAS fix - JP Morgan, Evercore, etc)
+            r'j\.?p\.?\s*morgan.*healthcare|j\.?p\.?\s*morgan.*conference',
+            r'healthcare.*conference|investor.*conference|evercore.*conference',
+            r'present.*at.*conference|presenting.*at',
         ]
         
         # Patterns that indicate NON-catalysts (noise)
