@@ -347,6 +347,7 @@ def create_execute_callback(
                         "broker_type": get_settings().broker_type,
                         "account": get_settings().active_account,
                         "scanner_settings": scanner_settings_snapshot,  # Audit trail
+                        "scanner_version": git_hash,  # Direct column for easy querying
                     })
                     
                     # Update engine stats

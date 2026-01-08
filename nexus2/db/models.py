@@ -167,6 +167,12 @@ class PositionModel(Base):
     exit_price = Column(String(20), nullable=True)
     exit_date = Column(DateTime, nullable=True)
     
+    # Version tracking (git hash at trade time)
+    scanner_version = Column(String(20), nullable=True)
+    
+    # Tag for annotations (bug notes, special conditions, etc.)
+    tag = Column(String(100), nullable=True)
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -194,6 +200,8 @@ class PositionModel(Base):
             "scanner_settings": self.scanner_settings,  # JSON snapshot for audit
             "exit_price": self.exit_price,
             "exit_date": self.exit_date.isoformat() if self.exit_date else None,
+            "scanner_version": self.scanner_version,
+            "tag": self.tag,
             "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
         }
 
