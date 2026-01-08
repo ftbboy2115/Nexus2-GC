@@ -26,7 +26,7 @@ Last updated: 2026-01-06
 ## 🛠 Technical Debt
 
 - [x] **Graceful Shutdown** — Two-stage Ctrl+C, FMP rate limit interruptible
-- [ ] **Ctrl+C x3 not stopping server** — Regression: Ctrl+C pressed 3x doesn't reliably stop uvicorn (Jan 7)
+- [x] **Ctrl+C x3 not stopping server — FIXED** — Counter-based approach with `sys.exit(0)` (commit `83b3f18`)
 - [x] **Singleton Cleanup** — Removed duplicate `global _monitor`, use `get_monitor()`
 - [x] **Extract `execute_callback`** — Moved to `execution_handler.py` + 3 more modules (65% reduction)
 - [x] **`_sim_broker` thread safety** — Centralized in automation_state.py with threading.Lock
@@ -72,8 +72,9 @@ Last updated: 2026-01-06
 - [ ] **Full E2E simulation test** — After fixing HTF signal conversion
 - [ ] **RVOL filtering for Breakout scanner** — Per KK methodology, breakouts should require 2-3x average volume
   - Currently only EP scanner uses RVOL; Breakout/HTF do not check volume
-- [ ] **Investigate ERAS miss (Jan 7)** — Valid EP setup (+25% gap, 52-wk high, catalyst) not detected
-  - Need to determine: Was ERAS in FMP gainer list? If yes, why rejected? If no, expand universe?
+- [x] **ERAS miss (Jan 7) — FIXED** — Added healthcare/investor conference catalyst patterns (commit `7779556`)
+  - Root cause: "Present at J.P. Morgan Healthcare Conference" didn't match catalyst regex
+  - Solution: Added patterns for healthcare/investor conferences, presenting at conferences
 
 ---
 
