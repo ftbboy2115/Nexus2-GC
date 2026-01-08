@@ -198,26 +198,39 @@ def get_recent_exit_info(symbol: str) -> dict | None:
 
 def can_reenter(symbol: str, current_price: float) -> tuple[bool, str]:
     """
-    Check if re-entry is allowed for a recently stopped symbol (thread-safe).
+    Check if re-entry is allowed for a recently stopped symbol.
     
     Implements hybrid cooldown logic (per docs/reentry_cooldown.md):
     - Must wait 30 minutes after stop hit
     - Current price must exceed the stopped trade's entry price
     
+    Uses DB query for restart resilience (replaces in-memory tracker).
+    
     Returns:
         (allowed: bool, reason: str)
     """
     from datetime import datetime, timedelta
+    from nexus2.db import get_session
+    from nexus2.db.models import PositionModel
     
-    exit_info = get_recent_exit_info(symbol)
-    if not exit_info:
-        return (True, "Not in recent exits")
-    
-    closed_at = exit_info.get("closed_at")
-    entry_price = exit_info.get("entry_price")
-    
-    if not closed_at:
-        return (True, "No closed_at timestamp")
+    # Query DB for most recently closed position of this symbol (today)
+    try:
+        with get_session() as db:
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            closed_position = db.query(PositionModel).filter(
+                PositionModel.symbol == symbol,
+                PositionModel.status == 'closed',
+                PositionModel.closed_at >= today_start
+            ).order_by(PositionModel.closed_at.desc()).first()
+            
+            if not closed_position:
+                return (True, "No closed position today")
+            
+            closed_at = closed_position.closed_at
+            entry_price = float(closed_position.entry_price) if closed_position.entry_price else None
+    except Exception as e:
+        # If DB query fails, allow entry (fail-open)
+        return (True, f"DB query failed: {e}")
     
     # Check 1: Time cooldown (30 min)
     now = datetime.utcnow()

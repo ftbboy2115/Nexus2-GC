@@ -43,26 +43,18 @@ After a stop hit, block re-entry until **BOTH** conditions are met:
 
 ---
 
-## Data Model
+## Implementation (v0.1.9)
 
-The `recent_exits` tracker now stores:
+**DB-backed for restart resilience.** No in-memory tracker needed.
 
-```python
-{
-    "ACON": {
-        "stopped_at": "2026-01-08T09:45:02Z",  # When stop hit
-        "entry_price": 8.25,                   # Entry price of stopped trade
-        "stop_price": 7.80,                    # Stop that was hit
-    }
-}
+**Query logic:**
+```sql
+SELECT * FROM positions 
+WHERE symbol = ? AND status = 'closed' AND closed_at >= today_start
+ORDER BY closed_at DESC LIMIT 1
 ```
 
----
-
-## Implementation Location
-
-- **File:** `nexus2/api/routes/automation_state.py` (recent exits tracker)
-- **File:** `nexus2/api/routes/execution_handler.py` (re-entry check)
+**File:** `nexus2/api/routes/automation_state.py` → `can_reenter(symbol, current_price)`
 
 ---
 
