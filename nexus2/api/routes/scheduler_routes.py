@@ -778,3 +778,39 @@ async def liquidate_all_positions(
             "message": str(e),
         }
 
+
+@router.post("/test-discord", response_model=dict)
+async def test_discord():
+    """
+    Test Discord webhook connectivity.
+    
+    Sends a test notification to verify the webhook is configured correctly.
+    """
+    from nexus2.adapters.notifications.discord import DiscordNotifier
+    
+    try:
+        notifier = DiscordNotifier()
+        
+        if not notifier.config.enabled:
+            return {
+                "status": "disabled",
+                "message": "Discord webhook not configured. Set DISCORD_WEBHOOK in .env",
+            }
+        
+        # Send test notification
+        notifier.send_system_alert(
+            message=f"🧪 **VPS Test Notification**\n\nTimestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S ET')}\nVersion: v0.1.0",
+            level="success",
+        )
+        
+        return {
+            "status": "success",
+            "message": "Test notification sent! Check your Discord channel.",
+        }
+        
+    except Exception as e:
+        logger.error(f"[Discord Test] Error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }
