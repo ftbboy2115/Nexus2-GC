@@ -99,6 +99,9 @@ class PositionMonitor:
         self._execute_exit: Optional[Callable] = None
         self._update_stop: Optional[Callable] = None  # For trailing stops
         
+        # Deduplication: track positions with pending exits
+        self._pending_exits: set = set()
+        
         # Stats
         self.checks_run = 0
         self.exits_triggered = 0
@@ -248,12 +251,19 @@ class PositionMonitor:
         r_multiple = float(current_gain / risk_per_share)
         
         # Check 1: Stop-loss hit
-        # DEBUG: Log every price check for troubleshooting
+        # Skip if already pending exit (prevents duplicate notifications)
+        if position_id in self._pending_exits:
+            logger.debug(f"[STOP CHECK] {symbol}: Skipping - exit already pending")
+            return None
+        
         if current_price <= current_stop:
             logger.warning(
                 f"[STOP CHECK] {symbol}: price=${current_price} <= stop=${current_stop} "
                 f"(entry=${entry_price}) -> TRIGGERING EXIT"
             )
+            # Mark as pending to prevent duplicates
+            self._pending_exits.add(position_id)
+            
             pnl = (current_price - entry_price) * shares
             return ExitSignal(
                 position_id=position_id,
@@ -370,6 +380,9 @@ class PositionMonitor:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
                 
+                # Clear from pending exits
+                self._pending_exits.discard(signal.position_id)
+                
                 # Send Discord notification for exit
                 try:
                     from nexus2.db import SessionLocal, SchedulerSettingsRepository
@@ -401,6 +414,8 @@ class PositionMonitor:
             except Exception as e:
                 logger.error(f"Exit execution failed: {e}")
                 self.last_error = str(e)
+                # Clear from pending on failure too (allow retry next cycle)
+                self._pending_exits.discard(signal.position_id)
         else:
             logger.warning("No execute_exit callback - signal not acted on")
     
