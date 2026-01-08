@@ -124,7 +124,12 @@ Last updated: 2026-01-08
 
 ## ✅ Completed (Recent)
 
-### Jan 8, 2026 — v0.1.1 through v0.1.12
+### Jan 8, 2026 — v0.1.1 through v0.1.13
+- [x] **v0.1.13** — EOD timezone fix + observability improvements
+  - Fixed `is_eod_window` to use Eastern Time (VPS runs on UTC)
+  - `/health` now shows actual broker mode instead of hardcoded "sim"
+  - Added `eastern_time` to `/health` and `/scheduler/status`
+  - New `PATCH /scheduler/eod-window` endpoint for testing EOD window
 - [x] **v0.1.12** — Diagnostics visible without scheduler, collapse states persist, scanner log export
 - [x] **v0.1.11** — CSV export for Open Positions and Trade Log (📥 buttons)
 - [x] **v0.1.10** — Scanner progress indicators (25%/50%/75% logging)
