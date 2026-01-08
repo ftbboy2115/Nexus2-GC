@@ -281,12 +281,26 @@ class PositionMonitor:
             )
         
         # Check 2: Trailing stop (move to breakeven at 1R)
+        # KK-style: Don't trail on Day 0 - let the trade work
         if self.enable_trailing_stops and r_multiple >= self.breakeven_threshold_r:
-            if current_stop < entry_price:
-                # Update stop to breakeven (handled separately, not an exit)
-                logger.info(f"{symbol}: Moving stop to breakeven at {r_multiple:.1f}R")
+            # Calculate days held
+            opened_at = position.get("opened_at")
+            days_held = 0
+            if opened_at:
+                if isinstance(opened_at, str):
+                    opened_at = datetime.fromisoformat(opened_at.replace('Z', '+00:00'))
+                if opened_at.tzinfo:
+                    days_held = (datetime.now(opened_at.tzinfo).date() - opened_at.date()).days
+                else:
+                    days_held = (datetime.now().date() - opened_at.date()).days
+            
+            # Only trail after Day 0
+            if days_held >= 1 and current_stop < entry_price:
+                logger.info(f"{symbol}: Moving stop to breakeven at {r_multiple:.1f}R (Day {days_held})")
                 if self._update_stop:
                     await self._update_stop(position_id, entry_price)
+            elif days_held == 0 and current_stop < entry_price:
+                logger.debug(f"{symbol}: Skipping breakeven trail on Day 0 (at {r_multiple:.1f}R)")
         
         # Check 3: Partial exit (KK-style day-based or legacy R-based)
         if self.enable_partial_exits:
