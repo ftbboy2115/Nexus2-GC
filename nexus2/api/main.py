@@ -31,21 +31,32 @@ logging.basicConfig(
 # Suppress httpx INFO logs to prevent API key exposure in URLs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-
+# Track Ctrl+C presses for reliable shutdown on Windows
+_ctrl_c_count = 0
 
 def _shutdown_fmp_handler(signum, frame):
-    """Signal handler to immediately set FMP shutdown flag on Ctrl+C."""
-    print("\n[Shutdown] Ctrl+C received - setting shutdown flag...")
-    try:
-        from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
-        fmp = get_fmp_adapter()
-        fmp._shutdown = True
-        print("[Shutdown] FMP shutdown flag set - scan will abort shortly")
-        print("[Shutdown] Press Ctrl+C again to stop server")
-    except Exception as e:
-        print(f"[Shutdown] FMP flag error: {e}")
-    # Restore default handler so next Ctrl+C stops the server
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    """Signal handler for graceful shutdown on Ctrl+C.
+    
+    First Ctrl+C: Set FMP shutdown flag, warn user
+    Second Ctrl+C: Force exit immediately
+    """
+    global _ctrl_c_count
+    _ctrl_c_count += 1
+    
+    if _ctrl_c_count == 1:
+        print("\n[Shutdown] Ctrl+C received - setting shutdown flag...")
+        try:
+            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+            fmp = get_fmp_adapter()
+            fmp._shutdown = True
+            print("[Shutdown] FMP shutdown flag set - scan will abort shortly")
+            print("[Shutdown] Press Ctrl+C again to force exit")
+        except Exception as e:
+            print(f"[Shutdown] FMP flag error: {e}")
+    else:
+        # Second+ Ctrl+C: Force exit
+        print("\n[Shutdown] Force exit - goodbye!")
+        sys.exit(0)
 
 
 @asynccontextmanager
