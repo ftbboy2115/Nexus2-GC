@@ -264,7 +264,8 @@ async def run_ma_check(
                     summary += "\n✅ All positions holding trend - no exits needed"
                 
                 # Send the notification
-                notifier.send_trade_alert(summary)
+                level = "success" if exit_count == 0 else "warning"
+                notifier.send_system_alert(summary, level=level)
                 logger.info(f"[MACheck] Discord notification sent: {exit_count} exit signals")
                 
     except Exception as e:
