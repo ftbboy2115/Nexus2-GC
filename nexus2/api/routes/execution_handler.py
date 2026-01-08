@@ -230,6 +230,15 @@ def create_execute_callback(
                 skipped.append({"symbol": signal.symbol, "reason": "Already holding position"})
                 continue
             
+            # Check re-entry cooldown (30 min + price recovery requirement)
+            from nexus2.api.routes.automation_state import can_reenter
+            can_enter, cooldown_reason = can_reenter(signal.symbol, float(signal.entry_price))
+            if not can_enter:
+                print(f"⏭️ [AutoExec] Skipping {signal.symbol} - {cooldown_reason}")
+                skipped.append({"symbol": signal.symbol, "reason": f"Cooldown: {cooldown_reason}"})
+                log_execution_decision(signal.symbol, 0, 0, "COOLDOWN", reason=cooldown_reason)
+                continue
+            
             # Safety check: Can we open a new position?
             if not engine.can_open_position():
                 logger.warning(f"[AutoExec] Position limit reached, stopping at {len(executed)} trades")

@@ -145,11 +145,16 @@ def get_or_create_sim_broker(initial_cash: float | None = None):
 
 # ==================== RECENT EXITS (Re-entry Scanning) ====================
 
-def add_recent_exit(symbol: str, setup_type: str = "unknown"):
+# Cooldown settings (per docs/reentry_cooldown.md)
+REENTRY_COOLDOWN_MINUTES = 30  # Time before re-entry allowed
+
+
+def add_recent_exit(symbol: str, setup_type: str = "unknown", entry_price: float = None):
     """
     Add a symbol to recent exits for potential re-entry (thread-safe).
     
     Called when a position closes (stop hit, manual, or sync).
+    Now tracks entry_price for cooldown price-recovery check.
     """
     from datetime import datetime
     global _recent_exits
@@ -160,6 +165,7 @@ def add_recent_exit(symbol: str, setup_type: str = "unknown"):
             "symbol": symbol,
             "closed_at": datetime.utcnow(),
             "setup_type": setup_type,
+            "entry_price": entry_price,  # For re-entry cooldown check
         })
         print(f"[ReEntry] Added {symbol} to recent exits ({len(_recent_exits)} total)")
 
@@ -175,6 +181,57 @@ def get_recent_exit_symbols() -> list[str]:
         cutoff = datetime.utcnow() - timedelta(days=RECENT_EXITS_MAX_DAYS)
         valid_exits = [e for e in _recent_exits if e["closed_at"] > cutoff]
         return [e["symbol"] for e in valid_exits]
+
+
+def get_recent_exit_info(symbol: str) -> dict | None:
+    """
+    Get detailed exit info for a symbol (thread-safe).
+    
+    Returns dict with closed_at, entry_price, etc. or None if not found.
+    """
+    with _recent_exits_lock:
+        for exit in _recent_exits:
+            if exit["symbol"] == symbol:
+                return exit
+        return None
+
+
+def can_reenter(symbol: str, current_price: float) -> tuple[bool, str]:
+    """
+    Check if re-entry is allowed for a recently stopped symbol (thread-safe).
+    
+    Implements hybrid cooldown logic (per docs/reentry_cooldown.md):
+    - Must wait 30 minutes after stop hit
+    - Current price must exceed the stopped trade's entry price
+    
+    Returns:
+        (allowed: bool, reason: str)
+    """
+    from datetime import datetime, timedelta
+    
+    exit_info = get_recent_exit_info(symbol)
+    if not exit_info:
+        return (True, "Not in recent exits")
+    
+    closed_at = exit_info.get("closed_at")
+    entry_price = exit_info.get("entry_price")
+    
+    if not closed_at:
+        return (True, "No closed_at timestamp")
+    
+    # Check 1: Time cooldown (30 min)
+    now = datetime.utcnow()
+    cooldown_end = closed_at + timedelta(minutes=REENTRY_COOLDOWN_MINUTES)
+    if now < cooldown_end:
+        minutes_left = int((cooldown_end - now).total_seconds() / 60)
+        return (False, f"Cooldown active ({minutes_left} min remaining)")
+    
+    # Check 2: Price recovery (current price > stopped entry price)
+    if entry_price and current_price < entry_price:
+        return (False, f"Price ${current_price:.2f} < stopped entry ${entry_price:.2f}")
+    
+    # Both conditions met - allow re-entry
+    return (True, "Cooldown complete and price recovered")
 
 
 def clear_recent_exit(symbol: str):
@@ -193,4 +250,5 @@ def get_recent_exits_count() -> int:
     """Get count of symbols in recent exits queue."""
     with _recent_exits_lock:
         return len(_recent_exits)
+
 

@@ -144,7 +144,11 @@ async def start_scheduler(
                             })
                             # Add to recent exits for potential re-entry
                             from nexus2.api.routes.automation_state import add_recent_exit
-                            add_recent_exit(p.symbol, getattr(p, 'setup_type', 'unknown'))
+                            add_recent_exit(
+                                p.symbol, 
+                                getattr(p, 'setup_type', 'unknown'),
+                                entry_price=float(p.entry_price) if p.entry_price else None
+                            )
                     
                     # Commit sync changes before refresh
                     db.commit()
