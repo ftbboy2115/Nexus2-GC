@@ -224,6 +224,33 @@ export default function Automation() {
         }
     }
 
+    // Export positions to CSV
+    const exportPositionsToCsv = () => {
+        if (!positions?.positions || positions.positions.length === 0) return
+
+        const headers = ['Symbol', 'Qty', 'Avg Price', 'Current Price', 'Market Value', 'Unrealized P/L', 'P/L %', 'Days Held', 'Stop Price']
+        const rows = positions.positions.map(p => [
+            p.symbol,
+            p.qty,
+            p.avg_price.toFixed(2),
+            (p.current_price || p.avg_price).toFixed(2),
+            p.market_value.toFixed(2),
+            p.unrealized_pnl.toFixed(2),
+            p.pnl_percent.toFixed(2),
+            p.days_held || 0,
+            p.stop_price?.toFixed(2) || ''
+        ])
+
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `open_positions_${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
     const formatTime = (iso: string | null | undefined) => {
         if (!iso) return '-'
         const d = new Date(iso)
@@ -842,6 +869,13 @@ export default function Automation() {
                                         {schedulerSettings?.sim_mode ? '🧪 Sim Positions' : '📊 Open Positions'}
                                     </h2>
                                     <div style={{ display: 'flex', gap: '4px' }}>
+                                        <button
+                                            onClick={exportPositionsToCsv}
+                                            style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            title="Export to CSV"
+                                        >
+                                            📥
+                                        </button>
                                         <button
                                             onClick={() => { columnConfig.openEditor(); setShowColumnEditor(true) }}
                                             style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}

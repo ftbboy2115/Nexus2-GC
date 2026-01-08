@@ -99,6 +99,33 @@ export default function ClosedPositions() {
         return ''
     }
 
+    // Export trade log to CSV
+    const exportToCsv = () => {
+        if (positions.length === 0) return
+
+        const headers = ['Symbol', 'Setup', 'Shares', 'Entry Price', 'Avg Exit Price', 'Realized P/L', 'Days Held', 'Opened', 'Closed']
+        const rows = positions.map(p => [
+            p.symbol,
+            p.setup_type || '',
+            p.shares,
+            parseFloat(p.entry_price).toFixed(2),
+            p.avg_exit_price ? parseFloat(p.avg_exit_price).toFixed(2) : '',
+            parseFloat(p.realized_pnl).toFixed(2),
+            p.days_held,
+            p.opened_at ? new Date(p.opened_at).toLocaleDateString() : '',
+            p.closed_at ? new Date(p.closed_at).toLocaleDateString() : ''
+        ])
+
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `trade_log_${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+    }
+
     const winners = positions.filter(p => parseFloat(p.realized_pnl) > 0).length
     const losers = positions.filter(p => parseFloat(p.realized_pnl) < 0).length
     const winRate = positions.length > 0 ? ((winners / positions.length) * 100).toFixed(0) : '0'
@@ -134,6 +161,14 @@ export default function ClosedPositions() {
                             />
                             Demo
                         </label>
+                        <button
+                            className={styles.refreshBtn}
+                            onClick={exportToCsv}
+                            disabled={positions.length === 0}
+                            title="Export to CSV"
+                        >
+                            📥 Export
+                        </button>
                         <button
                             className={styles.refreshBtn}
                             onClick={fetchPositions}
