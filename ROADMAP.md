@@ -62,7 +62,7 @@ Last updated: 2026-01-06
 - [ ] **Score Breakdown Display** — Show how each signal got its quality score (which criteria contributed)
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history
   - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
-- [ ] **API Usage card not showing on VPS** — Works locally, blank on VPS (possible CORS or URL issue)
+- [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
 
 ---
 
