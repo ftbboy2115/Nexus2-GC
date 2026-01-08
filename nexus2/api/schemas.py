@@ -166,8 +166,9 @@ class HealthResponse(BaseModel):
     """Health check response."""
     status: str
     version: str
-    mode: str  # "sim" or "live"
+    mode: str  # "alpaca_paper", "alpaca_live", "sim"
     timestamp: datetime
+    eastern_time: Optional[str] = None  # For timezone debugging
 
 
 # ============================================================================

@@ -626,6 +626,70 @@ async def update_scheduler_interval(req: SchedulerIntervalRequest):
     }
 
 
+@router.patch("/scheduler/eod-window", response_model=dict)
+async def update_eod_window(
+    eod_start_hour: int = 15,
+    eod_start_minute: int = 45,
+    eod_end_hour: int = 16,
+    eod_end_minute: int = 0,
+    reset: bool = False,
+):
+    """
+    Adjust the EOD check window for testing purposes.
+    
+    Default window is 15:45-16:00 ET (3:45 PM - 4:00 PM).
+    Set reset=true to restore defaults.
+    
+    Example to test right now:
+        - Set eod_start_hour to current hour, eod_start_minute to current minute
+        - This will make is_eod_window=true and trigger the automated check
+    
+    Args:
+        eod_start_hour: Hour (0-23) when EOD window starts (default: 15 = 3 PM)
+        eod_start_minute: Minute when EOD window starts (default: 45)
+        eod_end_hour: Hour (0-23) when EOD window ends (default: 16 = 4 PM)
+        eod_end_minute: Minute when EOD window ends (default: 0)
+        reset: If true, reset to defaults (15:45-16:00)
+    """
+    from datetime import time as dt_time
+    
+    scheduler = get_scheduler()
+    
+    if reset:
+        scheduler.eod_check_time = dt_time(15, 45)
+        scheduler.market_close = dt_time(16, 0)
+        logger.info("[Scheduler] EOD window reset to defaults (15:45-16:00)")
+        return {
+            "status": "reset",
+            "eod_check_time": str(scheduler.eod_check_time),
+            "market_close_time": str(scheduler.market_close),
+            "is_eod_window": scheduler.is_eod_window,
+        }
+    
+    # Validate hours
+    if not (0 <= eod_start_hour <= 23 and 0 <= eod_end_hour <= 23):
+        raise HTTPException(status_code=400, detail="Hours must be 0-23")
+    if not (0 <= eod_start_minute <= 59 and 0 <= eod_end_minute <= 59):
+        raise HTTPException(status_code=400, detail="Minutes must be 0-59")
+    
+    old_start = str(scheduler.eod_check_time)
+    old_end = str(scheduler.market_close)
+    
+    scheduler.eod_check_time = dt_time(eod_start_hour, eod_start_minute)
+    scheduler.market_close = dt_time(eod_end_hour, eod_end_minute)
+    
+    logger.info(f"[Scheduler] EOD window changed: {old_start}-{old_end} -> {scheduler.eod_check_time}-{scheduler.market_close}")
+    print(f"🕐 [Scheduler] EOD window changed to {scheduler.eod_check_time}-{scheduler.market_close} ET")
+    
+    return {
+        "status": "updated",
+        "eod_check_time": str(scheduler.eod_check_time),
+        "market_close_time": str(scheduler.market_close),
+        "is_eod_window": scheduler.is_eod_window,
+        "message": f"EOD window updated from {old_start}-{old_end} to {scheduler.eod_check_time}-{scheduler.market_close}",
+    }
+
+
 # ==================== SCHEDULER SETTINGS ENDPOINTS ====================
 
 @router.get("/scheduler/settings", response_model=dict)

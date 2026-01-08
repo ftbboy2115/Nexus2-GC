@@ -429,6 +429,11 @@ class AutomationScheduler:
     
     def get_status(self) -> dict:
         """Get current scheduler status."""
+        # Get Eastern Time for debugging
+        import pytz
+        eastern = pytz.timezone('America/New_York')
+        now_et = datetime.now(eastern)
+        
         return {
             "running": self._running,
             "interval_minutes": self.interval_minutes,
@@ -436,6 +441,7 @@ class AutomationScheduler:
             "is_market_hours": self.is_market_hours,
             "is_eod_window": self.is_eod_window,
             "eod_check_time": str(self.eod_check_time),
+            "market_close_time": str(self.market_close),
             "eod_check_done_today": self._eod_check_done_date == datetime.now().strftime("%Y-%m-%d"),
             "cycles_run": self.cycles_run,
             "eod_checks_run": self.eod_checks_run,
@@ -445,6 +451,7 @@ class AutomationScheduler:
             "last_error": self.last_error,
             "last_signals_count": len(self.last_signals) if self.last_signals else 0,
             "last_signals_at": self.last_signals_at.isoformat() if self.last_signals_at else None,
+            "eastern_time": now_et.strftime("%Y-%m-%d %H:%M:%S ET"),
         }
     
     def get_last_signals(self) -> list:
