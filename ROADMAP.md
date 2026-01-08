@@ -63,6 +63,8 @@ Last updated: 2026-01-06
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history
   - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
 - [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
+- [ ] **Column totals on Open Positions table** — Sum columns (Value, P/L $, Today P/L $) in footer row, especially in maximized view
+- [ ] **Scheduler Last Run shows UTC** — Should display ET for consistency
 
 ---
 
