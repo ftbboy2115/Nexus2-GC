@@ -121,6 +121,21 @@ async def get_status(
         trading_mode = "SIM"
         mode_description = "No broker configured"
     
+    # Get NAC-specific settings from scheduler
+    from nexus2.db import SessionLocal, SchedulerSettingsRepository
+    nac_max_positions = None
+    nac_max_position_value = None
+    try:
+        db = SessionLocal()
+        sched_repo = SchedulerSettingsRepository(db)
+        sched_settings = sched_repo.get()
+        if sched_settings:
+            nac_max_positions = int(sched_settings.nac_max_positions) if sched_settings.nac_max_positions else None
+            nac_max_position_value = float(sched_settings.max_position_value) if sched_settings.max_position_value else None
+        db.close()
+    except Exception:
+        pass
+    
     return {
         **status,
         "trading_mode": trading_mode,
@@ -129,6 +144,10 @@ async def get_status(
         "broker_type": settings.broker_type,
         "broker_display": broker_display,
         "active_account": settings.active_account,
+        # NAC actual settings (from scheduler_settings)
+        "nac_max_positions": nac_max_positions,
+        "nac_max_position_value": nac_max_position_value,
+        # Legacy dashboard settings (for reference)
         "settings_risk_per_trade": settings.risk_per_trade,
         "settings_max_per_symbol": settings.max_per_symbol,
         "settings_max_positions": settings.max_positions,
