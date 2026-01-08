@@ -72,7 +72,9 @@ class UnifiedMarketData:
         Get daily bars, FMP primary, Alpaca fallback.
         """
         bars = self.fmp.get_daily_bars(symbol, limit)
-        if bars and len(bars) >= 50:
+        # Accept FMP data if we got at least 10 bars or half the requested limit
+        min_bars = min(10, limit // 2) if limit > 0 else 10
+        if bars and len(bars) >= min_bars:
             return bars
         return self.alpaca.get_daily_bars(symbol, limit)
     
@@ -125,6 +127,7 @@ class UnifiedMarketData:
         """
         bars = self.get_daily_bars(symbol, limit=period + 5)
         if not bars or len(bars) < period:
+            print(f"[ADR DEBUG] {symbol}: Insufficient bars - got {len(bars) if bars else 0}, need {period}")
             return None
         
         recent_bars = bars[-period:]
@@ -133,7 +136,10 @@ class UnifiedMarketData:
         
         last_close = bars[-1].close
         if last_close > 0:
-            return (avg_range / last_close) * 100
+            adr_pct = (avg_range / last_close) * 100
+            print(f"[ADR DEBUG] {symbol}: bars={len(recent_bars)}, avg_range={avg_range:.4f}, close={last_close:.2f}, ADR%={adr_pct:.2f}")
+            return adr_pct
+        print(f"[ADR DEBUG] {symbol}: last_close is 0 or negative")
         return None
     
     def get_opening_range(

@@ -69,12 +69,11 @@ async def run_ma_check(
     
     # Use request values, falling back to saved settings
     effective_min_days = req.min_days if req.min_days != 5 else saved_settings.min_days_for_trailing
-    effective_ma_type = ma_type
     
-    # If request uses "auto" and settings say otherwise, respect request
-    # But if using defaults, pull from settings
-    if req.ma_type == "auto":
-        effective_ma_type = ma_type_map.get(saved_settings.trailing_ma_type, TrailingMAType.AUTO)
+    # If request explicitly specifies a MA type, use it
+    # Only fall back to saved settings if no specific type requested
+    # Note: "auto" is a valid explicit choice that uses ADR-based selection
+    effective_ma_type = ma_type  # Respect the request (including "auto")
     
     # Create job with callbacks
     job = MACheckJob(
