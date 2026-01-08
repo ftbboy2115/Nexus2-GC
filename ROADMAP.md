@@ -47,8 +47,9 @@ Last updated: 2026-01-06
 - [x] **Scanner version tracking — ALREADY IMPLEMENTED** — Git hash captured in `scanner_settings` JSON
   - `execution_handler.py:120-137` captures commit hash at trade time
   - Stored in `PositionModel.scanner_settings` for each position
-- [ ] **Rejection logging** — Log WHY stocks are rejected (e.g., "sector blacklist: defense")
-  - Currently scanner silently skips; diagnostics should record rejection reasons
+- [x] **Rejection logging — COMPLETE (v0.1.1)** — File-based logging with API endpoint
+  - `rejection_tracker.py` - thread-safe, persists last 500 rejections
+  - EP scanner integrated; `/automation/scheduler/rejections` endpoint added
 
 ---
 

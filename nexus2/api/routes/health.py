@@ -16,7 +16,7 @@ async def health_check():
     """Health check endpoint."""
     return HealthResponse(
         status="healthy",
-        version="0.1.0",
+        version="0.1.1",
         mode="sim",  # Always SIM for now
         timestamp=datetime.now(),
     )
