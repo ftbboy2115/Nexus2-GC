@@ -81,11 +81,75 @@ async def auto_start_checker(
                             engine.start()  # Sync, returns dict
                             print("[AutoStart] Engine started")
                         
-                        # Start Monitor (async method)
+                        # Start Monitor (async method) with proper callbacks
                         monitor = get_monitor_fn()
                         if not monitor._running:
-                            await monitor.start()  # Async, returns dict
-                            print("[AutoStart] Monitor started")
+                            # Set up callbacks (same as monitor_routes.py)
+                            async def get_positions():
+                                from nexus2.db.database import get_session
+                                from nexus2.db.repository import PositionRepository
+                                with get_session() as db:
+                                    repo = PositionRepository(db)
+                                    positions = repo.get_open()
+                                    return [
+                                        {
+                                            "id": p.id,
+                                            "symbol": p.symbol,
+                                            "entry_price": p.entry_price,
+                                            "initial_stop": p.initial_stop,
+                                            "current_stop": p.current_stop,
+                                            "remaining_shares": p.remaining_shares,
+                                            "opened_at": p.opened_at,
+                                            "partial_taken": p.partial_taken,
+                                        }
+                                        for p in positions
+                                    ]
+                            
+                            async def get_price(symbol: str):
+                                try:
+                                    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                                    fmp = get_fmp_adapter()
+                                    quote = fmp.get_quote(symbol)
+                                    if quote:
+                                        return quote.price
+                                except Exception:
+                                    pass
+                                return None
+                            
+                            async def execute_exit(signal):
+                                from nexus2.db.database import get_session
+                                from nexus2.db.repository import PositionRepository, PositionExitRepository
+                                from datetime import datetime
+                                from uuid import uuid4 as gen_uuid
+                                
+                                with get_session() as db:
+                                    position_repo = PositionRepository(db)
+                                    exit_repo = PositionExitRepository(db)
+                                    
+                                    exit_repo.create({
+                                        "id": str(gen_uuid()),
+                                        "position_id": signal.position_id,
+                                        "shares": signal.shares_to_exit,
+                                        "exit_price": str(signal.exit_price),
+                                        "reason": signal.reason.value,
+                                        "exited_at": datetime.utcnow(),
+                                    })
+                                    
+                                    position = position_repo.get_by_id(signal.position_id)
+                                    if position:
+                                        new_remaining = position.remaining_shares - signal.shares_to_exit
+                                        updates = {"remaining_shares": new_remaining}
+                                        if new_remaining <= 0:
+                                            updates["status"] = "closed"
+                                            updates["closed_at"] = datetime.utcnow()
+                                            updates["realized_pnl"] = str(signal.pnl_estimate)
+                                        position_repo.update(signal.position_id, updates)
+                                    
+                                    return {"status": "executed", "symbol": signal.symbol}
+                            
+                            monitor.set_callbacks(get_positions, get_price, execute_exit)
+                            await monitor.start()
+                            print("[AutoStart] Monitor started with callbacks")
                         
                         # Configure scheduler with callbacks (same as manual UI start)
                         await configure_and_start_fn(engine, scheduler)

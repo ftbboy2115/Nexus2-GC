@@ -52,6 +52,8 @@ async def start_monitor(
                     "initial_stop": p.initial_stop,
                     "current_stop": p.current_stop,
                     "remaining_shares": p.remaining_shares,
+                    "opened_at": p.opened_at,
+                    "partial_taken": p.partial_taken,
                 }
                 for p in positions
             ]
