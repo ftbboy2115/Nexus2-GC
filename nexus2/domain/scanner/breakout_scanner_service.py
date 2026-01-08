@@ -129,11 +129,20 @@ class BreakoutScannerService:
         
         results = []
         processed = 0
+        total = len(universe)
+        progress_thresholds = {25, 50, 75}
+        logged_thresholds = set()
         
         for symbol in universe:
             processed += 1
-            if verbose and processed % 20 == 0:
-                print(f"[Breakout] Processing {processed}/{len(universe)}...")
+            
+            # Log progress at 25%, 50%, 75%
+            if total > 0:
+                pct = int((processed / total) * 100)
+                for threshold in progress_thresholds:
+                    if pct >= threshold and threshold not in logged_thresholds:
+                        print(f"🔄 [Breakout Scanner] Processing {processed}/{total} ({threshold}%)...")
+                        logged_thresholds.add(threshold)
             
             try:
                 candidate = self._evaluate_symbol(symbol, verbose)
