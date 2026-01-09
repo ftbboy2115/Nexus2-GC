@@ -536,7 +536,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
     engine.config.sim_only = True
     
     # Wire up engine callbacks to MockBroker
-    async def sim_submit_order(symbol: str, shares: int, stop_price: float, limit_price: float = None, trigger_type: str = "orb"):
+    async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb"):
         """Submit order to MockBroker."""
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
@@ -546,7 +546,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
             client_order_id=uuid4(),
             symbol=symbol,
             quantity=shares,
-            stop_loss_price=stop_price,
+            stop_loss_price=stop_loss,
             limit_price=Decimal(str(limit_price)) if limit_price else None,
         )
         return result
@@ -1024,7 +1024,6 @@ async def load_warrior_test_case(case_id: str):
             float_shares=None,
             catalyst_type=premarket.get("catalyst", "news"),
             catalyst_description=case.get("description", "Mock Market test"),
-            quality_score=10,
             is_ideal_float=True,
             is_ideal_rvol=True,
             is_ideal_gap=True,
