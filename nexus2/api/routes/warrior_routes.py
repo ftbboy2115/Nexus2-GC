@@ -981,6 +981,7 @@ async def enable_warrior_broker():
             return None
     
     # Wire up monitor callbacks
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
     monitor = get_warrior_monitor()
     monitor._execute_exit = broker_execute_exit
     
