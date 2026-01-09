@@ -102,7 +102,7 @@ Last updated: 2026-01-08
   - [ ] First red 5-min candle exit signal
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
 - [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
-- [ ] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
+- [x] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
 
 ---
