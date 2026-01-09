@@ -951,13 +951,19 @@ async def enable_warrior_broker():
     init_warrior_db()
     
     try:
+        from nexus2.domain.automation.warrior_monitor import WarriorPosition
+        from uuid import uuid4
+        from datetime import datetime
+        
         alpaca_positions = broker.get_positions()
+        print(f"[Warrior] Found {len(alpaca_positions)} Alpaca positions to sync")
         synced_count = 0
         
         for symbol, pos in alpaca_positions.items():
             # Check if already in monitor
             existing = [p for p in monitor.get_positions() if p.symbol == symbol]
             if existing:
+                print(f"[Warrior] {symbol} already in monitor, skipping")
                 continue
             
             # First check Warrior DB for saved trade data
@@ -981,10 +987,6 @@ async def enable_warrior_broker():
                 print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
             
             # Add to monitor
-            from nexus2.domain.automation.warrior_monitor import WarriorPosition
-            from uuid import uuid4
-            from datetime import datetime
-            
             new_pos = WarriorPosition(
                 position_id=trade_id,
                 symbol=symbol,
@@ -1000,8 +1002,12 @@ async def enable_warrior_broker():
         
         if synced_count > 0:
             print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")
+        else:
+            print(f"[Warrior] No new positions to sync")
     except Exception as e:
+        import traceback
         print(f"[Warrior] Position sync failed: {e}")
+        traceback.print_exc()
     
     return {
         "status": "enabled",
