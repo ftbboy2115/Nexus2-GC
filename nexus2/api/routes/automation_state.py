@@ -210,7 +210,7 @@ def can_reenter(symbol: str, current_price: float) -> tuple[bool, str]:
         (allowed: bool, reason: str)
     """
     from datetime import datetime, timedelta
-    from nexus2.db import get_session
+    from nexus2.db.database import get_session
     from nexus2.db.models import PositionModel
     
     # Query DB for most recently closed position of this symbol (today)
