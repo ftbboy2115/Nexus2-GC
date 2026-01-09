@@ -912,15 +912,16 @@ async def enable_warrior_broker():
         
         try:
             positions = alpaca.get_positions()
+            # positions is Dict[str, BrokerPosition], iterate values
             return [
                 {
                     "symbol": p.symbol,
                     "qty": p.quantity,
-                    "avg_price": float(p.average_entry_price),
-                    "current_price": float(p.current_price),
+                    "avg_price": float(p.avg_price),
+                    "current_price": float(p.current_price) if p.current_price else 0,
                     "unrealized_pnl": float(p.unrealized_pnl),
                 }
-                for p in positions
+                for p in positions.values()
             ]
         except Exception as e:
             print(f"[Warrior] Failed to get positions: {e}")
