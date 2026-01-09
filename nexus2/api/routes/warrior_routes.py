@@ -788,6 +788,12 @@ def get_warrior_alpaca_broker():
     return _warrior_alpaca_broker
 
 
+def set_warrior_alpaca_broker(broker):
+    """Set Warrior's Alpaca broker (for auto-enable on startup)."""
+    global _warrior_alpaca_broker
+    _warrior_alpaca_broker = broker
+
+
 def create_warrior_alpaca_broker():
     """Create AlpacaBroker using Account B credentials."""
     from nexus2 import config
