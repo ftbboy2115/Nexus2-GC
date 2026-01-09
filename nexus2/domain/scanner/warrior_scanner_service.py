@@ -87,7 +87,6 @@ DILUTION_KEYWORDS = [
     "shelf registration",
     "dilution",
     "shares issued",
-    "equity line",  # Not always bad, but often dilutive
     "direct offering",
     "public offering",
     "at-the-market offering",
