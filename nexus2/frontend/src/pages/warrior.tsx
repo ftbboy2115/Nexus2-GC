@@ -162,7 +162,14 @@ function CollapsibleCard({ id, title, badge, children, defaultCollapsed = false 
 
     return (
         <div className={styles.card}>
-            <div className={styles.cardHeader} onClick={toggle} style={{ cursor: 'pointer' }}>
+            <div
+                className={styles.cardHeader}
+                onClick={toggle}
+                style={{
+                    cursor: 'pointer',
+                    borderBottom: collapsed ? 'none' : undefined
+                }}
+            >
                 <h2>{title}</h2>
                 <div className={styles.headerRight}>
                     {badge}
