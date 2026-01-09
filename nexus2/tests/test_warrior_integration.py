@@ -56,21 +56,26 @@ class TestWarriorScannerIntegration:
         assert score >= 8, f"Ideal candidate scored {score}, expected 8+"
     
     def test_scanner_chinese_stock_exclusion(self):
-        """Scanner should filter out likely Chinese stocks by name."""
+        """Scanner should filter out likely Chinese stocks by name or country."""
         from nexus2.domain.scanner.warrior_scanner_service import WarriorScannerService
         
         scanner = WarriorScannerService()
         scanner.settings.exclude_chinese_stocks = True
         
-        # These should be flagged as likely Chinese (by keywords in name)
+        # Country-based detection (primary - from FMP profile)
+        assert scanner._is_likely_chinese("Some Company", country="CN") is True
+        assert scanner._is_likely_chinese("Some Company", country="HK") is True
+        assert scanner._is_likely_chinese("Some Company", country="China") is True
+        assert scanner._is_likely_chinese("Some Company", country="US") is False
+        
+        # Name-based detection (fallback)
         assert scanner._is_likely_chinese("China Tech Holdings Ltd") is True
         assert scanner._is_likely_chinese("Shanghai Biotech Group Ltd") is True
         assert scanner._is_likely_chinese("Hong Kong Digital") is True
         
-        # These should NOT be flagged (no Chinese indicators)
-        assert scanner._is_likely_chinese("Apple Inc") is False
+        # Non-Chinese stocks
+        assert scanner._is_likely_chinese("Apple Inc", country="US") is False
         assert scanner._is_likely_chinese("Tesla Inc") is False
-        assert scanner._is_likely_chinese("NIO Inc") is False  # Only keyword-based
 
 
 # ============================================================================

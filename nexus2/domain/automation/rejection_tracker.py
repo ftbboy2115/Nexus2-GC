@@ -40,6 +40,7 @@ class RejectionReason(Enum):
     # Warrior Scanner
     FLOAT_TOO_HIGH = "float_too_high"
     PRICE_OUT_OF_RANGE = "price_out_of_range"
+    COUNTRY_EXCLUDED = "country_excluded"
     
     # Common
     PRICE_TOO_LOW = "price_too_low"

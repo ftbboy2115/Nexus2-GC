@@ -359,6 +359,22 @@ class WarriorScannerService:
         last_price = snapshot["last_price"]
         
         # =========================================================================
+        # CHINESE STOCK CHECK (Country-based)
+        # =========================================================================
+        if s.exclude_chinese_stocks:
+            country = self._get_country(symbol)
+            if self._is_likely_chinese(name, country=country):
+                tracker.record(
+                    symbol=symbol,
+                    scanner="warrior",
+                    reason=RejectionReason.COUNTRY_EXCLUDED,
+                    details=f"Chinese/HK stock excluded (country={country})",
+                )
+                if verbose:
+                    print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
+                return None
+        
+        # =========================================================================
         # PILLAR 1: Float (< 100M, ideal < 20M)
         # =========================================================================
         # Note: FMP doesn't provide float directly in most endpoints
@@ -536,12 +552,23 @@ class WarriorScannerService:
         except Exception:
             return False
     
-    def _is_likely_chinese(self, name: str) -> bool:
+    def _is_likely_chinese(self, name: str, country: Optional[str] = None) -> bool:
         """
-        Heuristic to detect likely Chinese stocks by company name.
+        Detect likely Chinese stocks by country or company name.
         
         Ross avoids these due to pump & dump patterns.
+        
+        Args:
+            name: Company name
+            country: Country code from FMP profile (e.g., "CN", "HK")
         """
+        # Primary check: country code from FMP profile
+        if country:
+            country_upper = country.upper()
+            if country_upper in ("CN", "CHINA", "HK", "HONG KONG"):
+                return True
+        
+        # Fallback: name-based heuristics
         if not name:
             return False
         
@@ -552,6 +579,13 @@ class WarriorScannerService:
         ]
         
         return any(indicator in name_lower for indicator in chinese_indicators)
+    
+    def _get_country(self, symbol: str) -> Optional[str]:
+        """Get country for a symbol from FMP profile."""
+        try:
+            return self.market_data.fmp.get_country(symbol)
+        except Exception:
+            return None
 
 
 # =============================================================================

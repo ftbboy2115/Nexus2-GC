@@ -371,6 +371,21 @@ class FMPAdapter:
             industry=p.get("industry"),
         )
     
+    def get_country(self, symbol: str) -> Optional[str]:
+        """
+        Get the country where a company is headquartered.
+        
+        Uses FMP's profile endpoint.
+        
+        Returns:
+            Country name (e.g., "CN", "US", "HK") or None if unavailable
+        """
+        data = self._get(f"profile/{symbol}")
+        if not data or len(data) == 0:
+            return None
+        
+        return data[0].get("country")
+    
     def get_prev_close(self, symbol: str) -> Optional[Decimal]:
         """Get previous day's closing price."""
         bars = self.get_daily_bars(symbol, limit=5)
