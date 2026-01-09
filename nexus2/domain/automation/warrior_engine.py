@@ -149,6 +149,10 @@ class WarriorEngine:
         self._scan_task: Optional[asyncio.Task] = None
         self._watch_task: Optional[asyncio.Task] = None
         
+        # Scan interrupt (for config changes)
+        self._scan_interrupt: Optional[asyncio.Event] = None
+        self._last_scan_started: Optional[datetime] = None
+        
         # Callbacks (to be wired up)
         self._submit_order: Optional[Callable] = None
         self._get_quote: Optional[Callable] = None
@@ -282,17 +286,35 @@ class WarriorEngine:
     
     async def _scan_loop(self):
         """Background loop for scanning candidates."""
+        # Create interrupt event for this loop
+        self._scan_interrupt = asyncio.Event()
+        
         while self.state != WarriorEngineState.STOPPED:
             try:
                 if self.state == WarriorEngineState.PAUSED:
                     await asyncio.sleep(10)
                     continue
                 
+                # Record when this scan started
+                self._last_scan_started = datetime.utcnow()
+                
                 # Run scan
                 await self._run_scan()
                 
-                # Wait for next interval
-                await asyncio.sleep(self.config.scanner_interval_minutes * 60)
+                # Wait for next interval (interruptible)
+                wait_seconds = self.config.scanner_interval_minutes * 60
+                try:
+                    # Wait until either: (1) timeout expires, or (2) interrupt event is set
+                    await asyncio.wait_for(
+                        self._scan_interrupt.wait(),
+                        timeout=wait_seconds
+                    )
+                    # If we get here, event was set (interrupted)
+                    self._scan_interrupt.clear()
+                    logger.info("[Warrior Scan] Sleep interrupted by config change")
+                except asyncio.TimeoutError:
+                    # Normal timeout - continue to next scan
+                    pass
                 
             except asyncio.CancelledError:
                 break
@@ -300,6 +322,12 @@ class WarriorEngine:
                 self.stats.last_error = str(e)
                 logger.error(f"[Warrior Scan] Error: {e}")
                 await asyncio.sleep(30)
+    
+    def interrupt_scan_sleep(self):
+        """Interrupt current scan sleep (called when interval is reduced)."""
+        if self._scan_interrupt and not self._scan_interrupt.is_set():
+            self._scan_interrupt.set()
+            logger.info("[Warrior Scan] Interrupt signal sent")
     
     async def _run_scan(self):
         """Run one scan cycle."""

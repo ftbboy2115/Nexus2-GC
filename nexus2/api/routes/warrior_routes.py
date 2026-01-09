@@ -181,8 +181,12 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         updated["max_candidates"] = request.max_candidates
     
     if request.scanner_interval_minutes is not None:
+        old_interval = engine.config.scanner_interval_minutes
         engine.config.scanner_interval_minutes = request.scanner_interval_minutes
         updated["scanner_interval_minutes"] = request.scanner_interval_minutes
+        # Interrupt sleep if new interval is shorter
+        if request.scanner_interval_minutes < old_interval:
+            engine.interrupt_scan_sleep()
     
     if request.risk_per_trade is not None:
         engine.config.risk_per_trade = Decimal(str(request.risk_per_trade))
