@@ -291,9 +291,13 @@ class UnifiedMarketData:
         """
         Get top gainers for today (real-time, refreshed every ~1 min).
         
-        Better than stock-screener for EP scanning - no stale tickers.
+        Falls back to pre-market gainers if regular market data is empty.
         """
-        return self.fmp.get_gainers()
+        gainers = self.fmp.get_gainers()
+        if gainers:
+            return gainers
+        # Fallback to pre-market gainers when market is closed
+        return self.fmp.get_premarket_gainers()
     
     def get_actives(self) -> List[Dict]:
         """Get most active stocks by volume (real-time)."""

@@ -521,6 +521,41 @@ class FMPAdapter:
         
         return gainers
     
+    def get_premarket_gainers(self, min_change_pct: float = 4.0) -> List[Dict]:
+        """
+        Get pre-market gainers using after-hours trade data.
+        
+        This works before market open when stock_market/gainers is empty.
+        Uses pre_post_market/trade endpoint.
+        
+        Args:
+            min_change_pct: Minimum % change to include
+            
+        Returns:
+            List of gainers sorted by change_percent descending
+        """
+        # FMP pre/post market quotes endpoint
+        data = self._get("pre_post_market/gainers")
+        if not data:
+            # Fallback: try to get active pre-market movers
+            return []
+        
+        gainers = []
+        for item in data:
+            change_pct = float(item.get("changesPercentage", 0))
+            if change_pct >= min_change_pct:
+                gainers.append({
+                    "symbol": item.get("symbol", ""),
+                    "name": item.get("name", ""),
+                    "price": Decimal(str(item.get("price", 0))),
+                    "change": Decimal(str(item.get("change", 0))),
+                    "change_percent": Decimal(str(item.get("changesPercentage", 0))),
+                })
+        
+        # Sort by change percent descending
+        gainers.sort(key=lambda x: x["change_percent"], reverse=True)
+        return gainers
+    
     def get_actives(self) -> List[Dict]:
         """
         Get most active stocks by volume (real-time).
