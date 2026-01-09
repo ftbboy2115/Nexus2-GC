@@ -846,7 +846,7 @@ async def get_warrior_broker_status():
         positions_list = list(positions.values()) if isinstance(positions, dict) else positions
         for p in positions_list:
             total_unrealized_pnl += float(p.unrealized_pnl) if p.unrealized_pnl else 0
-            total_invested += float(p.average_entry_price) * p.quantity if p.average_entry_price else 0
+            total_invested += float(p.avg_price) * p.quantity if p.avg_price else 0
         
         # Get realized P&L from monitor
         from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
@@ -873,7 +873,7 @@ async def get_warrior_broker_status():
                 {
                     "symbol": p.symbol,
                     "qty": p.quantity,
-                    "avg_price": float(p.average_entry_price),
+                    "avg_price": float(p.avg_price),
                     "current_price": float(p.current_price),
                     "unrealized_pnl": float(p.unrealized_pnl),
                 }
