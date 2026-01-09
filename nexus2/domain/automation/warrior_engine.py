@@ -584,7 +584,9 @@ class WarriorEngine:
                 # Log to Warrior DB for restart recovery
                 try:
                     from nexus2.db.warrior_db import log_warrior_entry
-                    target = entry_price + Decimal(str(self.monitor.settings.mental_stop_cents / 100 * self.monitor.settings.profit_target_r))
+                    mental_stop_cents = Decimal(str(self.monitor.settings.mental_stop_cents))
+                    profit_target_r = Decimal(str(self.monitor.settings.profit_target_r))
+                    target = entry_price + (mental_stop_cents / 100 * profit_target_r)
                     log_warrior_entry(
                         trade_id=order_id,
                         symbol=symbol,
