@@ -136,7 +136,7 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
         from nexus2.adapters.market_data.unified import UnifiedMarketData
         umd = UnifiedMarketData()
         
-        def default_get_quote(symbol: str):
+        async def default_get_quote(symbol: str):
             """Get quote from real market data (Alpaca for pre-market)."""
             quote = umd.get_quote(symbol)
             return float(quote.price) if quote else None
@@ -551,7 +551,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         )
         return result
     
-    def sim_get_quote(symbol: str):
+    async def sim_get_quote(symbol: str):
         """Get price - try MockBroker first, fallback to real market data."""
         sim_broker = get_warrior_sim_broker()
         if sim_broker:
@@ -869,7 +869,7 @@ async def enable_warrior_broker():
     from nexus2.adapters.market_data.unified import UnifiedMarketData
     umd = UnifiedMarketData()
     
-    def broker_get_quote(symbol: str):
+    async def broker_get_quote(symbol: str):
         """Get quote from real market data (Alpaca for pre-market)."""
         quote = umd.get_quote(symbol)
         return float(quote.price) if quote else None
