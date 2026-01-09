@@ -11,4 +11,4 @@ This package provides a complete trading platform with:
 - Market regime detection
 """
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
