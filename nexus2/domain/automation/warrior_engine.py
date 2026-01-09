@@ -79,8 +79,8 @@ class WarriorEngineConfig:
     
     # Risk
     risk_per_trade: Decimal = Decimal("100")  # $100 per trade
-    max_positions: int = 3
-    max_daily_loss: Decimal = Decimal("300")  # $300 max daily loss
+    max_positions: int = 5  # Increased for testing
+    max_daily_loss: Decimal = Decimal("1000")  # $1000 max daily loss (testing)
     max_capital: Decimal = Decimal("5000")  # Max capital per trade
     
     # Execution
