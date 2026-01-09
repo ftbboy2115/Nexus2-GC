@@ -9,9 +9,12 @@ Based on:
 Distinct from KK-style scanners (EP, Breakout, HTF).
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 from nexus2.adapters.market_data import UnifiedMarketData
@@ -19,6 +22,38 @@ from nexus2.domain.automation.rejection_tracker import (
     get_rejection_tracker,
     RejectionReason,
 )
+
+
+# =============================================================================
+# SCAN LOGGER SETUP
+# =============================================================================
+
+def _get_warrior_scan_logger() -> logging.Logger:
+    """Get or create the Warrior scan file logger."""
+    logger = logging.getLogger("warrior_scan")
+    
+    if not logger.handlers:
+        # Create data directory if needed
+        log_dir = Path("data")
+        log_dir.mkdir(exist_ok=True)
+        
+        # Rotating file handler: 1MB max, keep 7 files (1 week of logs)
+        handler = RotatingFileHandler(
+            log_dir / "warrior_scan.log",
+            maxBytes=1_000_000,
+            backupCount=7,
+            encoding="utf-8",
+        )
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        )
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    
+    return logger
+
+
+scan_logger = _get_warrior_scan_logger()
 
 
 # =============================================================================
@@ -288,10 +323,15 @@ class WarriorScannerService:
         
         # Step 2: Evaluate each symbol against all 5 Pillars
         candidates = []
+        rejections = []  # Track rejections for logging
         processed = 0
         total = len(filtered_movers)
         progress_thresholds = {25, 50, 75}
         logged_thresholds = set()
+        
+        # Log all symbols being evaluated
+        all_symbols = [m["symbol"] for m in filtered_movers]
+        scan_logger.info(f"SCAN START | Total: {len(all_movers)} | Pre-filtered: {total} | Symbols: {','.join(all_symbols[:50])}")
         
         for mover in filtered_movers:
             processed += 1
@@ -315,7 +355,9 @@ class WarriorScannerService:
                 )
                 if candidate:
                     candidates.append(candidate)
+                    scan_logger.info(f"PASS | {symbol} | Gap:{mover['change_percent']:.1f}% | RVOL:{candidate.relative_volume:.1f}x | Score:{candidate.quality_score}")
             except Exception as e:
+                scan_logger.error(f"ERROR | {symbol} | {e}")
                 if verbose:
                     print(f"Error processing {symbol}: {e}")
         
@@ -328,6 +370,10 @@ class WarriorScannerService:
         if candidates:
             avg_rvol = sum(c.relative_volume for c in candidates) / len(candidates)
             avg_gap = sum(c.gap_percent for c in candidates) / len(candidates)
+        
+        # Log scan summary
+        passed_symbols = [c.symbol for c in candidates]
+        scan_logger.info(f"SCAN END | Processed: {processed} | Passed: {len(candidates)} | Candidates: {','.join(passed_symbols)}")
         
         return WarriorScanResult(
             candidates=candidates,
@@ -364,6 +410,7 @@ class WarriorScannerService:
                 reason=RejectionReason.SNAPSHOT_FAILED,
                 details="Failed to build session snapshot",
             )
+            scan_logger.info(f"FAIL | {symbol} | Reason: snapshot_failed")
             return None
         
         # Extract metrics
@@ -385,6 +432,7 @@ class WarriorScannerService:
                     reason=RejectionReason.COUNTRY_EXCLUDED,
                     details=f"Chinese/HK stock excluded (country={country})",
                 )
+                scan_logger.info(f"FAIL | {symbol} | Reason: chinese_stock | Country: {country}")
                 if verbose:
                     print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
                 return None
@@ -403,6 +451,7 @@ class WarriorScannerService:
                 reason=RejectionReason.FLOAT_TOO_HIGH,
                 values={"float": float_shares, "max": s.max_float},
             )
+            scan_logger.info(f"FAIL | {symbol} | Reason: float_too_high | Float: {float_shares:,} > {s.max_float:,}")
             if verbose:
                 print(f"{symbol}: Rejected - Float {float_shares:,} > {s.max_float:,}")
             return None
@@ -421,6 +470,7 @@ class WarriorScannerService:
                 reason=RejectionReason.RVOL_TOO_LOW,
                 values={"rvol": round(float(rvol), 2), "min": float(s.min_rvol)},
             )
+            scan_logger.info(f"FAIL | {symbol} | Reason: rvol_too_low | RVOL: {rvol:.1f}x < {s.min_rvol}x")
             if verbose:
                 print(f"{symbol}: Rejected - RVOL {rvol:.1f}x < {s.min_rvol}x")
             return None
@@ -450,6 +500,7 @@ class WarriorScannerService:
                 reason=RejectionReason.NO_CATALYST,
                 details=catalyst_desc,
             )
+            scan_logger.info(f"FAIL | {symbol} | Reason: no_catalyst")
             if verbose:
                 print(f"{symbol}: Rejected - No catalyst found")
             return None

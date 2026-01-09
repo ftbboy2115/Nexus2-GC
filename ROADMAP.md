@@ -100,6 +100,11 @@ Last updated: 2026-01-08
   - [ ] Multi-session ORB (4am, 6am, 7am)
   - [ ] 10:00 AM exit time priority
   - [ ] First red 5-min candle exit signal
+- [ ] **Spread Management** — Bid/ask spread considerations for cleaner execution
+  - [ ] Wide spread filter at entry (reject if spread > X% of price)
+  - [ ] Spread-adjusted stops (trigger when bid reaches stop, not last trade)
+  - [ ] Limit-on-bid exits instead of market orders for less slippage
+  - [ ] Slippage tracking (expected vs actual fill prices)
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
 - [ ] **Full Auto-Enable on Startup** — Extract broker/callback wiring + position sync from `/broker/enable` so it runs automatically on server start (currently only sets broker object, doesn't wire callbacks or sync positions)
 - [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
