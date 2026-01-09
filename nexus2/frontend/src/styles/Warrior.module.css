@@ -190,7 +190,11 @@
     background: rgba(255, 107, 53, 0.3);
 }
 
-button:disabled {
+.btnPrimary:disabled,
+.btnSecondary:disabled,
+.btnDanger:disabled,
+.btnSmall:disabled,
+.refreshBtn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -371,13 +375,17 @@ button:disabled {
     overflow-x: auto;
 }
 
-table {
+.candidateTable table,
+.watchlistTable table,
+.positionsTable table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
 }
 
-th {
+.candidateTable th,
+.watchlistTable th,
+.positionsTable th {
     text-align: left;
     padding: 0.5rem 0.75rem;
     color: #888;
@@ -385,12 +393,16 @@ th {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-td {
+.candidateTable td,
+.watchlistTable td,
+.positionsTable td {
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-tr:hover {
+.candidateTable tr:hover,
+.watchlistTable tr:hover,
+.positionsTable tr:hover {
     background: rgba(255, 255, 255, 0.02);
 }
 
