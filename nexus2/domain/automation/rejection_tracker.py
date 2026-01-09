@@ -42,6 +42,7 @@ class RejectionReason(Enum):
     PRICE_OUT_OF_RANGE = "price_out_of_range"
     COUNTRY_EXCLUDED = "country_excluded"
     GAP_TOO_LOW = "gap_too_low"  # Recalculated gap below threshold
+    CATALYST_DILUTION = "catalyst_dilution"  # Dilution-related catalyst (private placement, etc.)
     
     # Common
     PRICE_TOO_LOW = "price_too_low"

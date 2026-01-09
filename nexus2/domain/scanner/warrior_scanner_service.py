@@ -78,6 +78,22 @@ CHINESE_STOCK_PATTERNS = {
     "EUDA", "MGIH", "VCSA", "WIMI", "AIHS", "QD", "YQ",
 }
 
+# Dilution-related keywords that indicate bearish catalyst (ANPA trap)
+DILUTION_KEYWORDS = [
+    "private placement",
+    "stock offering",
+    "share offering",
+    "secondary offering",
+    "shelf registration",
+    "dilution",
+    "shares issued",
+    "equity line",  # Not always bad, but often dilutive
+    "direct offering",
+    "public offering",
+    "at-the-market offering",
+    "atm offering",
+]
+
 
 # =============================================================================
 # RESULT MODELS
@@ -438,6 +454,23 @@ class WarriorScannerService:
             if verbose:
                 print(f"{symbol}: Rejected - No catalyst found")
             return None
+        
+        # =========================================================================
+        # DILUTION CHECK - Reject bearish catalysts (ANPA trap avoidance)
+        # =========================================================================
+        if catalyst_desc:
+            catalyst_lower = catalyst_desc.lower()
+            for dilution_kw in DILUTION_KEYWORDS:
+                if dilution_kw in catalyst_lower:
+                    tracker.record(
+                        symbol=symbol,
+                        scanner="warrior",
+                        reason=RejectionReason.CATALYST_DILUTION,
+                        details=f"Dilution catalyst: {dilution_kw}",
+                    )
+                    if verbose:
+                        print(f"{symbol}: Rejected - Dilution catalyst: {dilution_kw}")
+                    return None
         
         # =========================================================================
         # PILLAR 4: Price ($1.50 - $20)
