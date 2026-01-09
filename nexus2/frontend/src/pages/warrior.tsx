@@ -117,8 +117,67 @@ interface SimStatus {
 }
 
 // ============================================================================
+// Collapsible Card Component
+// ============================================================================
+
+interface CollapsibleCardProps {
+    id: string
+    title: string
+    badge?: React.ReactNode
+    children: React.ReactNode
+    defaultCollapsed?: boolean
+}
+
+const getCollapsedState = (): Record<string, boolean> => {
+    if (typeof window !== 'undefined') {
+        try {
+            const saved = localStorage.getItem('warrior-collapsed-cards')
+            return saved ? JSON.parse(saved) : {}
+        } catch {
+            return {}
+        }
+    }
+    return {}
+}
+
+const setCollapsedState = (cardId: string, collapsed: boolean) => {
+    if (typeof window !== 'undefined') {
+        const current = getCollapsedState()
+        current[cardId] = collapsed
+        localStorage.setItem('warrior-collapsed-cards', JSON.stringify(current))
+    }
+}
+
+function CollapsibleCard({ id, title, badge, children, defaultCollapsed = false }: CollapsibleCardProps) {
+    const [collapsed, setCollapsed] = useState(() => {
+        const saved = getCollapsedState()
+        return saved[id] ?? defaultCollapsed
+    })
+
+    const toggle = () => {
+        const newState = !collapsed
+        setCollapsed(newState)
+        setCollapsedState(id, newState)
+    }
+
+    return (
+        <div className={styles.card}>
+            <div className={styles.cardHeader} onClick={toggle} style={{ cursor: 'pointer' }}>
+                <h2>{title}</h2>
+                <div className={styles.headerRight}>
+                    {badge}
+                    <span className={styles.collapseToggle}>{collapsed ? '▶' : '▼'}</span>
+                </div>
+            </div>
+            {!collapsed && children}
+        </div>
+    )
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
+
 
 export default function Warrior() {
     // Core state
@@ -386,13 +445,15 @@ export default function Warrior() {
                         {/* Main Grid */}
                         <div className={styles.grid}>
                             {/* Engine Control Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>🎛️ Engine Control</h2>
+                            <CollapsibleCard
+                                id="engine"
+                                title="🎛️ Engine Control"
+                                badge={
                                     <span className={`${styles.stateBadge} ${styles[`state${status?.state}`]}`}>
                                         {status?.state?.toUpperCase() || 'UNKNOWN'}
                                     </span>
-                                </div>
+                                }
+                            >
                                 <div className={styles.cardBody}>
                                     {/* Stats */}
                                     <div className={styles.statsGrid}>
@@ -480,7 +541,7 @@ export default function Warrior() {
                                         </>
                                     )}
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Simulation Mode Card */}
                             <div className={styles.card}>
@@ -939,7 +1000,7 @@ export default function Warrior() {
                         </div>
                     </>
                 )}
-            </main>
+            </main >
         </>
     )
 }

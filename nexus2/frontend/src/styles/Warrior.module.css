@@ -50,6 +50,18 @@
     gap: 0.75rem;
 }
 
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.collapseToggle {
+    font-size: 0.9rem;
+    color: #888;
+    transition: transform 0.2s;
+}
+
 /* Badges */
 .badge {
     padding: 0.35rem 0.75rem;
