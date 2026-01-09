@@ -557,6 +557,7 @@ class WarriorEngine:
                 "sim_only": self.config.sim_only,
                 "risk_per_trade": float(self.config.risk_per_trade),
                 "max_positions": self.config.max_positions,
+                "max_candidates": self.config.max_candidates,
                 "max_daily_loss": float(self.config.max_daily_loss),
                 "orb_enabled": self.config.orb_enabled,
                 "pmh_enabled": self.config.pmh_enabled,

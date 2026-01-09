@@ -34,6 +34,7 @@ class WarriorStartRequest(BaseModel):
     sim_only: bool = True
     risk_per_trade: float = 100.0
     max_positions: int = 3
+    max_candidates: int = 5  # How many candidates to watch for breakouts
 
 
 class WarriorScannerSettingsRequest(BaseModel):
@@ -115,6 +116,7 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
     engine.config.sim_only = request.sim_only
     engine.config.risk_per_trade = Decimal(str(request.risk_per_trade))
     engine.config.max_positions = request.max_positions
+    engine.config.max_candidates = request.max_candidates
     
     result = await engine.start()
     return result
