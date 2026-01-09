@@ -44,6 +44,8 @@ interface WarriorStatus {
         sim_only: boolean
         risk_per_trade: number
         max_positions: number
+        max_candidates: number
+        scanner_interval_minutes: number
         max_daily_loss: number
         orb_enabled: boolean
         pmh_enabled: boolean
@@ -215,6 +217,27 @@ export default function Warrior() {
     // Simulation Controls
     const enableSim = () => handleAction('Enable Sim', '/warrior/sim/enable')
     const resetSim = () => handleAction('Reset Sim', '/warrior/sim/reset')
+
+    // Config Updates
+    const updateConfig = async (field: string, value: number | boolean) => {
+        setActionLoading(`config-${field}`)
+        try {
+            const res = await fetch(`${API_BASE}/warrior/config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                addToLog(`⚙️ Config updated: ${field} = ${value}`)
+                await fetchStatus()
+            }
+        } catch (err) {
+            addToLog(`❌ Failed to update ${field}`)
+        } finally {
+            setActionLoading(null)
+        }
+    }
 
     // Run Scanner
     const runScan = async () => {
@@ -520,6 +543,89 @@ export default function Warrior() {
                                         <span>Checks: {status?.monitor.checks_run || 0}</span>
                                         <span>Exits: {status?.monitor.exits_triggered || 0}</span>
                                         <span>Partials: {status?.monitor.partials_triggered || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Settings Card */}
+                            <div className={styles.card}>
+                                <div className={styles.cardHeader}>
+                                    <h2>⚙️ Settings</h2>
+                                </div>
+                                <div className={styles.cardBody}>
+                                    <div className={styles.settingsGrid}>
+                                        <div className={styles.settingItem}>
+                                            <label>Max Candidates</label>
+                                            <div className={styles.settingControl}>
+                                                <button
+                                                    onClick={() => updateConfig('max_candidates', Math.max(1, (status?.config.max_candidates || 5) - 1))}
+                                                    className={styles.btnSmall}
+                                                >-</button>
+                                                <span>{status?.config.max_candidates || 5}</span>
+                                                <button
+                                                    onClick={() => updateConfig('max_candidates', Math.min(20, (status?.config.max_candidates || 5) + 1))}
+                                                    className={styles.btnSmall}
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                        <div className={styles.settingItem}>
+                                            <label>Scan Interval (min)</label>
+                                            <div className={styles.settingControl}>
+                                                <button
+                                                    onClick={() => updateConfig('scanner_interval_minutes', Math.max(1, (status?.config.scanner_interval_minutes || 5) - 1))}
+                                                    className={styles.btnSmall}
+                                                >-</button>
+                                                <span>{status?.config.scanner_interval_minutes || 5}</span>
+                                                <button
+                                                    onClick={() => updateConfig('scanner_interval_minutes', Math.min(30, (status?.config.scanner_interval_minutes || 5) + 1))}
+                                                    className={styles.btnSmall}
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                        <div className={styles.settingItem}>
+                                            <label>Risk/Trade ($)</label>
+                                            <div className={styles.settingControl}>
+                                                <button
+                                                    onClick={() => updateConfig('risk_per_trade', Math.max(25, (status?.config.risk_per_trade || 100) - 25))}
+                                                    className={styles.btnSmall}
+                                                >-</button>
+                                                <span>${status?.config.risk_per_trade || 100}</span>
+                                                <button
+                                                    onClick={() => updateConfig('risk_per_trade', Math.min(500, (status?.config.risk_per_trade || 100) + 25))}
+                                                    className={styles.btnSmall}
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                        <div className={styles.settingItem}>
+                                            <label>Max Positions</label>
+                                            <div className={styles.settingControl}>
+                                                <button
+                                                    onClick={() => updateConfig('max_positions', Math.max(1, (status?.config.max_positions || 3) - 1))}
+                                                    className={styles.btnSmall}
+                                                >-</button>
+                                                <span>{status?.config.max_positions || 3}</span>
+                                                <button
+                                                    onClick={() => updateConfig('max_positions', Math.min(10, (status?.config.max_positions || 3) + 1))}
+                                                    className={styles.btnSmall}
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Entry Mode Toggles */}
+                                    <div className={styles.entryModeToggles}>
+                                        <button
+                                            onClick={() => updateConfig('orb_enabled', !status?.config.orb_enabled)}
+                                            className={status?.config.orb_enabled ? styles.btnToggleOn : styles.btnToggleOff}
+                                        >
+                                            {status?.config.orb_enabled ? '✅' : '❌'} ORB
+                                        </button>
+                                        <button
+                                            onClick={() => updateConfig('pmh_enabled', !status?.config.pmh_enabled)}
+                                            className={status?.config.pmh_enabled ? styles.btnToggleOn : styles.btnToggleOff}
+                                        >
+                                            {status?.config.pmh_enabled ? '✅' : '❌'} PMH
+                                        </button>
                                     </div>
                                 </div>
                             </div>

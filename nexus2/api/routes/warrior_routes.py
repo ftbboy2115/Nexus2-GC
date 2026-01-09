@@ -51,7 +51,19 @@ class WarriorMonitorSettingsRequest(BaseModel):
     """Request to update monitor settings."""
     mental_stop_cents: Optional[float] = Field(None, description="Mental stop in cents (default 15)")
     profit_target_r: Optional[float] = Field(None, description="Profit target R multiple (default 2.0)")
+    profit_target_cents: Optional[float] = Field(None, description="Fixed cents target (0 = use R-based)")
     partial_exit_fraction: Optional[float] = Field(None, description="Partial exit % (default 0.5)")
+
+
+class WarriorEngineConfigRequest(BaseModel):
+    """Request to update engine configuration."""
+    max_candidates: Optional[int] = Field(None, ge=1, le=20, description="Max candidates to watch (1-20)")
+    scanner_interval_minutes: Optional[int] = Field(None, ge=1, le=60, description="Scan interval in minutes")
+    risk_per_trade: Optional[float] = Field(None, gt=0, description="Risk per trade in dollars")
+    max_positions: Optional[int] = Field(None, ge=1, le=10, description="Max simultaneous positions")
+    max_daily_loss: Optional[float] = Field(None, gt=0, description="Max daily loss before stopping")
+    orb_enabled: Optional[bool] = Field(None, description="Enable ORB breakouts")
+    pmh_enabled: Optional[bool] = Field(None, description="Enable PMH breakouts")
 
 
 class WarriorCandidateResponse(BaseModel):
@@ -146,6 +158,65 @@ async def resume_warrior_engine():
     """Resume the Warrior engine."""
     engine = get_engine()
     return await engine.resume()
+
+
+@router.put("/config")
+async def update_warrior_config(request: WarriorEngineConfigRequest):
+    """
+    Update Warrior engine configuration.
+    
+    Allows runtime updates to:
+    - max_candidates: How many stocks to watch
+    - scanner_interval_minutes: How often to scan
+    - risk_per_trade: Risk per trade in dollars
+    - max_positions: Max concurrent positions
+    - max_daily_loss: Stop trading limit
+    - orb_enabled/pmh_enabled: Entry triggers
+    """
+    engine = get_engine()
+    updated = {}
+    
+    if request.max_candidates is not None:
+        engine.config.max_candidates = request.max_candidates
+        updated["max_candidates"] = request.max_candidates
+    
+    if request.scanner_interval_minutes is not None:
+        engine.config.scanner_interval_minutes = request.scanner_interval_minutes
+        updated["scanner_interval_minutes"] = request.scanner_interval_minutes
+    
+    if request.risk_per_trade is not None:
+        engine.config.risk_per_trade = Decimal(str(request.risk_per_trade))
+        updated["risk_per_trade"] = request.risk_per_trade
+    
+    if request.max_positions is not None:
+        engine.config.max_positions = request.max_positions
+        updated["max_positions"] = request.max_positions
+    
+    if request.max_daily_loss is not None:
+        engine.config.max_daily_loss = Decimal(str(request.max_daily_loss))
+        updated["max_daily_loss"] = request.max_daily_loss
+    
+    if request.orb_enabled is not None:
+        engine.config.orb_enabled = request.orb_enabled
+        updated["orb_enabled"] = request.orb_enabled
+    
+    if request.pmh_enabled is not None:
+        engine.config.pmh_enabled = request.pmh_enabled
+        updated["pmh_enabled"] = request.pmh_enabled
+    
+    return {
+        "status": "updated",
+        "updated_fields": updated,
+        "current_config": {
+            "max_candidates": engine.config.max_candidates,
+            "scanner_interval_minutes": engine.config.scanner_interval_minutes,
+            "risk_per_trade": float(engine.config.risk_per_trade),
+            "max_positions": engine.config.max_positions,
+            "max_daily_loss": float(engine.config.max_daily_loss),
+            "orb_enabled": engine.config.orb_enabled,
+            "pmh_enabled": engine.config.pmh_enabled,
+        }
+    }
 
 
 # =============================================================================
