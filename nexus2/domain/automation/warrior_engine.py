@@ -509,7 +509,19 @@ class WarriorEngine:
         """Execute entry for a candidate."""
         symbol = watched.candidate.symbol
         
-        # Check if we can open new position
+        # Check if we already hold this symbol (prevents double-buying after restart)
+        if self._get_positions:
+            try:
+                positions = await self._get_positions()
+                held_symbols = {p.get("symbol") or p.symbol for p in positions if p}
+                if symbol in held_symbols:
+                    logger.info(f"[Warrior Entry] {symbol}: Already holding position, skipping")
+                    watched.entry_triggered = True  # Mark as triggered to prevent retries
+                    return
+            except Exception as e:
+                logger.warning(f"[Warrior Entry] {symbol}: Position check failed: {e}")
+        
+        # Check if we can open new position (max positions, daily loss)
         if not await self._can_open_position():
             logger.info(f"[Warrior Entry] {symbol}: Cannot open (max positions or daily loss)")
             return
