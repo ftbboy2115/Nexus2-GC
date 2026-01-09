@@ -875,23 +875,30 @@ async def enable_warrior_broker():
     async def broker_submit_order(
         symbol: str,
         shares: int,
-        stop_price: float,
+        side: str = "buy",
+        order_type: str = "market",
+        stop_loss: float = None,
         limit_price: float = None,
-        trigger_type: str = "orb",
+        **kwargs,  # Accept any extra args
     ):
         """Submit order to Alpaca Account B."""
         alpaca = get_warrior_alpaca_broker()
         if alpaca is None:
+            print(f"[Warrior] No broker configured")
             return None
         
         try:
-            result = alpaca.submit_bracket_order(
+            # Warrior uses mental stops, so we use regular market order
+            # (not bracket order since stops are managed by monitor)
+            result = alpaca.submit_order(
                 client_order_id=uuid4(),
                 symbol=symbol,
+                side=side,
                 quantity=shares,
-                stop_loss_price=Decimal(str(stop_price)),
+                order_type=order_type,
                 limit_price=Decimal(str(limit_price)) if limit_price else None,
             )
+            print(f"[Warrior] Order submitted: {symbol} x{shares} ({side})")
             return result
         except Exception as e:
             print(f"[Warrior] Alpaca order failed: {e}")
