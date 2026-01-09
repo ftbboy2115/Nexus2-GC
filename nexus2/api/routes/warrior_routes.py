@@ -956,7 +956,7 @@ async def enable_warrior_broker():
             # Submit market sell order
             order = alpaca.submit_order(
                 symbol=symbol,
-                qty=shares,
+                quantity=shares,
                 side="sell",
                 order_type="market",
             )
