@@ -7,6 +7,19 @@
 #   - Ross's actual P&L (target to match/beat)
 #   - Entry and stop levels for validation
 #   - Pre-market data for scanner validation
+#
+# NOTE: FMP Historical Data Limitation
+# ------------------------------------
+# FMP's historical intraday API has ticker collision issues with small-cap stocks.
+# Many tickers (ACON, FLYX, CMCT) return data for OLD companies that used the same
+# ticker, not the current small-cap stock Ross traded.
+#
+# Options:
+# 1. Use synthetic test cases (realistic patterns, no external data)
+# 2. Manually input prices from Ross's trade recaps
+# 3. Research alternative data sources (Polygon, Tiingo)
+#
+# For now, test cases use ESTIMATED entry/stop levels. Real price paths TBD.
 
 test_cases:
   # ==========================================================================
