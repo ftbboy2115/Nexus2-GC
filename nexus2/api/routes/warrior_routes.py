@@ -1006,6 +1006,24 @@ async def load_warrior_test_case(case_id: str):
     scanner_result = "PASSED" if candidate else "REJECTED"
     scanner_score = candidate.quality_score if candidate else None
     
+    # If scanner passed, add directly to engine watchlist for Mock Market testing
+    if candidate:
+        engine = get_engine()
+        
+        # Create WatchedCandidate and add to watchlist
+        from nexus2.domain.automation.warrior_engine import WatchedCandidate
+        
+        pmh = Decimal(str(premarket.get("premarket_high", entry_price or current_price)))
+        
+        watched = WatchedCandidate(
+            candidate=candidate,
+            pmh=pmh,
+        )
+        
+        engine._watchlist[symbol] = watched
+        
+        print(f"[Mock Market] Added {symbol} to watchlist: gap={gap_pct}%, PMH=${pmh}")
+    
     return {
         "status": "loaded",
         "case_id": case_id,
@@ -1019,4 +1037,5 @@ async def load_warrior_test_case(case_id: str):
         "scanner_score": scanner_score,
         "current_sim_price": entry_price,
         "synthetic": case.get("synthetic", False),
+        "added_to_watchlist": candidate is not None,
     }
