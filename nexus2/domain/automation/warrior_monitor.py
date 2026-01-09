@@ -64,8 +64,9 @@ class WarriorMonitorSettings:
     use_technical_stop: bool = True  # Also use support levels
     technical_stop_buffer_cents: Decimal = Decimal("5")  # 2-5 cents below support
     
-    # Profit Targets
-    profit_target_r: float = 2.0  # 2:1 R target
+    # Profit Targets (Ross-style: can use fixed cents OR R-multiple)
+    profit_target_cents: Decimal = Decimal("0")  # If > 0, use fixed cents (e.g., 20 = +20¢)
+    profit_target_r: float = 2.0  # 2:1 R target (used if profit_target_cents = 0)
     partial_exit_fraction: float = 0.5  # Sell 50% at target
     move_stop_to_breakeven: bool = True  # After partial
     
@@ -203,8 +204,13 @@ class WarriorMonitor:
         # Risk per share
         risk_per_share = entry_price - current_stop
         
-        # Profit target: Entry + (risk * R)
-        profit_target = entry_price + (risk_per_share * Decimal(str(s.profit_target_r)))
+        # Profit target: Either fixed cents OR R-based
+        if s.profit_target_cents > 0:
+            # Fixed cents target (Ross-style: 15-20 cents)
+            profit_target = entry_price + s.profit_target_cents / 100
+        else:
+            # R-based target (default 2:1)
+            profit_target = entry_price + (risk_per_share * Decimal(str(s.profit_target_r)))
         
         position = WarriorPosition(
             position_id=position_id,
@@ -445,6 +451,12 @@ class WarriorMonitor:
                 
                 self.partials_triggered += 1
                 
+                # Determine target description
+                if self.settings.profit_target_cents > 0:
+                    target_desc = f"Fixed +{self.settings.profit_target_cents}¢ target hit"
+                else:
+                    target_desc = f"{self.settings.profit_target_r}:1 R target hit (${position.profit_target})"
+                
                 return WarriorExitSignal(
                     position_id=position.position_id,
                     symbol=position.symbol,
@@ -453,7 +465,7 @@ class WarriorMonitor:
                     shares_to_exit=shares_to_exit,
                     pnl_estimate=pnl,
                     r_multiple=r_multiple,
-                    trigger_description=f"2:1 R target hit (${position.profit_target})",
+                    trigger_description=target_desc,
                 )
         
         return None
@@ -497,6 +509,7 @@ class WarriorMonitor:
             "last_error": self.last_error,
             "settings": {
                 "mental_stop_cents": float(self.settings.mental_stop_cents),
+                "profit_target_cents": float(self.settings.profit_target_cents),
                 "profit_target_r": self.settings.profit_target_r,
                 "partial_exit_fraction": self.settings.partial_exit_fraction,
                 "candle_under_candle": self.settings.enable_candle_under_candle,

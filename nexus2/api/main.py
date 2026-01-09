@@ -184,7 +184,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Nexus 2 API",
         description="KK-style trading platform API",
-        version="0.2.7",
+        version="0.2.9",
         lifespan=lifespan,
     )
     
