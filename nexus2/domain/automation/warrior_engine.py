@@ -532,9 +532,18 @@ class WarriorEngine:
                 self.stats.orders_submitted += 1
                 
                 # Add to monitor
-                support_level = watched.orb_low or watched.candidate.session_low
+                support_level = watched.orb_low or watched.candidate.session_low or entry_price * Decimal("0.95")
+                
+                # Handle both dict and object return types
+                if hasattr(order_result, 'client_order_id'):
+                    order_id = str(order_result.client_order_id)
+                elif isinstance(order_result, dict):
+                    order_id = order_result.get("order_id", symbol)
+                else:
+                    order_id = symbol
+                
                 self.monitor.add_position(
-                    position_id=order_result.get("order_id", symbol),
+                    position_id=order_id,
                     symbol=symbol,
                     entry_price=entry_price,
                     shares=shares,
