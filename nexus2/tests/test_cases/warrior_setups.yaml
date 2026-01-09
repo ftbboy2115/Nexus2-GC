@@ -122,6 +122,148 @@ test_cases:
       profit_target_r: 2.0
     notes: "High volume, news catalyst"
 
+  # ==========================================================================
+  # ROSS CAMERON TRADES - December 30, 2024 (~10 days ago)
+  # ==========================================================================
+
+  - id: wok_2024_12_30
+    symbol: WOK
+    setup_type: pmh
+    outcome: winner
+    description: "WOK - Ross traded"
+    trade_date: "2024-12-30"
+    ross_pnl: 7228.44  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 25.0
+      volume: 5000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 3.00
+      premarket_high: 3.80
+    expected:
+      entry_near: 3.85
+      stop_near: 3.70
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Solid gap + news catalyst"
+
+  # ==========================================================================
+  # ROSS CAMERON TRADES - December 27, 2024 (~13 days ago)
+  # ==========================================================================
+
+  - id: amci_2024_12_27
+    symbol: AMCI
+    setup_type: pmh
+    outcome: winner
+    description: "AMCI - Ross traded"
+    trade_date: "2024-12-27"
+    ross_pnl: 5154.30  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 30.0
+      volume: 4000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 2.00
+      premarket_high: 2.65
+    expected:
+      entry_near: 2.70
+      stop_near: 2.55
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Gap + news"
+
+  # ==========================================================================
+  # ROSS CAMERON TRADES - December 24-25, 2024 (~2 weeks ago)
+  # ==========================================================================
+
+  - id: cmct_2024_12_24
+    symbol: CMCT
+    setup_type: pmh
+    outcome: winner
+    description: "CMCT - Ross's BIG winner"
+    trade_date: "2024-12-24"
+    ross_pnl: 10806.46  # TARGET TO MATCH/BEAT - BIG ONE
+    premarket_data:
+      gap_percent: 45.0
+      volume: 8000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 2.00
+      premarket_high: 2.95
+    expected:
+      entry_near: 3.00
+      stop_near: 2.85
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Massive winner - over 10K"
+
+  - id: azi_2024_12_24
+    symbol: AZI
+    setup_type: pmh
+    outcome: winner
+    description: "AZI - Ross traded"
+    trade_date: "2024-12-24"
+    ross_pnl: 1600.53  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 20.0
+      volume: 3000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 4.00
+      premarket_high: 4.85
+    expected:
+      entry_near: 4.90
+      stop_near: 4.75
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Smaller winner"
+
+  # ==========================================================================
+  # ROSS CAMERON TRADES - December 17-18, 2024 (~3 weeks ago)
+  # ==========================================================================
+
+  - id: lhai_2024_12_17
+    symbol: LHAI
+    setup_type: pmh
+    outcome: winner
+    description: "LHAI - Ross traded"
+    trade_date: "2024-12-17"
+    ross_pnl: 2335.02  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 35.0
+      volume: 4000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 1.50
+      premarket_high: 2.05
+    expected:
+      entry_near: 2.10
+      stop_near: 1.95
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Gap + news"
+
+  - id: pvas_2024_12_17
+    symbol: PVAS
+    setup_type: pmh
+    outcome: winner
+    description: "PVAS - Ross traded"
+    trade_date: "2024-12-17"
+    ross_pnl: 1088.07  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 25.0
+      volume: 2500000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 2.00
+      premarket_high: 2.52
+    expected:
+      entry_near: 2.55
+      stop_near: 2.40
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Smaller winner same day as LHAI"
+
 # ==========================================================================
 # USAGE:
 # 
