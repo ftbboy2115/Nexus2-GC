@@ -193,7 +193,8 @@ class MockBroker:
         # Create and fill entry order immediately (sim behavior)
         entry_order_id = str(uuid4())
         fill_price = current_price
-        stop_price = float(stop_loss_price)
+        # Handle None stop_loss_price with fallback (5% below entry)
+        stop_price = float(stop_loss_price) if stop_loss_price is not None else fill_price * 0.95
         
         # Store internal mock order for tracking
         entry_order = MockOrder(
