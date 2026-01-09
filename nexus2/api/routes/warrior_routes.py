@@ -897,7 +897,7 @@ async def enable_warrior_broker():
             print(f"[Warrior] Alpaca order failed: {e}")
             return None
     
-    def broker_get_positions():
+    async def broker_get_positions():
         """Get positions from Alpaca Account B."""
         alpaca = get_warrior_alpaca_broker()
         if alpaca is None:
