@@ -101,6 +101,7 @@ Last updated: 2026-01-08
   - [ ] 10:00 AM exit time priority
   - [ ] First red 5-min candle exit signal
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
+- [ ] **Full Auto-Enable on Startup** — Extract broker/callback wiring + position sync from `/broker/enable` so it runs automatically on server start (currently only sets broker object, doesn't wire callbacks or sync positions)
 - [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
 - [x] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
