@@ -47,16 +47,23 @@ def get_alpaca_order_history(days: int = 30) -> Dict[str, dict]:
     Returns:
         Dict mapping symbol -> {stop_price, entry_price, qty, filled_at}
     """
-    from nexus2.adapters.broker.alpaca_broker import AlpacaBroker
+    from nexus2.adapters.broker.alpaca_broker import AlpacaBroker, AlpacaBrokerConfig
+    from nexus2 import config as app_config
     
-    broker = AlpacaBroker()
+    # Create broker with proper config
+    broker_config = AlpacaBrokerConfig(
+        api_key=app_config.ALPACA_KEY,
+        api_secret=app_config.ALPACA_SECRET,
+        paper=True,
+    )
+    broker = AlpacaBroker(broker_config)
     
     # Get orders from the last N days
     after_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     
     try:
-        # Get all filled orders
-        orders = broker._api.list_orders(
+        # Get all filled orders using the broker's api property
+        orders = broker.api.list_orders(
             status="all",
             after=after_date,
             direction="desc",
