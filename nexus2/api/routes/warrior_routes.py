@@ -574,13 +574,13 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         """Execute exit signal on MockBroker."""
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
-            logger.warning("[Sim] No broker for exit execution")
+            print("[Sim] No broker for exit execution")
             return False
         
         # Sell the shares
         success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
         if success:
-            logger.info(f"[Sim] Executed exit: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+            print(f"[Sim] Executed exit: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
         return success
     
     async def sim_update_stop(position_id: str, new_stop_price):
