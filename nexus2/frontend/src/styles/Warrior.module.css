@@ -1,0 +1,543 @@
+/* Warrior Trading Page Styles */
+
+.container {
+    min-height: 100vh;
+    padding: 1rem 2rem 2rem;
+    background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+    color: #e0e0e0;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.headerLeft h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: #ff6b35;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.backLink {
+    color: #888;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.backLink:hover {
+    color: #fff;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Badges */
+.badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.badgeSim {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.badgeLive {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.badgeGreen {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.badgeGray {
+    background: rgba(108, 117, 125, 0.2);
+    color: #888;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.countBadge {
+    background: rgba(255, 107, 53, 0.2);
+    color: #ff6b35;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.stateBadge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.statestopped {
+    background: rgba(108, 117, 125, 0.3);
+    color: #aaa;
+}
+
+.staterunning {
+    background: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+}
+
+.statepaused {
+    background: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+}
+
+.statepremarket {
+    background: rgba(138, 43, 226, 0.3);
+    color: #a78bfa;
+}
+
+/* Buttons */
+.refreshBtn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.refreshBtn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.btnPrimary {
+    background: linear-gradient(135deg, #ff6b35 0%, #e85a24 100%);
+    border: none;
+    color: #fff;
+    padding: 0.6rem 1.25rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.btnSecondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 0.6rem 1.25rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btnSecondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.btnDanger {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+    padding: 0.6rem 1.25rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btnDanger:hover:not(:disabled) {
+    background: rgba(220, 53, 69, 0.3);
+}
+
+.btnSmall {
+    background: rgba(255, 107, 53, 0.2);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    color: #ff6b35;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btnSmall:hover:not(:disabled) {
+    background: rgba(255, 107, 53, 0.3);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    color: #888;
+    font-size: 1.1rem;
+}
+
+/* Grid */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards */
+.card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cardHeader h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.cardBody {
+    padding: 1.25rem;
+}
+
+.cardActions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.statBox {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.statValue {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.statLabel {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.25rem;
+}
+
+.pnlPositive {
+    color: #28a745 !important;
+}
+
+.pnlNegative {
+    color: #dc3545 !important;
+}
+
+/* Config Row */
+.configRow {
+    display: flex;
+    justify-content: space-around;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 0.75rem;
+}
+
+/* Entry Modes */
+.entryModes {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.modeEnabled {
+    color: #28a745;
+}
+
+.modeDisabled {
+    color: #666;
+}
+
+/* Rules List */
+.rulesList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ruleItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ruleLabel {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.ruleValue {
+    color: #fff;
+    font-weight: 500;
+}
+
+.monitorStats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* Scan Stats */
+.scanStats {
+    display: flex;
+    justify-content: space-around;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 1rem;
+}
+
+/* Tables */
+.candidateTable,
+.watchlistTable,
+.positionsTable {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    color: #888;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.symbol {
+    font-weight: 600;
+    color: #ff6b35;
+}
+
+.ideal {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.triggered {
+    background: rgba(40, 167, 69, 0.1) !important;
+}
+
+.stopPrice {
+    color: #dc3545;
+}
+
+.targetPrice {
+    color: #28a745;
+}
+
+/* Score Bar */
+.score {
+    width: 80px;
+}
+
+.scoreBar {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.score0,
+.score1,
+.score2 {
+    background: rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+}
+
+.score3,
+.score4 {
+    background: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+}
+
+.score5,
+.score6 {
+    background: rgba(255, 193, 7, 0.2);
+    color: #e0a800;
+}
+
+.score7,
+.score8 {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.score9,
+.score10 {
+    background: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+}
+
+/* Empty Message */
+.emptyMessage {
+    color: #666;
+    text-align: center;
+    padding: 1.5rem;
+    font-style: italic;
+}
+
+/* Positions Card */
+.positionsCard {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+
+.positionsCard .cardHeader {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.positionsCard .positionsTable {
+    padding: 0.5rem 1rem 1rem;
+}
+
+/* Event Log */
+.eventLogCard {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.eventLogCard .cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.eventLogCard h2 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.clearBtn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #888;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.clearBtn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.eventLog {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.8rem;
+}
+
+.logEntry {
+    padding: 0.25rem 0;
+    color: #aaa;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.emptyLog {
+    color: #666;
+    text-align: center;
+    font-style: italic;
+}
