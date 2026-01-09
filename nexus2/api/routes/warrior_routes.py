@@ -1149,6 +1149,62 @@ async def test_warrior_broker():
         )
 
 
+@router.post("/db/backfill")
+async def backfill_warrior_trades():
+    """
+    Backfill synced positions into the Warrior trade log.
+    
+    Creates DB records for positions that were synced from Alpaca
+    but don't have trade log entries (e.g., opened before DB was set up).
+    """
+    from nexus2.db.warrior_db import log_warrior_entry, get_warrior_trade_by_symbol
+    from uuid import uuid4
+    
+    monitor = get_warrior_monitor()
+    positions = monitor.get_positions()
+    
+    backfilled = []
+    skipped = []
+    
+    for pos in positions:
+        symbol = pos.symbol
+        
+        # Check if already in DB
+        existing = get_warrior_trade_by_symbol(symbol)
+        if existing:
+            skipped.append(symbol)
+            continue
+        
+        # Create DB record
+        try:
+            trade_id = str(uuid4())
+            log_warrior_entry(
+                trade_id=trade_id,
+                symbol=symbol,
+                entry_price=float(pos.entry_price),
+                quantity=pos.shares,
+                stop_price=float(pos.mental_stop),
+                target_price=float(pos.profit_target),
+                trigger_type="backfill",  # Mark as backfilled
+                support_level=float(pos.technical_stop) if pos.technical_stop else None,
+            )
+            backfilled.append({
+                "symbol": symbol,
+                "entry_price": float(pos.entry_price),
+                "stop_price": float(pos.mental_stop),
+                "shares": pos.shares,
+            })
+        except Exception as e:
+            print(f"[Warrior] Backfill failed for {symbol}: {e}")
+    
+    return {
+        "status": "completed",
+        "backfilled": backfilled,
+        "skipped": skipped,
+        "message": f"Backfilled {len(backfilled)} trades, skipped {len(skipped)} existing",
+    }
+
+
 # =============================================================================
 # WARRIOR TEST CASE ROUTES
 # =============================================================================
