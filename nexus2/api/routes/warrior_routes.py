@@ -130,6 +130,22 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
     engine.config.max_positions = request.max_positions
     engine.config.max_candidates = request.max_candidates
     
+    # Wire up default callbacks if none are set
+    # These use real market data for quotes but don't submit real orders (sim_only)
+    if engine._get_quote is None:
+        from nexus2.adapters.market_data.unified import UnifiedMarketData
+        umd = UnifiedMarketData()
+        
+        def default_get_quote(symbol: str):
+            """Get quote from real market data (Alpaca for pre-market)."""
+            quote = umd.get_quote(symbol)
+            return float(quote.price) if quote else None
+        
+        engine.set_callbacks(
+            get_quote=default_get_quote,
+            # submit_order stays None in sim_only mode (no real orders)
+        )
+    
     result = await engine.start()
     return result
 
@@ -536,9 +552,18 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         return result
     
     def sim_get_quote(symbol: str):
-        """Get price from MockBroker."""
+        """Get price - try MockBroker first, fallback to real market data."""
         sim_broker = get_warrior_sim_broker()
-        return sim_broker.get_price(symbol) if sim_broker else None
+        if sim_broker:
+            price = sim_broker.get_price(symbol)
+            if price is not None:
+                return price
+        
+        # Fallback to real market data (Alpaca for real-time)
+        from nexus2.adapters.market_data.unified import UnifiedMarketData
+        umd = UnifiedMarketData()
+        quote = umd.get_quote(symbol)
+        return float(quote.price) if quote else None
     
     def sim_get_positions():
         """Get positions from MockBroker."""
@@ -840,13 +865,13 @@ async def enable_warrior_broker():
             print(f"[Warrior] Failed to get positions: {e}")
             return []
     
-    # Wire up FMP for quotes
-    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
-    fmp = get_fmp_adapter()
+    # Wire up quotes from UnifiedMarketData (Alpaca for real-time pre-market)
+    from nexus2.adapters.market_data.unified import UnifiedMarketData
+    umd = UnifiedMarketData()
     
     def broker_get_quote(symbol: str):
-        """Get quote from FMP."""
-        quote = fmp.get_quote(symbol)
+        """Get quote from real market data (Alpaca for pre-market)."""
+        quote = umd.get_quote(symbol)
         return float(quote.price) if quote else None
     
     engine.set_callbacks(
