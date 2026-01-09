@@ -130,6 +130,19 @@ interface SimStatus {
     position_count?: number
 }
 
+interface BrokerStatus {
+    broker_enabled: boolean
+    paper_mode?: boolean
+    account_value?: number
+    positions_count?: number
+    realized_pnl_today?: number
+    unrealized_pnl?: number
+    total_daily_pnl?: number
+    invested_capital?: number
+    daily_pnl_percent?: number
+    error?: string
+}
+
 // ============================================================================
 // Collapsible Card Component
 // ============================================================================
@@ -211,6 +224,9 @@ export default function Warrior() {
     // Simulation state
     const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
 
+    // Broker status (for live P&L)
+    const [brokerStatus, setBrokerStatus] = useState<BrokerStatus | null>(null)
+
     // Mock Market state
     const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
     const [selectedTestCase, setSelectedTestCase] = useState<string>('')
@@ -232,10 +248,11 @@ export default function Warrior() {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [statusRes, positionsRes, simRes] = await Promise.all([
+            const [statusRes, positionsRes, simRes, brokerRes] = await Promise.all([
                 fetch(`${API_BASE}/warrior/status`),
                 fetch(`${API_BASE}/warrior/positions`),
                 fetch(`${API_BASE}/warrior/sim/status`),
+                fetch(`${API_BASE}/warrior/broker/status`),
             ])
 
             if (statusRes.ok) setStatus(await statusRes.json())
@@ -244,6 +261,7 @@ export default function Warrior() {
                 setPositions(data.positions || [])
             }
             if (simRes.ok) setSimStatus(await simRes.json())
+            if (brokerRes.ok) setBrokerStatus(await brokerRes.json())
         } catch (err) {
             console.error('Error fetching Warrior status:', err)
             addToLog('❌ Failed to connect to backend')
@@ -536,8 +554,13 @@ export default function Warrior() {
                                             <div className={styles.statLabel}>Entries</div>
                                         </div>
                                         <div className={styles.statBox}>
-                                            <div className={`${styles.statValue} ${(status?.stats.daily_pnl || 0) >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
-                                                {formatPnL(status?.stats.daily_pnl || 0)}
+                                            <div className={`${styles.statValue} ${((brokerStatus?.broker_enabled ? brokerStatus?.total_daily_pnl : status?.stats.daily_pnl) || 0) >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
+                                                {formatPnL((brokerStatus?.broker_enabled ? brokerStatus?.total_daily_pnl : status?.stats.daily_pnl) || 0)}
+                                                {brokerStatus?.broker_enabled && brokerStatus?.daily_pnl_percent !== undefined && (
+                                                    <span style={{ fontSize: '0.7em', marginLeft: '4px', opacity: 0.8 }}>
+                                                        ({brokerStatus.daily_pnl_percent > 0 ? '+' : ''}{brokerStatus.daily_pnl_percent.toFixed(1)}%)
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className={styles.statLabel}>Daily P&L</div>
                                         </div>
