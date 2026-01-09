@@ -33,7 +33,7 @@ class WarriorStartRequest(BaseModel):
     """Request to start Warrior engine."""
     sim_only: bool = True
     risk_per_trade: float = 100.0
-    max_positions: int = 3
+    max_positions: int = 5  # Increased for testing
     max_candidates: int = 5  # How many candidates to watch for breakouts
 
 
