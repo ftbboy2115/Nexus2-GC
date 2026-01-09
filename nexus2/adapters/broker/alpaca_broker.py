@@ -382,3 +382,117 @@ class AlpacaBroker:
                 entry_dates[symbol] = filled_at
         
         return entry_dates
+    
+    def get_daily_capital_stats(self) -> dict:
+        """
+        Calculate capital statistics for today's trading.
+        
+        Returns:
+            Dict with:
+            - peak_exposure: Maximum capital deployed at any point today
+            - total_capital_deployed: Sum of all buy order values today
+            - total_realized_pnl: P&L from closed trades today
+        """
+        from zoneinfo import ZoneInfo
+        
+        # Get today's date in ET
+        et = ZoneInfo("America/New_York")
+        today = datetime.now(et).date()
+        today_start = datetime(today.year, today.month, today.day, tzinfo=et)
+        
+        try:
+            # Fetch today's filled orders
+            data = self._request("GET", "orders?status=filled&limit=500")
+        except Exception as e:
+            print(f"[AlpacaBroker] Failed to fetch orders for capital stats: {e}")
+            return {"peak_exposure": 0, "total_capital_deployed": 0, "total_realized_pnl": 0}
+        
+        if not data:
+            return {"peak_exposure": 0, "total_capital_deployed": 0, "total_realized_pnl": 0}
+        
+        # Process orders chronologically to calculate peak exposure
+        trades = []
+        for order in data:
+            filled_at_str = order.get("filled_at")
+            if not filled_at_str:
+                continue
+            
+            try:
+                filled_at = datetime.fromisoformat(filled_at_str.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+            
+            # Filter to today only
+            if filled_at.astimezone(et).date() != today:
+                continue
+            
+            symbol = order.get("symbol")
+            side = order.get("side", "").lower()
+            qty = int(float(order.get("filled_qty", 0)))
+            avg_price = float(order.get("filled_avg_price", 0))
+            
+            trades.append({
+                "time": filled_at,
+                "symbol": symbol,
+                "side": side,
+                "qty": qty,
+                "price": avg_price,
+                "value": qty * avg_price,
+            })
+        
+        if not trades:
+            return {"peak_exposure": 0, "total_capital_deployed": 0, "total_realized_pnl": 0}
+        
+        # Sort by time ascending
+        trades.sort(key=lambda t: t["time"])
+        
+        # Calculate peak exposure by simulating position changes
+        positions: dict[str, dict] = {}  # symbol -> {qty, avg_cost}
+        current_exposure = 0.0
+        peak_exposure = 0.0
+        total_capital_deployed = 0.0
+        total_realized_pnl = 0.0
+        
+        for trade in trades:
+            symbol = trade["symbol"]
+            side = trade["side"]
+            qty = trade["qty"]
+            price = trade["price"]
+            value = trade["value"]
+            
+            if side == "buy":
+                # Add to position
+                total_capital_deployed += value
+                
+                if symbol not in positions:
+                    positions[symbol] = {"qty": 0, "total_cost": 0}
+                
+                pos = positions[symbol]
+                pos["total_cost"] += value
+                pos["qty"] += qty
+                
+                current_exposure = sum(p["total_cost"] for p in positions.values() if p["qty"] > 0)
+                peak_exposure = max(peak_exposure, current_exposure)
+                
+            elif side == "sell":
+                # Remove from position
+                if symbol in positions and positions[symbol]["qty"] > 0:
+                    pos = positions[symbol]
+                    avg_cost = pos["total_cost"] / pos["qty"] if pos["qty"] > 0 else 0
+                    
+                    # Calculate realized P&L
+                    cost_basis = avg_cost * qty
+                    realized = value - cost_basis
+                    total_realized_pnl += realized
+                    
+                    # Update position
+                    pos["qty"] -= qty
+                    pos["total_cost"] = max(0, pos["total_cost"] - cost_basis)
+                
+                current_exposure = sum(p["total_cost"] for p in positions.values() if p["qty"] > 0)
+        
+        return {
+            "peak_exposure": round(peak_exposure, 2),
+            "total_capital_deployed": round(total_capital_deployed, 2),
+            "total_realized_pnl": round(total_realized_pnl, 2),
+        }

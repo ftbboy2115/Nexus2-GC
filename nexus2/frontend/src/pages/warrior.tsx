@@ -139,6 +139,8 @@ interface BrokerStatus {
     unrealized_pnl?: number
     total_daily_pnl?: number
     invested_capital?: number
+    peak_exposure?: number
+    total_capital_deployed?: number
     daily_pnl_percent?: number
     error?: string
 }
@@ -567,7 +569,14 @@ export default function Warrior() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className={styles.statLabel}>Daily P&L</div>
+                                            <div className={styles.statLabel}>
+                                                Daily P&L
+                                                {brokerStatus?.broker_enabled && brokerStatus?.peak_exposure && brokerStatus.peak_exposure > 0 && (
+                                                    <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                                                        {' '}on ${(brokerStatus.peak_exposure / 1000).toFixed(1)}K
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

@@ -853,9 +853,16 @@ async def get_warrior_broker_status():
         monitor = get_warrior_monitor()
         realized_pnl_today = float(monitor.realized_pnl_today)
         
-        # Calculate total daily P&L and %
+        # Get accurate capital stats from today's order history
+        capital_stats = broker.get_daily_capital_stats()
+        peak_exposure = capital_stats["peak_exposure"]
+        total_capital_deployed = capital_stats["total_capital_deployed"]
+        
+        # Calculate total daily P&L and % based on peak exposure (more accurate)
         total_daily_pnl = realized_pnl_today + total_unrealized_pnl
-        daily_pnl_percent = (total_daily_pnl / total_invested * 100) if total_invested > 0 else 0
+        # Use peak exposure for ROI % (the max you had at risk)
+        roi_denominator = peak_exposure if peak_exposure > 0 else total_invested
+        daily_pnl_percent = (total_daily_pnl / roi_denominator * 100) if roi_denominator > 0 else 0
         
         return {
             "broker_enabled": True,
@@ -866,8 +873,11 @@ async def get_warrior_broker_status():
             "realized_pnl_today": realized_pnl_today,
             "unrealized_pnl": total_unrealized_pnl,
             "total_daily_pnl": total_daily_pnl,
-            "invested_capital": total_invested,
-            "daily_pnl_percent": round(daily_pnl_percent, 2),
+            # Capital stats
+            "invested_capital": total_invested,  # Current open positions
+            "peak_exposure": peak_exposure,  # Max at risk today
+            "total_capital_deployed": total_capital_deployed,  # Sum of all buys today
+            "daily_pnl_percent": round(daily_pnl_percent, 2),  # Based on peak exposure
             # Positions
             "positions": [
                 {
