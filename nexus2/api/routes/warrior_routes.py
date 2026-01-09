@@ -590,16 +590,20 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
             print(f"[Sim] No broker for stop update")
             return False
         
-        # Try to update stop - position_id might be the symbol or contain it
-        # First try direct match
-        symbol = position_id
+        # Get symbol from monitor's position (position_id is a UUID)
+        from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+        monitor = get_warrior_monitor()
+        symbol = None
         
-        # Check if position exists in broker
-        positions = sim_broker.get_positions()
-        for pos in positions:
-            if pos.get("symbol") == position_id or position_id.endswith(pos.get("symbol", "---")):
-                symbol = pos["symbol"]
+        # Look up symbol from monitor's positions
+        for pos in monitor.get_positions():
+            if pos.position_id == position_id:
+                symbol = pos.symbol
                 break
+        
+        if not symbol:
+            print(f"[Sim] Could not find symbol for position_id: {position_id[:8]}...")
+            return False
         
         success = sim_broker.update_stop(symbol, float(new_stop_price))
         print(f"[Sim] Update stop: {symbol} -> ${new_stop_price} (success={success})")
