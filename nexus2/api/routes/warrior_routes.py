@@ -565,7 +565,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         quote = umd.get_quote(symbol)
         return float(quote.price) if quote else None
     
-    def sim_get_positions():
+    async def sim_get_positions():
         """Get positions from MockBroker."""
         sim_broker = get_warrior_sim_broker()
         return sim_broker.get_positions() if sim_broker else []
@@ -1006,23 +1006,42 @@ async def load_warrior_test_case(case_id: str):
     scanner_result = "PASSED" if candidate else "REJECTED"
     scanner_score = candidate.quality_score if candidate else None
     
-    # If scanner passed, add directly to engine watchlist for Mock Market testing
-    if candidate:
-        engine = get_engine()
-        
-        # Create WatchedCandidate and add to watchlist
-        from nexus2.domain.automation.warrior_engine import WatchedCandidate
-        
-        pmh = Decimal(str(premarket.get("premarket_high", entry_price or current_price)))
-        
-        watched = WatchedCandidate(
-            candidate=candidate,
-            pmh=pmh,
+    # For Mock Market: add to watchlist regardless of scanner result
+    # This allows testing historical trades that may not pass current scanner filters
+    engine = get_engine()
+    
+    from nexus2.domain.automation.warrior_engine import WatchedCandidate
+    from nexus2.domain.scanner.warrior_scanner_service import WarriorCandidate
+    
+    # Create mock candidate if scanner rejected
+    if not candidate:
+        candidate = WarriorCandidate(
+            symbol=symbol,
+            name=symbol,
+            price=Decimal(str(current_price)) if current_price else Decimal("0"),
+            gap_percent=Decimal(str(gap_pct)),
+            relative_volume=Decimal("10.0"),  # Mock high RVOL for test
+            float_shares=None,
+            catalyst_type=premarket.get("catalyst", "news"),
+            catalyst_description=case.get("description", "Mock Market test"),
+            quality_score=10,
+            is_ideal_float=True,
+            is_ideal_rvol=True,
+            is_ideal_gap=True,
+            session_high=Decimal(str(premarket.get("premarket_high", 0))),
+            session_low=Decimal(str(prev_close)),
         )
-        
-        engine._watchlist[symbol] = watched
-        
-        print(f"[Mock Market] Added {symbol} to watchlist: gap={gap_pct}%, PMH=${pmh}")
+    
+    pmh = Decimal(str(premarket.get("premarket_high", entry_price or current_price)))
+    
+    watched = WatchedCandidate(
+        candidate=candidate,
+        pmh=pmh,
+    )
+    
+    engine._watchlist[symbol] = watched
+    
+    print(f"[Mock Market] Added {symbol} to watchlist: gap={gap_pct}%, PMH=${pmh} (scanner: {scanner_result})")
     
     return {
         "status": "loaded",
