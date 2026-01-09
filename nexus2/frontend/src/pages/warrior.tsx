@@ -254,7 +254,7 @@ export default function Warrior() {
 
     useEffect(() => {
         fetchStatus()
-        const interval = setInterval(fetchStatus, 5000) // Refresh every 5s
+        const interval = setInterval(fetchStatus, 1000) // Fast refresh for day trading
         return () => clearInterval(interval)
     }, [fetchStatus])
 
