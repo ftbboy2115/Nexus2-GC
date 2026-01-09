@@ -101,6 +101,7 @@ Last updated: 2026-01-08
   - [ ] 10:00 AM exit time priority
   - [ ] First red 5-min candle exit signal
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
+- [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
 
 ---
 
