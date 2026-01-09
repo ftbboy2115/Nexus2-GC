@@ -587,13 +587,23 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         """Update stop price in MockBroker."""
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
+            print(f"[Sim] No broker for stop update")
             return False
         
-        # Find symbol from position_id (simplified - assumes position_id contains symbol)
-        for pos in sim_broker.get_positions():
-            if pos.get("symbol") in position_id or position_id in pos.get("symbol", ""):
-                return sim_broker.update_stop(pos["symbol"], float(new_stop_price))
-        return False
+        # Try to update stop - position_id might be the symbol or contain it
+        # First try direct match
+        symbol = position_id
+        
+        # Check if position exists in broker
+        positions = sim_broker.get_positions()
+        for pos in positions:
+            if pos.get("symbol") == position_id or position_id.endswith(pos.get("symbol", "---")):
+                symbol = pos["symbol"]
+                break
+        
+        success = sim_broker.update_stop(symbol, float(new_stop_price))
+        print(f"[Sim] Update stop: {symbol} -> ${new_stop_price} (success={success})")
+        return success
     
     engine.set_callbacks(
         submit_order=sim_submit_order,
