@@ -954,11 +954,13 @@ async def enable_warrior_broker():
         
         try:
             # Submit market sell order
+            from uuid import uuid4
             order = alpaca.submit_order(
                 symbol=symbol,
                 quantity=shares,
                 side="sell",
                 order_type="market",
+                client_order_id=str(uuid4()),
             )
             print(f"[Warrior] Exit order submitted: {symbol} x{shares} ({reason})")
             

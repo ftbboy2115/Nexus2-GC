@@ -1,224 +1,7 @@
 {
-  "updated_at": "2026-01-09T11:34:34.059856",
+  "updated_at": "2026-01-09T11:35:47.621740",
   "count": 500,
   "rejections": [
-    {
-      "timestamp": "2026-01-09T10:11:11.815569",
-      "symbol": "POLA",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.1,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:12.069071",
-      "symbol": "AEVA",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.94,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:12.427571",
-      "symbol": "OPEN",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.44,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:12.669648",
-      "symbol": "HUIZ",
-      "scanner": "warrior",
-      "reason": "country_excluded",
-      "details": "Chinese/HK stock excluded (country=CN)",
-      "values": null
-    },
-    {
-      "timestamp": "2026-01-09T10:11:12.957326",
-      "symbol": "OPTX",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.28,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:13.351357",
-      "symbol": "ROLR",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 1.33,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:14.036338",
-      "symbol": "MGN",
-      "scanner": "warrior",
-      "reason": "dollar_vol_low",
-      "details": null,
-      "values": {
-        "dollar_vol": 368749,
-        "min": 500000.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:14.314670",
-      "symbol": "PYXS",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.37,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:14.777526",
-      "symbol": "HBB",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.44,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:11:15.039910",
-      "symbol": "TGL",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.12,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:23.309480",
-      "symbol": "INBS",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.21,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:26.967462",
-      "symbol": "ASPI",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 1.33,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:29.861477",
-      "symbol": "LDI",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.98,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:30.135002",
-      "symbol": "PAVS",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.08,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:30.471242",
-      "symbol": "OPTX",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.31,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:30.771345",
-      "symbol": "QTRX",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.57,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:31.116744",
-      "symbol": "BLNE",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 1.8,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:31.391421",
-      "symbol": "NBY",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.24,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:31.800528",
-      "symbol": "NVA",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.31,
-        "min": 2.0
-      }
-    },
-    {
-      "timestamp": "2026-01-09T10:13:34.413608",
-      "symbol": "OPEN",
-      "scanner": "warrior",
-      "reason": "rvol_too_low",
-      "details": null,
-      "values": {
-        "rvol": 0.48,
-        "min": 2.0
-      }
-    },
     {
       "timestamp": "2026-01-09T10:13:36.193551",
       "symbol": "ALLO",
@@ -5403,6 +5186,220 @@
       "details": null,
       "values": {
         "rvol": 0.0,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:37.790815",
+      "symbol": "QTRX",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.88,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:38.065377",
+      "symbol": "NBY",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.5,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:38.330890",
+      "symbol": "OPTX",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.6,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:39.457705",
+      "symbol": "INBS",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.41,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:39.723694",
+      "symbol": "LDI",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.48,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:40.276553",
+      "symbol": "POLA",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.15,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:40.576316",
+      "symbol": "OPEN",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.91,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:40.827951",
+      "symbol": "ASPI",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 2.0,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:41.308619",
+      "symbol": "ALLO",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 2 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T11:35:42.184741",
+      "symbol": "RMSG",
+      "scanner": "warrior",
+      "reason": "gap_too_low",
+      "details": null,
+      "values": {
+        "gap": 1.0,
+        "min": 4.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:42.493415",
+      "symbol": "BAER",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.33,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:42.846918",
+      "symbol": "NVA",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.65,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:43.159004",
+      "symbol": "SPRY",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.57,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:44.619954",
+      "symbol": "KLRS",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.96,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:45.420443",
+      "symbol": "OKUR",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.78,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:46.171314",
+      "symbol": "PYXS",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.83,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:46.383944",
+      "symbol": "BUUU",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=HK)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T11:35:46.704424",
+      "symbol": "CARV",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.0,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:47.377213",
+      "symbol": "SOUN",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.86,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T11:35:47.621740",
+      "symbol": "COMP",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.66,
         "min": 2.0
       }
     }
