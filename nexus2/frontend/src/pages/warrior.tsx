@@ -219,6 +219,10 @@ export default function Warrior() {
     // Event log
     const [eventLog, setEventLog] = useState<string[]>([])
 
+    // Sorting state for tables
+    const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
+    const [engineScanSort, setEngineScanSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
+
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
 
@@ -253,6 +257,42 @@ export default function Warrior() {
         const interval = setInterval(fetchStatus, 5000) // Refresh every 5s
         return () => clearInterval(interval)
     }, [fetchStatus])
+
+    // Sorting helpers
+    const sortData = <T,>(data: T[], sortConfig: { key: string, dir: 'asc' | 'desc' }): T[] => {
+        return [...data].sort((a, b) => {
+            const aVal = (a as Record<string, unknown>)[sortConfig.key]
+            const bVal = (b as Record<string, unknown>)[sortConfig.key]
+            if (aVal == null) return 1
+            if (bVal == null) return -1
+            if (aVal < bVal) return sortConfig.dir === 'asc' ? -1 : 1
+            if (aVal > bVal) return sortConfig.dir === 'asc' ? 1 : -1
+            return 0
+        })
+    }
+
+    const toggleSort = (
+        key: string,
+        current: { key: string, dir: 'asc' | 'desc' },
+        setter: React.Dispatch<React.SetStateAction<{ key: string, dir: 'asc' | 'desc' }>>
+    ) => {
+        if (current.key === key) {
+            setter({ key, dir: current.dir === 'asc' ? 'desc' : 'asc' })
+        } else {
+            setter({ key, dir: 'desc' })
+        }
+    }
+
+    const SortHeader = ({ label, sortKey, sortConfig, onSort }: {
+        label: string,
+        sortKey: string,
+        sortConfig: { key: string, dir: 'asc' | 'desc' },
+        onSort: () => void
+    }) => (
+        <th onClick={onSort} style={{ cursor: 'pointer', userSelect: 'none' }}>
+            {label} {sortConfig.key === sortKey ? (sortConfig.dir === 'asc' ? '▲' : '▼') : ''}
+        </th>
+    )
 
     // Fetch test cases on mount
     useEffect(() => {
@@ -950,15 +990,15 @@ export default function Warrior() {
                                                     <table>
                                                         <thead>
                                                             <tr>
-                                                                <th>Symbol</th>
-                                                                <th>Gap%</th>
-                                                                <th>RVOL</th>
-                                                                <th>Price</th>
+                                                                <SortHeader label="Symbol" sortKey="symbol" sortConfig={engineScanSort} onSort={() => toggleSort('symbol', engineScanSort, setEngineScanSort)} />
+                                                                <SortHeader label="Gap%" sortKey="gap_percent" sortConfig={engineScanSort} onSort={() => toggleSort('gap_percent', engineScanSort, setEngineScanSort)} />
+                                                                <SortHeader label="RVOL" sortKey="rvol" sortConfig={engineScanSort} onSort={() => toggleSort('rvol', engineScanSort, setEngineScanSort)} />
+                                                                <SortHeader label="Price" sortKey="price" sortConfig={engineScanSort} onSort={() => toggleSort('price', engineScanSort, setEngineScanSort)} />
                                                                 <th>Status</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {status.last_scan_result.candidates.map((c) => (
+                                                            {sortData(status.last_scan_result.candidates, engineScanSort).map((c) => (
                                                                 <tr key={c.symbol} className={c.in_watchlist ? styles.inWatchlist : ''}>
                                                                     <td className={styles.symbol}>{c.symbol}</td>
                                                                     <td className={c.gap_percent >= 10 ? styles.pnlPositive : ''}>{c.gap_percent.toFixed(1)}%</td>
@@ -992,16 +1032,16 @@ export default function Warrior() {
                                             <table>
                                                 <thead>
                                                     <tr>
-                                                        <th>Symbol</th>
-                                                        <th>Gap%</th>
-                                                        <th>RVOL</th>
-                                                        <th>PMH</th>
+                                                        <SortHeader label="Symbol" sortKey="symbol" sortConfig={watchlistSort} onSort={() => toggleSort('symbol', watchlistSort, setWatchlistSort)} />
+                                                        <SortHeader label="Gap%" sortKey="gap_percent" sortConfig={watchlistSort} onSort={() => toggleSort('gap_percent', watchlistSort, setWatchlistSort)} />
+                                                        <SortHeader label="RVOL" sortKey="rvol" sortConfig={watchlistSort} onSort={() => toggleSort('rvol', watchlistSort, setWatchlistSort)} />
+                                                        <SortHeader label="PMH" sortKey="pmh" sortConfig={watchlistSort} onSort={() => toggleSort('pmh', watchlistSort, setWatchlistSort)} />
                                                         <th>ORB High</th>
                                                         <th>Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {status.watchlist.map((w) => (
+                                                    {sortData(status.watchlist, watchlistSort).map((w) => (
                                                         <tr key={w.symbol} className={w.entry_triggered ? styles.triggered : ''}>
                                                             <td className={styles.symbol}>{w.symbol}</td>
                                                             <td className={w.gap_percent >= 10 ? styles.pnlPositive : ''}>{w.gap_percent.toFixed(1)}%</td>
