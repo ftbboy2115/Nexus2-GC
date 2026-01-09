@@ -599,3 +599,190 @@ async def set_warrior_sim_price(symbol: str, price: float):
         "price": price,
     }
 
+
+# =============================================================================
+# ALPACA ACCOUNT B BROKER ROUTES
+# =============================================================================
+
+# Warrior-specific Alpaca broker (Account B - isolated from KK automation)
+_warrior_alpaca_broker = None
+
+
+def get_warrior_alpaca_broker():
+    """Get Warrior's Alpaca broker (Account B) if configured."""
+    return _warrior_alpaca_broker
+
+
+def create_warrior_alpaca_broker():
+    """Create AlpacaBroker using Account B credentials."""
+    from nexus2 import config
+    
+    if not config.ALPACA_KEY_B or not config.ALPACA_SECRET_B:
+        return None
+    
+    from nexus2.adapters.broker import AlpacaBroker, AlpacaBrokerConfig
+    
+    return AlpacaBroker(AlpacaBrokerConfig(
+        api_key=config.ALPACA_KEY_B,
+        api_secret=config.ALPACA_SECRET_B,
+        paper=True,  # ALWAYS paper for Warrior
+    ))
+
+
+@router.get("/broker/status")
+async def get_warrior_broker_status():
+    """
+    Get Warrior Alpaca broker status.
+    
+    Checks if Account B credentials are configured and broker is connected.
+    """
+    from nexus2 import config
+    
+    has_credentials = bool(config.ALPACA_KEY_B and config.ALPACA_SECRET_B)
+    broker = get_warrior_alpaca_broker()
+    
+    if not has_credentials:
+        return {
+            "broker_enabled": False,
+            "message": "Account B credentials not set. Add APCA_API_KEY_ID_B and APCA_API_SECRET_KEY_B to .env",
+        }
+    
+    if broker is None:
+        return {
+            "broker_enabled": False,
+            "credentials_set": True,
+            "message": "Broker not initialized. POST /warrior/broker/enable to connect.",
+        }
+    
+    # Try to get account info
+    try:
+        account_value = broker.get_account_value()
+        positions = broker.get_positions()
+        
+        return {
+            "broker_enabled": True,
+            "paper_mode": True,
+            "account_value": account_value,
+            "positions_count": len(positions),
+            "positions": [
+                {
+                    "symbol": p.symbol,
+                    "qty": p.quantity,
+                    "avg_price": float(p.average_entry_price),
+                    "current_price": float(p.current_price),
+                    "unrealized_pnl": float(p.unrealized_pnl),
+                }
+                for p in positions
+            ],
+        }
+    except Exception as e:
+        return {
+            "broker_enabled": False,
+            "error": str(e),
+        }
+
+
+@router.post("/broker/enable")
+async def enable_warrior_broker():
+    """
+    Enable Alpaca Account B for Warrior engine.
+    
+    Wires WarriorEngine callbacks to real Alpaca paper trading.
+    """
+    global _warrior_alpaca_broker
+    
+    # Create broker
+    broker = create_warrior_alpaca_broker()
+    
+    if broker is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Account B credentials not configured. Add APCA_API_KEY_ID_B and APCA_API_SECRET_KEY_B to .env",
+        )
+    
+    _warrior_alpaca_broker = broker
+    
+    # Verify connection
+    try:
+        account_value = broker.get_account_value()
+    except Exception as e:
+        _warrior_alpaca_broker = None
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to connect to Alpaca: {e}",
+        )
+    
+    # Wire engine callbacks to broker
+    engine = get_engine()
+    engine.config.sim_only = False  # Enable real order submission
+    
+    async def broker_submit_order(
+        symbol: str,
+        shares: int,
+        stop_price: float,
+        limit_price: float = None,
+        trigger_type: str = "orb",
+    ):
+        """Submit order to Alpaca Account B."""
+        alpaca = get_warrior_alpaca_broker()
+        if alpaca is None:
+            return None
+        
+        try:
+            result = alpaca.submit_bracket_order(
+                client_order_id=uuid4(),
+                symbol=symbol,
+                quantity=shares,
+                stop_loss_price=Decimal(str(stop_price)),
+                limit_price=Decimal(str(limit_price)) if limit_price else None,
+            )
+            return result
+        except Exception as e:
+            print(f"[Warrior] Alpaca order failed: {e}")
+            return None
+    
+    def broker_get_positions():
+        """Get positions from Alpaca Account B."""
+        alpaca = get_warrior_alpaca_broker()
+        if alpaca is None:
+            return []
+        
+        try:
+            positions = alpaca.get_positions()
+            return [
+                {
+                    "symbol": p.symbol,
+                    "qty": p.quantity,
+                    "avg_price": float(p.average_entry_price),
+                    "current_price": float(p.current_price),
+                    "unrealized_pnl": float(p.unrealized_pnl),
+                }
+                for p in positions
+            ]
+        except Exception as e:
+            print(f"[Warrior] Failed to get positions: {e}")
+            return []
+    
+    # Wire up FMP for quotes
+    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+    fmp = get_fmp_adapter()
+    
+    def broker_get_quote(symbol: str):
+        """Get quote from FMP."""
+        quote = fmp.get_quote(symbol)
+        return float(quote.price) if quote else None
+    
+    engine.set_callbacks(
+        submit_order=broker_submit_order,
+        get_quote=broker_get_quote,
+        get_positions=broker_get_positions,
+    )
+    
+    return {
+        "status": "enabled",
+        "broker": "alpaca_paper_b",
+        "account_value": account_value,
+        "message": "WarriorEngine connected to Alpaca Account B (paper)",
+    }
+
+
