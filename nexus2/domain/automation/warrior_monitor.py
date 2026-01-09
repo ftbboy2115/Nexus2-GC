@@ -81,7 +81,7 @@ class WarriorMonitorSettings:
     breakout_hold_threshold: float = 0.5  # Must hold 50% of breakout
     
     # Polling
-    check_interval_seconds: int = 10  # Faster for day trading
+    check_interval_seconds: int = 2  # Fast polling for day trading
 
 
 @dataclass

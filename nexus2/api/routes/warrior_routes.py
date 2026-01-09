@@ -726,8 +726,14 @@ async def set_warrior_sim_price(symbol: str, price: float):
     
     broker.set_price(symbol, price)
     
-    # Check for stop triggers
+    # Check for stop triggers in MockBroker
     broker._check_stop_orders(symbol)
+    
+    # Also trigger monitor check for profit targets and mental stops
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+    monitor = get_warrior_monitor()
+    if monitor._running:
+        await monitor._check_all_positions()
     
     return {
         "status": "updated",
