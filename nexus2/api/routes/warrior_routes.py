@@ -942,6 +942,49 @@ async def enable_warrior_broker():
         get_positions=broker_get_positions,
     )
     
+    # Sync existing Alpaca positions to Monitor for restart recovery
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+    monitor = get_warrior_monitor()
+    
+    try:
+        alpaca_positions = broker.get_positions()
+        synced_count = 0
+        
+        for symbol, pos in alpaca_positions.items():
+            # Check if already in monitor
+            existing = [p for p in monitor.get_positions() if p.symbol == symbol]
+            if existing:
+                continue
+            
+            # Calculate default stop/target based on entry
+            entry_price = float(pos.avg_price)
+            mental_stop = entry_price - (monitor.settings.mental_stop_cents / 100)
+            target = entry_price + (monitor.settings.mental_stop_cents / 100 * monitor.settings.profit_target_r)
+            
+            # Add to monitor
+            from nexus2.domain.automation.warrior_monitor import WarriorPosition
+            from uuid import uuid4
+            from datetime import datetime
+            
+            new_pos = WarriorPosition(
+                position_id=str(uuid4()),
+                symbol=symbol,
+                entry_price=Decimal(str(entry_price)),
+                quantity=pos.quantity,
+                stop_price=Decimal(str(mental_stop)),
+                target_price=Decimal(str(target)),
+                entry_time=datetime.utcnow(),
+                support_level=Decimal(str(mental_stop)),
+            )
+            monitor._positions.append(new_pos)
+            synced_count += 1
+            print(f"[Warrior] Synced {symbol}: {pos.quantity} @ ${entry_price:.2f}, stop=${mental_stop:.2f}")
+        
+        if synced_count > 0:
+            print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")
+    except Exception as e:
+        print(f"[Warrior] Position sync failed: {e}")
+    
     return {
         "status": "enabled",
         "broker": "alpaca_paper_b",
