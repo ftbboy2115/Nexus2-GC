@@ -93,6 +93,27 @@ interface WarriorPosition {
     entry_time: string | null
 }
 
+interface SimStatus {
+    sim_enabled: boolean
+    message?: string
+    account?: {
+        cash: number
+        portfolio_value: number
+        unrealized_pnl: number
+        realized_pnl: number
+    }
+    positions?: Array<{
+        symbol: string
+        qty: number
+        avg_price: number
+        market_value: number
+        unrealized_pnl: number
+        pnl_percent: number
+        stop_price: number
+    }>
+    position_count?: number
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -104,6 +125,9 @@ export default function Warrior() {
     const [positions, setPositions] = useState<WarriorPosition[]>([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+    // Simulation state
+    const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
 
     // Event log
     const [eventLog, setEventLog] = useState<string[]>([])
@@ -117,9 +141,10 @@ export default function Warrior() {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const [statusRes, positionsRes] = await Promise.all([
+            const [statusRes, positionsRes, simRes] = await Promise.all([
                 fetch(`${API_BASE}/warrior/status`),
                 fetch(`${API_BASE}/warrior/positions`),
+                fetch(`${API_BASE}/warrior/sim/status`),
             ])
 
             if (statusRes.ok) setStatus(await statusRes.json())
@@ -127,6 +152,7 @@ export default function Warrior() {
                 const data = await positionsRes.json()
                 setPositions(data.positions || [])
             }
+            if (simRes.ok) setSimStatus(await simRes.json())
         } catch (err) {
             console.error('Error fetching Warrior status:', err)
             addToLog('❌ Failed to connect to backend')
@@ -185,6 +211,10 @@ export default function Warrior() {
     const stopEngine = () => handleAction('Stop Engine', '/warrior/stop')
     const pauseEngine = () => handleAction('Pause Engine', '/warrior/pause')
     const resumeEngine = () => handleAction('Resume Engine', '/warrior/resume')
+
+    // Simulation Controls
+    const enableSim = () => handleAction('Enable Sim', '/warrior/sim/enable')
+    const resetSim = () => handleAction('Reset Sim', '/warrior/sim/reset')
 
     // Run Scanner
     const runScan = async () => {
@@ -362,6 +392,93 @@ export default function Warrior() {
                                                 ⏹️ Stop
                                             </button>
                                         </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Simulation Mode Card */}
+                            <div className={styles.card}>
+                                <div className={styles.cardHeader}>
+                                    <h2>🧪 Simulation Mode</h2>
+                                    <span className={`${styles.badge} ${simStatus?.sim_enabled ? styles.badgeGreen : styles.badgeGray}`}>
+                                        {simStatus?.sim_enabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </div>
+                                <div className={styles.cardBody}>
+                                    {simStatus?.sim_enabled && simStatus.account ? (
+                                        <>
+                                            <div className={styles.statsGrid}>
+                                                <div className={styles.statBox}>
+                                                    <div className={styles.statValue}>{formatCurrency(simStatus.account.cash)}</div>
+                                                    <div className={styles.statLabel}>Cash</div>
+                                                </div>
+                                                <div className={styles.statBox}>
+                                                    <div className={styles.statValue}>{formatCurrency(simStatus.account.portfolio_value)}</div>
+                                                    <div className={styles.statLabel}>Equity</div>
+                                                </div>
+                                                <div className={styles.statBox}>
+                                                    <div className={`${styles.statValue} ${simStatus.account.unrealized_pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
+                                                        {formatPnL(simStatus.account.unrealized_pnl)}
+                                                    </div>
+                                                    <div className={styles.statLabel}>Unrealized</div>
+                                                </div>
+                                                <div className={styles.statBox}>
+                                                    <div className={`${styles.statValue} ${simStatus.account.realized_pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
+                                                        {formatPnL(simStatus.account.realized_pnl)}
+                                                    </div>
+                                                    <div className={styles.statLabel}>Realized</div>
+                                                </div>
+                                            </div>
+
+                                            {simStatus.positions && simStatus.positions.length > 0 && (
+                                                <div className={styles.simPositions}>
+                                                    <h4>Sim Positions ({simStatus.position_count})</h4>
+                                                    <table>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Symbol</th>
+                                                                <th>Qty</th>
+                                                                <th>Avg</th>
+                                                                <th>P&L</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {simStatus.positions.map((p) => (
+                                                                <tr key={p.symbol}>
+                                                                    <td className={styles.symbol}>{p.symbol}</td>
+                                                                    <td>{p.qty}</td>
+                                                                    <td>${p.avg_price.toFixed(2)}</td>
+                                                                    <td className={p.unrealized_pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}>
+                                                                        {formatPnL(p.unrealized_pnl)}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className={styles.emptyMessage}>Simulation not active. Click Enable to start.</p>
+                                    )}
+                                </div>
+                                <div className={styles.cardActions}>
+                                    {!simStatus?.sim_enabled ? (
+                                        <button
+                                            onClick={enableSim}
+                                            className={styles.btnPrimary}
+                                            disabled={actionLoading !== null}
+                                        >
+                                            {actionLoading === 'Enable Sim' ? '...' : '🚀 Enable Sim'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={resetSim}
+                                            className={styles.btnSecondary}
+                                            disabled={actionLoading !== null}
+                                        >
+                                            {actionLoading === 'Reset Sim' ? '...' : '🔄 Reset Sim'}
+                                        </button>
                                     )}
                                 </div>
                             </div>

@@ -553,3 +553,32 @@
     text-align: center;
     font-style: italic;
 }
+
+/* Simulation Positions */
+.simPositions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.simPositions h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.simPositions table {
+    width: 100%;
+    font-size: 0.8rem;
+}
+
+.simPositions th {
+    text-align: left;
+    color: #666;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+}
+
+.simPositions td {
+    padding: 0.25rem 0.5rem;
+}
