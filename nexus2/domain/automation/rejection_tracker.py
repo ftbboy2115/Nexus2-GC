@@ -41,6 +41,7 @@ class RejectionReason(Enum):
     FLOAT_TOO_HIGH = "float_too_high"
     PRICE_OUT_OF_RANGE = "price_out_of_range"
     COUNTRY_EXCLUDED = "country_excluded"
+    GAP_TOO_LOW = "gap_too_low"  # Recalculated gap below threshold
     
     # Common
     PRICE_TOO_LOW = "price_too_low"

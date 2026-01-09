@@ -455,8 +455,26 @@ class WarriorScannerService:
         # =========================================================================
         # PILLAR 5: Gap % (> 4%, ideal 5-10%)
         # =========================================================================
-        # Already pre-filtered, use passed change_percent as gap
-        gap_pct = change_percent
+        # Recalculate gap from actual yesterday_close vs current price
+        # FMP's change_percent can be stale (from previous day's move, not today's)
+        yesterday_close = snapshot["yesterday_close"]
+        if yesterday_close and yesterday_close > 0:
+            gap_pct = ((last_price - yesterday_close) / yesterday_close) * 100
+        else:
+            gap_pct = change_percent  # Fallback to FMP data if no yesterday close
+        
+        # Re-check gap threshold with corrected value
+        if gap_pct < s.min_gap:
+            tracker.record(
+                symbol=symbol,
+                scanner="warrior",
+                reason=RejectionReason.GAP_TOO_LOW,
+                values={"gap": round(float(gap_pct), 1), "min": float(s.min_gap)},
+            )
+            if verbose:
+                print(f"{symbol}: Rejected - Gap {gap_pct:.1f}% < {s.min_gap}%")
+            return None
+        
         is_ideal_gap = gap_pct >= s.ideal_gap
         
         # =========================================================================
@@ -486,8 +504,8 @@ class WarriorScannerService:
             relative_volume=rvol,
             catalyst_type=catalyst_type,
             catalyst_description=catalyst_desc,
-            price=price,
-            gap_percent=gap_pct,
+            price=Decimal(str(last_price)),  # Use current quote price, not stale FMP price
+            gap_percent=Decimal(str(gap_pct)),  # Recalculated gap
             is_ideal_float=is_ideal_float,
             is_ideal_rvol=is_ideal_rvol,
             is_ideal_gap=is_ideal_gap,
