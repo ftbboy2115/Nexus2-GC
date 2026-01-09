@@ -1158,6 +1158,7 @@ async def backfill_warrior_trades():
     but don't have trade log entries (e.g., opened before DB was set up).
     """
     from nexus2.db.warrior_db import log_warrior_entry, get_warrior_trade_by_symbol
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
     from uuid import uuid4
     
     monitor = get_warrior_monitor()
