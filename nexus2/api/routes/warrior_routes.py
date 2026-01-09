@@ -570,10 +570,44 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         sim_broker = get_warrior_sim_broker()
         return sim_broker.get_positions() if sim_broker else []
     
+    async def sim_execute_exit(signal):
+        """Execute exit signal on MockBroker."""
+        sim_broker = get_warrior_sim_broker()
+        if sim_broker is None:
+            logger.warning("[Sim] No broker for exit execution")
+            return False
+        
+        # Sell the shares
+        success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
+        if success:
+            logger.info(f"[Sim] Executed exit: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+        return success
+    
+    async def sim_update_stop(position_id: str, new_stop_price):
+        """Update stop price in MockBroker."""
+        sim_broker = get_warrior_sim_broker()
+        if sim_broker is None:
+            return False
+        
+        # Find symbol from position_id (simplified - assumes position_id contains symbol)
+        for pos in sim_broker.get_positions():
+            if pos.get("symbol") in position_id or position_id in pos.get("symbol", ""):
+                return sim_broker.update_stop(pos["symbol"], float(new_stop_price))
+        return False
+    
     engine.set_callbacks(
         submit_order=sim_submit_order,
         get_quote=sim_get_quote,
         get_positions=sim_get_positions,
+    )
+    
+    # Also wire up monitor callbacks for exit execution
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+    monitor = get_warrior_monitor()
+    monitor.set_callbacks(
+        get_price=sim_get_quote,
+        execute_exit=sim_execute_exit,
+        update_stop=sim_update_stop,
     )
     
     return {
