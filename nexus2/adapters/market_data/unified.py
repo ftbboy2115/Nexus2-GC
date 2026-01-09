@@ -52,12 +52,18 @@ class UnifiedMarketData:
     
     def get_quote(self, symbol: str) -> Optional[Quote]:
         """
-        Get quote, preferring FMP for full data.
+        Get quote, using Alpaca first for real-time extended hours data.
+        
+        FMP quotes are often stale during pre-market (show yesterday's close).
+        Alpaca provides accurate real-time pre-market prices.
         """
-        quote = self.fmp.get_quote(symbol)
-        if quote:
+        # Alpaca first - has real-time extended hours data
+        quote = self.alpaca.get_quote(symbol)
+        if quote and quote.price > 0:
             return quote
-        return self.alpaca.get_quote(symbol)
+        
+        # Fallback to FMP
+        return self.fmp.get_quote(symbol)
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
         """Get quotes for multiple symbols via FMP."""
@@ -220,10 +226,21 @@ class UnifiedMarketData:
         if not daily or len(daily) < 2:
             return None
         
-        yesterday_close = daily[-2].close
+        # Determine yesterday's close
+        # During pre-market/before market open, daily[-1] is yesterday's actual close
+        # During market hours, daily[-1] is today's partial bar, so use daily[-2]
+        from datetime import date
+        last_bar_date = daily[-1].timestamp.date()
+        today = date.today()
         
-        # Calculate average volume (excluding most recent bar)
-        hist_bars = daily[:-1]  # All but most recent
+        if last_bar_date < today:
+            # Pre-market: most recent bar IS yesterday
+            yesterday_close = daily[-1].close
+            hist_bars = daily[:-1]  # Exclude yesterday from volume calc
+        else:
+            # During market hours: most recent is today, so use day before
+            yesterday_close = daily[-2].close
+            hist_bars = daily[:-2]  # Exclude today and yesterday
         if len(hist_bars) < 10:  # Need at least 10 days for meaningful average
             return None
         
@@ -233,8 +250,15 @@ class UnifiedMarketData:
         if avg_daily_volume <= 0:
             return None
         
-        # Get today's session data from FMP quote
-        # FMP quote includes: open, dayHigh, dayLow, price, volume
+        # Get current price from Alpaca (real-time, works pre-market)
+        alpaca_quote = self.alpaca.get_quote(symbol)
+        if alpaca_quote and alpaca_quote.price > 0:
+            last_price = alpaca_quote.price
+        else:
+            last_price = None
+        
+        # Get session data from FMP quote (may be stale during pre-market)
+        # FMP quote includes: open, dayHigh, dayLow, volume
         quote_data = self.fmp._get(f"quote/{symbol}")
         if not quote_data or len(quote_data) == 0:
             return None
@@ -243,8 +267,11 @@ class UnifiedMarketData:
         session_open = Decimal(str(q.get("open", 0)))
         session_high = Decimal(str(q.get("dayHigh", 0)))
         session_low = Decimal(str(q.get("dayLow", 0)))
-        last_price = Decimal(str(q.get("price", 0)))
         session_volume = int(q.get("volume", 0))
+        
+        # Use Alpaca price if available, otherwise FMP (may be stale)
+        if not last_price:
+            last_price = Decimal(str(q.get("price", 0)))
         
         # Validate we have real data
         if session_open <= 0 or last_price <= 0:

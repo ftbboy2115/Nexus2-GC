@@ -158,7 +158,17 @@ class FMPAdapter:
     # =========================================================================
     
     def get_quote(self, symbol: str) -> Optional[Quote]:
-        """Get real-time quote for a symbol."""
+        """Get real-time quote for a symbol.
+        
+        During pre-market hours, falls back to aftermarket quote endpoint
+        which returns actual pre-market prices.
+        """
+        # Try aftermarket quote first for pre-market data
+        pm_quote = self.get_premarket_quote(symbol)
+        if pm_quote:
+            return pm_quote
+        
+        # Fall back to regular quote
         data = self._get(f"quote/{symbol}")
         if not data or len(data) == 0:
             return None
@@ -173,6 +183,30 @@ class FMPAdapter:
             timestamp=datetime.now(timezone.utc),
             day_low=Decimal(str(q.get("dayLow", 0))) if q.get("dayLow") else None,
             day_high=Decimal(str(q.get("dayHigh", 0))) if q.get("dayHigh") else None,
+        )
+    
+    def get_premarket_quote(self, symbol: str) -> Optional[Quote]:
+        """Get pre-market/after-hours quote for a symbol.
+        
+        Uses FMP's aftermarket quote endpoint which has actual extended hours prices.
+        Returns None if no pre-market data available.
+        """
+        data = self._get(f"pre-post-market-trade/{symbol}")
+        if not data or len(data) == 0:
+            return None
+        
+        q = data[0]
+        price = q.get("price", 0)
+        if not price or price == 0:
+            return None
+        
+        return Quote(
+            symbol=symbol,
+            price=Decimal(str(price)),
+            change=Decimal(str(q.get("change", 0))),
+            change_percent=Decimal(str(q.get("changesPercentage", 0))),
+            volume=int(q.get("volume", 0)),
+            timestamp=datetime.now(timezone.utc),
         )
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
