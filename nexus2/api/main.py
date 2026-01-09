@@ -109,6 +109,18 @@ async def lifespan(app: FastAPI):
     set_engine(app.state.automation_engine)
     print("[Startup] Automation engine initialized")
     
+    # Auto-enable Warrior Alpaca broker (Account B)
+    try:
+        from nexus2.api.routes.warrior_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker
+        warrior_broker = create_warrior_alpaca_broker()
+        if warrior_broker:
+            set_warrior_alpaca_broker(warrior_broker)
+            print("[Startup] Warrior Alpaca broker (Account B) auto-enabled")
+        else:
+            print("[Startup] Warrior Alpaca broker not available (missing credentials)")
+    except Exception as e:
+        print(f"[Startup] Warrior broker auto-enable failed: {e}")
+    
     # Create shared FMP adapter singleton first
     from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, set_fmp_adapter
     fmp_adapter = FMPAdapter()

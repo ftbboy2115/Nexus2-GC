@@ -91,7 +91,7 @@ class WarriorEngineConfig:
     static_blacklist: set = field(default_factory=lambda: {"PLBY"})
     
     # Execution
-    sim_only: bool = True  # SAFETY: Default to paper trading
+    sim_only: bool = False  # Default to paper trading on Alpaca
 
 
 @dataclass

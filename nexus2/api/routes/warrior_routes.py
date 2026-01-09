@@ -837,7 +837,8 @@ async def get_warrior_broker_status():
         # Calculate unrealized P&L and invested capital from positions
         total_unrealized_pnl = 0.0
         total_invested = 0.0
-        for p in positions:
+        positions_list = list(positions.values()) if isinstance(positions, dict) else positions
+        for p in positions_list:
             total_unrealized_pnl += float(p.unrealized_pnl) if p.unrealized_pnl else 0
             total_invested += float(p.average_entry_price) * p.quantity if p.average_entry_price else 0
         
@@ -854,7 +855,7 @@ async def get_warrior_broker_status():
             "broker_enabled": True,
             "paper_mode": True,
             "account_value": account_value,
-            "positions_count": len(positions),
+            "positions_count": len(positions_list),
             # Daily P&L Summary
             "realized_pnl_today": realized_pnl_today,
             "unrealized_pnl": total_unrealized_pnl,
@@ -870,7 +871,7 @@ async def get_warrior_broker_status():
                     "current_price": float(p.current_price),
                     "unrealized_pnl": float(p.unrealized_pnl),
                 }
-                for p in positions
+                for p in positions_list
             ],
         }
     except Exception as e:
