@@ -942,6 +942,59 @@ async def enable_warrior_broker():
     }
 
 
+@router.post("/broker/test")
+async def test_warrior_broker():
+    """
+    Test Alpaca connection by placing and canceling a limit order.
+    
+    Places a $1 limit buy on AAPL, then immediately cancels it.
+    """
+    broker = get_warrior_alpaca_broker()
+    
+    if broker is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Broker not enabled. Call POST /warrior/broker/enable first.",
+        )
+    
+    try:
+        import time
+        
+        print("[Warrior] Testing Alpaca connection...")
+        
+        # Use direct Alpaca API to place a limit order that won't fill
+        order = broker._client.submit_order(
+            symbol="AAPL",
+            qty=1,
+            side="buy",
+            type="limit",
+            time_in_force="day",
+            limit_price=1.00,
+        )
+        
+        order_id = order.id
+        print(f"[Warrior] Test order placed: {order_id}")
+        
+        # Wait a moment
+        time.sleep(0.5)
+        
+        # Cancel the order
+        broker._client.cancel_order_by_id(order_id)
+        print(f"[Warrior] Test order canceled: {order_id}")
+        
+        return {
+            "status": "success",
+            "message": "Alpaca connection verified - order placed and canceled",
+            "order_id": str(order_id),
+        }
+    except Exception as e:
+        print(f"[Warrior] Test order failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Alpaca test failed: {e}",
+        )
+
+
 # =============================================================================
 # WARRIOR TEST CASE ROUTES
 # =============================================================================
