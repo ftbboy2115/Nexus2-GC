@@ -614,10 +614,13 @@ class WarriorEngine:
         # Check position count
         if self._get_positions:
             positions = await self._get_positions()
+            print(f"[Debug] Positions count: {len(positions)}, max: {self.config.max_positions}")
             if len(positions) >= self.config.max_positions:
+                print(f"[Debug] Blocked by position count")
                 return False
         
         # Check daily loss
+        print(f"[Debug] Daily P&L: {self.stats.daily_pnl}, max_loss: {self.config.max_daily_loss}")
         if self.stats.daily_pnl <= -self.config.max_daily_loss:
             logger.warning("[Warrior] Daily loss limit reached")
             return False
