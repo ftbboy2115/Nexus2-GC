@@ -24,6 +24,15 @@ const nextConfig = {
                 source: '/health',
                 destination: 'http://localhost:8000/health',
             },
+            // WARRIOR TRADING ROUTES
+            {
+                source: '/warrior/:path*',
+                destination: 'http://localhost:8000/warrior/:path*',
+            },
+            {
+                source: '/warrior',
+                destination: 'http://localhost:8000/warrior',
+            },
             {
                 source: '/api/:path*',
                 destination: 'http://localhost:8000/:path*',
