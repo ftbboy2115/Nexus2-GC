@@ -381,9 +381,23 @@ class WarriorEngine:
         logger.info(f"[Warrior Scan] Found {len(result.candidates)} candidates, watching {len(self._watchlist)}")
     
     async def _get_premarket_high(self, symbol: str) -> Optional[Decimal]:
-        """Get pre-market high for a symbol."""
-        # For now, use session high from quote
-        # TODO: Get actual pre-market data from broker
+        """Get pre-market high for a symbol.
+        
+        Uses FMP intraday bars to calculate max(high) from pre-market (4AM-9:29AM).
+        This is the TRUE PMH - doesn't update during regular session.
+        """
+        try:
+            from nexus2.adapters.market_data.fmp_adapter import get_singleton_fmp_adapter
+            
+            fmp = get_singleton_fmp_adapter()
+            if fmp:
+                pmh = fmp.get_premarket_high(symbol)
+                if pmh:
+                    return pmh
+        except Exception as e:
+            logger.warning(f"[Warrior PMH] FMP lookup failed for {symbol}: {e}")
+        
+        # Fallback to quote day_high if FMP fails (less accurate)
         if self._get_quote:
             quote = await self._get_quote(symbol)
             if quote:

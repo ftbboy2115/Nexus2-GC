@@ -387,6 +387,52 @@ class FMPAdapter:
         
         return (first_bar.high, first_bar.low)
     
+    def get_premarket_high(
+        self,
+        symbol: str,
+        date: Optional[str] = None,
+    ) -> Optional[Decimal]:
+        """
+        Get the pre-market high (max high from 4:00 AM - 9:29 AM ET).
+        
+        This is the TRUE pre-market high for PMH breakout detection.
+        Unlike day_high from quotes, this doesn't update during regular session.
+        
+        Args:
+            symbol: Stock symbol
+            date: Date in YYYY-MM-DD format (defaults to today)
+            
+        Returns:
+            Pre-market high price, or None if no pre-market data
+        """
+        from datetime import time as dt_time
+        import pytz
+        
+        # Get 30-min bars for today (less API overhead, still accurate)
+        bars = self.get_intraday_bars(symbol, timeframe="30min", date=date)
+        
+        if not bars or len(bars) == 0:
+            return None
+        
+        # Filter bars to pre-market only (before 9:30 AM ET)
+        # FMP timestamps are already in ET
+        market_open = dt_time(9, 30)
+        
+        premarket_highs = []
+        for bar in bars:
+            bar_time = bar.timestamp.time()
+            if bar_time < market_open:
+                premarket_highs.append(bar.high)
+        
+        if not premarket_highs:
+            # No pre-market bars - stock might not trade pre-market
+            # Fall back to first regular bar's open as approximation
+            return bars[0].open if bars else None
+        
+        # Return max high from pre-market bars
+        return max(premarket_highs)
+
+    
     def get_stock_info(self, symbol: str) -> Optional[StockInfo]:
         """Get basic stock information."""
         data = self._get(f"profile/{symbol}")
