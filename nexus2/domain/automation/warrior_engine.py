@@ -83,6 +83,9 @@ class WarriorEngineConfig:
     max_daily_loss: Decimal = Decimal("999999")  # Disabled for testing
     max_capital: Decimal = Decimal("5000")  # Max capital per trade
     
+    # Blacklist - symbols to never trade
+    static_blacklist: set = field(default_factory=lambda: {"PLBY"})
+    
     # Execution
     sim_only: bool = True  # SAFETY: Default to paper trading
 
@@ -149,6 +152,9 @@ class WarriorEngine:
         
         # Watched candidates
         self._watchlist: Dict[str, WatchedCandidate] = {}
+        
+        # Blacklist - symbols that can't be traded (Alpaca rejects)
+        self._blacklist: set = set()
         
         # Tasks
         self._scan_task: Optional[asyncio.Task] = None
@@ -509,6 +515,12 @@ class WarriorEngine:
         """Execute entry for a candidate."""
         symbol = watched.candidate.symbol
         
+        # Check blacklist (static config + dynamic from broker rejections)
+        if symbol in self.config.static_blacklist or symbol in self._blacklist:
+            logger.info(f"[Warrior Entry] {symbol}: Blacklisted, skipping")
+            watched.entry_triggered = True  # Mark to prevent retries
+            return
+        
         # Check if we already hold this symbol (prevents double-buying after restart)
         if self._get_positions:
             try:
@@ -559,6 +571,17 @@ class WarriorEngine:
                     order_type="market",
                     stop_loss=None,  # Mental stop, not broker stop
                 )
+                
+                # Check for blacklist response from broker
+                if isinstance(order_result, dict) and order_result.get("blacklist"):
+                    self._blacklist.add(symbol)
+                    logger.warning(f"[Warrior Entry] {symbol}: Added to blacklist - {order_result.get('error')}")
+                    watched.entry_triggered = True
+                    return
+                
+                if order_result is None:
+                    logger.warning(f"[Warrior Entry] {symbol}: Order returned None")
+                    return
                 
                 self.stats.orders_submitted += 1
                 

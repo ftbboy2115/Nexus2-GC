@@ -901,6 +901,11 @@ async def enable_warrior_broker():
             print(f"[Warrior] Order submitted: {symbol} x{shares} ({side})")
             return result
         except Exception as e:
+            error_str = str(e).lower()
+            # Check for untradable asset errors
+            if "not tradable" in error_str or "is not fractionable" in error_str or "asset not found" in error_str:
+                print(f"[Warrior] {symbol} is not tradable - adding to blacklist")
+                return {"blacklist": True, "symbol": symbol, "error": str(e)}
             print(f"[Warrior] Alpaca order failed: {e}")
             return None
     
