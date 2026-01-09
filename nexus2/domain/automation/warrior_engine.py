@@ -387,9 +387,9 @@ class WarriorEngine:
         This is the TRUE PMH - doesn't update during regular session.
         """
         try:
-            from nexus2.adapters.market_data.fmp_adapter import get_singleton_fmp_adapter
+            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             
-            fmp = get_singleton_fmp_adapter()
+            fmp = get_fmp_adapter()
             if fmp:
                 pmh = fmp.get_premarket_high(symbol)
                 if pmh:
