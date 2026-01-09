@@ -1,0 +1,190 @@
+# Warrior Trading (Ross Cameron) Test Cases
+# 
+# Known setups for validating Warrior scanner and execution logic.
+# Each case includes:
+#   - Symbol and date
+#   - Setup type (orb, pmh, both)
+#   - Ross's actual P&L (target to match/beat)
+#   - Entry and stop levels for validation
+#   - Pre-market data for scanner validation
+
+test_cases:
+  # ==========================================================================
+  # ROSS CAMERON TRADES - January 8, 2025
+  # ==========================================================================
+  
+  - id: acon_2025_01_08
+    symbol: ACON
+    setup_type: pmh
+    outcome: winner
+    description: "ACON Jan 8 2025 - Ross traded PMH breakout, +42% gap"
+    trade_date: "2025-01-08"
+    ross_pnl: 9293.09  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 42.1
+      volume: 43000000
+      float_shares: null  # Low float
+      catalyst: "news"
+      previous_close: 1.50
+      premarket_high: 2.20
+    expected:
+      entry_near: 2.25  # PMH breakout
+      stop_near: 2.10   # Below PMH
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Monster volume 725x RVOL, news catalyst - BIGGEST WINNER"
+
+  - id: flyx_2025_01_08
+    symbol: FLYX
+    setup_type: pmh
+    outcome: winner
+    description: "FLYX Jan 8 2025 - +130% gap, extreme RVOL"
+    trade_date: "2025-01-08"
+    ross_pnl: 4731.89  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 130.3
+      volume: 50000000
+      float_shares: null
+      catalyst: "former_runner"
+      previous_close: 0.50
+      premarket_high: 1.25
+    expected:
+      entry_near: 1.30
+      stop_near: 1.15
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "5282x RVOL, former runner pattern"
+
+  # ==========================================================================
+  # ROSS CAMERON TRADES - January 6, 2025
+  # ==========================================================================
+
+  - id: optx_2025_01_06
+    symbol: OPTX
+    setup_type: orb
+    outcome: winner
+    description: "OPTX - Ross traded ORB breakout"
+    trade_date: "2025-01-06"
+    ross_pnl: 3604.91  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 35.0
+      volume: 2000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 2.50
+      premarket_high: 3.40
+    expected:
+      entry_near: 3.50
+      stop_near: 3.35
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "ORB setup, gap + news"
+
+  - id: elab_2025_01_06
+    symbol: ELAB
+    setup_type: pmh
+    outcome: winner
+    description: "ELAB - Ross traded"
+    trade_date: "2025-01-06"
+    ross_pnl: 3430.23  # TARGET TO MATCH/BEAT
+    premarket_data:
+      gap_percent: 25.0
+      volume: 3000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 5.00
+      premarket_high: 6.30
+    expected:
+      entry_near: 6.40
+      stop_near: 6.20
+      mental_stop_cents: 20
+      profit_target_r: 2.0
+    notes: "News catalyst"
+
+  - id: alms_2025_01_06
+    symbol: ALMS
+    setup_type: pmh
+    outcome: winner
+    description: "ALMS - Ross traded"
+    trade_date: "2025-01-06"
+    ross_pnl: 514.46  # TARGET TO MATCH/BEAT (smallest winner)
+    premarket_data:
+      gap_percent: 30.0
+      volume: 10000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 1.20
+      premarket_high: 1.60
+    expected:
+      entry_near: 1.65
+      stop_near: 1.50
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "High volume, news catalyst"
+
+# ==========================================================================
+# USAGE:
+# 
+# 1. Load a test case:
+#    POST /warrior/sim/load_test_case?case_id=acon_2025_01_08
+#
+# 2. This will:
+#    - Set MockBroker prices based on premarket_data
+#    - Set simulated gap, volume, float
+#    - Run scanner to verify it would catch the stock
+#
+# 3. Run scanner to see if it detects the setup
+# 4. Execute trade via WarriorEngine
+# 5. Compare outcome vs expected
+# ==========================================================================
+
+# ==========================================================================
+# SYNTHETIC WARRIOR LOSERS (for testing stop execution)
+# ==========================================================================
+
+  - id: synthetic_warrior_loser
+    symbol: WLSR
+    setup_type: pmh
+    outcome: loser
+    synthetic: true
+    description: "Synthetic PMH loser - gap up then fails at PMH"
+    trade_date: "2025-01-01"
+    synthetic_config:
+      premarket_high: 5.00
+      open_price: 5.10  # Breaks PMH
+      entry_fill: 5.10
+      mental_stop: 4.95  # 15 cents below entry
+      price_path:
+        - { minute: 1, price: 5.15 }  # Looks good...
+        - { minute: 2, price: 5.08 }  # Fading
+        - { minute: 3, price: 4.98 }  # Below entry
+        - { minute: 4, price: 4.90 }  # MENTAL STOP HIT
+    expected:
+      entry_near: 5.10
+      stop_near: 4.95
+      loss_pct: -3.0
+    notes: "Tests mental stop execution at 15 cents"
+
+  - id: synthetic_warrior_winner
+    symbol: WWNR
+    setup_type: pmh
+    outcome: winner
+    synthetic: true
+    description: "Synthetic PMH winner - clean 2R move"
+    trade_date: "2025-01-01"
+    synthetic_config:
+      premarket_high: 5.00
+      open_price: 5.10
+      entry_fill: 5.10
+      mental_stop: 4.95  # 15 cents
+      profit_target: 5.40  # 2R = 30 cents
+      price_path:
+        - { minute: 1, price: 5.20 }
+        - { minute: 2, price: 5.30 }
+        - { minute: 3, price: 5.45 }  # TARGET HIT
+    expected:
+      entry_near: 5.10
+      profit_target: 5.40
+      partial_exit_price: 5.40
+      win_pct: 6.0
+    notes: "Tests partial at 2R, stop to breakeven"

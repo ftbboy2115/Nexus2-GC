@@ -786,3 +786,135 @@ async def enable_warrior_broker():
     }
 
 
+# =============================================================================
+# WARRIOR TEST CASE ROUTES
+# =============================================================================
+
+@router.get("/sim/test_cases")
+async def list_warrior_test_cases():
+    """
+    List available Warrior test cases.
+    
+    Returns test cases from warrior_setups.yaml for historical backtesting.
+    """
+    import os
+    import yaml
+    
+    yaml_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "tests", "test_cases", "warrior_setups.yaml"
+    )
+    
+    if not os.path.exists(yaml_path):
+        return {"test_cases": [], "message": "No test cases file found"}
+    
+    with open(yaml_path, "r") as f:
+        data = yaml.safe_load(f)
+    
+    test_cases = data.get("test_cases", [])
+    
+    summary = []
+    for tc in test_cases:
+        summary.append({
+            "id": tc.get("id"),
+            "symbol": tc.get("symbol"),
+            "setup_type": tc.get("setup_type"),
+            "outcome": tc.get("outcome"),
+            "description": tc.get("description"),
+            "trade_date": tc.get("trade_date"),
+            "synthetic": tc.get("synthetic", False),
+        })
+    
+    return {
+        "test_cases": summary,
+        "count": len(summary),
+    }
+
+
+@router.post("/sim/load_test_case")
+async def load_warrior_test_case(case_id: str):
+    """
+    Load a Warrior test case into the MockBroker.
+    
+    Sets up prices and runs scanner to see if it would catch the stock.
+    """
+    import os
+    import yaml
+    
+    # Load YAML
+    yaml_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "tests", "test_cases", "warrior_setups.yaml"
+    )
+    
+    if not os.path.exists(yaml_path):
+        raise HTTPException(status_code=404, detail="Test cases file not found")
+    
+    with open(yaml_path, "r") as f:
+        data = yaml.safe_load(f)
+    
+    test_cases = data.get("test_cases", [])
+    
+    # Find the test case
+    case = None
+    for tc in test_cases:
+        if tc.get("id") == case_id:
+            case = tc
+            break
+    
+    if case is None:
+        available = [tc.get("id") for tc in test_cases]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Test case '{case_id}' not found. Available: {available}"
+        )
+    
+    # Ensure sim is enabled
+    broker = get_warrior_sim_broker()
+    if broker is None:
+        # Auto-enable
+        from nexus2.adapters.simulation.mock_broker import MockBroker
+        broker = MockBroker(initial_cash=25000.0)
+        set_warrior_sim_broker(broker)
+    
+    # Set price based on premarket data
+    premarket = case.get("premarket_data", {})
+    expected = case.get("expected", {})
+    
+    symbol = case.get("symbol")
+    entry_price = expected.get("entry_near")
+    
+    if entry_price:
+        broker.set_price(symbol, entry_price)
+    
+    # Evaluate with scanner to see if it would pass
+    scanner = get_warrior_scanner_service()
+    
+    gap_pct = premarket.get("gap_percent", 0)
+    prev_close = premarket.get("previous_close", 1.0)
+    current_price = prev_close * (1 + gap_pct / 100) if prev_close else entry_price
+    
+    candidate = scanner._evaluate_symbol(
+        symbol=symbol,
+        name=symbol,
+        price=Decimal(str(current_price)) if current_price else Decimal("0"),
+        change_percent=Decimal(str(gap_pct)),
+    )
+    
+    scanner_result = "PASSED" if candidate else "REJECTED"
+    scanner_score = candidate.quality_score if candidate else None
+    
+    return {
+        "status": "loaded",
+        "case_id": case_id,
+        "symbol": symbol,
+        "setup_type": case.get("setup_type"),
+        "description": case.get("description"),
+        "trade_date": case.get("trade_date"),
+        "premarket_data": premarket,
+        "expected": expected,
+        "scanner_result": scanner_result,
+        "scanner_score": scanner_score,
+        "current_sim_price": entry_price,
+        "synthetic": case.get("synthetic", False),
+    }
