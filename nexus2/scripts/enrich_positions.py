@@ -62,36 +62,38 @@ def get_alpaca_order_history(days: int = 30) -> Dict[str, dict]:
     after_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     
     try:
-        # Get all filled orders using the broker's api property
-        orders = broker.api.list_orders(
-            status="all",
-            after=after_date,
-            direction="desc",
-            limit=500,
+        # Get all orders using the broker's _request method
+        orders = broker._request(
+            "GET",
+            f"orders?status=all&after={after_date}&direction=desc&limit=500"
         )
+        if not orders:
+            print("❌ No orders returned from Alpaca")
+            return {}
     except Exception as e:
         print(f"❌ Failed to fetch Alpaca orders: {e}")
+        return {}
         return {}
     
     # Group orders by symbol to find bracket pairs (buy + stop-loss)
     order_data = {}
     for order in orders:
-        symbol = order.symbol
+        symbol = order.get("symbol")
         
         # Process filled buy orders
-        if order.side == "buy" and order.status == "filled":
+        if order.get("side") == "buy" and order.get("status") == "filled":
             if symbol not in order_data:
                 order_data[symbol] = {
-                    "entry_price": float(order.filled_avg_price or order.limit_price or 0),
-                    "qty": int(float(order.filled_qty or order.qty)),
-                    "filled_at": str(order.filled_at.date()) if order.filled_at else None,
+                    "entry_price": float(order.get("filled_avg_price") or order.get("limit_price") or 0),
+                    "qty": int(float(order.get("filled_qty") or order.get("qty") or 0)),
+                    "filled_at": order.get("filled_at", "")[:10] if order.get("filled_at") else None,
                     "stop_price": None,
                 }
         
         # Process stop-loss orders (expired or cancelled - we want the stop price)
-        if order.side == "sell" and order.type in ("stop", "stop_limit"):
+        if order.get("side") == "sell" and order.get("type") in ("stop", "stop_limit"):
             if symbol in order_data and order_data[symbol]["stop_price"] is None:
-                order_data[symbol]["stop_price"] = float(order.stop_price or 0)
+                order_data[symbol]["stop_price"] = float(order.get("stop_price") or 0)
     
     # Filter to only include entries with valid stop prices
     return {
