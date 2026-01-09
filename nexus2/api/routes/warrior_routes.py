@@ -988,18 +988,22 @@ async def enable_warrior_broker():
                 trade_id = str(uuid4())
                 print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
             
-            # Add to monitor
+            # Add to monitor - use correct field names for WarriorPosition dataclass
+            risk_per_share = Decimal(str(entry_price)) - Decimal(str(stop_price))
             new_pos = WarriorPosition(
                 position_id=trade_id,
                 symbol=symbol,
                 entry_price=Decimal(str(entry_price)),
-                quantity=pos.quantity,
-                stop_price=Decimal(str(stop_price)),
-                target_price=Decimal(str(target_price)) if target_price else None,
+                shares=pos.quantity,
                 entry_time=datetime.utcnow(),
-                support_level=Decimal(str(support_level)),
+                mental_stop=Decimal(str(stop_price)),
+                technical_stop=Decimal(str(support_level)),
+                current_stop=Decimal(str(stop_price)),
+                profit_target=Decimal(str(target_price)) if target_price else Decimal("0"),
+                risk_per_share=risk_per_share,
+                high_since_entry=Decimal(str(entry_price)),
             )
-            monitor._positions.append(new_pos)
+            monitor._positions[trade_id] = new_pos  # It's a dict, not a list
             synced_count += 1
         
         if synced_count > 0:
