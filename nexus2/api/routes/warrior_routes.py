@@ -936,41 +936,36 @@ async def enable_warrior_broker():
         quote = umd.get_quote(symbol)
         return float(quote.price) if quote else None
     
-    async def broker_execute_exit(position_id: str, shares: int, reason: str):
-        """Execute exit order via Alpaca broker."""
+    async def broker_execute_exit(signal):
+        """Execute exit order via Alpaca broker.
+        
+        Args:
+            signal: WarriorExitSignal object with position_id, shares_to_exit, reason, etc.
+        """
         alpaca = get_warrior_alpaca_broker()
         if alpaca is None:
             print(f"[Warrior] No broker to execute exit")
             return None
         
-        # Find symbol from monitor
-        monitor = get_warrior_monitor()
-        positions = monitor.get_positions()
-        position = None
-        for p in positions:
-            if p.position_id == position_id:
-                position = p
-                break
-        
-        if not position:
-            print(f"[Warrior] Position {position_id} not found for exit")
-            return None
+        position_id = signal.position_id
+        shares = signal.shares_to_exit
+        reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
+        symbol = signal.symbol
         
         try:
             # Submit market sell order
             order = alpaca.submit_order(
-                symbol=position.symbol,
+                symbol=symbol,
                 qty=shares,
                 side="sell",
                 order_type="market",
             )
-            print(f"[Warrior] Exit order submitted: {position.symbol} x{shares} ({reason})")
+            print(f"[Warrior] Exit order submitted: {symbol} x{shares} ({reason})")
             
             # Log exit to DB
             try:
                 from nexus2.db.warrior_db import log_warrior_exit
-                current_price = umd.get_quote(position.symbol)
-                exit_price = float(current_price.price) if current_price else float(position.entry_price)
+                exit_price = float(signal.exit_price)
                 log_warrior_exit(position_id, exit_price, reason, shares)
             except Exception as e:
                 print(f"[Warrior] Exit DB log failed: {e}")
