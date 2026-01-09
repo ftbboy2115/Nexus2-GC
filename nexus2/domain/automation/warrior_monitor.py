@@ -36,6 +36,7 @@ class WarriorExitReason(Enum):
     PARTIAL_EXIT = "partial_exit"  # 50% at target
     BREAKOUT_FAILURE = "breakout_failure"  # Failed to hold breakout
     TIME_STOP = "time_stop"  # No momentum after entry
+    AFTER_HOURS_EXIT = "after_hours_exit"  # Forced exit before overnight hold
     MANUAL = "manual"
 
 
@@ -79,6 +80,11 @@ class WarriorMonitorSettings:
     enable_time_stop: bool = True
     time_stop_seconds: int = 120  # 2 minutes without momentum
     breakout_hold_threshold: float = 0.5  # Must hold 50% of breakout
+    
+    # After-Hours Exit (prevent overnight holds)
+    enable_after_hours_exit: bool = True
+    tighten_stop_time_et: str = "18:00"  # 6 PM ET - tighten stops to breakeven
+    force_exit_time_et: str = "19:30"  # 7:30 PM ET - force exit all positions
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
@@ -353,6 +359,43 @@ class WarriorMonitor:
             r_multiple = float(current_gain / position.risk_per_share)
         else:
             r_multiple = 0.0
+        
+        # =====================================================================
+        # CHECK 0: After-Hours Exit (prevent overnight holds)
+        # =====================================================================
+        if s.enable_after_hours_exit:
+            from zoneinfo import ZoneInfo
+            et_now = datetime.now(ZoneInfo("America/New_York"))
+            current_time_str = et_now.strftime("%H:%M")
+            
+            # Force exit at 7:30 PM ET
+            if current_time_str >= s.force_exit_time_et:
+                pnl = (current_price - position.entry_price) * position.shares
+                logger.warning(
+                    f"[Warrior] {position.symbol}: AFTER-HOURS EXIT at ${current_price} "
+                    f"(force exit time {s.force_exit_time_et} ET)"
+                )
+                return WarriorExitSignal(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    reason=WarriorExitReason.AFTER_HOURS_EXIT,
+                    exit_price=current_price,
+                    shares_to_exit=position.shares,
+                    pnl_estimate=pnl,
+                    stop_price=position.current_stop,
+                    r_multiple=r_multiple,
+                    trigger_description=f"Force exit at {s.force_exit_time_et} ET to avoid overnight hold",
+                )
+            
+            # Tighten stop to breakeven at 6 PM ET (if profitable)
+            if current_time_str >= s.tighten_stop_time_et:
+                if current_price > position.entry_price and position.current_stop < position.entry_price:
+                    old_stop = position.current_stop
+                    position.current_stop = position.entry_price
+                    logger.info(
+                        f"[Warrior] {position.symbol}: After-hours stop tightened to breakeven "
+                        f"${position.current_stop} (was ${old_stop})"
+                    )
         
         # =====================================================================
         # CHECK 1: Stop Hit (Mental or Technical)
