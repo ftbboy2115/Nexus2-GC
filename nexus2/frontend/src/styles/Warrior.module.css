@@ -651,3 +651,55 @@
 .btnToggleOff:hover {
     background: rgba(239, 68, 68, 0.3);
 }
+
+/* Mock Market */
+.testCaseSelector {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.selectInput {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.selectInput:focus {
+    outline: none;
+    border-color: #6366f1;
+}
+
+.priceControls {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.priceDisplay {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.priceLabel {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.priceValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #22c55e;
+}
+
+.priceButtons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}

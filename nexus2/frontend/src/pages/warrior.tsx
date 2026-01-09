@@ -131,6 +131,11 @@ export default function Warrior() {
     // Simulation state
     const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
 
+    // Mock Market state
+    const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
+    const [selectedTestCase, setSelectedTestCase] = useState<string>('')
+    const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
+
     // Event log
     const [eventLog, setEventLog] = useState<string[]>([])
 
@@ -168,6 +173,22 @@ export default function Warrior() {
         const interval = setInterval(fetchStatus, 5000) // Refresh every 5s
         return () => clearInterval(interval)
     }, [fetchStatus])
+
+    // Fetch test cases on mount
+    useEffect(() => {
+        const fetchTestCases = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/warrior/sim/test_cases`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setTestCases(data.test_cases || [])
+                }
+            } catch (err) {
+                console.error('Error fetching test cases:', err)
+            }
+        }
+        fetchTestCases()
+    }, [])
 
     // ========================================================================
     // Action Handlers
@@ -251,6 +272,48 @@ export default function Warrior() {
             }
         } catch (err) {
             addToLog('❌ Scan failed')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // Mock Market: Load Test Case
+    const loadTestCase = async () => {
+        if (!selectedTestCase) return
+        setActionLoading('loadTest')
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/load_test_case?case_id=${selectedTestCase}`, {
+                method: 'POST'
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setLoadedTestCase({
+                    symbol: data.symbol,
+                    price: data.entry_price
+                })
+                addToLog(`📦 Loaded test case: ${data.symbol} @ $${data.entry_price}`)
+                await fetchStatus()
+            }
+        } catch (err) {
+            addToLog('❌ Failed to load test case')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // Mock Market: Set Price
+    const setMockPrice = async (symbol: string, price: number) => {
+        setActionLoading('setPrice')
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/price?symbol=${symbol}&price=${price}`, {
+                method: 'PUT'
+            })
+            if (res.ok) {
+                setLoadedTestCase(prev => prev ? { ...prev, price } : null)
+                addToLog(`💹 Set ${symbol} price: $${price.toFixed(2)}`)
+            }
+        } catch (err) {
+            addToLog('❌ Failed to set price')
         } finally {
             setActionLoading(null)
         }
@@ -502,6 +565,78 @@ export default function Warrior() {
                                         >
                                             {actionLoading === 'Reset Sim' ? '...' : '🔄 Reset Sim'}
                                         </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Mock Market Card */}
+                            <div className={styles.card}>
+                                <div className={styles.cardHeader}>
+                                    <h2>🎮 Mock Market</h2>
+                                    {loadedTestCase && (
+                                        <span className={styles.badge}>{loadedTestCase.symbol}</span>
+                                    )}
+                                </div>
+                                <div className={styles.cardBody}>
+                                    {/* Test Case Selector */}
+                                    <div className={styles.testCaseSelector}>
+                                        <select
+                                            value={selectedTestCase}
+                                            onChange={(e) => setSelectedTestCase(e.target.value)}
+                                            className={styles.selectInput}
+                                        >
+                                            <option value="">Select a test case...</option>
+                                            {testCases.map((tc) => (
+                                                <option key={tc.id} value={tc.id}>
+                                                    {tc.symbol} - {tc.description}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={loadTestCase}
+                                            className={styles.btnPrimary}
+                                            disabled={!selectedTestCase || actionLoading === 'loadTest'}
+                                        >
+                                            {actionLoading === 'loadTest' ? '...' : '📦 Load'}
+                                        </button>
+                                    </div>
+
+                                    {/* Price Controls */}
+                                    {loadedTestCase && (
+                                        <div className={styles.priceControls}>
+                                            <div className={styles.priceDisplay}>
+                                                <span className={styles.priceLabel}>Price:</span>
+                                                <span className={styles.priceValue}>${loadedTestCase.price.toFixed(2)}</span>
+                                            </div>
+                                            <div className={styles.priceButtons}>
+                                                <button
+                                                    onClick={() => setMockPrice(loadedTestCase.symbol, loadedTestCase.price - 0.10)}
+                                                    className={styles.btnSmall}
+                                                >-10¢</button>
+                                                <button
+                                                    onClick={() => setMockPrice(loadedTestCase.symbol, loadedTestCase.price - 0.05)}
+                                                    className={styles.btnSmall}
+                                                >-5¢</button>
+                                                <button
+                                                    onClick={() => setMockPrice(loadedTestCase.symbol, loadedTestCase.price + 0.05)}
+                                                    className={styles.btnSmall}
+                                                >+5¢</button>
+                                                <button
+                                                    onClick={() => setMockPrice(loadedTestCase.symbol, loadedTestCase.price + 0.10)}
+                                                    className={styles.btnSmall}
+                                                >+10¢</button>
+                                                <button
+                                                    onClick={() => setMockPrice(loadedTestCase.symbol, loadedTestCase.price + 0.25)}
+                                                    className={styles.btnPrimary}
+                                                >+25¢ 🚀</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!loadedTestCase && !selectedTestCase && (
+                                        <p className={styles.emptyMessage}>
+                                            Select a test case to simulate price movements
+                                        </p>
                                     )}
                                 </div>
                             </div>
