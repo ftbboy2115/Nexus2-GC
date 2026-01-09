@@ -234,6 +234,13 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         engine.config.max_value_per_trade = Decimal(str(request.max_value_per_trade))
         updated["max_value_per_trade"] = request.max_value_per_trade
     
+    # Save settings to persist across restarts
+    try:
+        from nexus2.db.warrior_settings import save_warrior_settings, get_config_dict
+        save_warrior_settings(get_config_dict(engine.config))
+    except Exception as e:
+        print(f"[Warrior] Failed to save settings: {e}")
+    
     return {
         "status": "updated",
         "updated_fields": updated,

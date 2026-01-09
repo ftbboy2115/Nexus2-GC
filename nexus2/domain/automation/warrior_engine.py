@@ -154,6 +154,15 @@ class WarriorEngine:
         self.state = WarriorEngineState.STOPPED
         self.stats = WarriorEngineStats()
         
+        # Load saved settings if they exist
+        try:
+            from nexus2.db.warrior_settings import load_warrior_settings, apply_settings_to_config
+            saved = load_warrior_settings()
+            if saved:
+                apply_settings_to_config(self.config, saved)
+        except Exception as e:
+            print(f"[Warrior] Failed to load saved settings: {e}")
+        
         # Watched candidates
         self._watchlist: Dict[str, WatchedCandidate] = {}
         
