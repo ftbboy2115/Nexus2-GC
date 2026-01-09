@@ -137,7 +137,12 @@ class WarriorEngine:
     ):
         self.config = config or WarriorEngineConfig()
         self.scanner = scanner or WarriorScannerService()
-        self.monitor = monitor or WarriorMonitor()
+        # Use singleton monitor so callbacks set elsewhere are shared
+        if monitor:
+            self.monitor = monitor
+        else:
+            from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+            self.monitor = get_warrior_monitor()
         
         self.state = WarriorEngineState.STOPPED
         self.stats = WarriorEngineStats()
