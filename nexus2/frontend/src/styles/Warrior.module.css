@@ -725,3 +725,17 @@
 .inWatchlist td {
     color: #22c55e;
 }
+
+/* Position cells */
+.symbolCell {
+    font-weight: 600;
+    color: #ff6b35;
+}
+
+.stopCell {
+    color: #ef4444;
+}
+
+.targetCell {
+    color: #22c55e;
+}

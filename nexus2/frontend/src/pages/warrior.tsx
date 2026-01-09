@@ -407,11 +407,13 @@ export default function Warrior() {
             })
             if (res.ok) {
                 const data = await res.json()
+                // API returns current_sim_price, entry_price in expected, or fall back to premarket_data
+                const price = data.current_sim_price || data.expected?.entry_near || data.premarket_data?.premarket_high
                 setLoadedTestCase({
                     symbol: data.symbol,
-                    price: data.entry_price
+                    price: price
                 })
-                addToLog(`📦 Loaded test case: ${data.symbol} @ $${data.entry_price}`)
+                addToLog(`📦 Loaded test case: ${data.symbol} @ $${price?.toFixed(2) || 'N/A'}`)
                 await fetchStatus()
             }
         } catch (err) {
@@ -724,7 +726,7 @@ export default function Warrior() {
                                     </div>
 
                                     {/* Price Controls */}
-                                    {loadedTestCase && (
+                                    {loadedTestCase && loadedTestCase.price != null && (
                                         <div className={styles.priceControls}>
                                             <div className={styles.priceDisplay}>
                                                 <span className={styles.priceLabel}>Price:</span>
@@ -886,6 +888,56 @@ export default function Warrior() {
                                             {status?.config.pmh_enabled ? '✅' : '❌'} PMH
                                         </button>
                                     </div>
+                                </div>
+                            </CollapsibleCard>
+
+                            {/* Positions Card */}
+                            <CollapsibleCard
+                                id="positions"
+                                title="📊 Positions"
+                                badge={positions.length > 0 ? (
+                                    <span className={styles.badge}>{positions.length}</span>
+                                ) : undefined}
+                            >
+                                <div className={styles.cardBody}>
+                                    {positions.length === 0 ? (
+                                        <div className={styles.noData}>No open positions</div>
+                                    ) : (
+                                        <div className={styles.candidateTable}>
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Symbol</th>
+                                                        <th>Shares</th>
+                                                        <th>Entry</th>
+                                                        <th>Stop</th>
+                                                        <th>Target</th>
+                                                        <th>Partial</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {positions.map((pos) => (
+                                                        <tr key={pos.position_id}>
+                                                            <td className={styles.symbolCell}>
+                                                                {pos.symbol}
+                                                            </td>
+                                                            <td>{pos.shares}</td>
+                                                            <td>${pos.entry_price.toFixed(2)}</td>
+                                                            <td className={styles.stopCell}>
+                                                                ${pos.current_stop.toFixed(2)}
+                                                            </td>
+                                                            <td className={styles.targetCell}>
+                                                                ${pos.profit_target.toFixed(2)}
+                                                            </td>
+                                                            <td>
+                                                                {pos.partial_taken ? '✅' : '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </div>
                             </CollapsibleCard>
 
