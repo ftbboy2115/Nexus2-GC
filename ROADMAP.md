@@ -78,6 +78,10 @@ Last updated: 2026-01-08
 - [x] **ERAS miss (Jan 7) — FIXED** — Added healthcare/investor conference catalyst patterns (commit `7779556`)
   - Root cause: "Present at J.P. Morgan Healthcare Conference" didn't match catalyst regex
   - Solution: Added patterns for healthcare/investor conferences, presenting at conferences
+- [ ] **FMP Rate Limit Retry Queue** — Symbols that fail due to 429 errors should be queued for retry
+  - Priority retry when rate limits clear
+  - Staggered API requests to avoid hitting limits
+  - Cross-strategy rate limit awareness (VPS KK + local Warrior share quota)
 
 ---
 
