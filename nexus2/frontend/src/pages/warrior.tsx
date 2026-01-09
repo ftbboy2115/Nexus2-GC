@@ -50,6 +50,18 @@ interface WarriorStatus {
         orb_enabled: boolean
         pmh_enabled: boolean
     }
+    last_scan_result?: {
+        scan_time: string
+        processed_count: number
+        candidates: {
+            symbol: string
+            gap_percent: number
+            rvol: number
+            float_shares: number
+            price: number
+            in_watchlist: boolean
+        }[]
+    }
 }
 
 interface WatchedCandidate {
@@ -908,6 +920,60 @@ export default function Warrior() {
                                         </>
                                     ) : (
                                         <p className={styles.emptyMessage}>Click "Run Scan" to find candidates</p>
+                                    )}
+                                </div>
+                            </CollapsibleCard>
+
+                            {/* Last Engine Scan Card */}
+                            <CollapsibleCard
+                                id="engineScan"
+                                title="📊 Last Engine Scan"
+                                badge={
+                                    status?.last_scan_result && (
+                                        <span className={styles.countBadge}>
+                                            {status.last_scan_result.candidates.length}
+                                        </span>
+                                    )
+                                }
+                            >
+                                <div className={styles.cardBody}>
+                                    {status?.last_scan_result ? (
+                                        <>
+                                            <div className={styles.scanStats}>
+                                                <span>Processed: {status.last_scan_result.processed_count}</span>
+                                                <span>Found: {status.last_scan_result.candidates.length}</span>
+                                            </div>
+                                            {status.last_scan_result.candidates.length > 0 ? (
+                                                <div className={styles.candidateTable}>
+                                                    <table>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Symbol</th>
+                                                                <th>Gap%</th>
+                                                                <th>RVOL</th>
+                                                                <th>Price</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {status.last_scan_result.candidates.map((c) => (
+                                                                <tr key={c.symbol} className={c.in_watchlist ? styles.inWatchlist : ''}>
+                                                                    <td className={styles.symbol}>{c.symbol}</td>
+                                                                    <td className={c.gap_percent >= 10 ? styles.pnlPositive : ''}>{c.gap_percent.toFixed(1)}%</td>
+                                                                    <td>{c.rvol.toFixed(1)}x</td>
+                                                                    <td>${c.price.toFixed(2)}</td>
+                                                                    <td>{c.in_watchlist ? '👁️' : '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <p className={styles.emptyMessage}>No candidates found</p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className={styles.emptyMessage}>Engine hasn't scanned yet. Start the engine to begin.</p>
                                     )}
                                 </div>
                             </CollapsibleCard>

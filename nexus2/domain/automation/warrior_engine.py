@@ -152,6 +152,7 @@ class WarriorEngine:
         # Scan interrupt (for config changes)
         self._scan_interrupt: Optional[asyncio.Event] = None
         self._last_scan_started: Optional[datetime] = None
+        self._last_scan_result: Optional[dict] = None  # Store last scan results for UI
         
         # Callbacks (to be wired up)
         self._submit_order: Optional[Callable] = None
@@ -354,6 +355,23 @@ class WarriorEngine:
                     f"[Warrior Watch] Added {candidate.symbol}: "
                     f"gap={candidate.gap_percent:.1f}%, PMH=${pmh or candidate.session_high}"
                 )
+        
+        # Store scan result for UI visibility
+        self._last_scan_result = {
+            "scan_time": datetime.utcnow().isoformat(),
+            "processed_count": result.processed_count,
+            "candidates": [
+                {
+                    "symbol": c.symbol,
+                    "gap_percent": float(c.gap_percent),
+                    "rvol": float(c.rvol),
+                    "float_shares": c.float_shares,
+                    "price": float(c.current_price),
+                    "in_watchlist": c.symbol in self._watchlist,
+                }
+                for c in result.candidates
+            ],
+        }
         
         logger.info(f"[Warrior Scan] Found {len(result.candidates)} candidates, watching {len(self._watchlist)}")
     
@@ -591,6 +609,7 @@ class WarriorEngine:
                 "orb_enabled": self.config.orb_enabled,
                 "pmh_enabled": self.config.pmh_enabled,
             },
+            "last_scan_result": self._last_scan_result,
         }
 
 

@@ -716,3 +716,12 @@
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+
+/* In Watchlist highlight */
+.inWatchlist {
+    background: rgba(34, 197, 94, 0.15);
+}
+
+.inWatchlist td {
+    color: #22c55e;
+}
