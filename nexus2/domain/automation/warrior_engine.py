@@ -581,6 +581,23 @@ class WarriorEngine:
                     support_level=support_level,
                 )
                 
+                # Log to Warrior DB for restart recovery
+                try:
+                    from nexus2.db.warrior_db import log_warrior_entry
+                    target = entry_price + Decimal(str(self.monitor.settings.mental_stop_cents / 100 * self.monitor.settings.profit_target_r))
+                    log_warrior_entry(
+                        trade_id=order_id,
+                        symbol=symbol,
+                        entry_price=float(entry_price),
+                        quantity=shares,
+                        stop_price=float(mental_stop),
+                        target_price=float(target),
+                        trigger_type=trigger_type.value,
+                        support_level=float(support_level),
+                    )
+                except Exception as e:
+                    logger.warning(f"[Warrior Entry] DB log failed: {e}")
+                
                 logger.info(
                     f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${entry_price} "
                     f"({trigger_type.value})"

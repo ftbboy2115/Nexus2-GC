@@ -946,6 +946,10 @@ async def enable_warrior_broker():
     from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
     monitor = get_warrior_monitor()
     
+    # Initialize Warrior DB
+    from nexus2.db.warrior_db import init_warrior_db, get_warrior_trade_by_symbol
+    init_warrior_db()
+    
     try:
         alpaca_positions = broker.get_positions()
         synced_count = 0
@@ -956,10 +960,25 @@ async def enable_warrior_broker():
             if existing:
                 continue
             
-            # Calculate default stop/target based on entry
-            entry_price = float(pos.avg_price)
-            mental_stop = entry_price - (monitor.settings.mental_stop_cents / 100)
-            target = entry_price + (monitor.settings.mental_stop_cents / 100 * monitor.settings.profit_target_r)
+            # First check Warrior DB for saved trade data
+            saved_trade = get_warrior_trade_by_symbol(symbol)
+            
+            if saved_trade:
+                # Use saved metrics from DB
+                entry_price = float(saved_trade["entry_price"])
+                stop_price = float(saved_trade["stop_price"])
+                target_price = float(saved_trade["target_price"]) if saved_trade["target_price"] else None
+                support_level = float(saved_trade["support_level"]) if saved_trade["support_level"] else stop_price
+                trade_id = saved_trade["id"]
+                print(f"[Warrior] Recovered {symbol} from DB: entry=${entry_price:.2f}, stop=${stop_price:.2f}")
+            else:
+                # Fall back to calculating defaults
+                entry_price = float(pos.avg_price)
+                stop_price = entry_price - (monitor.settings.mental_stop_cents / 100)
+                target_price = entry_price + (monitor.settings.mental_stop_cents / 100 * monitor.settings.profit_target_r)
+                support_level = stop_price
+                trade_id = str(uuid4())
+                print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
             
             # Add to monitor
             from nexus2.domain.automation.warrior_monitor import WarriorPosition
@@ -967,18 +986,17 @@ async def enable_warrior_broker():
             from datetime import datetime
             
             new_pos = WarriorPosition(
-                position_id=str(uuid4()),
+                position_id=trade_id,
                 symbol=symbol,
                 entry_price=Decimal(str(entry_price)),
                 quantity=pos.quantity,
-                stop_price=Decimal(str(mental_stop)),
-                target_price=Decimal(str(target)),
+                stop_price=Decimal(str(stop_price)),
+                target_price=Decimal(str(target_price)) if target_price else None,
                 entry_time=datetime.utcnow(),
-                support_level=Decimal(str(mental_stop)),
+                support_level=Decimal(str(support_level)),
             )
             monitor._positions.append(new_pos)
             synced_count += 1
-            print(f"[Warrior] Synced {symbol}: {pos.quantity} @ ${entry_price:.2f}, stop=${mental_stop:.2f}")
         
         if synced_count > 0:
             print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")

@@ -362,3 +362,4 @@ class UserPreferencesModel(Base):
             "value": json.loads(self.value) if self.value else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
