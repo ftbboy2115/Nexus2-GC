@@ -364,9 +364,9 @@ class WarriorEngine:
                 {
                     "symbol": c.symbol,
                     "gap_percent": float(c.gap_percent),
-                    "rvol": float(c.rvol),
+                    "rvol": float(c.relative_volume),
                     "float_shares": c.float_shares,
-                    "price": float(c.current_price),
+                    "price": float(c.price),
                     "in_watchlist": c.symbol in self._watchlist,
                 }
                 for c in result.candidates
@@ -581,6 +581,8 @@ class WarriorEngine:
             "watchlist": [
                 {
                     "symbol": w.candidate.symbol,
+                    "gap_percent": float(w.candidate.gap_percent),
+                    "rvol": float(w.candidate.relative_volume),
                     "pmh": float(w.pmh),
                     "orb_high": float(w.orb_high) if w.orb_high else None,
                     "orb_established": w.orb_established,

@@ -66,6 +66,8 @@ interface WarriorStatus {
 
 interface WatchedCandidate {
     symbol: string
+    gap_percent: number
+    rvol: number
     pmh: number
     orb_high: number | null
     orb_established: boolean
@@ -991,6 +993,8 @@ export default function Warrior() {
                                                 <thead>
                                                     <tr>
                                                         <th>Symbol</th>
+                                                        <th>Gap%</th>
+                                                        <th>RVOL</th>
                                                         <th>PMH</th>
                                                         <th>ORB High</th>
                                                         <th>Status</th>
@@ -1000,6 +1004,8 @@ export default function Warrior() {
                                                     {status.watchlist.map((w) => (
                                                         <tr key={w.symbol} className={w.entry_triggered ? styles.triggered : ''}>
                                                             <td className={styles.symbol}>{w.symbol}</td>
+                                                            <td className={w.gap_percent >= 10 ? styles.pnlPositive : ''}>{w.gap_percent.toFixed(1)}%</td>
+                                                            <td>{w.rvol.toFixed(1)}x</td>
                                                             <td>${w.pmh.toFixed(2)}</td>
                                                             <td>{w.orb_high ? `$${w.orb_high.toFixed(2)}` : '-'}</td>
                                                             <td>
