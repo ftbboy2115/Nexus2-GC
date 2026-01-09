@@ -37,6 +37,10 @@ class RejectionReason(Enum):
     NO_HTF_PATTERN = "no_htf_pattern"
     HTF_EXTENDED = "htf_extended"
     
+    # Warrior Scanner
+    FLOAT_TOO_HIGH = "float_too_high"
+    PRICE_OUT_OF_RANGE = "price_out_of_range"
+    
     # Common
     PRICE_TOO_LOW = "price_too_low"
     ETF_EXCLUDED = "etf_excluded"

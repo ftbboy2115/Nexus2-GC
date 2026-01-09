@@ -1,0 +1,580 @@
+"""
+Warrior Automation Engine
+
+Orchestrates Warrior Trading automation:
+- Pre-market scanning for gap candidates
+- Opening Range Breakout (ORB) at 9:30 AM
+- PMH (Pre-Market High) breakout monitoring
+- 9:30-11:30 AM trading window focus
+- Integration with WarriorScanner and WarriorMonitor
+
+Separate from KK-style AutomationEngine - uses different entry logic.
+"""
+
+import asyncio
+import logging
+from datetime import datetime, time as dt_time, timezone, timedelta
+from decimal import Decimal
+from enum import Enum
+from typing import Optional, List, Callable, Dict
+from dataclasses import dataclass, field
+
+from nexus2.domain.scanner.warrior_scanner_service import (
+    WarriorScannerService,
+    WarriorCandidate,
+    WarriorScanSettings,
+)
+from nexus2.domain.automation.warrior_monitor import (
+    WarriorMonitor,
+    WarriorMonitorSettings,
+    WarriorPosition,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# ENUMS & CONFIG
+# =============================================================================
+
+class WarriorEngineState(Enum):
+    """State of the Warrior engine."""
+    STOPPED = "stopped"
+    RUNNING = "running"
+    PAUSED = "paused"
+    PREMARKET = "premarket"  # Before 9:30, scanning only
+
+
+class EntryTriggerType(Enum):
+    """Type of entry trigger."""
+    ORB = "orb"  # Opening Range Breakout (9:30 AM)
+    PMH_BREAK = "pmh_break"  # Pre-Market High breakout
+    BULL_FLAG = "bull_flag"  # First green after pullback
+    VWAP_RECLAIM = "vwap_reclaim"  # Reclaim VWAP with volume
+
+
+@dataclass
+class WarriorEngineConfig:
+    """Configuration for Warrior automation engine."""
+    # Trading Window (Ross focuses on first 2 hours)
+    market_open: dt_time = field(default_factory=lambda: dt_time(9, 30))
+    trading_window_end: dt_time = field(default_factory=lambda: dt_time(11, 30))
+    market_close: dt_time = field(default_factory=lambda: dt_time(16, 0))
+    
+    # Pre-market scan
+    premarket_scan_time: dt_time = field(default_factory=lambda: dt_time(9, 15))
+    
+    # ORB Settings
+    orb_timeframe_minutes: int = 1  # 1-minute ORB
+    orb_enabled: bool = True
+    
+    # PMH Breakout
+    pmh_enabled: bool = True
+    pmh_buffer_cents: Decimal = Decimal("5")  # Buy 5 cents above PMH
+    
+    # Scanner
+    scanner_interval_minutes: int = 5
+    max_candidates: int = 5
+    
+    # Risk
+    risk_per_trade: Decimal = Decimal("100")  # $100 per trade
+    max_positions: int = 3
+    max_daily_loss: Decimal = Decimal("300")  # $300 max daily loss
+    max_capital: Decimal = Decimal("5000")  # Max capital per trade
+    
+    # Execution
+    sim_only: bool = True  # SAFETY: Default to paper trading
+
+
+@dataclass
+class WarriorEngineStats:
+    """Runtime statistics for the engine."""
+    started_at: Optional[datetime] = None
+    scans_run: int = 0
+    candidates_found: int = 0
+    entries_triggered: int = 0
+    orders_submitted: int = 0
+    orders_filled: int = 0
+    daily_pnl: Decimal = Decimal("0")
+    last_scan_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+
+
+@dataclass
+class WatchedCandidate:
+    """A candidate being watched for entry trigger."""
+    candidate: WarriorCandidate
+    pmh: Decimal  # Pre-market high
+    orb_high: Optional[Decimal] = None  # Opening range high
+    orb_low: Optional[Decimal] = None  # Opening range low
+    orb_established: bool = False
+    entry_triggered: bool = False
+    added_at: datetime = field(default_factory=datetime.utcnow)
+
+
+# =============================================================================
+# WARRIOR ENGINE
+# =============================================================================
+
+class WarriorEngine:
+    """
+    Warrior Trading automation engine.
+    
+    Ross Cameron entry patterns:
+    1. ORB (Opening Range Breakout) - Buy break of first 1-min candle high
+    2. PMH (Pre-Market High) - Buy break of pre-market high
+    3. Bull Flag - Buy first green after 2-3 red candle pullback
+    
+    Trading window: 9:30 AM - 11:30 AM ET (first 2 hours)
+    """
+    
+    def __init__(
+        self,
+        config: Optional[WarriorEngineConfig] = None,
+        scanner: Optional[WarriorScannerService] = None,
+        monitor: Optional[WarriorMonitor] = None,
+    ):
+        self.config = config or WarriorEngineConfig()
+        self.scanner = scanner or WarriorScannerService()
+        self.monitor = monitor or WarriorMonitor()
+        
+        self.state = WarriorEngineState.STOPPED
+        self.stats = WarriorEngineStats()
+        
+        # Watched candidates
+        self._watchlist: Dict[str, WatchedCandidate] = {}
+        
+        # Tasks
+        self._scan_task: Optional[asyncio.Task] = None
+        self._watch_task: Optional[asyncio.Task] = None
+        
+        # Callbacks (to be wired up)
+        self._submit_order: Optional[Callable] = None
+        self._get_quote: Optional[Callable] = None
+        self._get_positions: Optional[Callable] = None
+        self._get_intraday_bars: Optional[Callable] = None
+    
+    def set_callbacks(
+        self,
+        submit_order: Callable = None,
+        get_quote: Callable = None,
+        get_positions: Callable = None,
+        get_intraday_bars: Callable = None,
+    ):
+        """Set callbacks for order execution and data."""
+        self._submit_order = submit_order
+        self._get_quote = get_quote
+        self._get_positions = get_positions
+        self._get_intraday_bars = get_intraday_bars
+        
+        # Also wire up monitor callbacks
+        self.monitor.set_callbacks(
+            get_price=get_quote,
+            get_intraday_candles=get_intraday_bars,
+        )
+    
+    # =========================================================================
+    # STATE MANAGEMENT
+    # =========================================================================
+    
+    @property
+    def is_running(self) -> bool:
+        return self.state in (WarriorEngineState.RUNNING, WarriorEngineState.PREMARKET)
+    
+    def _get_eastern_time(self) -> datetime:
+        """Get current time in Eastern timezone."""
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/New_York"))
+    
+    def is_trading_window(self) -> bool:
+        """Check if within 9:30 AM - 11:30 AM trading window."""
+        now = self._get_eastern_time().time()
+        return self.config.market_open <= now <= self.config.trading_window_end
+    
+    def is_market_hours(self) -> bool:
+        """Check if market is open."""
+        now = self._get_eastern_time().time()
+        return self.config.market_open <= now <= self.config.market_close
+    
+    def is_premarket(self) -> bool:
+        """Check if in pre-market scan window."""
+        now = self._get_eastern_time().time()
+        return self.config.premarket_scan_time <= now < self.config.market_open
+    
+    # =========================================================================
+    # ENGINE CONTROL
+    # =========================================================================
+    
+    async def start(self) -> dict:
+        """Start the Warrior engine."""
+        if self.state != WarriorEngineState.STOPPED:
+            return {"status": "already_running"}
+        
+        self.stats.started_at = datetime.utcnow()
+        
+        # Determine initial state
+        if self.is_premarket():
+            self.state = WarriorEngineState.PREMARKET
+        else:
+            self.state = WarriorEngineState.RUNNING
+        
+        # Start background tasks
+        self._scan_task = asyncio.create_task(self._scan_loop())
+        self._watch_task = asyncio.create_task(self._watch_loop())
+        
+        # Start monitor
+        await self.monitor.start()
+        
+        logger.info(f"[Warrior Engine] Started in {self.state.value} mode")
+        return {
+            "status": "started",
+            "state": self.state.value,
+            "sim_only": self.config.sim_only,
+        }
+    
+    async def stop(self) -> dict:
+        """Stop the Warrior engine."""
+        if self.state == WarriorEngineState.STOPPED:
+            return {"status": "already_stopped"}
+        
+        self.state = WarriorEngineState.STOPPED
+        
+        # Cancel tasks
+        for task in [self._scan_task, self._watch_task]:
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        
+        # Stop monitor
+        await self.monitor.stop()
+        
+        # Clear watchlist
+        self._watchlist.clear()
+        
+        logger.info("[Warrior Engine] Stopped")
+        return {"status": "stopped"}
+    
+    async def pause(self) -> dict:
+        """Pause the engine (keep state, stop new entries)."""
+        if self.state in (WarriorEngineState.STOPPED, WarriorEngineState.PAUSED):
+            return {"status": "already_paused"}
+        
+        self.state = WarriorEngineState.PAUSED
+        logger.info("[Warrior Engine] Paused")
+        return {"status": "paused"}
+    
+    async def resume(self) -> dict:
+        """Resume the engine."""
+        if self.state != WarriorEngineState.PAUSED:
+            return {"status": "not_paused"}
+        
+        self.state = WarriorEngineState.RUNNING
+        logger.info("[Warrior Engine] Resumed")
+        return {"status": "resumed"}
+    
+    # =========================================================================
+    # SCANNING
+    # =========================================================================
+    
+    async def _scan_loop(self):
+        """Background loop for scanning candidates."""
+        while self.state != WarriorEngineState.STOPPED:
+            try:
+                if self.state == WarriorEngineState.PAUSED:
+                    await asyncio.sleep(10)
+                    continue
+                
+                # Run scan
+                await self._run_scan()
+                
+                # Wait for next interval
+                await asyncio.sleep(self.config.scanner_interval_minutes * 60)
+                
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                self.stats.last_error = str(e)
+                logger.error(f"[Warrior Scan] Error: {e}")
+                await asyncio.sleep(30)
+    
+    async def _run_scan(self):
+        """Run one scan cycle."""
+        self.stats.scans_run += 1
+        self.stats.last_scan_at = datetime.utcnow()
+        
+        logger.info("[Warrior Scan] Running scan...")
+        
+        result = self.scanner.scan(verbose=False)
+        
+        self.stats.candidates_found += len(result.candidates)
+        
+        # Add top candidates to watchlist
+        for candidate in result.candidates[:self.config.max_candidates]:
+            if candidate.symbol not in self._watchlist:
+                # Get pre-market high
+                pmh = await self._get_premarket_high(candidate.symbol)
+                
+                self._watchlist[candidate.symbol] = WatchedCandidate(
+                    candidate=candidate,
+                    pmh=pmh or candidate.session_high,
+                )
+                logger.info(
+                    f"[Warrior Watch] Added {candidate.symbol}: "
+                    f"gap={candidate.gap_percent:.1f}%, PMH=${pmh or candidate.session_high}"
+                )
+        
+        logger.info(f"[Warrior Scan] Found {len(result.candidates)} candidates, watching {len(self._watchlist)}")
+    
+    async def _get_premarket_high(self, symbol: str) -> Optional[Decimal]:
+        """Get pre-market high for a symbol."""
+        # For now, use session high from quote
+        # TODO: Get actual pre-market data from broker
+        if self._get_quote:
+            quote = await self._get_quote(symbol)
+            if quote:
+                return Decimal(str(getattr(quote, 'day_high', 0) or 0))
+        return None
+    
+    # =========================================================================
+    # ENTRY WATCHING
+    # =========================================================================
+    
+    async def _watch_loop(self):
+        """Background loop for watching entry triggers."""
+        while self.state != WarriorEngineState.STOPPED:
+            try:
+                if self.state == WarriorEngineState.PAUSED:
+                    await asyncio.sleep(5)
+                    continue
+                
+                # Only watch during trading window
+                if not self.is_trading_window():
+                    await asyncio.sleep(30)
+                    continue
+                
+                # Check each watched candidate
+                await self._check_entry_triggers()
+                
+                # Fast polling during market hours
+                await asyncio.sleep(5)  # 5 second checks
+                
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                self.stats.last_error = str(e)
+                logger.error(f"[Warrior Watch] Error: {e}")
+                await asyncio.sleep(10)
+    
+    async def _check_entry_triggers(self):
+        """Check all watched candidates for entry triggers."""
+        if not self._get_quote:
+            return
+        
+        for symbol, watched in list(self._watchlist.items()):
+            if watched.entry_triggered:
+                continue  # Already entered
+            
+            try:
+                current_price = await self._get_quote(symbol)
+                if not current_price:
+                    continue
+                
+                current_price = Decimal(str(current_price))
+                
+                # ORB trigger at 9:30
+                if self.config.orb_enabled and not watched.orb_established:
+                    await self._check_orb_setup(watched, current_price)
+                
+                # PMH breakout
+                if self.config.pmh_enabled:
+                    trigger_price = watched.pmh + self.config.pmh_buffer_cents / 100
+                    if current_price >= trigger_price:
+                        logger.info(f"[Warrior Entry] {symbol}: PMH BREAKOUT at ${current_price}")
+                        await self._enter_position(
+                            watched, 
+                            current_price, 
+                            EntryTriggerType.PMH_BREAK
+                        )
+                
+                # ORB breakout (after ORB established)
+                if watched.orb_established and watched.orb_high:
+                    if current_price > watched.orb_high:
+                        logger.info(f"[Warrior Entry] {symbol}: ORB BREAKOUT at ${current_price}")
+                        await self._enter_position(
+                            watched,
+                            current_price,
+                            EntryTriggerType.ORB
+                        )
+                        
+            except Exception as e:
+                logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")
+    
+    async def _check_orb_setup(self, watched: WatchedCandidate, current_price: Decimal):
+        """Check for Opening Range Breakout setup."""
+        # Get first 1-minute candle
+        et_now = self._get_eastern_time()
+        
+        # Only establish ORB in first minute after open
+        if et_now.time() > dt_time(9, 31):
+            if self._get_intraday_bars:
+                bars = await self._get_intraday_bars(
+                    watched.candidate.symbol, 
+                    timeframe="1min",
+                    limit=1
+                )
+                if bars and len(bars) > 0:
+                    first_bar = bars[0]
+                    watched.orb_high = first_bar.high
+                    watched.orb_low = first_bar.low
+                    watched.orb_established = True
+                    logger.info(
+                        f"[Warrior ORB] {watched.candidate.symbol}: "
+                        f"High=${watched.orb_high}, Low=${watched.orb_low}"
+                    )
+    
+    async def _enter_position(
+        self,
+        watched: WatchedCandidate,
+        entry_price: Decimal,
+        trigger_type: EntryTriggerType,
+    ):
+        """Execute entry for a candidate."""
+        symbol = watched.candidate.symbol
+        
+        # Check if we can open new position
+        if not await self._can_open_position():
+            logger.info(f"[Warrior Entry] {symbol}: Cannot open (max positions or daily loss)")
+            return
+        
+        # Mark as triggered
+        watched.entry_triggered = True
+        self.stats.entries_triggered += 1
+        
+        # Calculate position size
+        # Mental stop = entry - 15 cents (default)
+        mental_stop = entry_price - self.monitor.settings.mental_stop_cents / 100
+        risk_per_share = entry_price - mental_stop
+        
+        if risk_per_share <= 0:
+            logger.warning(f"[Warrior Entry] {symbol}: Invalid risk calculation")
+            return
+        
+        shares = int(self.config.risk_per_trade / risk_per_share)
+        
+        # Cap by max capital
+        max_shares = int(self.config.max_capital / entry_price)
+        shares = min(shares, max_shares)
+        
+        if shares < 1:
+            logger.info(f"[Warrior Entry] {symbol}: Position too small")
+            return
+        
+        # Submit order
+        if self._submit_order:
+            try:
+                order_result = await self._submit_order(
+                    symbol=symbol,
+                    shares=shares,
+                    side="buy",
+                    order_type="market",
+                    stop_loss=None,  # Mental stop, not broker stop
+                )
+                
+                self.stats.orders_submitted += 1
+                
+                # Add to monitor
+                support_level = watched.orb_low or watched.candidate.session_low
+                self.monitor.add_position(
+                    position_id=order_result.get("order_id", symbol),
+                    symbol=symbol,
+                    entry_price=entry_price,
+                    shares=shares,
+                    support_level=support_level,
+                )
+                
+                logger.info(
+                    f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${entry_price} "
+                    f"({trigger_type.value})"
+                )
+                
+            except Exception as e:
+                logger.error(f"[Warrior Entry] {symbol}: Order failed: {e}")
+                self.stats.last_error = str(e)
+        else:
+            logger.warning(f"[Warrior Entry] {symbol}: No submit_order callback")
+    
+    async def _can_open_position(self) -> bool:
+        """Check if we can open a new position."""
+        # Check position count
+        if self._get_positions:
+            positions = await self._get_positions()
+            if len(positions) >= self.config.max_positions:
+                return False
+        
+        # Check daily loss
+        if self.stats.daily_pnl <= -self.config.max_daily_loss:
+            logger.warning("[Warrior] Daily loss limit reached")
+            return False
+        
+        return True
+    
+    # =========================================================================
+    # STATUS
+    # =========================================================================
+    
+    def get_status(self) -> dict:
+        """Get engine status."""
+        return {
+            "state": self.state.value,
+            "trading_window": self.is_trading_window(),
+            "market_hours": self.is_market_hours(),
+            "watchlist_count": len(self._watchlist),
+            "watchlist": [
+                {
+                    "symbol": w.candidate.symbol,
+                    "pmh": float(w.pmh),
+                    "orb_high": float(w.orb_high) if w.orb_high else None,
+                    "orb_established": w.orb_established,
+                    "entry_triggered": w.entry_triggered,
+                }
+                for w in self._watchlist.values()
+            ],
+            "stats": {
+                "started_at": self.stats.started_at.isoformat() if self.stats.started_at else None,
+                "scans_run": self.stats.scans_run,
+                "candidates_found": self.stats.candidates_found,
+                "entries_triggered": self.stats.entries_triggered,
+                "orders_submitted": self.stats.orders_submitted,
+                "daily_pnl": float(self.stats.daily_pnl),
+                "last_scan_at": self.stats.last_scan_at.isoformat() if self.stats.last_scan_at else None,
+                "last_error": self.stats.last_error,
+            },
+            "monitor": self.monitor.get_status(),
+            "config": {
+                "sim_only": self.config.sim_only,
+                "risk_per_trade": float(self.config.risk_per_trade),
+                "max_positions": self.config.max_positions,
+                "max_daily_loss": float(self.config.max_daily_loss),
+                "orb_enabled": self.config.orb_enabled,
+                "pmh_enabled": self.config.pmh_enabled,
+            },
+        }
+
+
+# =============================================================================
+# SINGLETON
+# =============================================================================
+
+_warrior_engine: Optional[WarriorEngine] = None
+
+
+def get_warrior_engine() -> WarriorEngine:
+    """Get singleton Warrior engine."""
+    global _warrior_engine
+    if _warrior_engine is None:
+        _warrior_engine = WarriorEngine()
+    return _warrior_engine

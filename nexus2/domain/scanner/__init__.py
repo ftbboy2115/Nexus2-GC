@@ -31,6 +31,14 @@ from nexus2.domain.scanner.breakout_scanner_service import (
     get_breakout_scanner_service,
 )
 
+from nexus2.domain.scanner.warrior_scanner_service import (
+    WarriorScanSettings,
+    WarriorCandidate,
+    WarriorScanResult,
+    WarriorScannerService,
+    get_warrior_scanner_service,
+)
+
 __all__ = [
     # Models
     "Exchange",
@@ -57,4 +65,11 @@ __all__ = [
     "BreakoutScanResult",
     "BreakoutScannerService",
     "get_breakout_scanner_service",
+    # Warrior Scanner
+    "WarriorScanSettings",
+    "WarriorCandidate",
+    "WarriorScanResult",
+    "WarriorScannerService",
+    "get_warrior_scanner_service",
 ]
+

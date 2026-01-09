@@ -1,0 +1,520 @@
+"""
+Warrior Position Monitor
+
+Monitors Warrior Trading positions with Ross Cameron exit rules:
+- Mental stops (10-20 cents)
+- Character exits (candle-under-candle, topping tail)
+- 2:1 R profit target partials
+- Breakeven stop after partial
+
+Separate from KK-style PositionMonitor - uses different exit logic.
+"""
+
+import asyncio
+import logging
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional, List, Callable, Dict
+from dataclasses import dataclass, field
+from enum import Enum
+
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# ENUMS & DATA CLASSES
+# =============================================================================
+
+class WarriorExitReason(Enum):
+    """Reasons for exiting a Warrior position."""
+    MENTAL_STOP = "mental_stop"  # 10-20 cents
+    TECHNICAL_STOP = "technical_stop"  # Support level
+    CANDLE_UNDER_CANDLE = "candle_under_candle"  # New low
+    TOPPING_TAIL = "topping_tail"  # Rejection at highs
+    PROFIT_TARGET = "profit_target"  # 2:1 R
+    PARTIAL_EXIT = "partial_exit"  # 50% at target
+    BREAKOUT_FAILURE = "breakout_failure"  # Failed to hold breakout
+    TIME_STOP = "time_stop"  # No momentum after entry
+    MANUAL = "manual"
+
+
+@dataclass
+class WarriorExitSignal:
+    """Signal to exit a Warrior position."""
+    position_id: str
+    symbol: str
+    reason: WarriorExitReason
+    exit_price: Decimal
+    shares_to_exit: int
+    pnl_estimate: Decimal
+    stop_price: Decimal = Decimal("0")
+    generated_at: datetime = field(default_factory=datetime.utcnow)
+    
+    # Analytics
+    r_multiple: float = 0.0
+    trigger_description: str = ""
+
+
+@dataclass
+class WarriorMonitorSettings:
+    """Settings for Warrior position monitoring."""
+    # Mental Stop (primary stop)
+    mental_stop_cents: Decimal = Decimal("15")  # Default 15 cents (10-20 range)
+    use_technical_stop: bool = True  # Also use support levels
+    technical_stop_buffer_cents: Decimal = Decimal("5")  # 2-5 cents below support
+    
+    # Profit Targets
+    profit_target_r: float = 2.0  # 2:1 R target
+    partial_exit_fraction: float = 0.5  # Sell 50% at target
+    move_stop_to_breakeven: bool = True  # After partial
+    
+    # Character Exit Patterns
+    enable_candle_under_candle: bool = True
+    enable_topping_tail: bool = True
+    topping_tail_threshold: float = 0.6  # Wick > 60% of candle range
+    
+    # Time Stop (no momentum)
+    enable_time_stop: bool = True
+    time_stop_seconds: int = 120  # 2 minutes without momentum
+    breakout_hold_threshold: float = 0.5  # Must hold 50% of breakout
+    
+    # Polling
+    check_interval_seconds: int = 10  # Faster for day trading
+
+
+@dataclass
+class WarriorPosition:
+    """
+    A Warrior Trading position being monitored.
+    
+    Contains entry details and intraday tracking.
+    """
+    position_id: str
+    symbol: str
+    entry_price: Decimal
+    shares: int
+    entry_time: datetime
+    
+    # Stops
+    mental_stop: Decimal  # Entry - N cents
+    technical_stop: Optional[Decimal] = None  # Support level
+    current_stop: Decimal = Decimal("0")  # Active stop
+    
+    # Targets
+    profit_target: Decimal = Decimal("0")  # 2:1 R price
+    risk_per_share: Decimal = Decimal("0")  # Entry - stop
+    
+    # Tracking
+    high_since_entry: Decimal = Decimal("0")  # For trailing
+    partial_taken: bool = False
+    
+    # Intraday candle tracking (for pattern exits)
+    last_candle_low: Decimal = Decimal("0")
+    last_candle_high: Decimal = Decimal("0")
+    candles_since_entry: int = 0
+
+
+# =============================================================================
+# WARRIOR MONITOR SERVICE
+# =============================================================================
+
+class WarriorMonitor:
+    """
+    Monitors Warrior Trading positions for exit conditions.
+    
+    Ross Cameron exit rules:
+    1. Mental stop (10-20 cents) - no broker stop visible to HFT
+    2. Technical stop (support - 2-5 cents)
+    3. Candle-under-candle (new low)
+    4. Topping tail (rejection at highs)
+    5. 2:1 R profit target -> 50% partial, move stop to breakeven
+    6. Breakout failure (didn't hold breakout level)
+    """
+    
+    def __init__(self, settings: Optional[WarriorMonitorSettings] = None):
+        self.settings = settings or WarriorMonitorSettings()
+        
+        self._running = False
+        self._task: Optional[asyncio.Task] = None
+        
+        # Positions being monitored
+        self._positions: Dict[str, WarriorPosition] = {}
+        
+        # Callbacks
+        self._get_price: Optional[Callable] = None
+        self._get_intraday_candles: Optional[Callable] = None  # For pattern detection
+        self._execute_exit: Optional[Callable] = None
+        self._update_stop: Optional[Callable] = None
+        
+        # Stats
+        self.checks_run = 0
+        self.exits_triggered = 0
+        self.partials_triggered = 0
+        self.last_check: Optional[datetime] = None
+        self.last_error: Optional[str] = None
+    
+    def set_callbacks(
+        self,
+        get_price: Callable = None,
+        get_intraday_candles: Callable = None,
+        execute_exit: Callable = None,
+        update_stop: Callable = None,
+    ):
+        """Set callbacks for price data and execution."""
+        self._get_price = get_price
+        self._get_intraday_candles = get_intraday_candles
+        self._execute_exit = execute_exit
+        self._update_stop = update_stop
+    
+    # =========================================================================
+    # POSITION MANAGEMENT
+    # =========================================================================
+    
+    def add_position(
+        self,
+        position_id: str,
+        symbol: str,
+        entry_price: Decimal,
+        shares: int,
+        support_level: Optional[Decimal] = None,
+    ) -> WarriorPosition:
+        """
+        Add a new position to monitor.
+        
+        Calculates stops and targets based on Ross Cameron rules.
+        """
+        s = self.settings
+        
+        # Mental stop: Entry - N cents
+        mental_stop = entry_price - s.mental_stop_cents / 100
+        
+        # Technical stop: Support - buffer (if provided)
+        technical_stop = None
+        if support_level and s.use_technical_stop:
+            technical_stop = support_level - s.technical_stop_buffer_cents / 100
+        
+        # Current stop: Use tighter of mental vs technical
+        if technical_stop and technical_stop > mental_stop:
+            current_stop = technical_stop  # Technical is tighter
+        else:
+            current_stop = mental_stop
+        
+        # Risk per share
+        risk_per_share = entry_price - current_stop
+        
+        # Profit target: Entry + (risk * R)
+        profit_target = entry_price + (risk_per_share * Decimal(str(s.profit_target_r)))
+        
+        position = WarriorPosition(
+            position_id=position_id,
+            symbol=symbol,
+            entry_price=entry_price,
+            shares=shares,
+            entry_time=datetime.utcnow(),
+            mental_stop=mental_stop,
+            technical_stop=technical_stop,
+            current_stop=current_stop,
+            profit_target=profit_target,
+            risk_per_share=risk_per_share,
+            high_since_entry=entry_price,
+        )
+        
+        self._positions[position_id] = position
+        
+        logger.info(
+            f"[Warrior] Added {symbol}: entry=${entry_price}, "
+            f"stop=${current_stop}, target=${profit_target}"
+        )
+        
+        return position
+    
+    def remove_position(self, position_id: str) -> bool:
+        """Remove a position from monitoring."""
+        if position_id in self._positions:
+            del self._positions[position_id]
+            return True
+        return False
+    
+    def get_positions(self) -> List[WarriorPosition]:
+        """Get all monitored positions."""
+        return list(self._positions.values())
+    
+    # =========================================================================
+    # MONITORING LOOP
+    # =========================================================================
+    
+    async def start(self) -> dict:
+        """Start monitoring positions."""
+        if self._running:
+            return {"status": "already_running"}
+        
+        self._running = True
+        self._task = asyncio.create_task(self._monitor_loop())
+        
+        logger.info(f"[Warrior Monitor] Started (interval: {self.settings.check_interval_seconds}s)")
+        return {"status": "started", "interval": self.settings.check_interval_seconds}
+    
+    async def stop(self) -> dict:
+        """Stop monitoring."""
+        if not self._running:
+            return {"status": "already_stopped"}
+        
+        self._running = False
+        
+        if self._task and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+        
+        logger.info("[Warrior Monitor] Stopped")
+        return {"status": "stopped"}
+    
+    async def _monitor_loop(self):
+        """Main monitoring loop."""
+        while self._running:
+            try:
+                await self._check_all_positions()
+                await asyncio.sleep(self.settings.check_interval_seconds)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                self.last_error = str(e)
+                logger.error(f"[Warrior Monitor] Error: {e}")
+                await asyncio.sleep(5)
+    
+    async def _check_all_positions(self):
+        """Check all positions for exit conditions."""
+        self.last_check = datetime.utcnow()
+        self.checks_run += 1
+        
+        if not self._positions:
+            return
+        
+        for position_id, position in list(self._positions.items()):
+            try:
+                signal = await self._evaluate_position(position)
+                if signal:
+                    await self._handle_exit(signal)
+            except Exception as e:
+                logger.error(f"[Warrior] Error checking {position.symbol}: {e}")
+    
+    # =========================================================================
+    # EXIT EVALUATION (Ross Cameron Rules)
+    # =========================================================================
+    
+    async def _evaluate_position(self, position: WarriorPosition) -> Optional[WarriorExitSignal]:
+        """
+        Evaluate position for exit conditions.
+        
+        Checks (in order of priority):
+        1. Stop hit (mental or technical)
+        2. Candle-under-candle pattern
+        3. Topping tail rejection
+        4. Profit target reached
+        """
+        if not self._get_price:
+            return None
+        
+        current_price = await self._get_price(position.symbol)
+        if not current_price:
+            return None
+        
+        current_price = Decimal(str(current_price))
+        s = self.settings
+        
+        # Update high since entry
+        if current_price > position.high_since_entry:
+            position.high_since_entry = current_price
+        
+        # Calculate current R
+        if position.risk_per_share > 0:
+            current_gain = current_price - position.entry_price
+            r_multiple = float(current_gain / position.risk_per_share)
+        else:
+            r_multiple = 0.0
+        
+        # =====================================================================
+        # CHECK 1: Stop Hit (Mental or Technical)
+        # =====================================================================
+        if current_price <= position.current_stop:
+            pnl = (current_price - position.entry_price) * position.shares
+            logger.warning(
+                f"[Warrior] {position.symbol}: STOP HIT at ${current_price} "
+                f"(stop was ${position.current_stop})"
+            )
+            return WarriorExitSignal(
+                position_id=position.position_id,
+                symbol=position.symbol,
+                reason=WarriorExitReason.MENTAL_STOP,
+                exit_price=current_price,
+                shares_to_exit=position.shares,
+                pnl_estimate=pnl,
+                stop_price=position.current_stop,
+                r_multiple=r_multiple,
+                trigger_description=f"Price ${current_price} <= stop ${position.current_stop}",
+            )
+        
+        # =====================================================================
+        # CHECK 2: Candle-Under-Candle (New Low)
+        # =====================================================================
+        if s.enable_candle_under_candle and self._get_intraday_candles:
+            candles = await self._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
+            if candles and len(candles) >= 2:
+                current_candle = candles[-1]
+                prev_candle = candles[-2]
+                
+                # New low = current low < previous low
+                if current_candle.low < prev_candle.low:
+                    # Also confirm it's red (close < open)
+                    if current_candle.close < current_candle.open:
+                        pnl = (current_price - position.entry_price) * position.shares
+                        logger.info(
+                            f"[Warrior] {position.symbol}: Candle-under-candle detected"
+                        )
+                        return WarriorExitSignal(
+                            position_id=position.position_id,
+                            symbol=position.symbol,
+                            reason=WarriorExitReason.CANDLE_UNDER_CANDLE,
+                            exit_price=current_price,
+                            shares_to_exit=position.shares,
+                            pnl_estimate=pnl,
+                            r_multiple=r_multiple,
+                            trigger_description="New candle low (character exit)",
+                        )
+        
+        # =====================================================================
+        # CHECK 3: Topping Tail (Rejection at Highs)
+        # =====================================================================
+        if s.enable_topping_tail and self._get_intraday_candles:
+            candles = await self._get_intraday_candles(position.symbol, timeframe="1min", limit=2)
+            if candles:
+                current_candle = candles[-1]
+                candle_range = current_candle.high - current_candle.low
+                
+                if candle_range > 0:
+                    # Upper wick = high - max(open, close)
+                    body_top = max(current_candle.open, current_candle.close)
+                    upper_wick = current_candle.high - body_top
+                    wick_ratio = float(upper_wick / candle_range)
+                    
+                    # Topping tail: wick > 60% of range, at/near highs
+                    is_near_high = current_candle.high >= position.high_since_entry * Decimal("0.995")
+                    
+                    if wick_ratio >= s.topping_tail_threshold and is_near_high:
+                        pnl = (current_price - position.entry_price) * position.shares
+                        logger.info(
+                            f"[Warrior] {position.symbol}: Topping tail detected "
+                            f"(wick {wick_ratio*100:.0f}%)"
+                        )
+                        return WarriorExitSignal(
+                            position_id=position.position_id,
+                            symbol=position.symbol,
+                            reason=WarriorExitReason.TOPPING_TAIL,
+                            exit_price=current_price,
+                            shares_to_exit=position.shares,
+                            pnl_estimate=pnl,
+                            r_multiple=r_multiple,
+                            trigger_description=f"Topping tail ({wick_ratio*100:.0f}% wick)",
+                        )
+        
+        # =====================================================================
+        # CHECK 4: Profit Target (2:1 R) -> Partial Exit
+        # =====================================================================
+        if not position.partial_taken and current_price >= position.profit_target:
+            shares_to_exit = int(position.shares * s.partial_exit_fraction)
+            if shares_to_exit >= 1:
+                pnl = (current_price - position.entry_price) * shares_to_exit
+                logger.info(
+                    f"[Warrior] {position.symbol}: Profit target hit at {r_multiple:.1f}R "
+                    f"-> Partial exit ({shares_to_exit} shares)"
+                )
+                
+                # Mark partial taken
+                position.partial_taken = True
+                position.shares -= shares_to_exit
+                
+                # Move stop to breakeven
+                if s.move_stop_to_breakeven:
+                    position.current_stop = position.entry_price
+                    if self._update_stop:
+                        await self._update_stop(position.position_id, position.entry_price)
+                    logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven")
+                
+                self.partials_triggered += 1
+                
+                return WarriorExitSignal(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    reason=WarriorExitReason.PARTIAL_EXIT,
+                    exit_price=current_price,
+                    shares_to_exit=shares_to_exit,
+                    pnl_estimate=pnl,
+                    r_multiple=r_multiple,
+                    trigger_description=f"2:1 R target hit (${position.profit_target})",
+                )
+        
+        return None
+    
+    async def _handle_exit(self, signal: WarriorExitSignal):
+        """Handle an exit signal."""
+        logger.info(
+            f"[Warrior] Exit: {signal.symbol} - {signal.reason.value} - "
+            f"{signal.shares_to_exit} shares (P&L: ${signal.pnl_estimate:.2f})"
+        )
+        
+        if self._execute_exit:
+            try:
+                await self._execute_exit(signal)
+                self.exits_triggered += 1
+                
+                # Remove position if full exit
+                if signal.reason != WarriorExitReason.PARTIAL_EXIT:
+                    self.remove_position(signal.position_id)
+                    
+            except Exception as e:
+                logger.error(f"[Warrior] Exit execution failed: {e}")
+                self.last_error = str(e)
+        else:
+            logger.warning("[Warrior] No execute_exit callback - signal not acted on")
+    
+    # =========================================================================
+    # STATUS
+    # =========================================================================
+    
+    def get_status(self) -> dict:
+        """Get monitor status."""
+        return {
+            "running": self._running,
+            "positions_count": len(self._positions),
+            "check_interval_seconds": self.settings.check_interval_seconds,
+            "checks_run": self.checks_run,
+            "exits_triggered": self.exits_triggered,
+            "partials_triggered": self.partials_triggered,
+            "last_check": self.last_check.isoformat() if self.last_check else None,
+            "last_error": self.last_error,
+            "settings": {
+                "mental_stop_cents": float(self.settings.mental_stop_cents),
+                "profit_target_r": self.settings.profit_target_r,
+                "partial_exit_fraction": self.settings.partial_exit_fraction,
+                "candle_under_candle": self.settings.enable_candle_under_candle,
+                "topping_tail": self.settings.enable_topping_tail,
+            },
+        }
+
+
+# =============================================================================
+# SINGLETON
+# =============================================================================
+
+_warrior_monitor: Optional[WarriorMonitor] = None
+
+
+def get_warrior_monitor() -> WarriorMonitor:
+    """Get singleton Warrior monitor."""
+    global _warrior_monitor
+    if _warrior_monitor is None:
+        _warrior_monitor = WarriorMonitor()
+    return _warrior_monitor
