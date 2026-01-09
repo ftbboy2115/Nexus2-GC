@@ -154,6 +154,10 @@ class WarriorMonitor:
         self.partials_triggered = 0
         self.last_check: Optional[datetime] = None
         self.last_error: Optional[str] = None
+        
+        # P&L Tracking
+        self.realized_pnl_today: Decimal = Decimal("0")
+        self._pnl_date: Optional[datetime] = None  # Track date for reset
     
     def set_callbacks(
         self,
@@ -490,6 +494,9 @@ class WarriorMonitor:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
                 
+                # Track realized P&L
+                self._add_realized_pnl(signal.pnl_estimate)
+                
                 # Remove position if full exit
                 if signal.reason != WarriorExitReason.PARTIAL_EXIT:
                     self.remove_position(signal.position_id)
@@ -504,6 +511,19 @@ class WarriorMonitor:
     # STATUS
     # =========================================================================
     
+    def _add_realized_pnl(self, pnl: Decimal):
+        """Add to realized P&L, resetting if new day."""
+        today = datetime.utcnow().date()
+        if self._pnl_date != today:
+            self.realized_pnl_today = Decimal("0")
+            self._pnl_date = today
+        self.realized_pnl_today += pnl
+    
+    def reset_daily_pnl(self):
+        """Manually reset daily P&L tracking."""
+        self.realized_pnl_today = Decimal("0")
+        self._pnl_date = datetime.utcnow().date()
+    
     def get_status(self) -> dict:
         """Get monitor status."""
         return {
@@ -513,6 +533,7 @@ class WarriorMonitor:
             "checks_run": self.checks_run,
             "exits_triggered": self.exits_triggered,
             "partials_triggered": self.partials_triggered,
+            "realized_pnl_today": float(self.realized_pnl_today),
             "last_check": self.last_check.isoformat() if self.last_check else None,
             "last_error": self.last_error,
             "settings": {

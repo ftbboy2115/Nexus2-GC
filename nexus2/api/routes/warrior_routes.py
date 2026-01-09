@@ -834,11 +834,34 @@ async def get_warrior_broker_status():
         account_value = broker.get_account_value()
         positions = broker.get_positions()
         
+        # Calculate unrealized P&L and invested capital from positions
+        total_unrealized_pnl = 0.0
+        total_invested = 0.0
+        for p in positions:
+            total_unrealized_pnl += float(p.unrealized_pnl) if p.unrealized_pnl else 0
+            total_invested += float(p.average_entry_price) * p.quantity if p.average_entry_price else 0
+        
+        # Get realized P&L from monitor
+        from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+        monitor = get_warrior_monitor()
+        realized_pnl_today = float(monitor.realized_pnl_today)
+        
+        # Calculate total daily P&L and %
+        total_daily_pnl = realized_pnl_today + total_unrealized_pnl
+        daily_pnl_percent = (total_daily_pnl / total_invested * 100) if total_invested > 0 else 0
+        
         return {
             "broker_enabled": True,
             "paper_mode": True,
             "account_value": account_value,
             "positions_count": len(positions),
+            # Daily P&L Summary
+            "realized_pnl_today": realized_pnl_today,
+            "unrealized_pnl": total_unrealized_pnl,
+            "total_daily_pnl": total_daily_pnl,
+            "invested_capital": total_invested,
+            "daily_pnl_percent": round(daily_pnl_percent, 2),
+            # Positions
             "positions": [
                 {
                     "symbol": p.symbol,
