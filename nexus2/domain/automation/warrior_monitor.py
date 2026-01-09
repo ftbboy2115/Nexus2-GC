@@ -162,11 +162,19 @@ class WarriorMonitor:
         execute_exit: Callable = None,
         update_stop: Callable = None,
     ):
-        """Set callbacks for price data and execution."""
-        self._get_price = get_price
-        self._get_intraday_candles = get_intraday_candles
-        self._execute_exit = execute_exit
-        self._update_stop = update_stop
+        """Set callbacks for price data and execution.
+        
+        Only updates callbacks where a non-None value is provided.
+        This preserves callbacks set by broker enable.
+        """
+        if get_price is not None:
+            self._get_price = get_price
+        if get_intraday_candles is not None:
+            self._get_intraday_candles = get_intraday_candles
+        if execute_exit is not None:
+            self._execute_exit = execute_exit
+        if update_stop is not None:
+            self._update_stop = update_stop
     
     # =========================================================================
     # POSITION MANAGEMENT
