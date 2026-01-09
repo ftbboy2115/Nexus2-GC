@@ -980,8 +980,10 @@ async def enable_warrior_broker():
             else:
                 # Fall back to calculating defaults
                 entry_price = float(pos.avg_price)
-                stop_price = entry_price - (monitor.settings.mental_stop_cents / 100)
-                target_price = entry_price + (monitor.settings.mental_stop_cents / 100 * monitor.settings.profit_target_r)
+                mental_stop_cents = float(monitor.settings.mental_stop_cents)
+                profit_target_r = float(monitor.settings.profit_target_r)
+                stop_price = entry_price - (mental_stop_cents / 100)
+                target_price = entry_price + (mental_stop_cents / 100 * profit_target_r)
                 support_level = stop_price
                 trade_id = str(uuid4())
                 print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
