@@ -572,14 +572,19 @@ class WarriorEngine:
             logger.info(f"[Warrior Entry] {symbol}: Position too small")
             return
         
-        # Submit order
+        # Submit order - Ross uses limit order with 5¢ offset above ask
+        # This prevents slippage on fast stocks while ensuring quick fills
+        limit_offset = Decimal("0.05")  # 5 cents above entry price
+        limit_price = entry_price + limit_offset
+        
         if self._submit_order:
             try:
                 order_result = await self._submit_order(
                     symbol=symbol,
                     shares=shares,
                     side="buy",
-                    order_type="market",
+                    order_type="limit",  # Limit order, not market
+                    limit_price=float(limit_price),  # 5¢ above current price
                     stop_loss=None,  # Mental stop, not broker stop
                 )
                 
