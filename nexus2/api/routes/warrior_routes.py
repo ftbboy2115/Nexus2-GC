@@ -64,6 +64,8 @@ class WarriorEngineConfigRequest(BaseModel):
     max_daily_loss: Optional[float] = Field(None, gt=0, description="Max daily loss before stopping")
     orb_enabled: Optional[bool] = Field(None, description="Enable ORB breakouts")
     pmh_enabled: Optional[bool] = Field(None, description="Enable PMH breakouts")
+    max_shares_per_trade: Optional[int] = Field(None, ge=1, description="Max shares per trade (for testing)")
+    max_value_per_trade: Optional[float] = Field(None, gt=0, description="Max $ value per trade (for testing)")
 
 
 class WarriorCandidateResponse(BaseModel):
@@ -224,6 +226,14 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         engine.config.pmh_enabled = request.pmh_enabled
         updated["pmh_enabled"] = request.pmh_enabled
     
+    if request.max_shares_per_trade is not None:
+        engine.config.max_shares_per_trade = request.max_shares_per_trade
+        updated["max_shares_per_trade"] = request.max_shares_per_trade
+    
+    if request.max_value_per_trade is not None:
+        engine.config.max_value_per_trade = Decimal(str(request.max_value_per_trade))
+        updated["max_value_per_trade"] = request.max_value_per_trade
+    
     return {
         "status": "updated",
         "updated_fields": updated,
@@ -235,6 +245,8 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
             "max_daily_loss": float(engine.config.max_daily_loss),
             "orb_enabled": engine.config.orb_enabled,
             "pmh_enabled": engine.config.pmh_enabled,
+            "max_shares_per_trade": engine.config.max_shares_per_trade,
+            "max_value_per_trade": float(engine.config.max_value_per_trade) if engine.config.max_value_per_trade else None,
         }
     }
 

@@ -83,6 +83,10 @@ class WarriorEngineConfig:
     max_daily_loss: Decimal = Decimal("999999")  # Disabled for testing
     max_capital: Decimal = Decimal("5000")  # Max capital per trade
     
+    # Position Sizing Limits (for testing with small positions)
+    max_shares_per_trade: Optional[int] = 1  # Hard cap on shares (e.g., 1 for testing)
+    max_value_per_trade: Optional[Decimal] = None  # Hard cap on $ value (e.g., 100)
+    
     # Blacklist - symbols to never trade
     static_blacklist: set = field(default_factory=lambda: {"PLBY"})
     
@@ -556,6 +560,13 @@ class WarriorEngine:
         # Cap by max capital
         max_shares = int(self.config.max_capital / entry_price)
         shares = min(shares, max_shares)
+        
+        # Apply testing limits
+        if self.config.max_shares_per_trade is not None:
+            shares = min(shares, self.config.max_shares_per_trade)
+        if self.config.max_value_per_trade is not None:
+            max_by_value = int(self.config.max_value_per_trade / entry_price)
+            shares = min(shares, max_by_value)
         
         if shares < 1:
             logger.info(f"[Warrior Entry] {symbol}: Position too small")
