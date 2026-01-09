@@ -584,7 +584,7 @@ class WarriorEngine:
         # Submit order - Ross uses limit order with 5¢ offset above ask
         # This prevents slippage on fast stocks while ensuring quick fills
         limit_offset = Decimal("0.05")  # 5 cents above entry price
-        limit_price = entry_price + limit_offset
+        limit_price = (entry_price + limit_offset).quantize(Decimal("0.01"))  # Round to 2 decimals for Alpaca
         
         if self._submit_order:
             try:
