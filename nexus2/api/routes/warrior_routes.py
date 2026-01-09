@@ -354,3 +354,248 @@ async def get_warrior_diagnostics():
             },
         },
     }
+
+
+# =============================================================================
+# SIMULATION ROUTES
+# =============================================================================
+
+import threading
+from uuid import uuid4
+
+# Warrior-specific sim broker (separate from KK-style automation)
+_warrior_sim_broker = None
+_warrior_sim_broker_lock = threading.Lock()
+
+
+def get_warrior_sim_broker():
+    """Get Warrior simulation broker (thread-safe)."""
+    with _warrior_sim_broker_lock:
+        return _warrior_sim_broker
+
+
+def set_warrior_sim_broker(broker):
+    """Set Warrior simulation broker (thread-safe)."""
+    global _warrior_sim_broker
+    with _warrior_sim_broker_lock:
+        _warrior_sim_broker = broker
+
+
+class WarriorSimEnableRequest(BaseModel):
+    """Request to enable Warrior simulation mode."""
+    initial_cash: float = Field(25000.0, description="Starting cash for sim account")
+
+
+class WarriorSimOrderRequest(BaseModel):
+    """Request to submit a simulated order."""
+    symbol: str
+    shares: int
+    stop_price: float
+    limit_price: Optional[float] = None
+    trigger_type: str = "manual"
+
+
+@router.get("/sim/status")
+async def get_warrior_sim_status():
+    """
+    Get Warrior simulation status.
+    
+    Returns whether sim mode is active, account info, and positions.
+    """
+    broker = get_warrior_sim_broker()
+    
+    if broker is None:
+        return {
+            "sim_enabled": False,
+            "message": "Simulation not initialized. POST /warrior/sim/enable to start.",
+        }
+    
+    account = broker.get_account()
+    positions = broker.get_positions()
+    
+    return {
+        "sim_enabled": True,
+        "account": {
+            "cash": account["cash"],
+            "portfolio_value": account["portfolio_value"],
+            "unrealized_pnl": account["unrealized_pnl"],
+            "realized_pnl": account["realized_pnl"],
+        },
+        "positions": positions,
+        "position_count": len(positions),
+    }
+
+
+@router.post("/sim/enable")
+async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnableRequest()):
+    """
+    Enable Warrior simulation mode with MockBroker.
+    
+    Creates a new MockBroker with specified initial cash.
+    """
+    from nexus2.adapters.simulation.mock_broker import MockBroker
+    
+    broker = MockBroker(initial_cash=request.initial_cash)
+    set_warrior_sim_broker(broker)
+    
+    # Configure engine for sim mode
+    engine = get_engine()
+    engine.config.sim_only = True
+    
+    # Wire up engine callbacks to MockBroker
+    async def sim_submit_order(symbol: str, shares: int, stop_price: float, limit_price: float = None, trigger_type: str = "orb"):
+        """Submit order to MockBroker."""
+        sim_broker = get_warrior_sim_broker()
+        if sim_broker is None:
+            return None
+        
+        result = sim_broker.submit_bracket_order(
+            client_order_id=uuid4(),
+            symbol=symbol,
+            quantity=shares,
+            stop_loss_price=stop_price,
+            limit_price=Decimal(str(limit_price)) if limit_price else None,
+        )
+        return result
+    
+    def sim_get_quote(symbol: str):
+        """Get price from MockBroker."""
+        sim_broker = get_warrior_sim_broker()
+        return sim_broker.get_price(symbol) if sim_broker else None
+    
+    def sim_get_positions():
+        """Get positions from MockBroker."""
+        sim_broker = get_warrior_sim_broker()
+        return sim_broker.get_positions() if sim_broker else []
+    
+    engine.set_callbacks(
+        submit_order=sim_submit_order,
+        get_quote=sim_get_quote,
+        get_positions=sim_get_positions,
+    )
+    
+    return {
+        "status": "enabled",
+        "initial_cash": request.initial_cash,
+        "message": "Warrior simulation mode enabled with MockBroker",
+    }
+
+
+@router.post("/sim/reset")
+async def reset_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnableRequest()):
+    """
+    Reset Warrior simulation to initial state.
+    
+    Clears all positions and resets cash.
+    """
+    from nexus2.adapters.simulation.mock_broker import MockBroker
+    
+    broker = MockBroker(initial_cash=request.initial_cash)
+    set_warrior_sim_broker(broker)
+    
+    # Clear engine statistics
+    engine = get_engine()
+    engine.stats.trades_today = 0
+    engine.stats.pnl_today = Decimal("0")
+    
+    return {
+        "status": "reset",
+        "initial_cash": request.initial_cash,
+        "message": "Warrior simulation reset to initial state",
+    }
+
+
+@router.post("/sim/order")
+async def submit_warrior_sim_order(request: WarriorSimOrderRequest):
+    """
+    Submit a simulated order to MockBroker.
+    
+    For manual testing of the simulation environment.
+    """
+    broker = get_warrior_sim_broker()
+    
+    if broker is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Simulation not enabled. POST /warrior/sim/enable first.",
+        )
+    
+    # Set price if not already set
+    current_price = broker.get_price(request.symbol)
+    if current_price is None and request.limit_price:
+        broker.set_price(request.symbol, request.limit_price)
+    
+    result = broker.submit_bracket_order(
+        client_order_id=uuid4(),
+        symbol=request.symbol,
+        quantity=request.shares,
+        stop_loss_price=request.stop_price,
+        limit_price=Decimal(str(request.limit_price)) if request.limit_price else None,
+    )
+    
+    is_filled = getattr(result, 'is_accepted', False) or getattr(result, 'filled_qty', 0) > 0
+    fill_price = getattr(result, 'avg_fill_price', request.limit_price)
+    
+    return {
+        "status": "filled" if is_filled else "rejected",
+        "symbol": request.symbol,
+        "shares": request.shares,
+        "fill_price": float(fill_price) if fill_price else None,
+        "stop_price": request.stop_price,
+    }
+
+
+@router.post("/sim/sell")
+async def sell_warrior_sim_position(symbol: str, shares: Optional[int] = None):
+    """
+    Sell a simulated position (partial or full).
+    """
+    broker = get_warrior_sim_broker()
+    
+    if broker is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Simulation not enabled. POST /warrior/sim/enable first.",
+        )
+    
+    sold = broker.sell_position(symbol, shares)
+    
+    if sold:
+        return {
+            "status": "sold",
+            "symbol": symbol,
+            "shares_sold": shares or "all",
+        }
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No position found for {symbol}",
+        )
+
+
+@router.put("/sim/price")
+async def set_warrior_sim_price(symbol: str, price: float):
+    """
+    Set the current price for a symbol in simulation.
+    
+    Used to simulate price movements.
+    """
+    broker = get_warrior_sim_broker()
+    
+    if broker is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Simulation not enabled. POST /warrior/sim/enable first.",
+        )
+    
+    broker.set_price(symbol, price)
+    
+    # Check for stop triggers
+    broker._check_stop_orders(symbol)
+    
+    return {
+        "status": "updated",
+        "symbol": symbol,
+        "price": price,
+    }
+
