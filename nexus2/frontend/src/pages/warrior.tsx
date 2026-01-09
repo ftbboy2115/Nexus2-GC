@@ -242,6 +242,11 @@ export default function Warrior() {
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
 
+    // Open TradingView chart in new tab
+    const openChart = (symbol: string) => {
+        window.open(`https://www.tradingview.com/chart/?symbol=${symbol}`, '_blank')
+    }
+
     // ========================================================================
     // Data Fetching
     // ========================================================================
@@ -955,7 +960,13 @@ export default function Warrior() {
                                                     {positions.map((pos) => (
                                                         <tr key={pos.position_id}>
                                                             <td className={styles.symbolCell}>
-                                                                {pos.symbol}
+                                                                <span
+                                                                    className={styles.clickableSymbol}
+                                                                    onClick={() => openChart(pos.symbol)}
+                                                                    title="Open TradingView chart"
+                                                                >
+                                                                    {pos.symbol}
+                                                                </span>
                                                             </td>
                                                             <td>{pos.shares}</td>
                                                             <td>${pos.entry_price.toFixed(2)}</td>
@@ -1018,7 +1029,15 @@ export default function Warrior() {
                                                         <tbody>
                                                             {scanResult.candidates.slice(0, 10).map((c) => (
                                                                 <tr key={c.symbol}>
-                                                                    <td className={styles.symbol}>{c.symbol}</td>
+                                                                    <td className={styles.symbol}>
+                                                                        <span
+                                                                            className={styles.clickableSymbol}
+                                                                            onClick={() => openChart(c.symbol)}
+                                                                            title="Open TradingView chart"
+                                                                        >
+                                                                            {c.symbol}
+                                                                        </span>
+                                                                    </td>
                                                                     <td>${c.price.toFixed(2)}</td>
                                                                     <td className={c.is_ideal_gap ? styles.ideal : ''}>
                                                                         {c.gap_percent.toFixed(1)}%
@@ -1088,7 +1107,15 @@ export default function Warrior() {
                                                         <tbody>
                                                             {sortData(status.last_scan_result.candidates, engineScanSort).map((c) => (
                                                                 <tr key={c.symbol} className={c.in_watchlist ? styles.inWatchlist : ''}>
-                                                                    <td className={styles.symbol}>{c.symbol}</td>
+                                                                    <td className={styles.symbol}>
+                                                                        <span
+                                                                            className={styles.clickableSymbol}
+                                                                            onClick={() => openChart(c.symbol)}
+                                                                            title="Open TradingView chart"
+                                                                        >
+                                                                            {c.symbol}
+                                                                        </span>
+                                                                    </td>
                                                                     <td className={c.gap_percent >= 10 ? styles.pnlPositive : ''}>{c.gap_percent.toFixed(1)}%</td>
                                                                     <td>{c.rvol.toFixed(1)}x</td>
                                                                     <td>${c.price.toFixed(2)}</td>
@@ -1131,7 +1158,15 @@ export default function Warrior() {
                                                 <tbody>
                                                     {sortData(status.watchlist, watchlistSort).map((w) => (
                                                         <tr key={w.symbol} className={w.entry_triggered ? styles.triggered : ''}>
-                                                            <td className={styles.symbol}>{w.symbol}</td>
+                                                            <td className={styles.symbol}>
+                                                                <span
+                                                                    className={styles.clickableSymbol}
+                                                                    onClick={() => openChart(w.symbol)}
+                                                                    title="Open TradingView chart"
+                                                                >
+                                                                    {w.symbol}
+                                                                </span>
+                                                            </td>
                                                             <td className={w.gap_percent >= 10 ? styles.pnlPositive : ''}>{w.gap_percent.toFixed(1)}%</td>
                                                             <td>{w.rvol.toFixed(1)}x</td>
                                                             <td>${w.pmh.toFixed(2)}</td>
@@ -1175,7 +1210,15 @@ export default function Warrior() {
                                         <tbody>
                                             {positions.map((p) => (
                                                 <tr key={p.position_id}>
-                                                    <td className={styles.symbol}>{p.symbol}</td>
+                                                    <td className={styles.symbol}>
+                                                        <span
+                                                            className={styles.clickableSymbol}
+                                                            onClick={() => openChart(p.symbol)}
+                                                            title="Open TradingView chart"
+                                                        >
+                                                            {p.symbol}
+                                                        </span>
+                                                    </td>
                                                     <td>{p.shares}</td>
                                                     <td>${p.entry_price.toFixed(2)}</td>
                                                     <td className={styles.stopPrice}>${p.current_stop.toFixed(2)}</td>

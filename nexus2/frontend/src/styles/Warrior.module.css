@@ -441,6 +441,17 @@
     color: #ff6b35;
 }
 
+.clickableSymbol {
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.clickableSymbol:hover {
+    color: #6366f1;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .ideal {
     color: #28a745;
     font-weight: 600;
