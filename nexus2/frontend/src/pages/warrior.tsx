@@ -359,6 +359,9 @@ export default function Warrior() {
     const enableSim = () => handleAction('Enable Sim', '/warrior/sim/enable')
     const resetSim = () => handleAction('Reset Sim', '/warrior/sim/reset')
 
+    // Broker Controls (Alpaca Paper)
+    const enableBroker = () => handleAction('Enable Broker', '/warrior/broker/enable')
+
     // Config Updates
     const updateConfig = async (field: string, value: number | boolean) => {
         setActionLoading(`config-${field}`)
@@ -676,13 +679,23 @@ export default function Warrior() {
                                 </div>
                                 <div className={styles.cardActions}>
                                     {!simStatus?.sim_enabled ? (
-                                        <button
-                                            onClick={enableSim}
-                                            className={styles.btnPrimary}
-                                            disabled={actionLoading !== null}
-                                        >
-                                            {actionLoading === 'Enable Sim' ? '...' : '🚀 Enable Sim'}
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={enableSim}
+                                                className={styles.btnPrimary}
+                                                disabled={actionLoading !== null}
+                                            >
+                                                {actionLoading === 'Enable Sim' ? '...' : '🚀 Enable Sim'}
+                                            </button>
+                                            <button
+                                                onClick={enableBroker}
+                                                className={styles.btnSuccess}
+                                                disabled={actionLoading !== null}
+                                                title="Enable Alpaca Paper for live trading"
+                                            >
+                                                {actionLoading === 'Enable Broker' ? '...' : '📈 Enable Broker'}
+                                            </button>
+                                        </>
                                     ) : (
                                         <button
                                             onClick={resetSim}

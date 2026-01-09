@@ -188,6 +188,22 @@
     background: rgba(220, 53, 69, 0.3);
 }
 
+.btnSuccess {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border: none;
+    color: #fff;
+    padding: 0.6rem 1.25rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.btnSuccess:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
 .btnSmall {
     background: rgba(255, 107, 53, 0.2);
     border: 1px solid rgba(255, 107, 53, 0.3);
@@ -205,6 +221,7 @@
 .btnPrimary:disabled,
 .btnSecondary:disabled,
 .btnDanger:disabled,
+.btnSuccess:disabled,
 .btnSmall:disabled,
 .refreshBtn:disabled {
     opacity: 0.5;
