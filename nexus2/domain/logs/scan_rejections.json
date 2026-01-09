@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-01-09T05:22:01.362610",
-  "count": 10,
+  "updated_at": "2026-01-09T05:27:18.185816",
+  "count": 30,
   "rejections": [
     {
       "timestamp": "2026-01-09T05:21:51.910709",
@@ -86,6 +86,193 @@
     {
       "timestamp": "2026-01-09T05:22:01.362610",
       "symbol": "EPRX",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 1 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:22:01.837643",
+      "symbol": "ARMP",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.53,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:22:02.337254",
+      "symbol": "OPTX",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.52,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:22:04.779559",
+      "symbol": "RAY",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=HK)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:22:05.542697",
+      "symbol": "AMRN",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 1 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:22:06.159990",
+      "symbol": "ONDS",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.41,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:22:06.417376",
+      "symbol": "OPEN",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.57,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:08.008255",
+      "symbol": "CGTL",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=HK)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:12.823541",
+      "symbol": "EPSM",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=CN)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:13.288730",
+      "symbol": "MLTX",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 2 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:13.452398",
+      "symbol": "AGCC",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.23,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:14.411841",
+      "symbol": "SATL",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No recent news found",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:14.551786",
+      "symbol": "INHD",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=HK)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:14.762349",
+      "symbol": "INBS",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.46,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:15.132843",
+      "symbol": "LAB",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 2 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:15.668384",
+      "symbol": "SPAI",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.85,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:16.506368",
+      "symbol": "EPRX",
+      "scanner": "warrior",
+      "reason": "no_catalyst",
+      "details": "No material catalyst in 1 headlines",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:16.723381",
+      "symbol": "ARMP",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 1.53,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:16.927257",
+      "symbol": "OPTX",
+      "scanner": "warrior",
+      "reason": "rvol_too_low",
+      "details": null,
+      "values": {
+        "rvol": 0.52,
+        "min": 2.0
+      }
+    },
+    {
+      "timestamp": "2026-01-09T05:27:17.871422",
+      "symbol": "RAY",
+      "scanner": "warrior",
+      "reason": "country_excluded",
+      "details": "Chinese/HK stock excluded (country=HK)",
+      "values": null
+    },
+    {
+      "timestamp": "2026-01-09T05:27:18.185816",
+      "symbol": "AMRN",
       "scanner": "warrior",
       "reason": "no_catalyst",
       "details": "No material catalyst in 1 headlines",

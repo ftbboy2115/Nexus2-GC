@@ -351,15 +351,14 @@ class WarriorEngine:
                     await asyncio.sleep(5)
                     continue
                 
-                # Only watch during trading window
-                if not self.is_trading_window():
-                    await asyncio.sleep(30)
-                    continue
+                # NOTE: No time restriction - trades qualified setups ANY time
+                # Pre-market and after-hours moves can be explosive on small-caps
+                # (no halts outside regular hours)
                 
                 # Check each watched candidate
                 await self._check_entry_triggers()
                 
-                # Fast polling during market hours
+                # Fast polling 
                 await asyncio.sleep(5)  # 5 second checks
                 
             except asyncio.CancelledError:
