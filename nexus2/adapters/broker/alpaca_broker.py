@@ -162,6 +162,7 @@ class AlpacaBroker:
         order_type: str,
         limit_price: Optional[Decimal] = None,
         stop_price: Optional[Decimal] = None,
+        extended_hours: bool = False,
     ) -> BrokerOrder:
         """Submit order to Alpaca."""
         
@@ -187,6 +188,10 @@ class AlpacaBroker:
             "time_in_force": "day",
             "client_order_id": str(client_order_id),
         }
+        
+        # Extended hours requires limit orders only
+        if extended_hours:
+            payload["extended_hours"] = True
         
         if limit_price:
             payload["limit_price"] = str(limit_price)

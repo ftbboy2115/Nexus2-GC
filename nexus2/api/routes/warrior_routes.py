@@ -887,6 +887,61 @@ async def get_warrior_broker_status():
         }
 
 
+@router.post("/broker/close/{symbol}")
+async def close_warrior_position(symbol: str, limit_price: float = None):
+    """
+    Close a position manually via limit order (for after-hours).
+    
+    If no limit_price, uses current bid price.
+    """
+    broker = get_warrior_alpaca_broker()
+    
+    if broker is None:
+        raise HTTPException(status_code=400, detail="Broker not enabled")
+    
+    try:
+        positions = broker.get_positions()
+        positions_dict = positions if isinstance(positions, dict) else {p.symbol: p for p in positions}
+        
+        if symbol not in positions_dict:
+            raise HTTPException(status_code=404, detail=f"Position {symbol} not found")
+        
+        pos = positions_dict[symbol]
+        qty = pos.quantity
+        
+        # Get limit price if not provided
+        if limit_price is None:
+            quote = broker.get_quote(symbol)
+            if quote:
+                limit_price = float(quote.get('bid', quote.get('price', pos.current_price)))
+            else:
+                limit_price = float(pos.current_price) * 0.99  # 1% below current
+        
+        # Submit sell order (extended hours for after-market)
+        from uuid import uuid4
+        result = broker.submit_order(
+            client_order_id=uuid4(),
+            symbol=symbol,
+            side="sell",
+            quantity=qty,
+            order_type="limit",
+            limit_price=Decimal(str(limit_price)),
+            extended_hours=True,
+        )
+        
+        return {
+            "success": True,
+            "symbol": symbol,
+            "shares": qty,
+            "limit_price": limit_price,
+            "result": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/broker/enable")
 async def enable_warrior_broker():
     """
