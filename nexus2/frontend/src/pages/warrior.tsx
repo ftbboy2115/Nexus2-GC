@@ -551,13 +551,15 @@ export default function Warrior() {
                             </CollapsibleCard>
 
                             {/* Simulation Mode Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>🧪 Simulation Mode</h2>
+                            <CollapsibleCard
+                                id="simulation"
+                                title="🧪 Simulation Mode"
+                                badge={
                                     <span className={`${styles.badge} ${simStatus?.sim_enabled ? styles.badgeGreen : styles.badgeGray}`}>
                                         {simStatus?.sim_enabled ? 'Enabled' : 'Disabled'}
                                     </span>
-                                </div>
+                                }
+                            >
                                 <div className={styles.cardBody}>
                                     {simStatus?.sim_enabled && simStatus.account ? (
                                         <>
@@ -635,16 +637,14 @@ export default function Warrior() {
                                         </button>
                                     )}
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Mock Market Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>🎮 Mock Market</h2>
-                                    {loadedTestCase && (
-                                        <span className={styles.badge}>{loadedTestCase.symbol}</span>
-                                    )}
-                                </div>
+                            <CollapsibleCard
+                                id="mockmarket"
+                                title="🎮 Mock Market"
+                                badge={loadedTestCase ? <span className={styles.badge}>{loadedTestCase.symbol}</span> : undefined}
+                            >
                                 <div className={styles.cardBody}>
                                     {/* Test Case Selector */}
                                     <div className={styles.testCaseSelector}>
@@ -707,16 +707,18 @@ export default function Warrior() {
                                         </p>
                                     )}
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Monitor Settings Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>🛡️ Exit Rules</h2>
+                            <CollapsibleCard
+                                id="exitrules"
+                                title="🛡️ Exit Rules"
+                                badge={
                                     <span className={`${styles.badge} ${status?.monitor.running ? styles.badgeGreen : styles.badgeGray}`}>
                                         {status?.monitor.running ? 'Active' : 'Inactive'}
                                     </span>
-                                </div>
+                                }
+                            >
                                 <div className={styles.cardBody}>
                                     <div className={styles.rulesList}>
                                         <div className={styles.ruleItem}>
@@ -748,13 +750,13 @@ export default function Warrior() {
                                         <span>Partials: {status?.monitor.partials_triggered || 0}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Settings Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>⚙️ Settings</h2>
-                                </div>
+                            <CollapsibleCard
+                                id="settings"
+                                title="⚙️ Settings"
+                            >
                                 <div className={styles.cardBody}>
                                     <div className={styles.settingsGrid}>
                                         <div className={styles.settingItem}>
@@ -831,20 +833,22 @@ export default function Warrior() {
                                         </button>
                                     </div>
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Scanner Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>🔍 Scanner</h2>
+                            <CollapsibleCard
+                                id="scanner"
+                                title="🔍 Scanner"
+                                badge={
                                     <button
-                                        onClick={runScan}
+                                        onClick={(e) => { e.stopPropagation(); runScan(); }}
                                         className={styles.btnSmall}
                                         disabled={actionLoading === 'scan'}
                                     >
                                         {actionLoading === 'scan' ? '...' : 'Run Scan'}
                                     </button>
-                                </div>
+                                }
+                            >
                                 <div className={styles.cardBody}>
                                     {scanResult ? (
                                         <>
@@ -906,14 +910,14 @@ export default function Warrior() {
                                         <p className={styles.emptyMessage}>Click "Run Scan" to find candidates</p>
                                     )}
                                 </div>
-                            </div>
+                            </CollapsibleCard>
 
                             {/* Watchlist Card */}
-                            <div className={styles.card}>
-                                <div className={styles.cardHeader}>
-                                    <h2>👁️ Watchlist</h2>
-                                    <span className={styles.countBadge}>{status?.watchlist_count || 0}</span>
-                                </div>
+                            <CollapsibleCard
+                                id="watchlist"
+                                title="👁️ Watchlist"
+                                badge={<span className={styles.countBadge}>{status?.watchlist_count || 0}</span>}
+                            >
                                 <div className={styles.cardBody}>
                                     {status?.watchlist && status.watchlist.length > 0 ? (
                                         <div className={styles.watchlistTable}>
@@ -945,7 +949,7 @@ export default function Warrior() {
                                         <p className={styles.emptyMessage}>No symbols being watched</p>
                                     )}
                                 </div>
-                            </div>
+                            </CollapsibleCard>
                         </div>
 
                         {/* Positions Table */}
@@ -1006,7 +1010,8 @@ export default function Warrior() {
                             </div>
                         </div>
                     </>
-                )}
+                )
+                }
             </main >
         </>
     )
