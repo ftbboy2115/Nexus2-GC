@@ -959,27 +959,30 @@ async def test_warrior_broker():
     
     try:
         import time
+        from uuid import uuid4
+        from decimal import Decimal
         
         print("[Warrior] Testing Alpaca connection...")
         
-        # Use direct Alpaca API to place a limit order that won't fill
-        order = broker._client.submit_order(
+        # Use broker's submit_order method with a limit order that won't fill
+        test_client_id = uuid4()
+        order = broker.submit_order(
+            client_order_id=test_client_id,
             symbol="AAPL",
-            qty=1,
             side="buy",
-            type="limit",
-            time_in_force="day",
-            limit_price=1.00,
+            quantity=1,
+            order_type="limit",
+            limit_price=Decimal("1.00"),
         )
         
-        order_id = order.id
+        order_id = order.broker_order_id
         print(f"[Warrior] Test order placed: {order_id}")
         
         # Wait a moment
         time.sleep(0.5)
         
         # Cancel the order
-        broker._client.cancel_order_by_id(order_id)
+        broker.cancel_order(order_id)
         print(f"[Warrior] Test order canceled: {order_id}")
         
         return {
