@@ -305,6 +305,39 @@ The SQLite database is at `data/nexus.db`. Contains positions, orders, and setti
 | **"No such column" errors** | Database schema changed - delete `data/nexus.db` |
 | **WebSocket disconnects** | Normal browser behavior - auto-reconnects |
 
+## VPS Deployment (tmux)
+
+For persistent sessions on a remote VPS, use tmux.
+
+### Quick Commands
+
+```bash
+# Attach to existing Nexus session
+tmux attach -t nexus
+
+# Update code and let uvicorn auto-reload
+git pull
+
+# Detach without stopping (keep running)
+Ctrl+B, then D
+```
+
+### First-Time Setup
+
+```bash
+# Create new session
+tmux new -s nexus
+
+# Start backend
+cd ~/Nexus
+source .venv/bin/activate
+uvicorn nexus2.api.main:app --reload --host 0.0.0.0
+
+# Detach: Ctrl+B, then D
+```
+
+> 📖 **Full tmux reference**: See [docs/tmux_reference.md](../docs/tmux_reference.md) for advanced commands and window management.
+
 ## Links
 
 - [FMP API Documentation](https://site.financialmodelingprep.com/developer/docs)
