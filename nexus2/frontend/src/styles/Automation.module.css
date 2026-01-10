@@ -1225,12 +1225,15 @@
     }
 
     .actionButtons {
+        display: flex;
+        flex-direction: column;
         gap: 8px;
     }
 
-    .actionButtons .btnSecondary {
-        min-width: calc(50% - 4px);
-        flex: initial;
+    .actionButtons .btnSecondary,
+    .actionButtons .btnDanger {
+        width: 100%;
+        min-width: unset;
     }
 
     /* Instructions collapsible */
