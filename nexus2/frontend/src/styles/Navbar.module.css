@@ -1,0 +1,113 @@
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    height: 56px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16161a 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logo {
+    font-size: 1.5rem;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.navLinks {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.navLink {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    color: #b0b0b0;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.navLink:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.navLink.active {
+    color: #fff;
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid rgba(102, 126, 234, 0.4);
+}
+
+.navIcon {
+    font-size: 1rem;
+}
+
+.navLabel {
+    font-size: 0.85rem;
+}
+
+.navSecondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navLink.secondary {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.8rem;
+    color: #808080;
+}
+
+.navLink.secondary:hover {
+    color: #b0b0b0;
+}
+
+.navLink.secondary.active {
+    color: #b0b0b0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive: collapse to icons on smaller screens */
+@media (max-width: 1024px) {
+    .navLabel {
+        display: none;
+    }
+
+    .navLink {
+        padding: 0.5rem 0.65rem;
+    }
+
+    .title {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .navSecondary {
+        display: none;
+    }
+}
