@@ -953,7 +953,7 @@ export default function Automation() {
                                         </button>
                                         <button
                                             onClick={() => setPositionsMaximized(!positionsMaximized)}
-                                            style={{ padding: '2px 6px', fontSize: '18px', lineHeight: 1, background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            style={{ padding: '1px 1px', fontSize: '18px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
                                             title={positionsMaximized ? 'Restore' : 'Maximize'}
                                         >
                                             {positionsMaximized ? '⤡' : '⤢'}
