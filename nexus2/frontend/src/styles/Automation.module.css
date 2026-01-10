@@ -1097,3 +1097,150 @@
     font-size: 0.75rem;
     opacity: 0.8;
 }
+
+/* Mobile Optimizations (< 600px) */
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+    }
+
+    .headerLeft {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .headerLeft h1 {
+        font-size: 1.4rem;
+    }
+
+    .headerRight {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .cardHeader {
+        margin-bottom: 12px;
+    }
+
+    .cardHeader h2 {
+        font-size: 1rem;
+    }
+
+    .stat {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+
+    .cardActions {
+        padding-top: 12px;
+        flex-direction: column;
+    }
+
+    .btnPrimary,
+    .btnDanger,
+    .btnSecondary {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Signal/Stats cards span full width on mobile */
+    .signalCard,
+    .statsCard {
+        grid-column: span 1;
+    }
+
+    .statsGrid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .statBox {
+        padding: 12px;
+    }
+
+    .statValue {
+        font-size: 1.4rem;
+    }
+
+    .statLabel {
+        font-size: 0.7rem;
+    }
+
+    /* Signal table horizontal scroll */
+    .signalTable {
+        font-size: 0.75rem;
+    }
+
+    .signalTable th,
+    .signalTable td {
+        padding: 6px 8px;
+        white-space: nowrap;
+    }
+
+    .signalBreakdown {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 8px 10px;
+    }
+
+    /* Scanner settings compact */
+    .presetButtons {
+        flex-wrap: wrap;
+    }
+
+    .presetBtn {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+
+    .actionButtons {
+        gap: 8px;
+    }
+
+    .actionButtons .btnSecondary {
+        min-width: calc(50% - 4px);
+        flex: initial;
+    }
+
+    /* Instructions collapsible */
+    .instructionStep {
+        gap: 10px;
+    }
+
+    .stepNumber {
+        width: 24px;
+        height: 24px;
+        font-size: 0.85rem;
+    }
+
+    .instructionStep p {
+        font-size: 0.85rem;
+    }
+
+    /* Modal adjustments */
+    .modalOverlay {
+        padding: 10px;
+    }
+
+    .modal {
+        max-height: 90vh;
+        border-radius: 12px;
+    }
+}

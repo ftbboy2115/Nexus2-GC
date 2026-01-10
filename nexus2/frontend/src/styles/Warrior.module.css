@@ -767,3 +767,137 @@
 .targetCell {
     color: #22c55e;
 }
+
+/* Mobile Optimizations (< 600px) */
+@media (max-width: 600px) {
+    .container {
+        padding: 0.5rem 0.75rem 1rem;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .headerLeft {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .headerLeft h1 {
+        font-size: 1.4rem;
+    }
+
+    .headerRight {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .card {
+        border-radius: 10px;
+    }
+
+    .cardHeader {
+        padding: 0.75rem 1rem;
+    }
+
+    .cardHeader h2 {
+        font-size: 0.95rem;
+    }
+
+    .cardBody {
+        padding: 0.75rem 1rem;
+    }
+
+    .cardActions {
+        padding: 0.75rem 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .statBox {
+        padding: 0.5rem;
+    }
+
+    .statValue {
+        font-size: 1.1rem;
+    }
+
+    .statLabel {
+        font-size: 0.7rem;
+    }
+
+    .configRow {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .entryModes {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    /* Tables horizontal scroll */
+    .candidateTable table,
+    .watchlistTable table,
+    .positionsTable table {
+        font-size: 0.8rem;
+    }
+
+    .candidateTable th,
+    .watchlistTable th,
+    .positionsTable th,
+    .candidateTable td,
+    .watchlistTable td,
+    .positionsTable td {
+        padding: 0.4rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    /* Buttons touch friendly */
+    .btnPrimary,
+    .btnSecondary,
+    .btnDanger,
+    .btnSuccess {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .btnSmall {
+        padding: 0.4rem 0.65rem;
+    }
+
+    .refreshBtn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    /* Event log */
+    .eventLog {
+        max-height: 150px;
+        font-size: 0.75rem;
+    }
+
+    /* Settings panel */
+    .settingsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .entryModeToggles {
+        flex-wrap: wrap;
+    }
+}
