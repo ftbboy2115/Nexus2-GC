@@ -256,30 +256,23 @@ export default function Warrior() {
         }
 
         const updateCountdown = () => {
-            const now = new Date()
-            const dayOfWeek = now.getDay() // 0 = Sunday, 6 = Saturday
-            const hour = now.getHours()
-
-            // Weekend check
-            if (dayOfWeek === 0 || dayOfWeek === 6) {
-                setCountdown('📅 Next: Mon 9:30 AM ET')
-                return
-            }
-
-            // After hours check (after 4pm ET on weekday)
-            if (hour >= 16) {
-                setCountdown('📅 Next: Tomorrow 9:30 AM ET')
-                return
-            }
-
-            // Before market check (before 9:30 AM ET on weekday)
-            if (hour < 9 || (hour === 9 && now.getMinutes() < 30)) {
-                setCountdown('📅 Next: 9:30 AM ET')
+            // If market is closed (backend checks holidays, weekends, hours)
+            if (!status.market_hours) {
+                const now = new Date()
+                const dayOfWeek = now.getDay()
+                // Weekend - show Monday
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    setCountdown('📅 Next: Mon 9:30 AM ET')
+                } else {
+                    // Weekday but market closed (holiday or after hours)
+                    setCountdown('📅 Next: Market Open')
+                }
                 return
             }
 
             // During market hours - show countdown
             const next = new Date(nextScan)
+            const now = new Date()
             const diffMs = next.getTime() - now.getTime()
 
             if (diffMs <= 0) {
@@ -295,7 +288,7 @@ export default function Warrior() {
         updateCountdown()
         const interval = setInterval(updateCountdown, 1000)
         return () => clearInterval(interval)
-    }, [status?.state, status?.stats?.next_scan])
+    }, [status?.state, status?.stats?.next_scan, status?.market_hours])
 
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
