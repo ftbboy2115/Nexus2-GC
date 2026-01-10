@@ -2,9 +2,11 @@
 
 .container {
     min-height: 100vh;
+    width: 100%;
     background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
     color: #fff;
     padding: 20px;
+    overflow-x: hidden;
 }
 
 /* Header */
