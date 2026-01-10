@@ -91,6 +91,82 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Controls section (account selector, broker selector, status) */
+.navControls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.controlSelect {
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #b0b0b0;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.controlSelect:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.controlSelect:focus {
+    outline: none;
+    border-color: rgba(102, 126, 234, 0.5);
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.statusDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #808080;
+}
+
+.statusDot[data-status="healthy"],
+.statusDot[data-status="ok"] {
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.statusDot[data-status="error"] {
+    background: #f87171;
+    box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+}
+
+.statusText {
+    font-size: 0.75rem;
+    color: #b0b0b0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settingsBtn {
+    padding: 0.4rem 0.5rem;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.settingsBtn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
 /* Responsive: collapse to icons on smaller screens */
 @media (max-width: 1024px) {
     .navLabel {
@@ -104,10 +180,18 @@
     .title {
         display: none;
     }
+
+    .statusText {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
     .navSecondary {
         display: none;
+    }
+
+    .navControls {
+        gap: 0.25rem;
     }
 }

@@ -119,6 +119,13 @@ export default function Home() {
         liveEnabledRef.current = liveEnabled
     }, [liveEnabled])
 
+    // Listen for settings open event from navbar
+    useEffect(() => {
+        const handleOpenSettings = () => setShowSettings(true)
+        window.addEventListener('openSettings', handleOpenSettings)
+        return () => window.removeEventListener('openSettings', handleOpenSettings)
+    }, [])
+
     // WebSocket connection for positions
     useEffect(() => {
         const ws = new WebSocket('ws://localhost:8000/ws/positions')
@@ -405,6 +412,7 @@ export default function Home() {
                         {orderNotification}
                     </div>
                 )}
+                {/* OLD HEADER HIDDEN - Now using global Navbar component
                 <header className={styles.header}>
                     <div className={styles.headerLeft}>
                         <h1 className={styles.title}>Nexus 2</h1>
@@ -502,6 +510,7 @@ export default function Home() {
                         </button>
                     </div>
                 </header>
+                */}
 
                 {error && (
                     <div className={styles.error}>

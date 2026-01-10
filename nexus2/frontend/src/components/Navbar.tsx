@@ -1,11 +1,24 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
 import styles from '@/styles/Navbar.module.css';
 
 interface NavItem {
     label: string;
     href: string;
     icon?: string;
+}
+
+interface Settings {
+    broker_type: string;
+    active_account: string;
+    trading_mode: string;
+}
+
+interface HealthStatus {
+    status: string;
+    version: string;
+    mode: string;
 }
 
 const navItems: NavItem[] = [
@@ -19,6 +32,39 @@ const navItems: NavItem[] = [
 
 export default function Navbar() {
     const router = useRouter();
+    const [settings, setSettings] = useState<Settings | null>(null);
+    const [health, setHealth] = useState<HealthStatus | null>(null);
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const [settingsRes, healthRes] = await Promise.all([
+                    fetch('/api/settings'),
+                    fetch('/api/health')
+                ]);
+                if (settingsRes.ok) setSettings(await settingsRes.json());
+                if (healthRes.ok) setHealth(await healthRes.json());
+            } catch (err) {
+                console.error('Navbar fetch error:', err);
+            }
+        }
+        fetchData();
+    }, []);
+
+    const updateSettings = async (updates: Partial<Settings>) => {
+        try {
+            const response = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+            });
+            if (response.ok) {
+                setSettings(await response.json());
+            }
+        } catch (err) {
+            console.error('Failed to update settings:', err);
+        }
+    };
 
     return (
         <nav className={styles.navbar}>
@@ -38,6 +84,46 @@ export default function Navbar() {
                         <span className={styles.navLabel}>{item.label}</span>
                     </Link>
                 ))}
+            </div>
+
+            <div className={styles.navControls}>
+                {settings && (
+                    <>
+                        {settings.broker_type.startsWith('alpaca') && (
+                            <select
+                                className={styles.controlSelect}
+                                value={settings.active_account}
+                                onChange={(e) => updateSettings({ active_account: e.target.value })}
+                                title="Switch Alpaca Account"
+                            >
+                                <option value="A">Acct A</option>
+                                <option value="B">Acct B</option>
+                            </select>
+                        )}
+                        <select
+                            className={styles.controlSelect}
+                            value={settings.broker_type}
+                            onChange={(e) => updateSettings({ broker_type: e.target.value })}
+                            title="Broker Type"
+                        >
+                            <option value="paper">📄 Paper</option>
+                            <option value="alpaca_paper">🅰️ Alpaca</option>
+                        </select>
+                    </>
+                )}
+                {health && (
+                    <div className={styles.status}>
+                        <span className={styles.statusDot} data-status={health.status}></span>
+                        <span className={styles.statusText}>{settings?.trading_mode || health.mode}</span>
+                    </div>
+                )}
+                <button
+                    className={styles.settingsBtn}
+                    onClick={() => window.dispatchEvent(new CustomEvent('openSettings'))}
+                    title="Settings"
+                >
+                    ⚙️
+                </button>
             </div>
 
             <div className={styles.navSecondary}>
