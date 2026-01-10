@@ -1146,6 +1146,13 @@ async def enable_warrior_broker():
                 target_price = float(saved_trade["target_price"]) if saved_trade["target_price"] else None
                 support_level = float(saved_trade["support_level"]) if saved_trade["support_level"] else stop_price
                 trade_id = saved_trade["id"]
+                partial_taken = saved_trade.get("partial_taken", False)
+                
+                # If partial was taken, stop should be at breakeven
+                if partial_taken and stop_price < entry_price:
+                    print(f"[Warrior] {symbol}: Partial taken, moving stop to breakeven (${entry_price:.2f})")
+                    stop_price = entry_price
+                
                 print(f"[Warrior] Recovered {symbol} from DB: entry=${entry_price:.2f}, stop=${stop_price:.2f}")
             else:
                 # Fall back to calculating defaults
