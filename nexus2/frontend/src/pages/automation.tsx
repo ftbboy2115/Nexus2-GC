@@ -956,7 +956,7 @@ export default function Automation() {
                                             style={{ padding: '4px 8px', fontSize: '14px', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
                                             title={positionsMaximized ? 'Restore' : 'Maximize'}
                                         >
-                                            {positionsMaximized ? '🗗' : '🗖'}
+                                            {positionsMaximized ? '⤡' : '⤢'}
                                         </button>
                                     </div>
                                 </div>
