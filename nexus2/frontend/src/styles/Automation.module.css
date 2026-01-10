@@ -1191,8 +1191,11 @@
     .signalTable {
         font-size: 0.75rem;
         display: block;
+        width: 100%;
+        max-width: calc(100vw - 44px);
+        /* viewport minus container padding and card padding */
         overflow-x: auto;
-        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
     }
 
     .signalTable table {
