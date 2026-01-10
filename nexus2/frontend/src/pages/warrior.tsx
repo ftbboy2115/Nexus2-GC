@@ -21,6 +21,7 @@ interface WarriorStatus {
         orders_submitted: number
         daily_pnl: number
         last_scan_at: string | null
+        next_scan: string | null
         last_error: string | null
     }
     monitor: {
@@ -240,6 +241,39 @@ export default function Warrior() {
     // Sorting state for tables
     const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
     const [engineScanSort, setEngineScanSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
+
+    // Countdown timer state
+    const [countdown, setCountdown] = useState<string>('')
+
+    // Update countdown every second when engine is running
+    useEffect(() => {
+        const isRunning = status?.state === 'running' || status?.state === 'premarket'
+        const nextScan = status?.stats?.next_scan
+
+        if (!isRunning || !nextScan) {
+            setCountdown('')
+            return
+        }
+
+        const updateCountdown = () => {
+            const next = new Date(nextScan)
+            const now = new Date()
+            const diffMs = next.getTime() - now.getTime()
+
+            if (diffMs <= 0) {
+                setCountdown('scanning...')
+                return
+            }
+
+            const mins = Math.floor(diffMs / 60000)
+            const secs = Math.floor((diffMs % 60000) / 1000)
+            setCountdown(`${mins}m ${secs}s`)
+        }
+
+        updateCountdown()
+        const interval = setInterval(updateCountdown, 1000)
+        return () => clearInterval(interval)
+    }, [status?.state, status?.stats?.next_scan])
 
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
@@ -596,6 +630,22 @@ export default function Warrior() {
                                             {status?.config.pmh_enabled ? '✅' : '❌'} PMH
                                         </span>
                                     </div>
+
+                                    {/* Countdown to next scan */}
+                                    {isRunning && countdown && (
+                                        <div style={{
+                                            padding: '8px 12px',
+                                            background: 'rgba(59, 130, 246, 0.15)',
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            marginTop: '8px'
+                                        }}>
+                                            <span style={{ color: '#9ca3af' }}>⏱️ Next Scan:</span>
+                                            <span style={{ color: '#60a5fa', fontFamily: 'monospace', fontWeight: 600 }}>{countdown}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className={styles.cardActions}>
                                     {!isRunning && !isPaused && (

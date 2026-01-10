@@ -716,6 +716,11 @@ class WarriorEngine:
                 "orders_submitted": self.stats.orders_submitted,
                 "daily_pnl": float(self.stats.daily_pnl),
                 "last_scan_at": self.stats.last_scan_at.isoformat() if self.stats.last_scan_at else None,
+                "next_scan": (
+                    (self.stats.last_scan_at + timedelta(minutes=self.config.scanner_interval_minutes)).isoformat()
+                    if self.stats.last_scan_at and self.state != WarriorEngineState.STOPPED
+                    else None
+                ),
                 "last_error": self.stats.last_error,
             },
             "monitor": self.monitor.get_status(),
