@@ -65,6 +65,7 @@ Last updated: 2026-01-08
 - [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
 - [ ] **Column totals on Open Positions table** — Sum columns (Value, P/L $, Today P/L $) in footer row, especially in maximized view
 - [ ] **Scheduler Last Run shows UTC** — Should display ET for consistency
+- [ ] **Account-Strategy Locking** — Lock navbar account dropdown to specific strategies (e.g., Account A for NAC, Account B for Warrior) to prevent accidental mixing
 
 ---
 
