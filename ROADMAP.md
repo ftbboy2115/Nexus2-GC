@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-08
+Last updated: 2026-01-10
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -58,12 +58,12 @@ Last updated: 2026-01-08
 - [x] **API Usage card sync** — Verified: shows real FMP rate limit stats
 - [x] **Total P&L % in Open Positions** — Already implemented (per-row + total)
 - [ ] **Simulation Control Page** — Mock market GUI with clock, scenarios, event log → [Plan](docs/simulation_plan.md)
-- [ ] **Countdown Timer to Next Scan** — Show time remaining until next scheduler cycle
+- [x] **Countdown Timer to Next Scan** — Shows time until next scan, smart weekend/holiday labels (Jan 10)
 - [ ] **Score Breakdown Display** — Show how each signal got its quality score (which criteria contributed)
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history
   - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
 - [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
-- [ ] **Column totals on Open Positions table** — Sum columns (Value, P/L $, Today P/L $) in footer row, especially in maximized view
+- [x] **Column totals on Open Positions table** — Footer row with Cost Basis, Value, P/L totals (Jan 10)
 - [ ] **Scheduler Last Run shows UTC** — Should display ET for consistency
 - [ ] **Account-Strategy Locking** — Lock navbar account dropdown to specific strategies (e.g., Account A for NAC, Account B for Warrior) to prevent accidental mixing
 
