@@ -953,10 +953,18 @@ export default function Automation() {
                                         </button>
                                         <button
                                             onClick={() => setPositionsMaximized(!positionsMaximized)}
-                                            style={{ width: '24px', height: '24px', padding: 0, fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer', color: '#9ca3af' }}
+                                            style={{ width: '24px', height: '24px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid #4b5563', borderRadius: '4px', cursor: 'pointer' }}
                                             title={positionsMaximized ? 'Restore' : 'Maximize'}
                                         >
-                                            {positionsMaximized ? '⤡' : '⤢'}
+                                            {positionsMaximized ? (
+                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                                                    <path d="M9 1h4v4M5 13H1V9M13 1L9 5M1 13l4-4" />
+                                                </svg>
+                                            ) : (
+                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                                                    <path d="M1 5V1h4M13 9v4H9M1 1l4 4M13 13l-4-4" />
+                                                </svg>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
