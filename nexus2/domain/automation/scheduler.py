@@ -27,6 +27,7 @@ class AutomationScheduler:
         market_open: dt_time = dt_time(9, 30),
         market_close: dt_time = dt_time(16, 0),
         eod_check_time: dt_time = dt_time(15, 45),  # 3:45 PM ET for MA trailing
+        auto_shutdown_time: dt_time = dt_time(16, 2),  # 4:02 PM ET - auto-shutdown
         auto_execute: bool = False,  # Default to scan-only, no execution
         sim_mode: bool = False,  # Use simulation clock for market hours
     ):
@@ -34,6 +35,7 @@ class AutomationScheduler:
         self.market_open = market_open
         self.market_close = market_close
         self.eod_check_time = eod_check_time
+        self.auto_shutdown_time = auto_shutdown_time
         self.sim_mode = sim_mode
         self.auto_execute = auto_execute
         
@@ -45,6 +47,9 @@ class AutomationScheduler:
         
         # Track if EOD check was done today
         self._eod_check_done_date: Optional[str] = None
+        
+        # Track if auto-shutdown was done today
+        self._auto_shutdown_done_date: Optional[str] = None
         
         # Stats
         self.cycles_run = 0
@@ -187,6 +192,11 @@ class AutomationScheduler:
                     # Check if EOD window and haven't run today
                     # Run in both live AND simulation mode (same logic, different data sources)
                     await self._check_eod()
+                    
+                    # Check if time for auto-shutdown (4:02 PM - stops scheduler after market close)
+                    shutdown_triggered = await self._check_auto_shutdown()
+                    if shutdown_triggered:
+                        break  # Exit loop after shutdown
                     
                     # Normal interval wait (shorter in sim_mode for faster testing)
                     interval_seconds = self.interval_minutes * 60
@@ -355,6 +365,88 @@ class AutomationScheduler:
         except Exception as e:
             logger.error(f"{mode_indicator} MA check error: {e}")
             self.last_error = f"EOD: {e}"
+    
+    async def _check_auto_shutdown(self) -> bool:
+        """
+        Check if time for automatic scheduler shutdown (4:02 PM ET).
+        
+        Prevents overnight resource usage and avoids weekend ghost trades.
+        Sends Discord notification on success or failure.
+        
+        Returns:
+            True if shutdown was triggered, False otherwise
+        """
+        # Skip in sim mode - let simulation run continuously
+        if self.sim_mode:
+            return False
+        
+        # Get today's date
+        import pytz
+        eastern = pytz.timezone('America/New_York')
+        now_et = datetime.now(eastern)
+        today = now_et.strftime("%Y-%m-%d")
+        current_time = now_et.time()
+        
+        # Skip if already shut down today
+        if self._auto_shutdown_done_date == today:
+            return False
+        
+        # Check if we're at or past shutdown time
+        if current_time < self.auto_shutdown_time:
+            return False
+        
+        # Time to shut down!
+        logger.info(f"[AutoShutdown] Triggering automatic shutdown at {now_et.strftime('%H:%M:%S ET')}")
+        print(f"🌙 [AutoShutdown] Stopping scheduler at {now_et.strftime('%H:%M:%S ET')}")
+        
+        shutdown_success = True
+        error_message = None
+        
+        try:
+            # Stop the scheduler
+            self._running = False
+            self._auto_shutdown_done_date = today
+            
+            # Also stop the position monitor (import here to avoid circular imports)
+            try:
+                from nexus2.api.routes.automation_state import get_monitor
+                monitor = get_monitor()
+                if monitor and monitor._running:
+                    await monitor.stop()
+                    logger.info("[AutoShutdown] Position monitor stopped")
+            except Exception as e:
+                logger.warning(f"[AutoShutdown] Monitor stop failed: {e}")
+                error_message = f"Monitor: {e}"
+            
+        except Exception as e:
+            shutdown_success = False
+            error_message = str(e)
+            logger.error(f"[AutoShutdown] Failed: {e}")
+        
+        # Send Discord notification
+        try:
+            from nexus2.adapters.notifications.discord import DiscordNotifier
+            notifier = DiscordNotifier()
+            
+            if shutdown_success:
+                message = f"🌙 **NAC Scheduler Shutdown Complete**\n"
+                message += f"Time: {now_et.strftime('%I:%M %p ET')}\n"
+                message += f"Cycles run today: {self.cycles_run}\n"
+                message += f"EOD checks: {self.eod_checks_run}"
+                if error_message:
+                    message += f"\n⚠️ Warning: {error_message}"
+            else:
+                message = f"❌ **NAC Scheduler Shutdown FAILED**\n"
+                message += f"Time: {now_et.strftime('%I:%M %p ET')}\n"
+                message += f"Error: {error_message}"
+            
+            notifier.send_system_alert(message)
+            logger.info(f"[AutoShutdown] Discord notification sent")
+            
+        except Exception as e:
+            logger.warning(f"[AutoShutdown] Discord notification failed: {e}")
+        
+        return shutdown_success
     
     async def _run_cycle(self):
         """Run one scan/execute cycle."""
