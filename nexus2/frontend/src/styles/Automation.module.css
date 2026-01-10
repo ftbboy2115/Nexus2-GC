@@ -1197,11 +1197,17 @@
         font-size: 0.7rem;
     }
 
-    /* Signal table horizontal scroll */
-    /* TEMP TEST: Hiding table to diagnose overflow */
+    /* Signal table - contained horizontal scroll on mobile */
     .signalTable {
         font-size: 0.75rem;
-        display: none;
+        display: block;
+        overflow-x: auto;
+        max-width: 100%;
+    }
+
+    .signalTable table {
+        min-width: 500px;
+        /* Forces horizontal scroll if needed */
     }
 
     .signalTable th,
