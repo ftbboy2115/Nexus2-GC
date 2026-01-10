@@ -65,6 +65,18 @@ class AutomationScheduler:
         
         # Store full scan result for diagnostics
         self.last_scan_result = None
+        
+        # Load persisted settings
+        try:
+            from nexus2.db.scheduler_settings import load_scheduler_settings
+            saved = load_scheduler_settings()
+            if saved:
+                if "interval_minutes" in saved:
+                    self.interval_minutes = saved["interval_minutes"]
+                if "auto_execute" in saved:
+                    self.auto_execute = saved["auto_execute"]
+        except Exception as e:
+            print(f"[Scheduler] Failed to load saved settings: {e}")
     
     @property
     def is_running(self) -> bool:

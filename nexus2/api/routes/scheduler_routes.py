@@ -594,6 +594,10 @@ async def toggle_auto_execute(req: SchedulerToggleRequest):
         logger.info(f"[Scheduler] auto_execute toggled to: {req.auto_execute} (persisted to DB)")
         print(f"🔄 [Scheduler] auto_execute toggled to: {req.auto_execute} (persisted)")
     
+    # Also persist to JSON file (for interval + auto_execute together)
+    from nexus2.db.scheduler_settings import save_scheduler_settings, get_scheduler_settings_dict
+    save_scheduler_settings(get_scheduler_settings_dict(scheduler))
+    
     return {
         "status": "updated",
         "auto_execute": scheduler.auto_execute,
@@ -615,6 +619,10 @@ async def update_scheduler_interval(req: SchedulerIntervalRequest):
     
     old_interval = scheduler.interval_minutes
     scheduler.interval_minutes = req.interval_minutes
+    
+    # Persist to file
+    from nexus2.db.scheduler_settings import save_scheduler_settings, get_scheduler_settings_dict
+    save_scheduler_settings(get_scheduler_settings_dict(scheduler))
     
     logger.info(f"[Scheduler] interval changed: {old_interval} -> {req.interval_minutes} min")
     print(f"🔄 [Scheduler] interval changed: {old_interval} -> {req.interval_minutes} min (takes effect next cycle)")
