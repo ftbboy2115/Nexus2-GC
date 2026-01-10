@@ -958,7 +958,7 @@ export default function Automation() {
                                         >
                                             {positionsMaximized ? (
                                                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9ca3af" strokeWidth="1.5">
-                                                    <path d="M9 1h4v4M5 13H1V9M13 1L9 5M1 13l4-4" />
+                                                    <path d="M5 1v4H1M9 13v-4h4M5 5L1 1M9 9l4 4" />
                                                 </svg>
                                             ) : (
                                                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9ca3af" strokeWidth="1.5">
