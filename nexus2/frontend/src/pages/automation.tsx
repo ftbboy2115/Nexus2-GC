@@ -89,8 +89,30 @@ export default function Automation() {
         }
 
         const updateCountdown = () => {
-            const nextRun = new Date(scheduler.next_run!)
             const now = new Date()
+            const dayOfWeek = now.getDay() // 0 = Sunday, 6 = Saturday
+            const hour = now.getHours()
+
+            // Weekend check
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                setCountdown('📅 Next: Mon 9:30 AM ET')
+                return
+            }
+
+            // After hours check (after 4pm ET on weekday)
+            if (hour >= 16) {
+                setCountdown('📅 Next: Tomorrow 9:30 AM ET')
+                return
+            }
+
+            // Before market check (before 9:30 AM ET on weekday)
+            if (hour < 9 || (hour === 9 && now.getMinutes() < 30)) {
+                setCountdown('📅 Next: 9:30 AM ET')
+                return
+            }
+
+            // During market hours - show countdown
+            const nextRun = new Date(scheduler.next_run!)
             const diffMs = nextRun.getTime() - now.getTime()
 
             if (diffMs <= 0) {
