@@ -344,7 +344,7 @@ export default function Automation() {
                                             <strong>💡 KK-Style Automation:</strong> Day 1 stop (LoD via bracket order) → Day 3-5 partial (50%) + breakeven → Day 5+ MA trailing
                                         </div>
                                         <div className={styles.instructionNote} style={{ marginTop: '8px', color: '#9ca3af' }}>
-                                            <strong>🌙 Auto-Shutdown:</strong> Scheduler stops automatically at 4:02 PM ET with Discord notification. Restart manually next trading day.
+                                            <strong>🌙 Auto-Shutdown:</strong> Scheduler stops automatically at 4:02 PM ET with Discord notification. Restarts automatically next market open if Auto-Start is enabled.
                                         </div>
                                     </div>
                                 )}
