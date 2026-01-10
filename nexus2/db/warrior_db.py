@@ -187,3 +187,36 @@ def get_warrior_trade_by_symbol(symbol: str):
             symbol=symbol, status="open"
         ).first()
         return trade.to_dict() if trade else None
+
+
+def close_orphaned_trades(active_symbols: set):
+    """
+    Close trades in DB that are marked 'open' but not in the active broker positions.
+    
+    This reconciles the DB with reality after restarts or manual position closures.
+    
+    Args:
+        active_symbols: Set of symbols currently held on broker (e.g., from Alpaca)
+    
+    Returns:
+        List of symbols that were closed as orphans
+    """
+    closed = []
+    with get_warrior_session() as db:
+        open_trades = db.query(WarriorTradeModel).filter_by(status="open").all()
+        
+        for trade in open_trades:
+            if trade.symbol not in active_symbols:
+                print(f"[Warrior DB] Closing orphan: {trade.symbol} (not on broker)")
+                trade.status = "closed"
+                trade.exit_reason = "orphan_cleanup"
+                trade.exit_time = datetime.utcnow()
+                closed.append(trade.symbol)
+        
+        db.commit()
+    
+    if closed:
+        print(f"[Warrior DB] Closed {len(closed)} orphaned trades: {closed}")
+    
+    return closed
+

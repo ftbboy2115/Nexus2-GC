@@ -1112,7 +1112,7 @@ async def enable_warrior_broker():
     monitor = get_warrior_monitor()
     
     # Initialize Warrior DB
-    from nexus2.db.warrior_db import init_warrior_db, get_warrior_trade_by_symbol
+    from nexus2.db.warrior_db import init_warrior_db, get_warrior_trade_by_symbol, close_orphaned_trades
     init_warrior_db()
     
     try:
@@ -1122,6 +1122,11 @@ async def enable_warrior_broker():
         
         alpaca_positions = broker.get_positions()
         print(f"[Warrior] Found {len(alpaca_positions)} Alpaca positions to sync")
+        
+        # Clean up orphaned trades in DB (marked 'open' but not on Alpaca)
+        active_symbols = set(alpaca_positions.keys())
+        close_orphaned_trades(active_symbols)
+        
         synced_count = 0
         
         for symbol, pos in alpaca_positions.items():
