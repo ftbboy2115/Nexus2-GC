@@ -5,12 +5,12 @@ import Navbar from '@/components/Navbar'
 
 export default function App({ Component, pageProps }: AppProps) {
     return (
-        <>
+        <div style={{ width: '100vw', maxWidth: '100vw', overflowX: 'hidden' }}>
             <Head>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
             </Head>
             <Navbar />
             <Component {...pageProps} />
-        </>
+        </div>
     )
 }
