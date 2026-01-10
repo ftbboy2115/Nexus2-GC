@@ -1198,8 +1198,10 @@
     }
 
     /* Signal table horizontal scroll */
+    /* TEMP TEST: Hiding table to diagnose overflow */
     .signalTable {
         font-size: 0.75rem;
+        display: none;
     }
 
     .signalTable th,
