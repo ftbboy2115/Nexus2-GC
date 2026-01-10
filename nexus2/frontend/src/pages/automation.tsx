@@ -78,6 +78,36 @@ export default function Automation() {
     const [showColumnEditor, setShowColumnEditor] = useState(false)
     const [positionsMaximized, setPositionsMaximized] = useState(false)
 
+    // Countdown timer state
+    const [countdown, setCountdown] = useState<string>('')
+
+    // Update countdown every second when scheduler is running
+    useEffect(() => {
+        if (!scheduler?.running || !scheduler?.next_run) {
+            setCountdown('')
+            return
+        }
+
+        const updateCountdown = () => {
+            const nextRun = new Date(scheduler.next_run!)
+            const now = new Date()
+            const diffMs = nextRun.getTime() - now.getTime()
+
+            if (diffMs <= 0) {
+                setCountdown('scanning...')
+                return
+            }
+
+            const mins = Math.floor(diffMs / 60000)
+            const secs = Math.floor((diffMs % 60000) / 1000)
+            setCountdown(`${mins}m ${secs}s`)
+        }
+
+        updateCountdown()
+        const interval = setInterval(updateCountdown, 1000)
+        return () => clearInterval(interval)
+    }, [scheduler?.running, scheduler?.next_run])
+
     // Persist collapse states to localStorage
     useEffect(() => {
         localStorage.setItem('nexus_showDiagnostics', String(showDiagnostics))
@@ -428,6 +458,12 @@ export default function Automation() {
                                         <span>Last Run:</span>
                                         <strong>{formatTime(scheduler?.last_run)}</strong>
                                     </div>
+                                    {scheduler?.running && countdown && (
+                                        <div className={styles.stat} style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)' }}>
+                                            <span>⏱️ Next Scan:</span>
+                                            <strong style={{ color: '#60a5fa', fontFamily: 'monospace' }}>{countdown}</strong>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Collapsible Scan Details - visible anytime diagnostics available */}

@@ -39,6 +39,7 @@ export interface SchedulerStatus {
     is_market_hours: boolean
     cycles_run: number
     last_run: string | null
+    next_run: string | null
     last_error: string | null
 }
 
