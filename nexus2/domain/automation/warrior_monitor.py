@@ -300,6 +300,14 @@ class WarriorMonitor:
         """Main monitoring loop."""
         while self._running:
             try:
+                # Skip on non-market days (weekends, holidays)
+                from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                calendar = get_market_calendar(paper=True)
+                if not calendar.is_market_open():
+                    logger.debug("[Warrior Monitor] Market closed - skipping position check")
+                    await asyncio.sleep(60)  # Check again in 1 minute
+                    continue
+                
                 await self._check_all_positions()
                 await asyncio.sleep(self.settings.check_interval_seconds)
             except asyncio.CancelledError:

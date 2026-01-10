@@ -921,9 +921,11 @@ async def close_warrior_position(symbol: str, limit_price: float = None):
         
         # Get limit price if not provided
         if limit_price is None:
-            quote = broker.get_quote(symbol)
+            from nexus2.adapters.market_data import UnifiedMarketData
+            market_data = UnifiedMarketData()
+            quote = market_data.get_quote(symbol)
             if quote:
-                limit_price = float(quote.get('bid', quote.get('price', pos.current_price)))
+                limit_price = float(quote.price) if hasattr(quote, 'price') else float(pos.current_price) * 0.99
             else:
                 limit_price = float(pos.current_price) * 0.99  # 1% below current
         

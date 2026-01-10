@@ -109,6 +109,13 @@ Last updated: 2026-01-08
 - [ ] **Full Auto-Enable on Startup** — Extract broker/callback wiring + position sync from `/broker/enable` so it runs automatically on server start (currently only sets broker object, doesn't wire callbacks or sync positions)
 - [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
 - [x] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
+- [ ] **Trade Event Log** — Audit trail for all position changes (stop moves, partials, breakeven adjustments)
+  - [ ] `trade_events` table with event_type, old_value, new_value, timestamp
+  - [ ] Persist stop updates to DB when monitor moves stop
+  - [ ] Event replay for full state recovery after restart
+- [ ] **Position State Machine** — Formal state transitions (PENDING → OPEN → PARTIAL → CLOSED)
+  - [ ] Enforce invariants (no re-opening closed positions)
+  - [ ] State-aware sync logic
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
 
 ---
