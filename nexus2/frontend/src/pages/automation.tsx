@@ -1063,8 +1063,7 @@ export default function Automation() {
                                                     <tfoot style={{ borderTop: '2px solid #374151' }}>
                                                         <tr style={{ fontWeight: 600 }}>
                                                             <td style={{ color: '#9ca3af' }}>TOTAL ({simPositions.positions.length})</td>
-                                                            <td>{simPositions.positions.reduce((sum, p) => sum + p.qty, 0)}</td>
-                                                            <td title="Cost Basis">${simPositions.positions.reduce((sum, p) => sum + (p.qty * p.avg_price), 0).toFixed(0)}</td>
+                                                            <td colSpan={2} style={{ color: '#9ca3af' }}>Cost Basis: ${simPositions.positions.reduce((sum, p) => sum + (p.qty * p.avg_price), 0).toFixed(0)}</td>
                                                             <td>${simPositions.positions.reduce((sum, p) => sum + p.market_value, 0).toFixed(0)}</td>
                                                             <td></td>
                                                             <td style={{ color: (simPositions.account?.unrealized_pnl ?? 0) >= 0 ? '#22c55e' : '#ef4444' }}>
@@ -1197,11 +1196,12 @@ export default function Automation() {
                                                                     case 'symbol':
                                                                         return <td key={col.id} style={{ color: '#9ca3af' }}>TOTAL ({positions.positions.length})</td>
                                                                     case 'qty':
-                                                                        return <td key={col.id}>{positions.positions.reduce((sum, p) => sum + p.qty, 0)}</td>
-                                                                    case 'avg_price':
-                                                                        // Show cost basis (amount invested) = sum of qty * avg_price
+                                                                        // Merge qty + avg into "Cost Basis: $X"
                                                                         const costBasis = positions.positions.reduce((sum, p) => sum + (p.qty * p.avg_price), 0)
-                                                                        return <td key={col.id} title="Cost Basis (Amount Invested)">${costBasis.toFixed(0)}</td>
+                                                                        return <td key={col.id} colSpan={2} style={{ color: '#9ca3af' }}>Cost Basis: ${costBasis.toFixed(0)}</td>
+                                                                    case 'avg_price':
+                                                                        // Skip - merged with qty above
+                                                                        return null
                                                                     case 'market_value':
                                                                         return <td key={col.id}>${positions.total_value.toFixed(0)}</td>
                                                                     case 'unrealized_pnl':
