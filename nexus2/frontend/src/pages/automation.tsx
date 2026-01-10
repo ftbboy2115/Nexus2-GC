@@ -930,7 +930,7 @@ export default function Automation() {
                             {positionsMaximized && (
                                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99, backgroundColor: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(4px)' }} onClick={() => setPositionsMaximized(false)} />
                             )}
-                            <div className={styles.card} style={positionsMaximized ? { position: 'fixed', top: '20px', left: '20px', right: '20px', bottom: '20px', zIndex: 100, margin: 0, borderRadius: '12px', maxHeight: 'calc(100vh - 40px)', overflow: 'auto' } : {}}>                                <div className={styles.cardHeader} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div className={styles.card} style={positionsMaximized ? { position: 'fixed', top: '70px', left: '20px', right: '20px', bottom: '20px', zIndex: 100, margin: 0, borderRadius: '12px', maxHeight: 'calc(100vh - 90px)', overflow: 'auto' } : {}}>                                <div className={styles.cardHeader} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {/* Title row with window controls */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                                     <h2 style={{ margin: 0 }}>
