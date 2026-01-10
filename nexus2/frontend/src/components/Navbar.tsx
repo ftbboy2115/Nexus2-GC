@@ -30,10 +30,17 @@ const navItems: NavItem[] = [
     { label: 'Simulation', href: '/simulation', icon: '🧪' },
 ];
 
+const secondaryItems: NavItem[] = [
+    { label: 'Orders', href: '/orders' },
+    { label: 'Closed', href: '/closed' },
+    { label: 'Docs', href: '/docs' },
+];
+
 export default function Navbar() {
     const router = useRouter();
     const [settings, setSettings] = useState<Settings | null>(null);
     const [health, setHealth] = useState<HealthStatus | null>(null);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
@@ -50,6 +57,11 @@ export default function Navbar() {
         }
         fetchData();
     }, []);
+
+    // Close menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [router.pathname]);
 
     const updateSettings = async (updates: Partial<Settings>) => {
         try {
@@ -73,6 +85,16 @@ export default function Navbar() {
                 <span className={styles.title}>Nexus 2</span>
             </div>
 
+            {/* Hamburger button - visible on mobile */}
+            <button
+                className={styles.hamburger}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle menu"
+            >
+                <span className={mobileMenuOpen ? styles.hamburgerOpen : ''}></span>
+            </button>
+
+            {/* Desktop nav links */}
             <div className={styles.navLinks}>
                 {navItems.map((item) => (
                     <Link
@@ -127,16 +149,44 @@ export default function Navbar() {
             </div>
 
             <div className={styles.navSecondary}>
-                <Link href="/orders" className={`${styles.navLink} ${styles.secondary} ${router.pathname === '/orders' ? styles.active : ''}`}>
-                    Orders
-                </Link>
-                <Link href="/closed" className={`${styles.navLink} ${styles.secondary} ${router.pathname === '/closed' ? styles.active : ''}`}>
-                    Closed
-                </Link>
-                <Link href="/docs" className={`${styles.navLink} ${styles.secondary} ${router.pathname === '/docs' ? styles.active : ''}`}>
-                    Docs
-                </Link>
+                {secondaryItems.map((item) => (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`${styles.navLink} ${styles.secondary} ${router.pathname === item.href ? styles.active : ''}`}
+                    >
+                        {item.label}
+                    </Link>
+                ))}
             </div>
+
+            {/* Mobile menu overlay */}
+            {mobileMenuOpen && (
+                <div className={styles.mobileMenu}>
+                    <div className={styles.mobileMenuContent}>
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`${styles.mobileLink} ${router.pathname === item.href ? styles.active : ''}`}
+                            >
+                                <span>{item.icon}</span>
+                                <span>{item.label}</span>
+                            </Link>
+                        ))}
+                        <div className={styles.mobileDivider}></div>
+                        {secondaryItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`${styles.mobileLink} ${styles.secondary} ${router.pathname === item.href ? styles.active : ''}`}
+                            >
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
         </nav>
     );
 }

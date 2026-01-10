@@ -167,6 +167,125 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
+/* Hamburger button - hidden on desktop */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.hamburger span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #b0b0b0;
+    border-radius: 1px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.hamburger span::before,
+.hamburger span::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 2px;
+    background: #b0b0b0;
+    border-radius: 1px;
+    transition: all 0.3s ease;
+}
+
+.hamburger span::before {
+    top: -6px;
+}
+
+.hamburger span::after {
+    top: 6px;
+}
+
+.hamburger span.hamburgerOpen {
+    background: transparent;
+}
+
+.hamburger span.hamburgerOpen::before {
+    top: 0;
+    transform: rotate(45deg);
+}
+
+.hamburger span.hamburgerOpen::after {
+    top: 0;
+    transform: rotate(-45deg);
+}
+
+/* Mobile menu overlay */
+.mobileMenu {
+    display: none;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.mobileMenuContent {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mobileLink {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 10px;
+    color: #b0b0b0;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.mobileLink:hover,
+.mobileLink.active {
+    color: #fff;
+    background: rgba(102, 126, 234, 0.2);
+}
+
+.mobileLink.secondary {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: #808080;
+}
+
+.mobileDivider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+}
+
 /* Responsive: collapse to icons on smaller screens */
 @media (max-width: 1024px) {
     .navLabel {
@@ -193,5 +312,46 @@
 
     .navControls {
         gap: 0.25rem;
+    }
+}
+
+/* Mobile: Show hamburger, hide desktop nav */
+@media (max-width: 600px) {
+    .navbar {
+        padding: 0 0.75rem;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    .navLinks {
+        display: none;
+    }
+
+    .navSecondary {
+        display: none;
+    }
+
+    .mobileMenu {
+        display: block;
+    }
+
+    .navControls {
+        margin-left: auto;
+    }
+
+    .controlSelect {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.7rem;
+    }
+
+    .status {
+        display: none;
+    }
+
+    .settingsBtn {
+        padding: 0.35rem 0.45rem;
+        font-size: 0.9rem;
     }
 }
