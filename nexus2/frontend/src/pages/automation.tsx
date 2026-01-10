@@ -1060,6 +1060,18 @@ export default function Automation() {
                                                             </tr>
                                                         ))}
                                                     </tbody>
+                                                    <tfoot style={{ borderTop: '2px solid #374151' }}>
+                                                        <tr style={{ fontWeight: 600 }}>
+                                                            <td style={{ color: '#9ca3af' }}>TOTAL ({simPositions.positions.length})</td>
+                                                            <td>{simPositions.positions.reduce((sum, p) => sum + p.qty, 0)}</td>
+                                                            <td></td>
+                                                            <td>${simPositions.positions.reduce((sum, p) => sum + p.market_value, 0).toFixed(0)}</td>
+                                                            <td></td>
+                                                            <td style={{ color: (simPositions.account?.unrealized_pnl ?? 0) >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                {(simPositions.account?.unrealized_pnl ?? 0) >= 0 ? '+' : ''}{((simPositions.account?.unrealized_pnl || 0) / (simPositions.positions.reduce((sum, p) => sum + p.market_value, 0) - (simPositions.account?.unrealized_pnl || 0)) * 100).toFixed(1)}%
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
                                                 </table>
                                                 {simPositions.account && (
                                                     <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
@@ -1177,6 +1189,45 @@ export default function Automation() {
                                                                 </tr>
                                                             ))}
                                                     </tbody>
+                                                    <tfoot style={{ borderTop: '2px solid #374151', position: 'sticky', bottom: 0, backgroundColor: '#1f2937' }}>
+                                                        <tr style={{ fontWeight: 600 }}>
+                                                            {(positionsMaximized ? columnConfig.allColumns : columnConfig.columns).map((col) => {
+                                                                // Calculate totals for each column type
+                                                                switch (col.id) {
+                                                                    case 'symbol':
+                                                                        return <td key={col.id} style={{ color: '#9ca3af' }}>TOTAL ({positions.positions.length})</td>
+                                                                    case 'qty':
+                                                                        return <td key={col.id}>{positions.positions.reduce((sum, p) => sum + p.qty, 0)}</td>
+                                                                    case 'market_value':
+                                                                        return <td key={col.id}>${positions.total_value.toFixed(0)}</td>
+                                                                    case 'unrealized_pnl':
+                                                                        return (
+                                                                            <td key={col.id} style={{ color: positions.total_pnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                {positions.total_pnl >= 0 ? '+' : ''}${positions.total_pnl.toFixed(2)}
+                                                                            </td>
+                                                                        )
+                                                                    case 'pnl_percent':
+                                                                        const totalPnlPct = positions.total_value > 0
+                                                                            ? (positions.total_pnl / (positions.total_value - positions.total_pnl)) * 100
+                                                                            : 0
+                                                                        return (
+                                                                            <td key={col.id} style={{ color: totalPnlPct >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                {totalPnlPct >= 0 ? '+' : ''}{totalPnlPct.toFixed(1)}%
+                                                                            </td>
+                                                                        )
+                                                                    case 'today_pnl':
+                                                                        const totalTodayPnl = positions.positions.reduce((sum, p) => sum + (p.today_pnl || 0), 0)
+                                                                        return (
+                                                                            <td key={col.id} style={{ color: totalTodayPnl >= 0 ? '#22c55e' : '#ef4444' }}>
+                                                                                {totalTodayPnl >= 0 ? '+' : ''}${totalTodayPnl.toFixed(2)}
+                                                                            </td>
+                                                                        )
+                                                                    default:
+                                                                        return <td key={col.id}></td>
+                                                                }
+                                                            })}
+                                                        </tr>
+                                                    </tfoot>
                                                 </table>
                                                 <div style={{ marginTop: '12px', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                                                     <span style={{ color: '#9ca3af' }}>Total Value: <strong>${positions.total_value.toFixed(0)}</strong></span>
