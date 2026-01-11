@@ -26,6 +26,10 @@ Last updated: 2026-01-11
 - [x] **Trade Event Logging Tests** — Ensure audit trail integrity (commit `695009a`)
   - Test entry events capture market context ✅
   - Test exit events capture P&L correctly ✅
+- [x] **Warrior API Route Tests** — Largest API file coverage (commit `97d05bb`)
+  - Engine control (start/stop/pause/resume) ✅
+  - Simulation mode (enable/reset/order/price) ✅
+  - Scanner and monitor settings ✅
 
 ---
 
