@@ -76,10 +76,7 @@ def test_ai_validator():
     print("TEST 3: AI Catalyst Validator (Gemini)")
     print("="*60)
     
-    import os
-    if not os.environ.get("GOOGLE_API_KEY"):
-        print("⚠ GOOGLE_API_KEY not set, skipping AI test")
-        return True
+    import os\n    if not os.environ.get("GOOGLE_API_KEY"):\n        pytest.skip("GOOGLE_API_KEY not set")
     
     try:
         from nexus2.domain.automation.ai_catalyst_validator import AICatalystValidator
