@@ -321,7 +321,14 @@ export default function Automation() {
     const formatTime = (iso: string | null | undefined) => {
         if (!iso) return '-'
         const d = new Date(iso)
-        return d.toLocaleTimeString()
+        // Format as Eastern Time with ET label
+        return d.toLocaleTimeString('en-US', {
+            timeZone: 'America/New_York',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }) + ' ET'
     }
 
     return (
