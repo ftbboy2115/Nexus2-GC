@@ -23,15 +23,15 @@
 
 test_cases:
   # ==========================================================================
-  # ROSS CAMERON TRADES - January 8, 2025
+  # ROSS CAMERON TRADES - January 8, 2026
   # ==========================================================================
   
-  - id: acon_2025_01_08
+  - id: acon_2026_01_08
     symbol: ACON
     setup_type: pmh
     outcome: winner
-    description: "ACON Jan 8 2025 - Ross traded PMH breakout, +42% gap"
-    trade_date: "2025-01-08"
+    description: "ACON Jan 8 2026 - Ross traded PMH breakout, +42% gap"
+    trade_date: "2026-01-08"
     ross_pnl: 9293.09  # TARGET TO MATCH/BEAT
     premarket_data:
       gap_percent: 42.1
@@ -47,12 +47,12 @@ test_cases:
       profit_target_r: 2.0
     notes: "Monster volume 725x RVOL, news catalyst - BIGGEST WINNER"
 
-  - id: flyx_2025_01_08
+  - id: flyx_2026_01_08
     symbol: FLYX
     setup_type: pmh
     outcome: winner
-    description: "FLYX Jan 8 2025 - +130% gap, extreme RVOL"
-    trade_date: "2025-01-08"
+    description: "FLYX Jan 8 2026 - +130% gap, extreme RVOL"
+    trade_date: "2026-01-08"
     ross_pnl: 4731.89  # TARGET TO MATCH/BEAT
     premarket_data:
       gap_percent: 130.3
@@ -69,15 +69,15 @@ test_cases:
     notes: "5282x RVOL, former runner pattern"
 
   # ==========================================================================
-  # ROSS CAMERON TRADES - January 6, 2025
+  # ROSS CAMERON TRADES - January 6, 2026
   # ==========================================================================
 
-  - id: optx_2025_01_06
+  - id: optx_2026_01_06
     symbol: OPTX
     setup_type: orb
     outcome: winner
     description: "OPTX - Ross traded ORB breakout"
-    trade_date: "2025-01-06"
+    trade_date: "2026-01-06"
     ross_pnl: 3604.91  # TARGET TO MATCH/BEAT
     premarket_data:
       gap_percent: 35.0
@@ -93,12 +93,12 @@ test_cases:
       profit_target_r: 2.0
     notes: "ORB setup, gap + news"
 
-  - id: elab_2025_01_06
+  - id: elab_2026_01_06
     symbol: ELAB
     setup_type: pmh
     outcome: winner
     description: "ELAB - Ross traded"
-    trade_date: "2025-01-06"
+    trade_date: "2026-01-06"
     ross_pnl: 3430.23  # TARGET TO MATCH/BEAT
     premarket_data:
       gap_percent: 25.0
@@ -114,12 +114,12 @@ test_cases:
       profit_target_r: 2.0
     notes: "News catalyst"
 
-  - id: alms_2025_01_06
+  - id: alms_2026_01_06
     symbol: ALMS
     setup_type: pmh
     outcome: winner
     description: "ALMS - Ross traded"
-    trade_date: "2025-01-06"
+    trade_date: "2026-01-06"
     ross_pnl: 514.46  # TARGET TO MATCH/BEAT (smallest winner)
     premarket_data:
       gap_percent: 30.0
@@ -281,7 +281,7 @@ test_cases:
 # USAGE:
 # 
 # 1. Load a test case:
-#    POST /warrior/sim/load_test_case?case_id=acon_2025_01_08
+#    POST /warrior/sim/load_test_case?case_id=acon_2026_01_08
 #
 # 2. This will:
 #    - Set MockBroker prices based on premarket_data
@@ -294,6 +294,31 @@ test_cases:
 # ==========================================================================
 
 # ==========================================================================
+# ROSS CAMERON TRADES - January 9, 2026
+# ==========================================================================
+
+  - id: tpst_2026_01_09
+    symbol: TPST
+    setup_type: pmh
+    outcome: winner
+    description: "TPST Jan 9 2026 - Biotech gap on FDA catalyst, PMH breakout"
+    trade_date: "2026-01-09"
+    ross_pnl: 4200.00  # ESTIMATED
+    premarket_data:
+      gap_percent: 55.0
+      volume: 35000000
+      float_shares: 8000000
+      catalyst: "fda_catalyst"
+      previous_close: 0.85
+      premarket_high: 1.35
+    expected:
+      entry_near: 1.40  # PMH breakout
+      stop_near: 1.25   # Below PMH
+      mental_stop_cents: 15
+      profit_target_r: 2.0
+    notes: "Biotech FDA catalyst - tight float, high RVOL"
+
+# ==========================================================================
 # SYNTHETIC WARRIOR LOSERS (for testing stop execution)
 # ==========================================================================
 
@@ -303,7 +328,7 @@ test_cases:
     outcome: loser
     synthetic: true
     description: "Synthetic PMH loser - gap up then fails at PMH"
-    trade_date: "2025-01-01"
+    trade_date: "2026-01-01"
     synthetic_config:
       premarket_high: 5.00
       open_price: 5.10  # Breaks PMH
@@ -326,7 +351,7 @@ test_cases:
     outcome: winner
     synthetic: true
     description: "Synthetic PMH winner - clean 2R move"
-    trade_date: "2025-01-01"
+    trade_date: "2026-01-01"
     synthetic_config:
       premarket_high: 5.00
       open_price: 5.10
