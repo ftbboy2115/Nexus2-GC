@@ -704,6 +704,7 @@ async def submit_warrior_sim_order(request: WarriorSimOrderRequest):
     if current_price is None and request.limit_price:
         broker.set_price(request.symbol, request.limit_price)
     
+    from uuid import uuid4
     result = broker.submit_bracket_order(
         client_order_id=uuid4(),
         symbol=request.symbol,
@@ -718,7 +719,6 @@ async def submit_warrior_sim_order(request: WarriorSimOrderRequest):
     # Log entry event if filled
     if is_filled:
         from nexus2.domain.automation.trade_event_service import trade_event_service
-        from uuid import uuid4
         trade_event_service.log_warrior_entry(
             position_id=str(uuid4()),  # Generate unique ID for sim
             symbol=request.symbol,

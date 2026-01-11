@@ -165,7 +165,6 @@ class TestWarriorSimulationEndpoints:
 class TestWarriorSimOrderSubmission:
     """Test simulation order submission."""
     
-    @pytest.mark.skip(reason="Known bug: uuid4 not imported in submit_warrior_sim_order")
     def test_sim_order_submits_to_broker(self, test_client):
         """POST /warrior/sim/order should submit to MockBroker when enabled."""
         mock_broker = MagicMock()
