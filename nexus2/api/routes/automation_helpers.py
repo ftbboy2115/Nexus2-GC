@@ -69,6 +69,16 @@ async def auto_start_checker(
                     settings.auto_start_time and
                     settings.auto_start_time == current_time):
                     
+                    # Check if today is a trading day (weekday + not holiday)
+                    from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                    calendar = get_market_calendar()
+                    if not calendar.is_trading_day():
+                        status = calendar.get_market_status()
+                        logger.info(f"[AutoStart] Skipping - not a trading day ({status.reason})")
+                        set_auto_start_triggered_today(True)  # Don't keep trying today
+                        await asyncio.sleep(60)
+                        continue
+                    
                     # Check if scheduler is not already running
                     scheduler = get_scheduler_fn()
                     if not scheduler.is_running:
