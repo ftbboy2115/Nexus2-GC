@@ -15,6 +15,9 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+# Trade event logging
+from nexus2.domain.automation.trade_event_service import trade_event_service
+
 
 class ExitReason(Enum):
     """Reason for exiting a position."""
@@ -307,6 +310,8 @@ class PositionMonitor:
                 logger.info(f"{symbol}: Moving stop to breakeven at {r_multiple:.1f}R (Day {days_held})")
                 if self._update_stop:
                     await self._update_stop(position_id, entry_price)
+                    # Log breakeven event
+                    trade_event_service.log_nac_breakeven(position_id, symbol, entry_price)
             elif days_held == 0 and current_stop < entry_price:
                 logger.debug(f"{symbol}: Skipping breakeven trail on Day 0 (at {r_multiple:.1f}R)")
         
@@ -363,6 +368,8 @@ class PositionMonitor:
                     if self._update_stop:
                         logger.info(f"[KK Partial] {symbol}: Moving stop to breakeven ${entry_price}")
                         await self._update_stop(position_id, entry_price)
+                        # Log breakeven event
+                        trade_event_service.log_nac_breakeven(position_id, symbol, entry_price)
                     
                     return ExitSignal(
                         position_id=position_id,
@@ -401,6 +408,31 @@ class PositionMonitor:
             try:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
+                
+                # Log trade event
+                if signal.reason == ExitReason.PARTIAL_EXIT:
+                    trade_event_service.log_nac_partial_exit(
+                        position_id=signal.position_id,
+                        symbol=signal.symbol,
+                        shares_sold=signal.shares_to_exit,
+                        exit_price=signal.exit_price,
+                        pnl=signal.pnl_estimate,
+                        days_held=signal.days_held,
+                    )
+                else:
+                    exit_type_map = {
+                        ExitReason.STOP_HIT: "stop_hit",
+                        ExitReason.TRAILING_STOP: "trailing_stop",
+                        ExitReason.PROFIT_TARGET: "profit_target",
+                    }
+                    trade_event_service.log_nac_exit(
+                        position_id=signal.position_id,
+                        symbol=signal.symbol,
+                        exit_price=signal.exit_price,
+                        exit_type=exit_type_map.get(signal.reason, "manual"),
+                        pnl=signal.pnl_estimate,
+                        reason=signal.trigger_reason or signal.reason.value,
+                    )
                 
                 # Clear from pending exits
                 self._pending_exits.discard(signal.position_id)

@@ -21,6 +21,9 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+# Trade event logging
+from nexus2.domain.automation.trade_event_service import trade_event_service
+
 
 # =============================================================================
 # ENUMS & DATA CLASSES
@@ -245,6 +248,16 @@ class WarriorMonitor:
         )
         
         self._positions[position_id] = position
+        
+        # Log entry event
+        trade_event_service.log_warrior_entry(
+            position_id=position_id,
+            symbol=symbol,
+            entry_price=entry_price,
+            stop_price=current_stop,
+            shares=shares,
+            trigger_type="ORB",  # Default, can be overridden by caller
+        )
         
         logger.info(
             f"[Warrior] Added {symbol}: entry=${entry_price}, "
@@ -510,6 +523,12 @@ class WarriorMonitor:
                     position.current_stop = position.entry_price
                     if self._update_stop:
                         await self._update_stop(position.position_id, position.entry_price)
+                    # Log breakeven event
+                    trade_event_service.log_warrior_breakeven(
+                        position_id=position.position_id,
+                        symbol=position.symbol,
+                        entry_price=position.entry_price,
+                    )
                     logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven")
                 
                 self.partials_triggered += 1
@@ -544,6 +563,35 @@ class WarriorMonitor:
             try:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
+                
+                # Log trade event
+                exit_reason_map = {
+                    WarriorExitReason.MENTAL_STOP: "mental_stop",
+                    WarriorExitReason.TECHNICAL_STOP: "technical_stop",
+                    WarriorExitReason.CANDLE_UNDER_CANDLE: "candle_under_candle",
+                    WarriorExitReason.TOPPING_TAIL: "topping_tail",
+                    WarriorExitReason.TIME_STOP: "time_stop",
+                    WarriorExitReason.AFTER_HOURS_EXIT: "after_hours_exit",
+                    WarriorExitReason.BREAKOUT_FAILURE: "breakout_failure",
+                }
+                
+                if signal.reason == WarriorExitReason.PARTIAL_EXIT:
+                    trade_event_service.log_warrior_partial_exit(
+                        position_id=signal.position_id,
+                        symbol=signal.symbol,
+                        shares_sold=signal.shares_to_exit,
+                        exit_price=signal.exit_price,
+                        pnl=signal.pnl_estimate,
+                        r_multiple=signal.r_multiple,
+                    )
+                else:
+                    trade_event_service.log_warrior_exit(
+                        position_id=signal.position_id,
+                        symbol=signal.symbol,
+                        exit_price=signal.exit_price,
+                        exit_reason=exit_reason_map.get(signal.reason, "manual"),
+                        pnl=signal.pnl_estimate,
+                    )
                 
                 # Track realized P&L
                 self._add_realized_pnl(signal.pnl_estimate)
