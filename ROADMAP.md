@@ -20,6 +20,10 @@ Last updated: 2026-01-10
   - GUI: Button in Quick Actions with confirmation modal
 - [x] **Project README** — Startup instructions (backend, frontend, env setup)
 - [ ] **User Guide / Wiki** — How to use the system, operational playbook
+- [ ] **Market Conditions Tracking** — Dedicated `market_snapshots` table for correlation analysis
+  - Periodic capture of SPY, QQQ, VIX, sector ETFs
+  - Link to trade events for win/loss correlation
+  - Dashboard widget showing market health
 
 ---
 

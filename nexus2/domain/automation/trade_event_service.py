@@ -54,6 +54,40 @@ class TradeEventService:
     def __init__(self):
         pass
     
+    def _get_market_context(self) -> Dict[str, Any]:
+        """
+        Capture current market conditions (SPY, VIX) for event context.
+        
+        Returns dict with spy_price, spy_change_pct, vix, timestamp.
+        Failures return empty dict (non-blocking).
+        """
+        try:
+            from nexus2.adapters.market_data.unified import UnifiedMarketData
+            
+            umd = UnifiedMarketData()
+            context = {}
+            
+            # Get SPY quote
+            spy_quote = umd.get_quote("SPY")
+            if spy_quote:
+                context["spy_price"] = float(spy_quote.price)
+                # Calculate change if we have open price
+                if hasattr(spy_quote, 'open') and spy_quote.open:
+                    change_pct = ((spy_quote.price - spy_quote.open) / spy_quote.open) * 100
+                    context["spy_change_pct"] = round(float(change_pct), 2)
+            
+            # Get VIX (CBOE Volatility Index)
+            vix_quote = umd.get_quote("VIXY")  # VIX ETF proxy
+            if vix_quote:
+                context["vix"] = float(vix_quote.price)
+            
+            context["market_snapshot_time"] = datetime.utcnow().isoformat()
+            
+            return context
+        except Exception as e:
+            logger.debug(f"[TradeEvent] Market context capture failed: {e}")
+            return {}
+    
     def _log_event(
         self,
         strategy: str,
@@ -105,6 +139,16 @@ class TradeEventService:
         quality_score: int = 0,
     ) -> Optional[int]:
         """Log NAC position entry."""
+        metadata = {
+            "entry_price": str(entry_price),
+            "stop_price": str(stop_price),
+            "shares": shares,
+            "setup_type": setup_type,
+            "quality_score": quality_score,
+        }
+        # Add market context
+        metadata.update(self._get_market_context())
+        
         return self._log_event(
             strategy="NAC",
             position_id=position_id,
@@ -112,13 +156,7 @@ class TradeEventService:
             event_type=self.NAC_ENTRY,
             new_value=str(entry_price),
             reason=f"Entry: {shares} shares @ ${entry_price}",
-            metadata={
-                "entry_price": str(entry_price),
-                "stop_price": str(stop_price),
-                "shares": shares,
-                "setup_type": setup_type,
-                "quality_score": quality_score,
-            },
+            metadata=metadata,
         )
     
     def log_nac_stop_moved(
@@ -200,6 +238,14 @@ class TradeEventService:
         }
         event_type = event_type_map.get(exit_type, self.NAC_FULL_EXIT)
         
+        metadata = {
+            "exit_price": str(exit_price),
+            "exit_type": exit_type,
+            "pnl": str(pnl),
+        }
+        # Add market context
+        metadata.update(self._get_market_context())
+        
         return self._log_event(
             strategy="NAC",
             position_id=position_id,
@@ -207,11 +253,7 @@ class TradeEventService:
             event_type=event_type,
             new_value=str(exit_price),
             reason=reason or f"Exit @ ${exit_price}, P&L: ${pnl}",
-            metadata={
-                "exit_price": str(exit_price),
-                "exit_type": exit_type,
-                "pnl": str(pnl),
-            },
+            metadata=metadata,
         )
     
     # ==================== Warrior Methods ====================
@@ -226,6 +268,15 @@ class TradeEventService:
         trigger_type: str = "ORB",
     ) -> Optional[int]:
         """Log Warrior position entry."""
+        metadata = {
+            "entry_price": str(entry_price),
+            "stop_price": str(stop_price),
+            "shares": shares,
+            "trigger_type": trigger_type,
+        }
+        # Add market context
+        metadata.update(self._get_market_context())
+        
         return self._log_event(
             strategy="WARRIOR",
             position_id=position_id,
@@ -233,12 +284,7 @@ class TradeEventService:
             event_type=self.WARRIOR_ENTRY,
             new_value=str(entry_price),
             reason=f"{trigger_type} Entry: {shares} shares @ ${entry_price}",
-            metadata={
-                "entry_price": str(entry_price),
-                "stop_price": str(stop_price),
-                "shares": shares,
-                "trigger_type": trigger_type,
-            },
+            metadata=metadata,
         )
     
     def log_warrior_stop_moved(
@@ -342,6 +388,14 @@ class TradeEventService:
         }
         event_type = event_type_map.get(exit_reason, self.WARRIOR_FULL_EXIT)
         
+        metadata = {
+            "exit_price": str(exit_price),
+            "exit_reason": exit_reason,
+            "pnl": str(pnl),
+        }
+        # Add market context
+        metadata.update(self._get_market_context())
+        
         return self._log_event(
             strategy="WARRIOR",
             position_id=position_id,
@@ -349,11 +403,7 @@ class TradeEventService:
             event_type=event_type,
             new_value=str(exit_price),
             reason=f"Exit ({exit_reason}) @ ${exit_price}, P&L: ${pnl}",
-            metadata={
-                "exit_price": str(exit_price),
-                "exit_reason": exit_reason,
-                "pnl": str(pnl),
-            },
+            metadata=metadata,
         )
     
     # ==================== Query Methods ====================
