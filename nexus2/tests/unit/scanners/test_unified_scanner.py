@@ -170,7 +170,7 @@ class TestUnifiedScannerService:
         )
         
         # Mock RS service to avoid expensive API calls
-        with patch("nexus2.domain.automation.unified_scanner.get_rs_service") as mock_rs:
+        with patch("nexus2.domain.scanner.rs_service.get_rs_service") as mock_rs:
             mock_rs.return_value.get_rs_percentile.return_value = 75
             result = unified.scan()
         
@@ -315,7 +315,7 @@ class TestSignalConversion:
         )
         
         # Mock RS service to avoid expensive API calls
-        with patch("nexus2.domain.automation.unified_scanner.get_rs_service") as mock_rs:
+        with patch("nexus2.domain.scanner.rs_service.get_rs_service") as mock_rs:
             mock_rs.return_value.get_rs_percentile.return_value = 80
             result = unified.scan(modes=[ScanMode.HTF_ONLY])
         
