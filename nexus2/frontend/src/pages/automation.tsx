@@ -78,6 +78,15 @@ export default function Automation() {
     const [showColumnEditor, setShowColumnEditor] = useState(false)
     const [positionsMaximized, setPositionsMaximized] = useState(false)
 
+    // Trade events log
+    const [tradeEvents, setTradeEvents] = useState<any[]>([])
+    const [showTradeEvents, setShowTradeEvents] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('nexus_showTradeEvents') === 'true'
+        }
+        return false
+    })
+
     // Countdown timer state
     const [countdown, setCountdown] = useState<string>('')
 
@@ -132,6 +141,10 @@ export default function Automation() {
         localStorage.setItem('nexus_showHowToUse', String(showHowToUse))
     }, [showHowToUse])
 
+    useEffect(() => {
+        localStorage.setItem('nexus_showTradeEvents', String(showTradeEvents))
+    }, [showTradeEvents])
+
     // Use relative URLs - Next.js rewrites proxy to backend
     const API_BASE = ''
 
@@ -170,6 +183,17 @@ export default function Automation() {
             // Fetch diagnostics for scanner visibility
             if (diagnosticsRes.ok) {
                 setDiagnostics(await diagnosticsRes.json())
+            }
+
+            // Fetch recent trade events
+            try {
+                const eventsRes = await fetch(`${API_BASE}/trade-events/recent?strategy=NAC&limit=20`)
+                if (eventsRes.ok) {
+                    const eventsData = await eventsRes.json()
+                    setTradeEvents(eventsData.events || [])
+                }
+            } catch (err) {
+                console.error('Error fetching trade events:', err)
             }
         } catch (err) {
             console.error('Error fetching status:', err)
@@ -1978,6 +2002,68 @@ export default function Automation() {
                     </div>
                 </div>
             )}
+
+            {/* Trade Events Log - Collapsible */}
+            <div className={styles.card} style={{ marginTop: '1.5rem' }}>
+                <div className={styles.cardHeader} style={{ cursor: 'pointer' }} onClick={() => setShowTradeEvents(!showTradeEvents)}>
+                    <h3>📋 Trade Events Log {showTradeEvents ? '▼' : '▶'}</h3>
+                    <span style={{ fontSize: '0.85rem', color: '#888' }}>
+                        {tradeEvents.length} recent events
+                    </span>
+                </div>
+                {showTradeEvents && (
+                    <div className={styles.cardBody}>
+                        {tradeEvents.length === 0 ? (
+                            <p style={{ color: '#888', fontStyle: 'italic' }}>No trade events yet</p>
+                        ) : (
+                            <table className={styles.table} style={{ fontSize: '0.85rem' }}>
+                                <thead>
+                                    <tr>
+                                        <th>Time (ET)</th>
+                                        <th>Symbol</th>
+                                        <th>Event</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tradeEvents.map((event: any, idx: number) => (
+                                        <tr key={event.id || idx}>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                                {event.created_at ? new Date(event.created_at).toLocaleTimeString('en-US', {
+                                                    timeZone: 'America/New_York',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) + ' ET' : '--'}
+                                            </td>
+                                            <td><strong>{event.symbol}</strong></td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    backgroundColor: event.event_type?.includes('EXIT') ? '#ef444420'
+                                                        : event.event_type?.includes('ENTRY') ? '#22c55e20'
+                                                            : event.event_type?.includes('BREAKEVEN') ? '#3b82f620'
+                                                                : '#f5f5f520',
+                                                    color: event.event_type?.includes('EXIT') ? '#ef4444'
+                                                        : event.event_type?.includes('ENTRY') ? '#22c55e'
+                                                            : event.event_type?.includes('BREAKEVEN') ? '#3b82f6'
+                                                                : '#888'
+                                                }}>
+                                                    {event.event_type?.replace(/_/g, ' ')}
+                                                </span>
+                                            </td>
+                                            <td style={{ color: '#888' }}>
+                                                {event.reason || (event.new_value ? `→ $${event.new_value}` : '--')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Liquidate All Confirmation Modal */}
             {showLiquidateModal && (
