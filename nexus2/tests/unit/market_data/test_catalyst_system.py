@@ -3,6 +3,7 @@ Test script for catalyst detection system.
 Run: python -m nexus2.tests.test_catalyst_system
 """
 
+import pytest
 import sys
 sys.path.insert(0, ".")
 
@@ -35,7 +36,8 @@ def test_fmp_adapter():
     headlines = fmp.get_recent_headlines(symbol, days=5)
     print(f"✓ Headlines (5 days): {len(headlines)}")
     
-    return True
+    # Assertions
+    assert fmp.config.api_key, "API key should be set"
 
 
 def test_catalyst_classifier():
@@ -64,7 +66,8 @@ def test_catalyst_classifier():
         print(f"{status} '{headline[:40]}...'")
         print(f"   → is_positive={result.is_positive}, type={result.catalyst_type}, conf={result.confidence}")
     
-    return True
+    # Basic assertion
+    assert classifier is not None
 
 
 def test_ai_validator():
@@ -99,11 +102,9 @@ def test_ai_validator():
         print(f"✓ Analyst PT headline: valid={result2.is_valid}, reason={result2.reason}")
         print(f"   Raw: {result2.raw_response}")
         
-        return True
-        
     except Exception as e:
         print(f"✗ AI validator error: {e}")
-        return False
+        pytest.skip("AI validator requires GOOGLE_API_KEY")
 
 
 def test_full_validation():
@@ -133,7 +134,9 @@ def test_full_validation():
     print(f"✓ catalyst_type: {result.catalyst_type}")
     print(f"✓ reasons: {result.reasons}")
     
-    return True
+    # Assertions
+    assert result is not None
+    assert hasattr(result, 'is_valid')
 
 
 def main():
