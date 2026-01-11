@@ -208,7 +208,8 @@ class TestTradeEventServiceMarketContext:
         mock_umd = MagicMock()
         mock_umd.get_quote.side_effect = lambda sym: mock_quote if sym == "SPY" else mock_vix_quote
         
-        with patch("nexus2.domain.automation.trade_event_service.UnifiedMarketData", return_value=mock_umd):
+        # Patch where it's imported from (inside _get_market_context)
+        with patch("nexus2.adapters.market_data.unified.UnifiedMarketData", return_value=mock_umd):
             context = service._get_market_context()
         
         assert "spy_price" in context
@@ -226,7 +227,7 @@ class TestTradeEventServiceMarketContext:
         mock_umd = MagicMock()
         mock_umd.get_quote.return_value = None  # No data
         
-        with patch("nexus2.domain.automation.trade_event_service.UnifiedMarketData", return_value=mock_umd):
+        with patch("nexus2.adapters.market_data.unified.UnifiedMarketData", return_value=mock_umd):
             context = service._get_market_context()
         
         # Should not crash, just return partial context

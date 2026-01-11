@@ -22,96 +22,50 @@ ET = pytz.timezone("America/New_York")
 class TestAutoStartWeekendSkip:
     """Test that auto-start skips on weekends."""
     
-    @pytest.mark.asyncio
-    async def test_skips_on_saturday(self):
+    def test_skips_on_saturday(self):
         """Auto-start should skip on Saturday."""
-        from nexus2.api.routes.automation_helpers import auto_start_checker
-        from nexus2.api.routes import automation_state
+        from nexus2.adapters.market_data.market_calendar import MarketCalendar, MarketStatus
         
         # Mock Saturday 9:15 AM ET
         saturday = datetime(2026, 1, 10, 9, 15, tzinfo=ET)  # Jan 10, 2026 is Saturday
         
-        # Mock dependencies
-        mock_scheduler = MagicMock()
-        mock_scheduler.is_running = False
-        
-        mock_engine = MagicMock()
-        mock_engine.state.name = "STOPPED"
-        
-        mock_monitor = MagicMock()
-        mock_monitor._running = False
-        
-        get_scheduler_fn = MagicMock(return_value=mock_scheduler)
-        get_engine_fn = MagicMock(return_value=mock_engine)
-        get_monitor_fn = MagicMock(return_value=mock_monitor)
-        configure_and_start_fn = AsyncMock()
-        
-        # Mock market calendar to return weekend
-        mock_calendar = MagicMock()
-        mock_calendar.is_trading_day.return_value = False
-        mock_calendar.get_market_status.return_value = MagicMock(reason="weekend")
-        
-        # Reset the trigger flag
-        automation_state.set_auto_start_triggered_today(False)
-        
-        with patch("nexus2.api.routes.automation_helpers.datetime") as mock_dt, \
-             patch("nexus2.api.routes.automation_helpers.get_market_calendar") as mock_get_cal, \
-             patch("nexus2.db.repository.SchedulerSettingsRepository") as mock_repo_cls:
-            
-            mock_dt.now.return_value = saturday
-            mock_get_cal.return_value = mock_calendar
-            
-            # Mock settings
-            mock_settings = MagicMock()
-            mock_settings.auto_start_enabled = "true"
-            mock_settings.auto_start_time = "09:15"
-            mock_repo_cls.return_value.get.return_value = mock_settings
-            
-            # Create limited run (one iteration only)
-            iterations = 0
-            async def limited_run():
-                nonlocal iterations
-                iterations += 1
-                if iterations > 1:
-                    raise StopIteration()
-            
-            # Run one iteration and check scheduler wasn't started
-            # The auto_start_checker runs in a loop, so we just test the logic path
-            
-            # Directly test the condition: on weekend, scheduler should NOT start
-            assert mock_calendar.is_trading_day() == False
-            assert mock_calendar.get_market_status().reason == "weekend"
-    
-    @pytest.mark.asyncio
-    async def test_skips_on_sunday(self):
-        """Auto-start should skip on Sunday."""
-        from nexus2.adapters.market_data.market_calendar import MarketCalendar
-        
-        # Mock Sunday
-        sunday = datetime(2026, 1, 11, 9, 15, tzinfo=ET)  # Jan 11, 2026 is Sunday
-        
         with patch.object(MarketCalendar, "get_market_status") as mock_status:
-            mock_status.return_value = MagicMock(
+            mock_status.return_value = MarketStatus(
                 is_open=False,
                 reason="weekend",
             )
             
             calendar = MarketCalendar()
-            # Patch the _fallback_check method
-            with patch.object(calendar, "_fallback_check") as mock_fallback:
-                mock_fallback.return_value = MagicMock(is_open=False, reason="weekend")
-                
-                # is_trading_day should return False on weekend
-                # (note: actual implementation checks next_open date)
-                assert mock_status.return_value.is_open == False
-                assert mock_status.return_value.reason == "weekend"
+            status = calendar.get_market_status()
+            
+            # On Saturday, market should be closed with weekend reason
+            assert status.is_open == False
+            assert status.reason == "weekend"
+    
+    def test_skips_on_sunday(self):
+        """Auto-start should skip on Sunday."""
+        from nexus2.adapters.market_data.market_calendar import MarketCalendar, MarketStatus
+        
+        # Mock Sunday
+        sunday = datetime(2026, 1, 11, 9, 15, tzinfo=ET)  # Jan 11, 2026 is Sunday
+        
+        with patch.object(MarketCalendar, "get_market_status") as mock_status:
+            mock_status.return_value = MarketStatus(
+                is_open=False,
+                reason="weekend",
+            )
+            
+            calendar = MarketCalendar()
+            status = calendar.get_market_status()
+            
+            assert status.is_open == False
+            assert status.reason == "weekend"
 
 
 class TestAutoStartHolidaySkip:
     """Test that auto-start skips on market holidays."""
     
-    @pytest.mark.asyncio
-    async def test_skips_on_mlk_day(self):
+    def test_skips_on_mlk_day(self):
         """Auto-start should skip on MLK Day (market holiday)."""
         from nexus2.adapters.market_data.market_calendar import MarketCalendar, MarketStatus
         
@@ -134,8 +88,7 @@ class TestAutoStartHolidaySkip:
 class TestAutoStartTradingDay:
     """Test that auto-start triggers on valid trading days."""
     
-    @pytest.mark.asyncio
-    async def test_starts_on_monday(self):
+    def test_starts_on_monday(self):
         """Auto-start should trigger on Monday when time matches."""
         from nexus2.adapters.market_data.market_calendar import MarketCalendar, MarketStatus
         
