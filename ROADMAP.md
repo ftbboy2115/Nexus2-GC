@@ -64,7 +64,7 @@ Last updated: 2026-01-10
   - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
 - [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
 - [x] **Column totals on Open Positions table** — Footer row with Cost Basis, Value, P/L totals (Jan 10)
-- [ ] **Scheduler Last Run shows UTC** — Should display ET for consistency
+- [x] **Scheduler Last Run shows UTC — FIXED** — Now displays ET with label (Jan 10)
 - [ ] **Account-Strategy Locking** — Lock navbar account dropdown to specific strategies (e.g., Account A for NAC, Account B for Warrior) to prevent accidental mixing
 
 ---
