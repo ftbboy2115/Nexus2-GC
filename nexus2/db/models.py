@@ -363,3 +363,48 @@ class UserPreferencesModel(Base):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
+
+class TradeEventModel(Base):
+    """
+    Trade Management Log - append-only event log for position changes.
+    
+    Tracks all management actions for both NAC (KK swing) and Warrior (day trading):
+    - Entries and exits
+    - Stop moves and breakeven adjustments
+    - Partial exits
+    - Character-based exits (candle patterns, MA checks)
+    """
+    __tablename__ = "trade_events"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    strategy = Column(String(10), nullable=False, index=True)  # 'NAC' or 'WARRIOR'
+    position_id = Column(String(36), nullable=False, index=True)
+    symbol = Column(String(10), nullable=False, index=True)
+    event_type = Column(String(30), nullable=False)  # ENTRY, STOP_MOVED, PARTIAL_EXIT, etc.
+    
+    # Values (context-dependent)
+    old_value = Column(String(50), nullable=True)  # Previous stop, previous shares, etc.
+    new_value = Column(String(50), nullable=True)  # New stop, exit price, etc.
+    
+    # Context
+    reason = Column(String(100), nullable=True)  # Why this happened
+    metadata_json = Column(Text, nullable=True)  # JSON for extra context
+    
+    # Timestamp
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    def to_dict(self):
+        """Convert to dictionary."""
+        import json
+        return {
+            "id": self.id,
+            "strategy": self.strategy,
+            "position_id": self.position_id,
+            "symbol": self.symbol,
+            "event_type": self.event_type,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "reason": self.reason,
+            "metadata": json.loads(self.metadata_json) if self.metadata_json else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
