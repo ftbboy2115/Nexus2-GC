@@ -2,9 +2,6 @@
 Tests for API Endpoints
 
 Tests FastAPI routes using TestClient.
-
-NOTE: Skipped on Linux/VPS due to pytest-timeout signal incompatibility.
-Run these tests locally on Windows where this issue doesn't occur.
 """
 
 import pytest
@@ -13,10 +10,6 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from nexus2.api.main import create_app
-
-
-# Skip all tests in this file - signal error unavoidable with pytest-timeout + TestClient on Linux
-pytestmark = pytest.mark.skip(reason="pytest-timeout signal incompatible with TestClient on Linux - run locally")
 
 
 # ============================================================================
