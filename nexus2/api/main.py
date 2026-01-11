@@ -70,9 +70,13 @@ async def lifespan(app: FastAPI):
     init_db()
     
     # Register signal handler for graceful shutdown
-    # This runs BEFORE uvicorn's handler, setting FMP shutdown flag immediately
-    signal.signal(signal.SIGINT, _shutdown_fmp_handler)
-    print("[Startup] Graceful shutdown signal handler registered")
+    # Only works in main thread (skip in TestClient which runs in threads)
+    import threading
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGINT, _shutdown_fmp_handler)
+        print("[Startup] Graceful shutdown signal handler registered")
+    else:
+        print("[Startup] Skipping signal handler (not main thread)")
     
     # Startup
     app.state.order_service = OrderService()
