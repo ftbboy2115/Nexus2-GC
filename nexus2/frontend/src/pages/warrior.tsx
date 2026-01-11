@@ -245,6 +245,15 @@ export default function Warrior() {
     // Countdown timer state
     const [countdown, setCountdown] = useState<string>('')
 
+    // Trade events log
+    const [tradeEvents, setTradeEvents] = useState<any[]>([])
+    const [showTradeEvents, setShowTradeEvents] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('warrior_showTradeEvents') === 'true'
+        }
+        return false
+    })
+
     // Update countdown every second when engine is running
     useEffect(() => {
         const isRunning = status?.state === 'running' || status?.state === 'premarket'
@@ -318,6 +327,17 @@ export default function Warrior() {
             }
             if (simRes.ok) setSimStatus(await simRes.json())
             if (brokerRes.ok) setBrokerStatus(await brokerRes.json())
+
+            // Fetch recent Warrior trade events
+            try {
+                const eventsRes = await fetch(`${API_BASE}/trade-events/recent?strategy=WARRIOR&limit=20`)
+                if (eventsRes.ok) {
+                    const eventsData = await eventsRes.json()
+                    setTradeEvents(eventsData.events || [])
+                }
+            } catch (err) {
+                console.error('Error fetching Warrior trade events:', err)
+            }
         } catch (err) {
             console.error('Error fetching Warrior status:', err)
             addToLog('❌ Failed to connect to backend')
@@ -1307,6 +1327,76 @@ export default function Warrior() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Trade Events Log - Collapsible */}
+                        <div className={styles.card} style={{ marginTop: '1rem' }}>
+                            <div
+                                className={styles.cardHeader}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                    const next = !showTradeEvents
+                                    setShowTradeEvents(next)
+                                    localStorage.setItem('warrior_showTradeEvents', String(next))
+                                }}
+                            >
+                                <h2>📋 Trade Events Log {showTradeEvents ? '▼' : '▶'}</h2>
+                                <span style={{ fontSize: '0.85rem', color: '#888' }}>
+                                    {tradeEvents.length} recent events
+                                </span>
+                            </div>
+                            {showTradeEvents && (
+                                <div className={styles.cardBody} style={{ padding: '12px' }}>
+                                    {tradeEvents.length === 0 ? (
+                                        <p style={{ color: '#888', fontStyle: 'italic' }}>No trade events yet</p>
+                                    ) : (
+                                        <table className={styles.positionsTable} style={{ fontSize: '0.85rem' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Time (ET)</th>
+                                                    <th>Symbol</th>
+                                                    <th>Event</th>
+                                                    <th>Details</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {tradeEvents.map((event: any, idx: number) => (
+                                                    <tr key={event.id || idx}>
+                                                        <td style={{ whiteSpace: 'nowrap' }}>
+                                                            {event.created_at ? new Date(event.created_at).toLocaleTimeString('en-US', {
+                                                                timeZone: 'America/New_York',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            }) + ' ET' : '--'}
+                                                        </td>
+                                                        <td><strong>{event.symbol}</strong></td>
+                                                        <td>
+                                                            <span style={{
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                backgroundColor: event.event_type?.includes('EXIT') ? '#ef444420'
+                                                                    : event.event_type?.includes('ENTRY') ? '#22c55e20'
+                                                                        : event.event_type?.includes('BREAKEVEN') ? '#3b82f620'
+                                                                            : '#f5f5f520',
+                                                                color: event.event_type?.includes('EXIT') ? '#ef4444'
+                                                                    : event.event_type?.includes('ENTRY') ? '#22c55e'
+                                                                        : event.event_type?.includes('BREAKEVEN') ? '#3b82f6'
+                                                                            : '#888'
+                                                            }}>
+                                                                {event.event_type?.replace(/_/g, ' ')}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: '#888' }}>
+                                                            {event.reason || (event.new_value ? `→ $${event.new_value}` : '--')}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Event Log */}
                         <div className={styles.eventLogCard}>
