@@ -35,6 +35,7 @@ def mock_engine():
         "engine_state": "STOPPED",
         "sim_only": True,
         "watchlist": [],
+        "watchlist_count": 0,  # Required by /watchlist endpoint
         "positions": [],
         "stats": {"total_entries": 0, "wins": 0, "losses": 0},
         "config": {"max_candidates": 5, "risk_per_trade": 100.0},
