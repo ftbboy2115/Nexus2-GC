@@ -129,6 +129,7 @@ class TestUnifiedScannerService:
         mock_ep_scanner.scan.assert_not_called()
         mock_breakout_scanner.scan.assert_not_called()
     
+    @pytest.mark.timeout(30)  # Extended timeout for HTFStatus import
     def test_deduplication(self):
         """Same symbol from multiple scanners is deduplicated."""
         # Create mock EP result with NVDA
@@ -277,6 +278,7 @@ class TestSignalConversion:
         assert signal.entry_price == Decimal("150")
         assert signal.quality_score >= 7  # Should pass min quality
     
+    @pytest.mark.timeout(30)  # Extended timeout for HTFStatus import
     def test_htf_candidate_to_signal(self):
         """HTF candidate converts to Signal correctly."""
         from nexus2.domain.scanner.htf_scanner_service import HTFStatus

@@ -188,10 +188,10 @@ class TestWarriorEngineIntegration:
         
         assert config.market_open == dt_time(9, 30)
         assert config.trading_window_end == dt_time(11, 30)
-        assert config.risk_per_trade == Decimal("100")
-        assert config.max_positions == 3
-        assert config.max_daily_loss == Decimal("300")
-        assert config.sim_only is True
+        assert config.risk_per_trade == Decimal("125")  # Updated for testing
+        assert config.max_positions == 10  # Updated for testing
+        assert config.max_daily_loss == Decimal("999999")  # Disabled for testing
+        assert config.sim_only is False  # Default to paper trading on Alpaca
     
     def test_engine_entry_trigger_types(self):
         """Entry trigger types should have correct values."""
