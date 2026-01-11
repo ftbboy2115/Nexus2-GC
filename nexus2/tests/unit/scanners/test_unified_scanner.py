@@ -169,7 +169,10 @@ class TestUnifiedScannerService:
             htf_scanner=htf_scanner,
         )
         
-        result = unified.scan()
+        # Mock RS service to avoid expensive API calls
+        with patch("nexus2.domain.automation.unified_scanner.get_rs_service") as mock_rs:
+            mock_rs.return_value.get_rs_percentile.return_value = 75
+            result = unified.scan()
         
         # Should only have one signal for NVDA (first one wins - EP)
         nvda_signals = [s for s in result.signals if s.symbol == "NVDA"]
@@ -311,7 +314,10 @@ class TestSignalConversion:
             htf_scanner=htf_scanner,
         )
         
-        result = unified.scan(modes=[ScanMode.HTF_ONLY])
+        # Mock RS service to avoid expensive API calls
+        with patch("nexus2.domain.automation.unified_scanner.get_rs_service") as mock_rs:
+            mock_rs.return_value.get_rs_percentile.return_value = 80
+            result = unified.scan(modes=[ScanMode.HTF_ONLY])
         
         assert len(result.signals) == 1
         signal = result.signals[0]
