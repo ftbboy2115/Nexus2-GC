@@ -170,6 +170,7 @@ class TestForceScan:
     """Tests for force scan functionality."""
     
     @pytest.mark.slow  # Makes real FMP API calls - skip with -m "not slow"
+    @pytest.mark.timeout(120)  # FMP API can take up to 90s
     def test_force_scan(self, client):
         """Force scan endpoint exists and responds."""
         response = client.post("/automation/scheduler/force_scan")
@@ -211,6 +212,7 @@ class TestDiscord:
     """Tests for Discord webhook test."""
     
     @pytest.mark.slow  # Sends REAL Discord message - skip with -m "not slow"
+    @pytest.mark.timeout(30)  # Webhook should respond in <10s
     def test_discord_endpoint_exists(self, client):
         """Discord test endpoint responds."""
         response = client.post("/automation/test-discord")
