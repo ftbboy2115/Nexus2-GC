@@ -210,6 +210,7 @@ class TestLiquidateAll:
 class TestDiscord:
     """Tests for Discord webhook test."""
     
+    @pytest.mark.slow  # Sends REAL Discord message - skip with -m "not slow"
     def test_discord_endpoint_exists(self, client):
         """Discord test endpoint responds."""
         response = client.post("/automation/test-discord")
