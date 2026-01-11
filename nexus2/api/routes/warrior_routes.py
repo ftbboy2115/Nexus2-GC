@@ -600,6 +600,16 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
         if success:
             print(f"[Sim] Executed exit: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+            # Log exit event
+            from nexus2.domain.automation.trade_event_service import trade_event_service
+            exit_reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
+            trade_event_service.log_warrior_exit(
+                position_id=signal.position_id,
+                symbol=signal.symbol,
+                exit_price=signal.exit_price,
+                exit_reason=exit_reason.lower(),
+                pnl=signal.pnl_estimate if hasattr(signal, 'pnl_estimate') else None,
+            )
         return success
     
     async def sim_update_stop(position_id: str, new_stop_price):
@@ -704,6 +714,19 @@ async def submit_warrior_sim_order(request: WarriorSimOrderRequest):
     
     is_filled = getattr(result, 'is_accepted', False) or getattr(result, 'filled_qty', 0) > 0
     fill_price = getattr(result, 'avg_fill_price', request.limit_price)
+    
+    # Log entry event if filled
+    if is_filled:
+        from nexus2.domain.automation.trade_event_service import trade_event_service
+        from uuid import uuid4
+        trade_event_service.log_warrior_entry(
+            position_id=str(uuid4()),  # Generate unique ID for sim
+            symbol=request.symbol,
+            entry_price=float(fill_price) if fill_price else 0,
+            stop_price=request.stop_price,
+            shares=request.shares,
+            trigger_type=request.trigger_type or "manual",
+        )
     
     return {
         "status": "filled" if is_filled else "rejected",
