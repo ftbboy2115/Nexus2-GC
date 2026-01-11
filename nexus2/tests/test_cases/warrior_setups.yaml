@@ -294,29 +294,28 @@ test_cases:
 # ==========================================================================
 
 # ==========================================================================
-# ROSS CAMERON TRADES - January 9, 2026
+# ROSS CAMERON TRADES - January 9, 2026 (Maximum Loss Day)
 # ==========================================================================
 
-  - id: tpst_2026_01_09
-    symbol: TPST
+  - id: benf_2026_01_09
+    symbol: BENF
     setup_type: pmh
-    outcome: winner
-    description: "TPST Jan 9 2026 - Biotech gap on FDA catalyst, PMH breakout"
+    outcome: loser
+    description: "BENF Jan 9 2026 - Ross's maximum loss day, VWAP rejection"
     trade_date: "2026-01-09"
-    ross_pnl: 4200.00  # ESTIMATED
+    ross_pnl: -2300.00  # LOSS - Maximum loss day
     premarket_data:
-      gap_percent: 55.0
-      volume: 35000000
-      float_shares: 8000000
-      catalyst: "fda_catalyst"
-      previous_close: 0.85
-      premarket_high: 1.35
+      gap_percent: 25.0
+      volume: 15000000
+      float_shares: null
+      catalyst: "news"
+      previous_close: 7.00
+      premarket_high: 8.50
     expected:
-      entry_near: 1.40  # PMH breakout
-      stop_near: 1.25   # Below PMH
-      mental_stop_cents: 15
-      profit_target_r: 2.0
-    notes: "Biotech FDA catalyst - tight float, high RVOL"
+      entry_near: 8.65  # Entry on pullback
+      stop_near: 7.74   # Stop hit after VWAP rejection
+      mental_stop_cents: 91  # Wide stop, unusual
+    notes: "Ross's first max loss day in 2 months. Quick $1600 profit, then VWAP rejection led to -$2300. Lesson: respect VWAP rejection signals."
 
 # ==========================================================================
 # SYNTHETIC WARRIOR LOSERS (for testing stop execution)
