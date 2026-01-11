@@ -4,6 +4,7 @@ Tests for End-of-Day MA Check Job
 Tests the KK-style trailing stop logic that exits positions on daily close below MA.
 """
 
+import asyncio
 import pytest
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
@@ -128,33 +129,33 @@ class TestMACheckJobInit:
 class TestMACheckJobRun:
     """Tests for MACheckJob.run() method."""
     
+    def _run(self, coro):
+        """Helper to run async code in sync tests."""
+        return asyncio.get_event_loop().run_until_complete(coro)
+    
     @pytest.fixture
     def job(self):
         """Create MA check job with mocked callbacks."""
-        job = MACheckJob(min_days_for_trailing=5)
-        return job
+        return MACheckJob(min_days_for_trailing=5)
     
-    @pytest.mark.asyncio
-    async def test_no_positions_callback(self, job):
+    def test_no_positions_callback(self, job):
         """Returns error if no positions callback configured."""
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 0
         assert "No get_positions callback" in result.errors[0]
     
-    @pytest.mark.asyncio
-    async def test_empty_positions(self, job):
+    def test_empty_positions(self, job):
         """Returns empty result for no open positions."""
         job.set_callbacks(get_positions=AsyncMock(return_value=[]))
         
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 0
         assert result.exit_signals == []
         assert result.errors == []
     
-    @pytest.mark.asyncio
-    async def test_position_too_young(self, job):
+    def test_position_too_young(self, job):
         """Positions under 5 days don't trigger single-MA trailing."""
         # Position opened 2 days ago
         et = ZoneInfo("America/New_York")
@@ -173,14 +174,13 @@ class TestMACheckJobRun:
             get_ema=AsyncMock(return_value=Decimal("440.00")),  # Close > both EMAs
         )
         
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 1
         # Should not exit - close is above EMAs (trend intact)
         assert len(result.exit_signals) == 0
     
-    @pytest.mark.asyncio
-    async def test_character_change_early_position(self, job):
+    def test_character_change_early_position(self, job):
         """Days 0-4: Exit on close below BOTH 10 and 20 EMA (character change)."""
         et = ZoneInfo("America/New_York")
         opened_at = datetime.now(et) - timedelta(days=2)
@@ -199,15 +199,14 @@ class TestMACheckJobRun:
                 Decimal("440.00") if period == 10 else Decimal("435.00")),  # 10 EMA, 20 EMA
         )
         
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 1
         assert len(result.exit_signals) == 1
         assert result.exit_signals[0].symbol == "NVDA"
         assert result.exit_signals[0].days_held == 2
     
-    @pytest.mark.asyncio
-    async def test_mature_position_below_ma(self, job):
+    def test_mature_position_below_ma(self, job):
         """Day 5+: Exit on close below selected MA."""
         et = ZoneInfo("America/New_York")
         opened_at = datetime.now(et) - timedelta(days=7)
@@ -225,7 +224,7 @@ class TestMACheckJobRun:
             get_ema=AsyncMock(return_value=Decimal("210.00")),  # Close below 10 EMA
         )
         
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 1
         assert len(result.exit_signals) == 1
@@ -233,8 +232,7 @@ class TestMACheckJobRun:
         assert result.exit_signals[0].ma_type == TrailingMAType.EMA_10
         assert result.exit_signals[0].days_held == 7
     
-    @pytest.mark.asyncio
-    async def test_mature_position_above_ma(self, job):
+    def test_mature_position_above_ma(self, job):
         """Day 5+: No exit if close is above MA."""
         et = ZoneInfo("America/New_York")
         opened_at = datetime.now(et) - timedelta(days=10)
@@ -252,13 +250,12 @@ class TestMACheckJobRun:
             get_ema=AsyncMock(return_value=Decimal("185.00")),  # Close above 10 EMA
         )
         
-        result = await job.run()
+        result = self._run(job.run())
         
         assert result.positions_checked == 1
         assert len(result.exit_signals) == 0  # Should hold
     
-    @pytest.mark.asyncio
-    async def test_dry_run_no_execution(self, job):
+    def test_dry_run_no_execution(self, job):
         """Dry run logs but doesn't execute exits."""
         et = ZoneInfo("America/New_York")
         opened_at = datetime.now(et) - timedelta(days=7)
@@ -278,13 +275,12 @@ class TestMACheckJobRun:
             execute_exit=execute_mock,
         )
         
-        result = await job.run(dry_run=True)
+        result = self._run(job.run(dry_run=True))
         
         assert len(result.exit_signals) == 1
         execute_mock.assert_not_called()  # Dry run - no execution
     
-    @pytest.mark.asyncio
-    async def test_live_run_executes_exits(self, job):
+    def test_live_run_executes_exits(self, job):
         """Live run (dry_run=False) executes exits."""
         et = ZoneInfo("America/New_York")
         opened_at = datetime.now(et) - timedelta(days=7)
@@ -304,7 +300,7 @@ class TestMACheckJobRun:
             execute_exit=execute_mock,
         )
         
-        result = await job.run(dry_run=False)
+        result = self._run(job.run(dry_run=False))
         
         assert len(result.exit_signals) == 1
         execute_mock.assert_called_once()
@@ -318,13 +314,16 @@ class TestMACheckJobRun:
 class TestMATypeSelection:
     """Tests for MA type auto-selection logic."""
     
+    def _run(self, coro):
+        """Helper to run async code in sync tests."""
+        return asyncio.get_event_loop().run_until_complete(coro)
+    
     @pytest.fixture
     def job(self):
         """Create job with AUTO mode."""
         return MACheckJob(default_ma_type=TrailingMAType.AUTO)
     
-    @pytest.mark.asyncio
-    async def test_stored_affinity_10(self, job):
+    def test_stored_affinity_10(self, job):
         """Uses stored position affinity when set."""
         job.set_position_affinity("pos-123", "10")
         
@@ -332,12 +331,11 @@ class TestMATypeSelection:
             get_adr_percent=AsyncMock(return_value=3.0),
         )
         
-        ma_type, adr = await job._auto_select_ma("NVDA", "pos-123")
+        ma_type, adr = self._run(job._auto_select_ma("NVDA", "pos-123"))
         
         assert ma_type == TrailingMAType.LOWER_10
     
-    @pytest.mark.asyncio
-    async def test_stored_affinity_20(self, job):
+    def test_stored_affinity_20(self, job):
         """Uses LOWER_20 for '20' affinity."""
         job.set_position_affinity("pos-456", "20")
         
@@ -345,30 +343,28 @@ class TestMATypeSelection:
             get_adr_percent=AsyncMock(return_value=3.0),
         )
         
-        ma_type, adr = await job._auto_select_ma("AAPL", "pos-456")
+        ma_type, adr = self._run(job._auto_select_ma("AAPL", "pos-456"))
         
         assert ma_type == TrailingMAType.LOWER_20
     
-    @pytest.mark.asyncio
-    async def test_high_adr_uses_tight_ma(self, job):
+    def test_high_adr_uses_tight_ma(self, job):
         """High ADR% (>=5%) uses LOWER_10 (tight trailing)."""
         job.set_callbacks(
             get_adr_percent=AsyncMock(return_value=7.5),  # Fast mover
         )
         
-        ma_type, adr = await job._auto_select_ma("TSLA", None)
+        ma_type, adr = self._run(job._auto_select_ma("TSLA", None))
         
         assert ma_type == TrailingMAType.LOWER_10
         assert adr == 7.5
     
-    @pytest.mark.asyncio
-    async def test_low_adr_uses_wide_ma(self, job):
+    def test_low_adr_uses_wide_ma(self, job):
         """Low ADR% (<5%) uses LOWER_20 (give more room)."""
         job.set_callbacks(
             get_adr_percent=AsyncMock(return_value=2.5),  # Slow mover
         )
         
-        ma_type, adr = await job._auto_select_ma("KO", None)
+        ma_type, adr = self._run(job._auto_select_ma("KO", None))
         
         assert ma_type == TrailingMAType.LOWER_20
         assert adr == 2.5
@@ -380,6 +376,10 @@ class TestMATypeSelection:
 
 class TestGetMAValue:
     """Tests for _get_ma_value method."""
+    
+    def _run(self, coro):
+        """Helper to run async code in sync tests."""
+        return asyncio.get_event_loop().run_until_complete(coro)
     
     @pytest.fixture
     def job(self):
@@ -393,29 +393,25 @@ class TestGetMAValue:
         )
         return job
     
-    @pytest.mark.asyncio
-    async def test_ema_10(self, job):
+    def test_ema_10(self, job):
         """Returns 10 EMA value."""
-        val = await job._get_ma_value("NVDA", TrailingMAType.EMA_10)
+        val = self._run(job._get_ma_value("NVDA", TrailingMAType.EMA_10))
         assert val == Decimal("100.0")
     
-    @pytest.mark.asyncio
-    async def test_ema_20(self, job):
+    def test_ema_20(self, job):
         """Returns 20 EMA value."""
-        val = await job._get_ma_value("NVDA", TrailingMAType.EMA_20)
+        val = self._run(job._get_ma_value("NVDA", TrailingMAType.EMA_20))
         assert val == Decimal("95.0")
     
-    @pytest.mark.asyncio
-    async def test_lower_10(self, job):
+    def test_lower_10(self, job):
         """LOWER_10 returns min of 10 EMA and 10 SMA."""
-        val = await job._get_ma_value("NVDA", TrailingMAType.LOWER_10)
+        val = self._run(job._get_ma_value("NVDA", TrailingMAType.LOWER_10))
         # 10 EMA = 100, 10 SMA = 102 -> min = 100
         assert val == Decimal("100.0")
     
-    @pytest.mark.asyncio
-    async def test_lower_20(self, job):
+    def test_lower_20(self, job):
         """LOWER_20 returns min of 20 EMA and 20 SMA."""
-        val = await job._get_ma_value("NVDA", TrailingMAType.LOWER_20)
+        val = self._run(job._get_ma_value("NVDA", TrailingMAType.LOWER_20))
         # 20 EMA = 95, 20 SMA = 97 -> min = 95
         assert val == Decimal("95.0")
 
