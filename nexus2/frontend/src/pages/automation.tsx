@@ -185,9 +185,9 @@ export default function Automation() {
                 setDiagnostics(await diagnosticsRes.json())
             }
 
-            // Fetch recent trade events
+            // Fetch recent trade events (both NAC and Warrior)
             try {
-                const eventsRes = await fetch(`${API_BASE}/trade-events/recent?strategy=NAC&limit=20`)
+                const eventsRes = await fetch(`${API_BASE}/trade-events/recent?limit=30`)
                 if (eventsRes.ok) {
                     const eventsData = await eventsRes.json()
                     setTradeEvents(eventsData.events || [])
