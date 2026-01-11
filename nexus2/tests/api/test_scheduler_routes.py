@@ -52,7 +52,6 @@ class TestSchedulerStatus:
         response = client.get("/automation/scheduler/diagnostics")
         
         assert response.status_code == 200
-        data = response.json()
         # Diagnostics structure varies, just check it returns
 
 
@@ -80,7 +79,7 @@ class TestSchedulerControl:
 
 
 # =============================================================================
-# Configuration Endpoints
+# Configuration Endpoints (PATCH methods)
 # =============================================================================
 
 class TestSchedulerConfig:
@@ -92,9 +91,9 @@ class TestSchedulerConfig:
         status_resp = client.get("/automation/scheduler/status")
         current = status_resp.json().get("auto_execute", False)
         
-        # Toggle it
-        response = client.post(
-            "/automation/scheduler/toggle-auto-execute",
+        # Toggle it (PATCH method)
+        response = client.patch(
+            "/automation/scheduler/auto-execute",
             json={"auto_execute": not current}
         )
         
@@ -104,7 +103,7 @@ class TestSchedulerConfig:
     
     def test_update_interval(self, client):
         """Can update scheduler interval."""
-        response = client.post(
+        response = client.patch(
             "/automation/scheduler/interval",
             json={"interval_seconds": 300}
         )
@@ -118,12 +117,11 @@ class TestSchedulerConfig:
         response = client.get("/automation/scheduler/settings")
         
         assert response.status_code == 200
-        data = response.json()
         # Settings structure varies
     
     def test_update_settings(self, client):
         """Can update scheduler settings."""
-        response = client.post(
+        response = client.patch(
             "/automation/scheduler/settings",
             json={"interval_seconds": 120}
         )
@@ -133,7 +131,7 @@ class TestSchedulerConfig:
 
 
 # =============================================================================
-# EOD Window Endpoints
+# EOD Window Endpoints (PATCH method)
 # =============================================================================
 
 class TestEodWindow:
@@ -141,7 +139,7 @@ class TestEodWindow:
     
     def test_update_eod_window(self, client):
         """Can update EOD window."""
-        response = client.post(
+        response = client.patch(
             "/automation/scheduler/eod-window",
             params={
                 "eod_start_hour": 15,
@@ -157,7 +155,7 @@ class TestEodWindow:
     
     def test_reset_eod_window(self, client):
         """Can reset EOD window to defaults."""
-        response = client.post(
+        response = client.patch(
             "/automation/scheduler/eod-window",
             params={"reset": True}
         )
@@ -166,7 +164,7 @@ class TestEodWindow:
 
 
 # =============================================================================
-# Force Scan Endpoint
+# Force Scan Endpoint (underscore, not hyphen)
 # =============================================================================
 
 class TestForceScan:
@@ -174,9 +172,9 @@ class TestForceScan:
     
     def test_force_scan(self, client):
         """Force scan endpoint exists and responds."""
-        response = client.post("/automation/scheduler/force-scan")
+        response = client.post("/automation/scheduler/force_scan")
         
-        # May fail if scheduler not running, but should not 500
+        # May fail if scheduler not running, but should not crash
         assert response.status_code in [200, 400, 500]
 
 
@@ -191,10 +189,8 @@ class TestLiquidateAll:
         """Liquidate requires confirmation string."""
         response = client.post("/automation/liquidate-all")
         
-        # Should fail without confirmation
+        # Should fail or warn without confirmation
         assert response.status_code in [200, 400, 422]
-        data = response.json()
-        # Either requires confirmation or shows error
     
     def test_liquidate_with_wrong_confirmation(self, client):
         """Liquidate rejects wrong confirmation."""
@@ -223,7 +219,7 @@ class TestDiscord:
 
 
 # =============================================================================
-# Rejections Endpoint
+# Rejections Endpoint (under /scheduler/)
 # =============================================================================
 
 class TestRejections:
@@ -231,7 +227,7 @@ class TestRejections:
     
     def test_get_rejections_default(self, client):
         """Can get recent rejections."""
-        response = client.get("/automation/rejections")
+        response = client.get("/automation/scheduler/rejections")
         
         assert response.status_code == 200
         data = response.json()
@@ -239,12 +235,12 @@ class TestRejections:
     
     def test_get_rejections_with_count(self, client):
         """Can limit rejection count."""
-        response = client.get("/automation/rejections", params={"count": 10})
+        response = client.get("/automation/scheduler/rejections", params={"count": 10})
         
         assert response.status_code == 200
     
     def test_get_rejections_with_filter(self, client):
         """Can filter rejections by scanner."""
-        response = client.get("/automation/rejections", params={"scanner": "ep"})
+        response = client.get("/automation/scheduler/rejections", params={"scanner": "ep"})
         
         assert response.status_code == 200
