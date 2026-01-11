@@ -170,6 +170,7 @@ class TestEodWindow:
 class TestForceScan:
     """Tests for force scan functionality."""
     
+    @pytest.mark.slow  # Makes real FMP API calls - skip with -m "not slow"
     def test_force_scan(self, client):
         """Force scan endpoint exists and responds."""
         response = client.post("/automation/scheduler/force_scan")
