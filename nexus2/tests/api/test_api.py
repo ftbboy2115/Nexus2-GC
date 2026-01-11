@@ -38,7 +38,8 @@ class TestHealth:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["mode"] == "sim"
+        # Mode depends on environment config (sim, paper, alpaca_paper, etc)
+        assert "mode" in data
 
 
 # ============================================================================
