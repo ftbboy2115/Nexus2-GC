@@ -59,7 +59,7 @@ Last updated: 2026-01-10
 - [x] **Total P&L % in Open Positions** — Already implemented (per-row + total)
 - [ ] **Simulation Control Page** — Mock market GUI with clock, scenarios, event log → [Plan](docs/simulation_plan.md)
 - [x] **Countdown Timer to Next Scan** — Shows time until next scan, smart weekend/holiday labels (Jan 10)
-- [ ] **Score Breakdown Display** — Show how each signal got its quality score (which criteria contributed)
+- [x] **Score Breakdown Display** — Hover tooltip on quality score shows RS%, stop%, tier (Jan 10)
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history
   - Entry/exit timeline, scanner settings at entry, P/L breakdown by partial
 - [x] **API Usage card not showing on VPS — FIXED** — Used Next.js proxy for API routing (commit `f199f7d`)
