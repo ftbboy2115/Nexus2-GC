@@ -314,6 +314,18 @@ async def create_order_callback(app_state):
                     "opened_at": datetime.utcnow(),
                 })
                 
+                # Log entry event for Trade Management Log
+                from nexus2.domain.automation.trade_event_service import trade_event_service
+                entry_price = Decimal(str(result.avg_fill_price or result.limit_price or stop_price * 1.03))
+                trade_event_service.log_nac_entry(
+                    position_id=position.id,
+                    symbol=symbol,
+                    entry_price=entry_price,
+                    stop_price=Decimal(str(stop_price)),
+                    shares=shares,
+                    setup_type=setup_type,
+                )
+                
                 logger.info(f"Bracket order placed: {symbol} x {shares} @ stop ${stop_price}")
                 
                 return {
