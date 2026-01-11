@@ -1227,12 +1227,12 @@ export default function Automation() {
                                                                     case 'symbol':
                                                                         return <td key={col.id} style={{ color: '#9ca3af' }}>TOTAL ({positions.positions.length})</td>
                                                                     case 'qty':
-                                                                        // Merge qty + avg into "Cost Basis: $X"
-                                                                        const costBasis = positions.positions.reduce((sum, p) => sum + (p.qty * p.avg_price), 0)
-                                                                        return <td key={col.id} colSpan={2} style={{ color: '#9ca3af' }}>Cost Basis: ${costBasis.toFixed(0)}</td>
+                                                                        const totalQty = positions.positions.reduce((sum, p) => sum + p.qty, 0)
+                                                                        return <td key={col.id}>{totalQty}</td>
                                                                     case 'avg_price':
-                                                                        // Skip - merged with qty above
-                                                                        return null
+                                                                        // Show cost basis in avg_price column for totals
+                                                                        const costBasis = positions.positions.reduce((sum, p) => sum + (p.qty * p.avg_price), 0)
+                                                                        return <td key={col.id} style={{ color: '#9ca3af' }}>${costBasis.toFixed(0)}</td>
                                                                     case 'market_value':
                                                                         return <td key={col.id}>${positions.total_value.toFixed(0)}</td>
                                                                     case 'unrealized_pnl':
