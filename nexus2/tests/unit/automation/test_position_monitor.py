@@ -337,8 +337,8 @@ class TestStartStop:
         monitor = PositionMonitor()
         monitor.set_callbacks(get_positions=AsyncMock(return_value=[]))
         
-        # Mock market calendar to avoid API calls
-        with patch("nexus2.domain.automation.monitor.get_market_calendar") as mock_cal:
+        # Mock market calendar at the import source
+        with patch("nexus2.adapters.market_data.market_calendar.get_market_calendar") as mock_cal:
             mock_cal.return_value.is_market_open.return_value = False
             
             result = _run(monitor.start())
