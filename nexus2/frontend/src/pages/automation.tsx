@@ -1332,7 +1332,12 @@ export default function Automation() {
                                                     <tr key={`${sig.symbol}-${i}`}>
                                                         <td className={styles.symbol}>{sig.symbol}</td>
                                                         <td>{sig.setup_type.toUpperCase()}</td>
-                                                        <td>{sig.quality_score}/10</td>
+                                                        <td
+                                                            title={`Score Breakdown:\n• RS: ${sig.rs_percentile}th percentile\n• Stop: ${sig.stop_percent?.toFixed(1) || '?'}%\n• Tier: ${sig.tier}\n• Entry: $${parseFloat(sig.entry_price).toFixed(2)}`}
+                                                            style={{ cursor: 'help' }}
+                                                        >
+                                                            {sig.quality_score}/10
+                                                        </td>
                                                         <td>${parseFloat(sig.entry_price).toFixed(2)}</td>
                                                         <td>${parseFloat(sig.tactical_stop).toFixed(2)}</td>
                                                         <td className={styles.timestamp}>
