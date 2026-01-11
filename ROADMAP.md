@@ -15,17 +15,17 @@ Last updated: 2026-01-11
 
 > These are critical path items that prevent bugs in production.
 
-- [ ] **Auto-Start Scheduler Tests** — Prevent weekend/holiday auto-start bugs
-  - Test with mocked weekend date → expect skip
-  - Test with mocked holiday date → expect skip
-  - Test with mocked trading day → expect start
+- [x] **Auto-Start Scheduler Tests** — Prevent weekend/holiday auto-start bugs (commit `695009a`)
+  - Test with mocked weekend date → expect skip ✅
+  - Test with mocked holiday date → expect skip ✅
+  - Test with mocked trading day → expect start ✅
 - [ ] **Position Sizing Tests** — Validate risk calculations
   - Test stop distance calculation
   - Test share count capping
   - Test ATR constraint validation
-- [ ] **Trade Event Logging Tests** — Ensure audit trail integrity
-  - Test entry events capture market context
-  - Test exit events capture P&L correctly
+- [x] **Trade Event Logging Tests** — Ensure audit trail integrity (commit `695009a`)
+  - Test entry events capture market context ✅
+  - Test exit events capture P&L correctly ✅
 
 ---
 
