@@ -19,10 +19,10 @@ Last updated: 2026-01-11
   - Test with mocked weekend date → expect skip ✅
   - Test with mocked holiday date → expect skip ✅
   - Test with mocked trading day → expect start ✅
-- [ ] **Position Sizing Tests** — Validate risk calculations
-  - Test stop distance calculation
-  - Test share count capping
-  - Test ATR constraint validation
+- [x] **Position Sizing Tests** — Validate risk calculations (existing `test_position_sizing.py`)
+  - Test stop distance calculation ✅
+  - Test share count capping ✅
+  - Test ATR constraint validation ✅
 - [x] **Trade Event Logging Tests** — Ensure audit trail integrity (commit `695009a`)
   - Test entry events capture market context ✅
   - Test exit events capture P&L correctly ✅
