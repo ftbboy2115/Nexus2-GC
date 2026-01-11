@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-10
+Last updated: 2026-01-11
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -8,6 +8,24 @@ Last updated: 2026-01-10
 - [ ] Not started
 - [/] In progress
 - [x] Completed
+
+---
+
+## 🚨 Priority: Unit Tests
+
+> These are critical path items that prevent bugs in production.
+
+- [ ] **Auto-Start Scheduler Tests** — Prevent weekend/holiday auto-start bugs
+  - Test with mocked weekend date → expect skip
+  - Test with mocked holiday date → expect skip
+  - Test with mocked trading day → expect start
+- [ ] **Position Sizing Tests** — Validate risk calculations
+  - Test stop distance calculation
+  - Test share count capping
+  - Test ATR constraint validation
+- [ ] **Trade Event Logging Tests** — Ensure audit trail integrity
+  - Test entry events capture market context
+  - Test exit events capture P&L correctly
 
 ---
 
