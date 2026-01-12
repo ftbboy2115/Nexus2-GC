@@ -222,9 +222,15 @@ class WarriorEngine:
         return self.config.market_open <= now <= self.config.trading_window_end
     
     def is_market_hours(self) -> bool:
-        """Check if market is open."""
+        """Check if market is open (regular hours 9:30 AM - 4 PM)."""
         now = self._get_eastern_time().time()
         return self.config.market_open <= now <= self.config.market_close
+    
+    def is_extended_hours(self) -> bool:
+        """Check if within extended trading hours (4 AM - 8 PM on market days)."""
+        from nexus2.adapters.market_data.market_calendar import get_market_calendar
+        calendar = get_market_calendar(paper=True)
+        return calendar.is_extended_hours_active()
     
     def is_premarket(self) -> bool:
         """Check if in pre-market scan window."""
@@ -696,7 +702,7 @@ class WarriorEngine:
         return {
             "state": self.state.value,
             "trading_window": self.is_trading_window(),
-            "market_hours": self.is_market_hours(),
+            "market_hours": self.is_extended_hours() or self.config.sim_only,  # True during extended hours or sim
             "watchlist_count": len(self._watchlist),
             "watchlist": [
                 {
