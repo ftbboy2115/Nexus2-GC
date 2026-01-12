@@ -333,6 +333,11 @@ def create_execute_callback(
             
             # Check if order was accepted
             if result and result.status.value in ("accepted", "filled", "pending"):
+                # Determine initial status based on fill state
+                from nexus2.domain.positions.position_state_machine import PositionStatus
+                is_filled = result.status.value == "filled"
+                initial_status = PositionStatus.OPEN.value if is_filled else PositionStatus.PENDING_FILL.value
+                
                 # Create position record
                 with get_session() as db:
                     position_repo = PositionRepository(db)
@@ -340,7 +345,7 @@ def create_execute_callback(
                         "id": str(uuid4()),
                         "symbol": signal.symbol,
                         "setup_type": signal.setup_type.value,
-                        "status": "open",
+                        "status": initial_status,
                         "entry_price": str(result.avg_fill_price or result.limit_price or signal.entry_price),
                         "shares": shares,
                         "remaining_shares": shares,
@@ -359,9 +364,10 @@ def create_execute_callback(
                         "scanner_version": git_hash,  # Direct column for easy querying
                     })
                     
-                    # Update engine stats
+                    # Update engine stats - only count filled orders
                     engine.stats.orders_submitted += 1
-                    engine.stats.orders_filled += 1
+                    if is_filled:
+                        engine.stats.orders_filled += 1
                     
                     # Clear from recent exits (re-entry complete)
                     from nexus2.api.routes.automation_state import clear_recent_exit

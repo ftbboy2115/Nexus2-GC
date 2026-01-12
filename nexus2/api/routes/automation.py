@@ -558,12 +558,17 @@ async def scan_and_execute(
                     })
                     fill_status = "filled"
                 
+                # Determine initial status based on fill state
+                from nexus2.domain.positions.position_state_machine import PositionStatus
+                is_filled = fill_status == "filled"
+                initial_status = PositionStatus.OPEN.value if is_filled else PositionStatus.PENDING_FILL.value
+                
                 # Create position record
                 position = position_repo.create({
                     "id": position_id,
                     "symbol": trade["symbol"],
                     "setup_type": trade["setup_type"],
-                    "status": "open",
+                    "status": initial_status,
                     "entry_price": trade["entry_price"],
                     "shares": trade["shares"],
                     "remaining_shares": trade["shares"],
