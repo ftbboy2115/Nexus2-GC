@@ -60,6 +60,12 @@ Last updated: 2026-01-11
   - Phase 1: SchedulerCard, EngineCard, MonitorCard, ApiUsageCard
   - Phase 2: QuickActionsCard, SignalsCard
   - Phase 3: PositionsCard
+- [ ] **Refactor `warrior.tsx`** — Currently 1,460 lines, extract to components
+  - WarriorControlsCard (start/stop, settings)
+  - WarriorPositionsCard (positions table)
+  - WarriorWatchlistCard (candidates table)
+  - WarriorSimulatorCard (mock market)
+  - WarriorStatsCard (P&L summary)
 
 ---
 
