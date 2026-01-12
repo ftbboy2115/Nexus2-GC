@@ -476,8 +476,35 @@ class WarriorScannerService:
         
         # =========================================================================
         # PILLAR 2: Relative Volume (> 2x, ideal 3-5x)
+        # Time-adjusted projection: normalize for time of day since volume
+        # accumulates throughout the session. Projects current volume to full-day pace.
         # =========================================================================
-        rvol = Decimal(session_volume) / Decimal(avg_volume) if avg_volume > 0 else Decimal("0")
+        if avg_volume > 0:
+            # Calculate minutes since market open (9:30 AM ET)
+            et_tz = pytz.timezone('America/New_York')
+            now_et = datetime.now(et_tz)
+            market_open_today = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            
+            if now_et > market_open_today:
+                # Regular market hours - project based on elapsed time
+                minutes_since_open = (now_et - market_open_today).total_seconds() / 60
+                trading_minutes_per_day = 390  # 6.5 hours = 390 minutes
+                
+                # Project current volume to full-day pace
+                # Early in day: volume × (390 / 5) = big multiplier
+                # Late in day: volume × (390 / 380) = ~1x
+                time_factor = trading_minutes_per_day / max(minutes_since_open, 1)
+                
+                # Cap the multiplier to avoid extreme projections in first few minutes
+                time_factor = min(time_factor, 20.0)  # Max 20x projection
+                
+                projected_volume = Decimal(session_volume) * Decimal(str(time_factor))
+                rvol = projected_volume / Decimal(avg_volume)
+            else:
+                # Pre-market - use raw volume (no projection)
+                rvol = Decimal(session_volume) / Decimal(avg_volume)
+        else:
+            rvol = Decimal("0")
         
         if rvol < s.min_rvol:
             tracker.record(
