@@ -64,7 +64,7 @@ class WarriorEngineConfigRequest(BaseModel):
     max_candidates: Optional[int] = Field(None, ge=1, le=20, description="Max candidates to watch (1-20)")
     scanner_interval_minutes: Optional[int] = Field(None, ge=1, le=60, description="Scan interval in minutes")
     risk_per_trade: Optional[float] = Field(None, gt=0, description="Risk per trade in dollars")
-    max_positions: Optional[int] = Field(None, ge=1, le=10, description="Max simultaneous positions")
+    max_positions: Optional[int] = Field(None, ge=1, le=20, description="Max simultaneous positions")
     max_daily_loss: Optional[float] = Field(None, gt=0, description="Max daily loss before stopping")
     orb_enabled: Optional[bool] = Field(None, description="Enable ORB breakouts")
     pmh_enabled: Optional[bool] = Field(None, description="Enable PMH breakouts")
