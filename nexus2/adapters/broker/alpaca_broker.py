@@ -232,6 +232,10 @@ class AlpacaBroker:
         if not data:
             raise AlpacaBrokerError("Empty response from Alpaca")
         
+        # Invalidate positions cache after order to prevent stale data during sync
+        if "positions" in self._cache:
+            del self._cache["positions"]
+        
         order = self._parse_order(data, client_order_id)
         self._order_map[client_order_id] = order.broker_order_id
         
@@ -292,6 +296,10 @@ class AlpacaBroker:
         if not data:
             raise AlpacaBrokerError("Empty response from Alpaca")
         
+        # Invalidate positions cache after order
+        if "positions" in self._cache:
+            del self._cache["positions"]
+        
         order = self._parse_order(data, client_order_id)
         self._order_map[client_order_id] = order.broker_order_id
         
@@ -300,6 +308,9 @@ class AlpacaBroker:
     def cancel_order(self, broker_order_id: str) -> BrokerOrder:
         """Cancel an order."""
         self._request("DELETE", f"orders/{broker_order_id}")
+        # Invalidate positions cache after cancel
+        if "positions" in self._cache:
+            del self._cache["positions"]
         return self.get_order_status(broker_order_id)
     
     def get_open_orders(self, symbol: str = None) -> list[dict]:
