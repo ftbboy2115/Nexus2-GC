@@ -445,11 +445,24 @@ class WarriorEngine:
     
     async def _watch_loop(self):
         """Background loop for watching entry triggers."""
+        last_date = None  # Track current trading day for midnight reset
+        
         while self.state != WarriorEngineState.STOPPED:
             try:
                 if self.state == WarriorEngineState.PAUSED:
                     await asyncio.sleep(5)
                     continue
+                
+                # Day boundary check: clear stale watchlist entries at midnight ET
+                # Prevents Friday's watchlist from triggering orders on Monday
+                et_now = self._get_eastern_time()
+                current_date = et_now.date()
+                if last_date is not None and current_date != last_date:
+                    if self._watchlist:
+                        stale_symbols = list(self._watchlist.keys())
+                        self._watchlist.clear()
+                        logger.info(f"[Warrior Watch] New day - cleared stale watchlist: {stale_symbols}")
+                last_date = current_date
                 
                 # NOTE: No time restriction - trades qualified setups ANY time
                 # Pre-market and after-hours moves can be explosive on small-caps
