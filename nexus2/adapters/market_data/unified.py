@@ -330,6 +330,21 @@ class UnifiedMarketData:
         """Get most active stocks by volume (real-time)."""
         return self.fmp.get_actives()
     
+    def get_premarket_gainers(self, min_change_pct: float = 4.0) -> List[Dict]:
+        """
+        Get pre-market gainers for Warrior-style momentum scanning.
+        
+        Uses FMP's pre_post_market/gainers endpoint which returns stocks
+        actually gapping up in pre-market (unlike stock_market/gainers).
+        
+        Args:
+            min_change_pct: Minimum gap % to include (default 4% per Ross Cameron)
+            
+        Returns:
+            List of pre-market gainers sorted by change_percent descending
+        """
+        return self.fmp.get_premarket_gainers(min_change_pct=min_change_pct)
+    
     def get_trend_leaders(self, limit: int = 100) -> List[str]:
         """
         Get trend leaders - stocks with strong momentum for HTF scanning.

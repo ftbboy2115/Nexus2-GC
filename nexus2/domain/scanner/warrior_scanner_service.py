@@ -263,8 +263,24 @@ class WarriorScannerService:
         Returns:
             WarriorScanResult with candidates and stats
         """
-        # Step 1: Get top gainers + most active (same universe as EP)
-        gainers = self.market_data.get_gainers()
+        import pytz
+        
+        # Check if we're in pre-market (before 9:30 AM ET)
+        et = pytz.timezone("US/Eastern")
+        now_et = datetime.now(et)
+        is_premarket = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+        
+        # Step 1: Get gainers from appropriate endpoint
+        # Pre-market uses pre_post_market/gainers for actual gapping stocks
+        # Regular hours uses stock_market/gainers for intraday movers
+        if is_premarket:
+            # Use pre-market gainers endpoint for stocks actually gapping today
+            gainers = self.market_data.get_premarket_gainers(min_change_pct=float(self.settings.min_gap))
+            scan_logger.info(f"PREMARKET MODE | Using pre_post_market/gainers | Found: {len(gainers)} stocks")
+        else:
+            gainers = self.market_data.get_gainers()
+            scan_logger.info(f"REGULAR MODE | Using stock_market/gainers | Found: {len(gainers)} stocks")
+        
         actives = self.market_data.get_actives()
         
         # Combine and dedupe
