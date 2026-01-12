@@ -633,32 +633,50 @@ class WarriorMonitor:
                     try:
                         spread_data = await self._get_quote_with_spread(position.symbol)
                         if spread_data:
-                            spread_pct = spread_data.get("spread_percent", 0)
+                            liquidity_status = spread_data.get("liquidity_status", "unknown")
+                            spread_pct = spread_data.get("spread_percent")
                             bid = spread_data.get("bid", 0)
                             ask = spread_data.get("ask", 0)
                             
-                            # Log spread evaluation for monitoring
-                            logger.info(
-                                f"[Warrior] {position.symbol}: Spread {spread_pct:.1f}% "
-                                f"(max={s.max_spread_percent}%, bid=${bid:.2f}, ask=${ask:.2f})"
-                            )
-                            
-                            if spread_pct > s.max_spread_percent:
-                                pnl = (current_price - position.entry_price) * position.shares
-                                logger.warning(
-                                    f"[Warrior] {position.symbol}: SPREAD EXIT - spread {spread_pct:.1f}% "
-                                    f"(max={s.max_spread_percent}%, bid=${bid}, ask=${ask})"
+                            # Log based on liquidity status
+                            if liquidity_status == "ok" and spread_pct is not None:
+                                # Normal case - valid bid/ask
+                                logger.info(
+                                    f"[Warrior] {position.symbol}: Spread {spread_pct:.1f}% "
+                                    f"(max={s.max_spread_percent}%, bid=${bid:.2f}, ask=${ask:.2f})"
                                 )
-                                return WarriorExitSignal(
-                                    position_id=position.position_id,
-                                    symbol=position.symbol,
-                                    reason=WarriorExitReason.SPREAD_EXIT,
-                                    exit_price=current_price,
-                                    shares_to_exit=position.shares,
-                                    pnl_estimate=pnl,
-                                    stop_price=position.current_stop,
-                                    r_multiple=r_multiple,
-                                    trigger_description=f"Spread {spread_pct:.1f}% > max {s.max_spread_percent}%",
+                                
+                                if spread_pct > s.max_spread_percent:
+                                    pnl = (current_price - position.entry_price) * position.shares
+                                    logger.warning(
+                                        f"[Warrior] {position.symbol}: SPREAD EXIT - spread {spread_pct:.1f}% "
+                                        f"(max={s.max_spread_percent}%, bid=${bid}, ask=${ask})"
+                                    )
+                                    return WarriorExitSignal(
+                                        position_id=position.position_id,
+                                        symbol=position.symbol,
+                                        reason=WarriorExitReason.SPREAD_EXIT,
+                                        exit_price=current_price,
+                                        shares_to_exit=position.shares,
+                                        pnl_estimate=pnl,
+                                        stop_price=position.current_stop,
+                                        r_multiple=r_multiple,
+                                        trigger_description=f"Spread {spread_pct:.1f}% > max {s.max_spread_percent}%",
+                                    )
+                            elif liquidity_status == "no_ask_liquidity":
+                                # No sellers - can't calculate spread, log warning
+                                logger.debug(
+                                    f"[Warrior] {position.symbol}: No ask liquidity (bid=${bid:.2f}, ask=N/A) - spread check skipped"
+                                )
+                            elif liquidity_status == "no_bid_liquidity":
+                                # No buyers - bearish, log warning
+                                logger.warning(
+                                    f"[Warrior] {position.symbol}: No bid liquidity (bid=N/A, ask=${ask:.2f}) - caution!"
+                                )
+                            else:
+                                # No quote at all
+                                logger.debug(
+                                    f"[Warrior] {position.symbol}: No quote data available for spread check"
                                 )
                     except Exception as e:
                         logger.debug(f"[Warrior] {position.symbol}: Spread check failed: {e}")

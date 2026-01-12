@@ -1137,7 +1137,8 @@ async def enable_warrior_broker():
     async def broker_get_quote_with_spread(symbol: str):
         """Get quote with bid/ask spread for liquidity monitoring.
         
-        Returns: dict with price, bid, ask, spread_cents, spread_percent
+        Returns: dict with price, bid, ask, spread_cents, spread_percent,
+                 and liquidity_status ('ok', 'no_ask_liquidity', 'no_bid_liquidity', 'no_quote')
         Returns None if quote unavailable.
         """
         try:
@@ -1148,21 +1149,44 @@ async def enable_warrior_broker():
                 quote = quotes[symbol]
                 bid = float(quote.bid) if quote.bid else 0
                 ask = float(quote.ask) if quote.ask else 0
-                price = float(quote.price) if quote.price else (bid + ask) / 2
+                price = float(quote.price) if quote.price else 0
                 
+                # Calculate price fallback
+                if price == 0 and bid > 0 and ask > 0:
+                    price = (bid + ask) / 2
+                elif price == 0 and bid > 0:
+                    price = bid
+                elif price == 0 and ask > 0:
+                    price = ask
+                
+                # Determine liquidity status and calculate spread
                 if bid > 0 and ask > 0:
+                    liquidity_status = "ok"
                     spread_cents = (ask - bid) * 100
                     spread_percent = ((ask - bid) / price) * 100 if price > 0 else 0
+                elif bid > 0 and ask == 0:
+                    # Has buyers but no sellers - potential liquidity concern in extended hours
+                    liquidity_status = "no_ask_liquidity"
+                    spread_cents = None
+                    spread_percent = None  # Can't calculate without ask
+                elif bid == 0 and ask > 0:
+                    # Has sellers but no buyers - bearish signal
+                    liquidity_status = "no_bid_liquidity"
+                    spread_cents = None
+                    spread_percent = None
                 else:
-                    spread_cents = 0
-                    spread_percent = 0
+                    # No quote data at all
+                    liquidity_status = "no_quote"
+                    spread_cents = None
+                    spread_percent = None
                 
                 return {
                     "price": price,
                     "bid": bid,
                     "ask": ask,
-                    "spread_cents": round(spread_cents, 2),
-                    "spread_percent": round(spread_percent, 2),
+                    "spread_cents": round(spread_cents, 2) if spread_cents is not None else None,
+                    "spread_percent": round(spread_percent, 2) if spread_percent is not None else None,
+                    "liquidity_status": liquidity_status,
                 }
         except Exception as e:
             logger.debug(f"[Warrior] Quote with spread failed for {symbol}: {e}")
