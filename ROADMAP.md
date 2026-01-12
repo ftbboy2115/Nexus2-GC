@@ -41,7 +41,7 @@ Last updated: 2026-01-11
   - Backend: `POST /automation/liquidate-all` endpoint
   - GUI: Button in Quick Actions with confirmation modal
 - [x] **Project README** — Startup instructions (backend, frontend, env setup)
-- [ ] **User Guide / Wiki** — How to use the system, operational playbook
+- [x] **User Guide / Wiki** — Comprehensive operational guide (Jan 11) → [docs/user_guide.md](docs/user_guide.md)
 - [ ] **Market Conditions Tracking** — Dedicated `market_snapshots` table for correlation analysis
   - Periodic capture of SPY, QQQ, VIX, sector ETFs
   - Link to trade events for win/loss correlation
