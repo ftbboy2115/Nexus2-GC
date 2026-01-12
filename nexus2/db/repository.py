@@ -102,6 +102,16 @@ class PositionRepository:
         """Get all open positions."""
         return self.get_all(status="open")
     
+    def get_pending(self) -> List[PositionModel]:
+        """Get all pending_fill positions (awaiting broker confirmation)."""
+        return self.get_all(status="pending_fill")
+    
+    def get_active(self) -> List[PositionModel]:
+        """Get all active positions (open, scaling, partial, or pending_fill)."""
+        return self.db.query(PositionModel).filter(
+            PositionModel.status.in_(["open", "scaling", "partial", "pending_fill"])
+        ).order_by(PositionModel.opened_at.desc()).all()
+    
     def get_by_symbol(self, symbol: str) -> List[PositionModel]:
         """Get positions by symbol."""
         return self.db.query(PositionModel).filter(PositionModel.symbol == symbol).all()

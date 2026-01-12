@@ -704,14 +704,33 @@ async def get_broker_positions(request: Request):
     
     try:
         positions_dict = broker.get_positions()
+        broker_symbols = set(positions_dict.keys())
         
         # Query local Position records for correlation
         with get_session() as db:
             position_repo = PositionRepository(db)
-            # Get all open positions from local DB
-            local_positions = position_repo.get_open()
+            # Get all active positions from local DB (including pending_fill)
+            local_positions = position_repo.get_active()
             # Create lookup by symbol
             local_by_symbol = {p.symbol: p for p in local_positions}
+            
+            # Sync pending_fill → open for positions confirmed by broker
+            from nexus2.domain.positions.position_state_machine import PositionStatus
+            pending_positions = [p for p in local_positions if p.status == PositionStatus.PENDING_FILL.value]
+            fills_confirmed = 0
+            for pending_pos in pending_positions:
+                if pending_pos.symbol in broker_symbols:
+                    # Broker confirms position exists - transition to open
+                    position_repo.update(pending_pos.id, {"status": PositionStatus.OPEN.value})
+                    fills_confirmed += 1
+                    logger.info(f"[Sync] {pending_pos.symbol}: pending_fill → open (broker confirmed)")
+            
+            # Update engine stats for confirmed fills
+            if fills_confirmed > 0:
+                from nexus2.domain.automation.engine import get_automation_engine
+                engine = get_automation_engine()
+                if engine:
+                    engine.stats.orders_filled += fills_confirmed
         
         # Convert to list format for frontend
         positions_list = []
