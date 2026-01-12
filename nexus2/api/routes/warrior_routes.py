@@ -1162,8 +1162,10 @@ async def enable_warrior_broker():
                 current_price = signal_price
             
             # Ross Cameron style: limit order slightly below bid for quick fill
-            # Use 0.5% below current price to ensure fill while avoiding slippage
-            limit_price = round(current_price * 0.995, 2)
+            # Use wider offset for stop exits (urgent) vs partials/profits
+            is_stop_exit = reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop")
+            offset = 0.99 if is_stop_exit else 0.995  # 1% for stops, 0.5% for partials
+            limit_price = round(current_price * offset, 2)
             
             # Submit limit sell order with extended hours enabled
             from uuid import uuid4
