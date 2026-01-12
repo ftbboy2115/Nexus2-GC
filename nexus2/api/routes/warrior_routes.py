@@ -1118,6 +1118,22 @@ async def enable_warrior_broker():
         quote = umd.get_quote(symbol)
         return float(quote.price) if quote else None
     
+    async def broker_get_quotes_batch(symbols: list):
+        """Get quotes for multiple symbols in ONE API call.
+        
+        Dramatically reduces API calls vs individual quotes.
+        Returns: dict[symbol, price] for all symbols
+        """
+        try:
+            # Use Alpaca's batch quote endpoint (1 call for all symbols)
+            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+            alpaca = AlpacaAdapter()
+            quotes = alpaca.get_quotes_batch(symbols)
+            return {sym: float(q.price) for sym, q in quotes.items() if q}
+        except Exception as e:
+            print(f"[Warrior] Batch quote failed: {e}")
+            return {}
+    
     async def broker_execute_exit(signal):
         """Execute exit order via Alpaca broker.
         
@@ -1213,7 +1229,12 @@ async def enable_warrior_broker():
             print(f"[Warrior] Error getting broker positions: {e}")
             return None  # Return None on error, not empty list - sync will skip if None
     
-    monitor.set_callbacks(get_broker_positions=broker_get_positions_async)
+    monitor.set_callbacks(
+        get_broker_positions=broker_get_positions_async,
+        get_prices_batch=broker_get_quotes_batch,  # Batch quotes for reduced API calls
+        get_price=broker_get_quote,  # Fallback for individual quotes
+        execute_exit=broker_execute_exit,  # Wire up exit execution
+    )
     
     engine.set_callbacks(
         submit_order=broker_submit_order,

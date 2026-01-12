@@ -153,6 +153,7 @@ class WarriorMonitor:
         
         # Callbacks
         self._get_price: Optional[Callable] = None
+        self._get_prices_batch: Optional[Callable] = None  # Batch quotes to reduce API calls
         self._get_intraday_candles: Optional[Callable] = None  # For pattern detection
         self._execute_exit: Optional[Callable] = None
         self._update_stop: Optional[Callable] = None
@@ -179,6 +180,7 @@ class WarriorMonitor:
     def set_callbacks(
         self,
         get_price: Callable = None,
+        get_prices_batch: Callable = None,
         get_intraday_candles: Callable = None,
         execute_exit: Callable = None,
         update_stop: Callable = None,
@@ -191,6 +193,8 @@ class WarriorMonitor:
         """
         if get_price is not None:
             self._get_price = get_price
+        if get_prices_batch is not None:
+            self._get_prices_batch = get_prices_batch
         if get_intraday_candles is not None:
             self._get_intraday_candles = get_intraday_candles
         if execute_exit is not None:
@@ -357,9 +361,21 @@ class WarriorMonitor:
         if not self._positions:
             return
         
+        # Fetch all prices in ONE batch call to reduce API rate limits
+        symbols = [p.symbol for p in self._positions.values()]
+        prices = {}
+        
+        if self._get_prices_batch:
+            try:
+                prices = await self._get_prices_batch(symbols)
+            except Exception as e:
+                logger.error(f"[Warrior] Batch quote failed: {e}")
+        
         for position_id, position in list(self._positions.items()):
             try:
-                signal = await self._evaluate_position(position)
+                # Pass pre-fetched price to avoid individual API calls
+                current_price = prices.get(position.symbol)
+                signal = await self._evaluate_position(position, current_price)
                 if signal:
                     await self._handle_exit(signal)
             except Exception as e:
@@ -472,7 +488,11 @@ class WarriorMonitor:
     # EXIT EVALUATION (Ross Cameron Rules)
     # =========================================================================
     
-    async def _evaluate_position(self, position: WarriorPosition) -> Optional[WarriorExitSignal]:
+    async def _evaluate_position(
+        self, 
+        position: WarriorPosition,
+        prefetched_price: Optional[float] = None,
+    ) -> Optional[WarriorExitSignal]:
         """
         Evaluate position for exit conditions.
         
@@ -481,15 +501,22 @@ class WarriorMonitor:
         2. Candle-under-candle pattern
         3. Topping tail rejection
         4. Profit target reached
+        
+        Args:
+            position: The position to evaluate
+            prefetched_price: Pre-fetched price from batch quote (avoids individual API call)
         """
-        if not self._get_price:
+        # Use pre-fetched price if available, otherwise fall back to individual call
+        if prefetched_price is not None:
+            current_price = Decimal(str(prefetched_price))
+        elif self._get_price:
+            price = await self._get_price(position.symbol)
+            if not price:
+                return None
+            current_price = Decimal(str(price))
+        else:
             return None
         
-        current_price = await self._get_price(position.symbol)
-        if not current_price:
-            return None
-        
-        current_price = Decimal(str(current_price))
         s = self.settings
         
         # Update high since entry
