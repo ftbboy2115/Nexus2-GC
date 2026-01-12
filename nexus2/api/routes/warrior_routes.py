@@ -1219,26 +1219,41 @@ async def enable_warrior_broker():
             if cancelled > 0:
                 print(f"[Warrior] Cancelled {cancelled} pending sell order(s) for {symbol} before exit")
             
-            # Get current price for limit order
-            current_price = await broker_get_quote(symbol)
+            # For spread exits, use actual bid from quote callback (spread is wide)
+            # For other exits, use midpoint from regular quote
+            is_spread_exit = reason == "spread_exit"
             
-            # CRITICAL: Detect stale quotes from FMP fallback during Alpaca rate limits
-            # The signal.exit_price is the ACTUAL price that triggered the exit from the monitor
-            # If quoted price is significantly higher than trigger price, quote is stale
-            signal_price = float(signal.exit_price)
-            if current_price is None:
-                # No quote at all - use signal's exit price
-                print(f"[Warrior] Cannot get quote for {symbol} - using signal exit price ${signal_price:.2f}")
-                current_price = signal_price
-            elif current_price > signal_price * 1.05:
-                # Quote is >5% higher than what triggered the stop - stale FMP data
-                print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
-                current_price = signal_price
+            if is_spread_exit:
+                # Get actual bid for spread exit - the spread is wide so midpoint is misleading
+                spread_data = await broker_get_quote_with_spread(symbol)
+                if spread_data and spread_data.get("bid", 0) > 0:
+                    current_price = spread_data["bid"]
+                    print(f"[Warrior] Spread exit using bid: ${current_price:.2f} (ask=${spread_data.get('ask', 0):.2f})")
+                else:
+                    # Fallback to signal price if no bid
+                    current_price = float(signal.exit_price)
+                    print(f"[Warrior] No bid available, using signal price: ${current_price:.2f}")
+            else:
+                # Regular exit - use midpoint
+                current_price = await broker_get_quote(symbol)
+                
+                # CRITICAL: Detect stale quotes from FMP fallback during Alpaca rate limits
+                # The signal.exit_price is the ACTUAL price that triggered the exit from the monitor
+                # If quoted price is significantly higher than trigger price, quote is stale
+                signal_price = float(signal.exit_price)
+                if current_price is None:
+                    # No quote at all - use signal's exit price
+                    print(f"[Warrior] Cannot get quote for {symbol} - using signal exit price ${signal_price:.2f}")
+                    current_price = signal_price
+                elif current_price > signal_price * 1.05:
+                    # Quote is >5% higher than what triggered the stop - stale FMP data
+                    print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
+                    current_price = signal_price
             
             # Ross Cameron style: limit order slightly below bid for quick fill
             # Use wider offset for stop exits (urgent) vs partials/profits
-            is_stop_exit = reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop")
-            offset = 0.99 if is_stop_exit else 0.995  # 1% for stops, 0.5% for partials
+            is_stop_exit = reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop", "spread_exit")
+            offset = 0.99 if is_stop_exit else 0.995  # 1% for stops/spread exits, 0.5% for partials
             limit_price = round(current_price * offset, 2)
             
             # Submit limit sell order with extended hours enabled
