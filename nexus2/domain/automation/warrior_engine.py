@@ -591,6 +591,20 @@ class WarriorEngine:
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: Position check failed: {e}")
         
+        # Check re-entry cooldown: block entry if symbol was recently exited
+        # This prevents immediately buying back after exit (e.g., after spread exit or stop)
+        if symbol in self.monitor._recently_exited:
+            exit_time = self.monitor._recently_exited[symbol]
+            seconds_ago = (datetime.utcnow() - exit_time).total_seconds()
+            cooldown = self.monitor._recovery_cooldown_seconds
+            if seconds_ago < cooldown:
+                logger.info(
+                    f"[Warrior Entry] {symbol}: Re-entry cooldown - exited {seconds_ago:.0f}s ago "
+                    f"(waiting {cooldown}s), skipping"
+                )
+                watched.entry_triggered = True  # Mark as triggered to prevent retries
+                return
+        
         # Check if we can open new position (max positions, daily loss)
         if not await self._can_open_position():
             logger.info(f"[Warrior Entry] {symbol}: Cannot open (max positions or daily loss)")
