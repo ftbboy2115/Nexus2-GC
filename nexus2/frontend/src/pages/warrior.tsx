@@ -1020,7 +1020,7 @@ export default function Warrior() {
                                                 >-</button>
                                                 <span>{status?.config.max_positions || 3}</span>
                                                 <button
-                                                    onClick={() => updateConfig('max_positions', Math.min(10, (status?.config.max_positions || 3) + 1))}
+                                                    onClick={() => updateConfig('max_positions', Math.min(20, (status?.config.max_positions || 3) + 1))}
                                                     className={styles.btnSmall}
                                                 >+</button>
                                             </div>
