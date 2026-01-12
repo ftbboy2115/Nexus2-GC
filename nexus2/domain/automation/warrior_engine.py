@@ -767,8 +767,22 @@ _warrior_engine: Optional[WarriorEngine] = None
 
 
 def get_warrior_engine() -> WarriorEngine:
-    """Get singleton Warrior engine."""
+    """Get singleton Warrior engine.
+    
+    Loads persisted settings on first creation.
+    """
     global _warrior_engine
     if _warrior_engine is None:
         _warrior_engine = WarriorEngine()
+        
+        # Load persisted settings
+        try:
+            from nexus2.db.warrior_settings import load_warrior_settings, apply_settings_to_config
+            settings = load_warrior_settings()
+            if settings:
+                apply_settings_to_config(_warrior_engine.config, settings)
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to load settings: {e}")
+    
     return _warrior_engine
+
