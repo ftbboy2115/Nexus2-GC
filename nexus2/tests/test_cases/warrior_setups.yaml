@@ -153,16 +153,16 @@ test_cases:
     notes: "High volume, news catalyst"
 
   # ==========================================================================
-  # ROSS CAMERON TRADES - December 30, 2024 (~10 days ago)
+  # ROSS CAMERON TRADES - December 30, 2025 (~12 days ago)
   # ==========================================================================
 
-  - id: wok_2024_12_30
+  - id: wok_2025_12_30
     symbol: WOK
     setup_type: pmh
     outcome: winner
-    description: "WOK - Ross traded"
-    trade_date: "2024-12-30"
-    ross_pnl: 7228.44  # TARGET TO MATCH/BEAT
+    verified: false  # Could not verify this trade - needs research
+    description: "WOK - Unverified Ross trade"
+    trade_date: "2025-12-30"
     premarket_data:
       gap_percent: 25.0
       volume: 5000000
@@ -178,16 +178,16 @@ test_cases:
     notes: "Solid gap + news catalyst"
 
   # ==========================================================================
-  # ROSS CAMERON TRADES - December 27, 2024 (~13 days ago)
+  # ROSS CAMERON TRADES - December 27, 2025
   # ==========================================================================
 
-  - id: amci_2024_12_27
+  - id: amci_2025_12_27
     symbol: AMCI
     setup_type: pmh
     outcome: winner
-    description: "AMCI - Ross traded"
-    trade_date: "2024-12-27"
-    ross_pnl: 5154.30  # TARGET TO MATCH/BEAT
+    verified: false  # Could not verify this trade - needs research
+    description: "AMCI - Unverified Ross trade"
+    trade_date: "2025-12-27"
     premarket_data:
       gap_percent: 30.0
       volume: 4000000
@@ -203,37 +203,46 @@ test_cases:
     notes: "Gap + news"
 
   # ==========================================================================
-  # ROSS CAMERON TRADES - December 24-25, 2024 (~2 weeks ago)
+  # ROSS CAMERON TRADES - December 22, 2025 (VERIFIED)
   # ==========================================================================
 
-  - id: cmct_2024_12_24
+  - id: cmct_2025_12_22
     symbol: CMCT
     setup_type: pmh
     outcome: winner
-    description: "CMCT - Ross's BIG winner"
-    trade_date: "2024-12-24"
-    ross_pnl: 10806.46  # TARGET TO MATCH/BEAT - BIG ONE
+    ross_traded: true
+    verified: true
+    data_source: "VERIFIED: YouTube recap Dec 22 2025, nasdaq.com price data"
+    description: "CMCT Dec 22 2025 - Ross's BIG winner, one trade only"
+    trade_date: "2025-12-22"
+    ross_pnl: 10806.46  # VERIFIED from Ross's video
     premarket_data:
-      gap_percent: 45.0
+      gap_percent: 25.0  # Estimated - stock closed $3.71 on Dec 31
       volume: 8000000
       float_shares: null
-      catalyst: "news"
-      previous_close: 2.00
-      premarket_high: 2.95
+      catalyst: "continuation"  # Ross said no fresh catalyst, squeeze play
+      previous_close: 3.50  # Approximate from Dec 2025 range
+      premarket_high: 4.65  # Ross entered $4.65-$4.70
+    price_action:
+      entry: 4.65  # Per Ross's video
+      high: null  # Need to verify
+      low: null
+      close: null
     expected:
-      entry_near: 3.00
-      stop_near: 2.85
+      entry_near: 4.65
+      stop_near: 4.50
       mental_stop_cents: 15
       profit_target_r: 2.0
-    notes: "Massive winner - over 10K"
+    notes: "Ross's one-trade $10K day. Continuation squeeze, no fresh news."
 
-  - id: azi_2024_12_24
+  - id: azi_2025_12_24
     symbol: AZI
     setup_type: pmh
     outcome: winner
-    description: "AZI - Ross traded"
-    trade_date: "2024-12-24"
-    ross_pnl: 1600.53  # TARGET TO MATCH/BEAT
+    verified: false  # Could not verify this trade
+    description: "AZI - Unverified Ross trade"
+    trade_date: "2025-12-24"
+    ross_pnl: 1600.53
     premarket_data:
       gap_percent: 20.0
       volume: 3000000
@@ -246,19 +255,20 @@ test_cases:
       stop_near: 4.75
       mental_stop_cents: 15
       profit_target_r: 2.0
-    notes: "Smaller winner"
+    notes: "Unverified - needs research"
 
   # ==========================================================================
-  # ROSS CAMERON TRADES - December 17-18, 2024 (~3 weeks ago)
+  # ROSS CAMERON TRADES - December 17, 2025
   # ==========================================================================
 
-  - id: lhai_2024_12_17
+  - id: lhai_2025_12_17
     symbol: LHAI
     setup_type: pmh
     outcome: winner
-    description: "LHAI - Ross traded"
-    trade_date: "2024-12-17"
-    ross_pnl: 2335.02  # TARGET TO MATCH/BEAT
+    verified: false  # Could not verify this trade
+    description: "LHAI - Unverified Ross trade"
+    trade_date: "2025-12-17"
+    ross_pnl: 2335.02
     premarket_data:
       gap_percent: 35.0
       volume: 4000000
@@ -271,15 +281,16 @@ test_cases:
       stop_near: 1.95
       mental_stop_cents: 15
       profit_target_r: 2.0
-    notes: "Gap + news"
+    notes: "Unverified - needs research"
 
-  - id: pvas_2024_12_17
+  - id: pvas_2025_12_17
     symbol: PVAS
     setup_type: pmh
     outcome: winner
-    description: "PVAS - Ross traded"
-    trade_date: "2024-12-17"
-    ross_pnl: 1088.07  # TARGET TO MATCH/BEAT
+    verified: false  # Could not verify this trade
+    description: "PVAS - Unverified Ross trade"
+    trade_date: "2025-12-17"
+    ross_pnl: 1088.07
     premarket_data:
       gap_percent: 25.0
       volume: 2500000
@@ -292,7 +303,7 @@ test_cases:
       stop_near: 2.40
       mental_stop_cents: 15
       profit_target_r: 2.0
-    notes: "Smaller winner same day as LHAI"
+    notes: "Unverified - needs research"
 
 # ==========================================================================
 # USAGE:
