@@ -554,6 +554,9 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
     engine = get_engine()
     engine.config.sim_only = True
     
+    # Also set monitor to sim_mode (bypasses time checks for Mock Market testing)
+    engine.monitor.sim_mode = True
+    
     # Wire up engine callbacks to MockBroker
     async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb"):
         """Submit order to MockBroker."""

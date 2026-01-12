@@ -188,6 +188,35 @@ class MarketCalendar:
             return now_et.date() == next_open_et.date()
         
         return False
+    
+    def is_extended_hours_active(self) -> bool:
+        """
+        Check if within extended trading hours (4 AM - 8 PM ET on market days).
+        
+        Used by Warrior Trading strategy which can trade pre-market and post-market:
+        - Pre-market: 4:00 AM - 9:30 AM (gap scanning, early entries)
+        - Regular: 9:30 AM - 4:00 PM
+        - Post-market: 4:00 PM - 8:00 PM (position management, exits)
+        
+        Returns False on weekends/holidays.
+        """
+        # First check if it's a trading day at all
+        if not self.is_trading_day():
+            # Check weekend fallback (API might fail)
+            now_et = datetime.now(ET)
+            if now_et.weekday() >= 5:  # Saturday or Sunday
+                return False
+            # On weekdays, if API says not a trading day, trust it (holiday)
+            return False
+        
+        # Check time (4:00 AM - 8:00 PM ET)
+        now_et = datetime.now(ET)
+        current_time = now_et.time()
+        
+        extended_open = time(4, 0)   # 4:00 AM
+        extended_close = time(20, 0)  # 8:00 PM
+        
+        return extended_open <= current_time <= extended_close
 
 
 # Singleton instance

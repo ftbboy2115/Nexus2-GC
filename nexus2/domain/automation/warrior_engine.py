@@ -320,13 +320,15 @@ class WarriorEngine:
                     await asyncio.sleep(10)
                     continue
                 
-                # Skip on non-market days (weekends, holidays)
-                from nexus2.adapters.market_data.market_calendar import get_market_calendar
-                calendar = get_market_calendar(paper=True)
-                if not calendar.is_market_open():
-                    logger.debug("[Warrior Scan] Market closed - skipping scan")
-                    await asyncio.sleep(60)  # Check again in 1 minute
-                    continue
+                # Skip on non-market days (weekends, holidays) and outside extended hours
+                # BUT: bypass in sim_only mode for Mock Market testing anytime
+                if not self.config.sim_only:
+                    from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                    calendar = get_market_calendar(paper=True)
+                    if not calendar.is_extended_hours_active():
+                        logger.debug("[Warrior Scan] Outside extended hours (4 AM - 8 PM) - skipping scan")
+                        await asyncio.sleep(60)  # Check again in 1 minute
+                        continue
                 
                 # Record when this scan started
                 self._last_scan_started = datetime.utcnow()

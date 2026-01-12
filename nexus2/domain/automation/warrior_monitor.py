@@ -164,6 +164,9 @@ class WarriorMonitor:
         self.last_check: Optional[datetime] = None
         self.last_error: Optional[str] = None
         
+        # Simulation mode flag - bypass time checks for Mock Market testing
+        self.sim_mode: bool = False
+        
         # P&L Tracking
         self.realized_pnl_today: Decimal = Decimal("0")
         self._pnl_date: Optional[datetime] = None  # Track date for reset
@@ -313,13 +316,15 @@ class WarriorMonitor:
         """Main monitoring loop."""
         while self._running:
             try:
-                # Skip on non-market days (weekends, holidays)
-                from nexus2.adapters.market_data.market_calendar import get_market_calendar
-                calendar = get_market_calendar(paper=True)
-                if not calendar.is_market_open():
-                    logger.debug("[Warrior Monitor] Market closed - skipping position check")
-                    await asyncio.sleep(60)  # Check again in 1 minute
-                    continue
+                # Skip on non-market days (weekends, holidays) and outside extended hours
+                # BUT: bypass in sim_mode for Mock Market testing anytime
+                if not self.sim_mode:
+                    from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                    calendar = get_market_calendar(paper=True)
+                    if not calendar.is_extended_hours_active():
+                        logger.debug("[Warrior Monitor] Outside extended hours (4 AM - 8 PM) - skipping position check")
+                        await asyncio.sleep(60)  # Check again in 1 minute
+                        continue
                 
                 await self._check_all_positions()
                 await asyncio.sleep(self.settings.check_interval_seconds)
