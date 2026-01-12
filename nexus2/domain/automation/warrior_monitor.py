@@ -158,6 +158,7 @@ class WarriorMonitor:
         self._execute_exit: Optional[Callable] = None
         self._update_stop: Optional[Callable] = None
         self._get_broker_positions: Optional[Callable] = None  # For Alpaca sync
+        self._record_symbol_fail: Optional[Callable] = None  # 2-strike rule callback
         
         # Sync tracking
         self._sync_counter = 0
@@ -190,6 +191,7 @@ class WarriorMonitor:
         execute_exit: Callable = None,
         update_stop: Callable = None,
         get_broker_positions: Callable = None,
+        record_symbol_fail: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -208,6 +210,8 @@ class WarriorMonitor:
             self._update_stop = update_stop
         if get_broker_positions is not None:
             self._get_broker_positions = get_broker_positions
+        if record_symbol_fail is not None:
+            self._record_symbol_fail = record_symbol_fail
     
     # =========================================================================
     # POSITION MANAGEMENT
@@ -768,6 +772,17 @@ class WarriorMonitor:
                 if signal.reason != WarriorExitReason.PARTIAL_EXIT:
                     # Track as recently exited to prevent auto-recovery race
                     self._recently_exited[signal.symbol] = datetime.utcnow()
+                    
+                    # 2-Strike Rule: record failure for stop exits
+                    # Only count MENTAL_STOP and TECHNICAL_STOP as true "failures"
+                    stop_reasons = {
+                        WarriorExitReason.MENTAL_STOP,
+                        WarriorExitReason.TECHNICAL_STOP,
+                        WarriorExitReason.BREAKOUT_FAILURE,
+                    }
+                    if signal.reason in stop_reasons and self._record_symbol_fail:
+                        self._record_symbol_fail(signal.symbol)
+                    
                     self.remove_position(signal.position_id)
                     
             except Exception as e:

@@ -169,6 +169,11 @@ class WarriorEngine:
         # Blacklist - symbols that can't be traded (Alpaca rejects)
         self._blacklist: set = set()
         
+        # 2-Strike Rule: track daily stop-out failures per symbol
+        # After max_fails stops, block further entries for the day
+        self._symbol_fails: Dict[str, int] = {}  # symbol -> stop count
+        self._max_fails_per_symbol: int = 2  # Ross methodology: 2 fails = done
+        
         # Tasks
         self._scan_task: Optional[asyncio.Task] = None
         self._watch_task: Optional[asyncio.Task] = None
@@ -201,6 +206,7 @@ class WarriorEngine:
         self.monitor.set_callbacks(
             get_price=get_quote,
             get_intraday_candles=get_intraday_bars,
+            record_symbol_fail=self.record_symbol_fail,
         )
     
     # =========================================================================
@@ -563,6 +569,16 @@ class WarriorEngine:
             watched.entry_triggered = True  # Mark to prevent retries
             return
         
+        # 2-Strike Rule: block entry if symbol has hit max failures today
+        symbol_fails = self._symbol_fails.get(symbol, 0)
+        if symbol_fails >= self._max_fails_per_symbol:
+            logger.info(
+                f"[Warrior Entry] {symbol}: 2-strike rule - {symbol_fails} stops today, "
+                f"skipping (max={self._max_fails_per_symbol})"
+            )
+            watched.entry_triggered = True  # Mark to prevent retries
+            return
+        
         # Check if we already hold this symbol (prevents double-buying after restart)
         if self._get_positions:
             try:
@@ -744,6 +760,25 @@ class WarriorEngine:
             return False
         
         return True
+    
+    def record_symbol_fail(self, symbol: str):
+        """
+        Record a stop-out failure for a symbol.
+        
+        Called by WarriorMonitor when a position is exited via mental_stop.
+        After max_fails_per_symbol stops, further entries are blocked.
+        """
+        current = self._symbol_fails.get(symbol, 0)
+        self._symbol_fails[symbol] = current + 1
+        logger.info(
+            f"[Warrior 2-Strike] {symbol}: Fail #{self._symbol_fails[symbol]} "
+            f"(max={self._max_fails_per_symbol})"
+        )
+    
+    def reset_daily_fails(self):
+        """Reset daily fail counters. Call at start of trading day."""
+        self._symbol_fails.clear()
+        logger.info("[Warrior] Daily fail counters reset")
     
     # =========================================================================
     # STATUS
