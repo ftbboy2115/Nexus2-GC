@@ -373,7 +373,7 @@ class WarriorEngine:
     async def _run_scan(self):
         """Run one scan cycle."""
         self.stats.scans_run += 1
-        self.stats.last_scan_at = datetime.utcnow()
+        self.stats.last_scan_at = datetime.now(timezone.utc)
         
         logger.info("[Warrior Scan] Running scan...")
         
