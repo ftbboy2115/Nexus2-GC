@@ -198,12 +198,12 @@ class AutomationScheduler:
                 
                 # Check if market hours (uses sim clock if sim_mode)
                 if self.is_market_hours:
-                    # During market hours: run cycle and sleep normal interval
-                    await self._run_cycle()
-                    
-                    # Check if EOD window and haven't run today
-                    # Run in both live AND simulation mode (same logic, different data sources)
+                    # CRITICAL: Run EOD check FIRST (before scan) to ensure exits happen before 4PM
+                    # The scan can take 4+ minutes due to FMP rate limiting
                     await self._check_eod()
+                    
+                    # Then run the normal scan/execute cycle
+                    await self._run_cycle()
                     
                     # Check if time for auto-shutdown (4:02 PM - stops scheduler after market close)
                     shutdown_triggered = await self._check_auto_shutdown()
