@@ -30,11 +30,15 @@ router = APIRouter(prefix="/warrior", tags=["warrior"])
 # =============================================================================
 
 class WarriorStartRequest(BaseModel):
-    """Request to start Warrior engine."""
-    sim_only: bool = True
-    risk_per_trade: float = 100.0
-    max_positions: int = 10  # Higher default for testing
-    max_candidates: int = 5  # How many candidates to watch for breakouts
+    """Request to start Warrior engine.
+    
+    All fields are Optional to preserve persisted settings.
+    Only explicitly provided values will override current config.
+    """
+    sim_only: Optional[bool] = None
+    risk_per_trade: Optional[float] = None
+    max_positions: Optional[int] = None
+    max_candidates: Optional[int] = None
 
 
 class WarriorScannerSettingsRequest(BaseModel):
@@ -126,11 +130,15 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
     """
     engine = get_engine()
     
-    # Update config
-    engine.config.sim_only = request.sim_only
-    engine.config.risk_per_trade = Decimal(str(request.risk_per_trade))
-    engine.config.max_positions = request.max_positions
-    engine.config.max_candidates = request.max_candidates
+    # Only update config for explicitly provided values (preserve loaded settings)
+    if request.sim_only is not None:
+        engine.config.sim_only = request.sim_only
+    if request.risk_per_trade is not None:
+        engine.config.risk_per_trade = Decimal(str(request.risk_per_trade))
+    if request.max_positions is not None:
+        engine.config.max_positions = request.max_positions
+    if request.max_candidates is not None:
+        engine.config.max_candidates = request.max_candidates
     
     # Wire up default callbacks if none are set
     # These use real market data for quotes but don't submit real orders (sim_only)
