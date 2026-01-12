@@ -200,23 +200,38 @@ class MarketCalendar:
         
         Returns False on weekends/holidays.
         """
-        # First check if it's a trading day at all
-        if not self.is_trading_day():
-            # Check weekend fallback (API might fail)
-            now_et = datetime.now(ET)
-            if now_et.weekday() >= 5:  # Saturday or Sunday
-                return False
-            # On weekdays, if API says not a trading day, trust it (holiday)
-            return False
-        
-        # Check time (4:00 AM - 8:00 PM ET)
         now_et = datetime.now(ET)
         current_time = now_et.time()
+        weekday = now_et.weekday()
         
+        # No trading on weekends
+        if weekday >= 5:
+            return False
+        
+        # Check time first (4:00 AM - 8:00 PM ET)
         extended_open = time(4, 0)   # 4:00 AM
         extended_close = time(20, 0)  # 8:00 PM
         
-        return extended_open <= current_time <= extended_close
+        if not (extended_open <= current_time <= extended_close):
+            return False
+        
+        # During extended hours on a weekday - check if it's a trading day
+        # (handles holidays where market is closed entirely)
+        try:
+            status = self.get_market_status()
+            # If market is open or was open today, it's a trading day
+            if status.is_open:
+                return True
+            # If next_open is tomorrow or later, today WAS a trading day (post-market)
+            if status.next_open:
+                next_open_et = status.next_open.astimezone(ET)
+                if next_open_et.date() != now_et.date():
+                    return True  # Post-market of a trading day
+            # If API says not a trading day, trust it (holiday)
+            return False
+        except Exception:
+            # Fallback: assume weekdays are trading days
+            return True
 
 
 # Singleton instance
