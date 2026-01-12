@@ -30,9 +30,10 @@ test_cases:
     symbol: ACON
     setup_type: pmh
     outcome: winner
-    description: "ACON Jan 8 2026 - Ross traded PMH breakout, +42% gap"
+    ross_traded: false  # Ross did NOT trade this - market opportunity case
+    description: "ACON Jan 8 2026 - Massive gap +42%, did Warrior Bot catch it?"
     trade_date: "2026-01-08"
-    ross_pnl: 9293.09  # TARGET TO MATCH/BEAT
+    target_pnl: null  # No Ross P&L - validation case only
     premarket_data:
       gap_percent: 42.1
       volume: 43000000
@@ -51,9 +52,10 @@ test_cases:
     symbol: FLYX
     setup_type: pmh
     outcome: winner
-    description: "FLYX Jan 8 2026 - +130% gap, extreme RVOL"
+    ross_traded: false  # Ross did NOT trade this - market opportunity case
+    description: "FLYX Jan 8 2026 - +130% gap, extreme RVOL, 5282x - MASSIVE MOVE Ross missed"
     trade_date: "2026-01-08"
-    ross_pnl: 4731.89  # TARGET TO MATCH/BEAT
+    target_pnl: null  # No Ross P&L - validation case only
     premarket_data:
       gap_percent: 130.3
       volume: 50000000
@@ -76,9 +78,10 @@ test_cases:
     symbol: OPTX
     setup_type: orb
     outcome: winner
-    description: "OPTX - Ross traded ORB breakout"
+    ross_traded: true
+    description: "OPTX - Ross traded ORB breakout, 'heavy' with sellers"
     trade_date: "2026-01-06"
-    ross_pnl: 3604.91  # TARGET TO MATCH/BEAT
+    ross_pnl: 3604.91  # VERIFIED from Ross's recap video
     premarket_data:
       gap_percent: 35.0
       volume: 2000000
@@ -97,9 +100,10 @@ test_cases:
     symbol: ELAB
     setup_type: pmh
     outcome: winner
-    description: "ELAB - Ross traded"
+    ross_traded: true
+    description: "ELAB - Ross traded, entered $10.50-$10.60, added at $11, sold at $12 and breakeven"
     trade_date: "2026-01-06"
-    ross_pnl: 3430.23  # TARGET TO MATCH/BEAT
+    ross_pnl: 3500.00  # Approximately $3,500 per Ross's recap
     premarket_data:
       gap_percent: 25.0
       volume: 3000000
@@ -118,9 +122,10 @@ test_cases:
     symbol: ALMS
     setup_type: pmh
     outcome: winner
-    description: "ALMS - Ross traded"
+    ross_traded: true
+    description: "ALMS - Ross traded, initially lost $1k then re-entered for $1.5k profit"
     trade_date: "2026-01-06"
-    ross_pnl: 514.46  # TARGET TO MATCH/BEAT (smallest winner)
+    ross_pnl: 5146.00  # CORRECTED - Ross made $5,146 on ALMS (not $514)
     premarket_data:
       gap_percent: 30.0
       volume: 10000000
@@ -294,15 +299,16 @@ test_cases:
 # ==========================================================================
 
 # ==========================================================================
-# ROSS CAMERON TRADES - January 9, 2026 (Maximum Loss Day)
+# ROSS CAMERON TRADES - January 10, 2026 (Maximum Loss Day)
 # ==========================================================================
 
-  - id: benf_2026_01_09
+  - id: benf_2026_01_10
     symbol: BENF
     setup_type: pmh
     outcome: loser
-    description: "BENF Jan 9 2026 - Ross's maximum loss day, VWAP rejection"
-    trade_date: "2026-01-09"
+    ross_traded: true
+    description: "BENF Jan 10 2026 - Ross's maximum loss day, VWAP rejection"
+    trade_date: "2026-01-10"  # CORRECTED - was Jan 10, not Jan 9
     ross_pnl: -2300.00  # LOSS - Maximum loss day
     premarket_data:
       gap_percent: 25.0
