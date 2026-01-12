@@ -535,9 +535,15 @@ class WarriorMonitor:
         elif self._get_price:
             price = await self._get_price(position.symbol)
             if not price:
+                # CRITICAL: Log when price fetch fails - stop checks will be skipped!
+                logger.warning(
+                    f"[Warrior] {position.symbol}: Price fetch failed! "
+                    f"STOP CHECK SKIPPED (stop=${position.current_stop})"
+                )
                 return None
             current_price = Decimal(str(price))
         else:
+            logger.error(f"[Warrior] {position.symbol}: No price callback configured!")
             return None
         
         s = self.settings
