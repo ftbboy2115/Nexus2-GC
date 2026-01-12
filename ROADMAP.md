@@ -56,8 +56,10 @@ Last updated: 2026-01-11
 - [x] **Singleton Cleanup** — Removed duplicate `global _monitor`, use `get_monitor()`
 - [x] **Extract `execute_callback`** — Moved to `execution_handler.py` + 3 more modules (65% reduction)
 - [x] **`_sim_broker` thread safety** — Centralized in automation_state.py with threading.Lock
-- [ ] **Refactor `automation.tsx`** — 2100+ lines, extract into reusable components:
-  - PositionsSection, SchedulerSection, DiagnosticsSection, TradeEventsSection, QuickActionsSection
+- [x] **Refactor `automation.tsx`** — Extracted 7 components to `components/automation/`, reduced from 2141 to 1283 lines (40% reduction)
+  - Phase 1: SchedulerCard, EngineCard, MonitorCard, ApiUsageCard
+  - Phase 2: QuickActionsCard, SignalsCard
+  - Phase 3: PositionsCard
 
 ---
 
