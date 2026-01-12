@@ -89,6 +89,10 @@ class AlpacaBroker:
         
         # Track client_order_id -> broker_order_id mapping
         self._order_map: Dict[UUID, str] = {}
+        
+        # Cache for reducing API calls (frontend polls every 2s, we cache for 5s)
+        self._cache: Dict[str, tuple] = {}  # endpoint -> (data, timestamp)
+        self._cache_ttl = 5.0  # seconds
     
     def __del__(self):
         if hasattr(self, '_client'):
@@ -126,6 +130,32 @@ class AlpacaBroker:
             raise AlpacaBrokerError(f"Alpaca API error {e.response.status_code}: {error_detail}")
         except Exception as e:
             raise AlpacaBrokerError(f"Alpaca request error: {e}")
+    
+    def _cached_request(self, endpoint: str, ttl: float = None) -> Optional[dict]:
+        """Make cached GET request to reduce API rate limiting.
+        
+        Args:
+            endpoint: API endpoint (e.g. 'positions', 'account')
+            ttl: Cache TTL in seconds (default: self._cache_ttl)
+            
+        Returns:
+            Cached or fresh data from API
+        """
+        import time
+        
+        ttl = ttl or self._cache_ttl
+        now = time.time()
+        
+        # Check cache
+        if endpoint in self._cache:
+            data, cached_at = self._cache[endpoint]
+            if now - cached_at < ttl:
+                return data
+        
+        # Fetch fresh data
+        data = self._request("GET", endpoint)
+        self._cache[endpoint] = (data, now)
+        return data
     
     def _parse_order(self, data: dict, client_order_id: UUID) -> BrokerOrder:
         """Parse Alpaca order response to BrokerOrder."""
@@ -331,8 +361,8 @@ class AlpacaBroker:
         return self._parse_order(data, client_order_id)
     
     def get_positions(self) -> Dict[str, BrokerPosition]:
-        """Get all open positions."""
-        data = self._request("GET", "positions")
+        """Get all open positions (cached for 5s to reduce rate limits)."""
+        data = self._cached_request("positions")
         if not data:
             return {}
         
@@ -368,15 +398,15 @@ class AlpacaBroker:
         return positions
     
     def get_account_value(self) -> Decimal:
-        """Get total account value."""
-        data = self._request("GET", "account")
+        """Get total account value (cached for 5s)."""
+        data = self._cached_request("account")
         if not data:
             raise AlpacaBrokerError("Could not get account info")
         
         return Decimal(str(data.get("equity", 0)))
     
     def get_account_daily_pnl(self) -> dict:
-        """Get account-level daily P&L from Alpaca.
+        """Get account-level daily P&L from Alpaca (cached for 5s).
         
         Returns:
             Dict with:
@@ -385,7 +415,7 @@ class AlpacaBroker:
             - daily_pnl: Today's P&L (equity - last_equity)
             - daily_pnl_percent: Today's P&L as percentage
         """
-        data = self._request("GET", "account")
+        data = self._cached_request("account")
         if not data:
             raise AlpacaBrokerError("Could not get account info")
         
