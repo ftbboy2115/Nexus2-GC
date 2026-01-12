@@ -336,3 +336,94 @@ class TestWarriorSingleton:
         m2 = get_warrior_monitor()
         
         assert m1 is m2
+
+
+# =============================================================================
+# 2-Strike Rule Tests (Jan 2026)
+# =============================================================================
+
+class TestTwoStrikeRule:
+    """Tests for 2-strike rule - blocks entry after 2 stop-outs on same symbol."""
+    
+    @pytest.fixture
+    def monitor(self):
+        """Create monitor with mocked callbacks."""
+        with patch("nexus2.domain.automation.warrior_monitor.trade_event_service"):
+            m = WarriorMonitor()
+            m.set_callbacks(
+                get_price=AsyncMock(),
+                execute_exit=AsyncMock(),
+            )
+            yield m
+    
+    def test_record_symbol_fail_callback_wired(self, monitor):
+        """record_symbol_fail callback can be set."""
+        fail_recorder = Mock()
+        monitor.set_callbacks(record_symbol_fail=fail_recorder)
+        
+        assert monitor._record_symbol_fail == fail_recorder
+    
+    def test_mental_stop_triggers_fail_callback(self, monitor):
+        """Mental stop exit triggers record_symbol_fail callback."""
+        fail_recorder = Mock()
+        monitor.set_callbacks(record_symbol_fail=fail_recorder)
+        
+        # Add position
+        monitor.add_position("pos-123", "OSS", Decimal("10.00"), 100)
+        
+        # Create stop exit signal
+        signal = WarriorExitSignal(
+            position_id="pos-123",
+            symbol="OSS",
+            reason=WarriorExitReason.MENTAL_STOP,
+            exit_price=Decimal("9.85"),
+            shares_to_exit=100,
+            pnl_estimate=Decimal("-15.00"),
+        )
+        
+        # Handle exit
+        _run(monitor._handle_exit(signal))
+        
+        # Verify fail was recorded
+        fail_recorder.assert_called_once_with("OSS")
+    
+    def test_technical_stop_triggers_fail_callback(self, monitor):
+        """Technical stop exit triggers record_symbol_fail callback."""
+        fail_recorder = Mock()
+        monitor.set_callbacks(record_symbol_fail=fail_recorder)
+        
+        monitor.add_position("pos-123", "AAPL", Decimal("150.00"), 100)
+        
+        signal = WarriorExitSignal(
+            position_id="pos-123",
+            symbol="AAPL",
+            reason=WarriorExitReason.TECHNICAL_STOP,
+            exit_price=Decimal("149.80"),
+            shares_to_exit=100,
+            pnl_estimate=Decimal("-20.00"),
+        )
+        
+        _run(monitor._handle_exit(signal))
+        
+        fail_recorder.assert_called_once_with("AAPL")
+    
+    def test_partial_exit_does_not_trigger_fail(self, monitor):
+        """Partial profit exit does NOT trigger fail callback."""
+        fail_recorder = Mock()
+        monitor.set_callbacks(record_symbol_fail=fail_recorder)
+        
+        monitor.add_position("pos-123", "AAPL", Decimal("150.00"), 100)
+        
+        signal = WarriorExitSignal(
+            position_id="pos-123",
+            symbol="AAPL",
+            reason=WarriorExitReason.PARTIAL_EXIT,
+            exit_price=Decimal("150.50"),
+            shares_to_exit=50,
+            pnl_estimate=Decimal("25.00"),
+        )
+        
+        _run(monitor._handle_exit(signal))
+        
+        # Should NOT call fail recorder for profit-taking
+        fail_recorder.assert_not_called()

@@ -128,6 +128,14 @@ def test_catalyst_patterns_match_expected():
         "Revenue growth exceeds 20% year over year",
         "Guidance raised for fiscal year 2024",
         "New product launch drives sales surge",
+        # Biotech patterns added Jan 2026
+        "NCEL reports positive results from clinical study",
+        "Company announces positive data from Phase 2 trial",
+        "FDA clearance granted for new medical device",
+        "Trial met primary endpoint with statistical significance",
+        "Company receives accelerated approval for treatment",
+        "Successful Phase 3 trial results announced",
+        "Patent grant strengthens IP portfolio",
     ]
     
     # Noise headlines that should NOT match
@@ -136,6 +144,9 @@ def test_catalyst_patterns_match_expected():
         "Stocks to watch this week",
         "Technical analysis shows bullish pattern",
         "Ex-dividend date for quarterly payment",
+        # Negative biotech news - should NOT match
+        "Company announces study results",  # No "positive" modifier - could be bad
+        # Note: "Clinical trial update" matches existing clinical.*trial pattern, so NOT included
     ]
     
     # Catalyst patterns from our implementation
@@ -150,6 +161,11 @@ def test_catalyst_patterns_match_expected():
         r'buy.*rating|overweight|strong.*buy',
         r'revenue.*growth|sales.*growth|beat.*expectations|surpass|exceeded',
         r'new.*product|launch|expansion|entered.*market',
+        # Biotech patterns added Jan 2026
+        r'positive.*results|positive.*data|positive.*outcome',
+        r'fda.*clearance|fda.*breakthrough|accelerated.*approval',
+        r'successful.*trial|met.*primary.*endpoint|exceeded.*endpoint',
+        r'patent.*grant|ip.*protection',
     ]
     
     noise_patterns = [
