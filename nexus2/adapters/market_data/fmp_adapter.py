@@ -908,6 +908,13 @@ class FMPAdapter:
             r'j\.?p\.?\s*morgan.*healthcare|j\.?p\.?\s*morgan.*conference',
             r'healthcare.*conference|investor.*conference|evercore.*conference',
             r'present.*at.*conference|presenting.*at',
+            
+            # Biotech/Pharma positive catalysts (NCEL fix - positive study results)
+            # Only match inherently POSITIVE terms to avoid catching bad trial results
+            r'positive.*results|positive.*data|positive.*outcome',
+            r'fda.*clearance|fda.*breakthrough|accelerated.*approval',
+            r'successful.*trial|met.*primary.*endpoint|exceeded.*endpoint',
+            r'patent.*grant|ip.*protection',
         ]
         
         # Patterns that indicate NON-catalysts (noise)
