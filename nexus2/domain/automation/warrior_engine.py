@@ -754,6 +754,7 @@ class WarriorEngine:
                 "max_daily_loss": float(self.config.max_daily_loss),
                 "orb_enabled": self.config.orb_enabled,
                 "pmh_enabled": self.config.pmh_enabled,
+                "max_shares_per_trade": self.config.max_shares_per_trade,
             },
             "last_scan_result": self._last_scan_result,
         }

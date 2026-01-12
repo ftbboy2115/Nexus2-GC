@@ -50,6 +50,7 @@ interface WarriorStatus {
         max_daily_loss: number
         orb_enabled: boolean
         pmh_enabled: boolean
+        max_shares_per_trade?: number
     }
     last_scan_result?: {
         scan_time: string
@@ -1021,6 +1022,20 @@ export default function Warrior() {
                                                 <span>{status?.config.max_positions || 3}</span>
                                                 <button
                                                     onClick={() => updateConfig('max_positions', Math.min(20, (status?.config.max_positions || 3) + 1))}
+                                                    className={styles.btnSmall}
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                        <div className={styles.settingItem}>
+                                            <label>Max Shares/Trade</label>
+                                            <div className={styles.settingControl}>
+                                                <button
+                                                    onClick={() => updateConfig('max_shares_per_trade', Math.max(10, (status?.config.max_shares_per_trade || 100) - 10))}
+                                                    className={styles.btnSmall}
+                                                >-</button>
+                                                <span>{status?.config.max_shares_per_trade || 100}</span>
+                                                <button
+                                                    onClick={() => updateConfig('max_shares_per_trade', Math.min(1000, (status?.config.max_shares_per_trade || 100) + 10))}
                                                     className={styles.btnSmall}
                                                 >+</button>
                                             </div>
