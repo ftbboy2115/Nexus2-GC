@@ -71,7 +71,11 @@ Last updated: 2026-01-11
 - [x] **DB session context managers — COMPLETE** — All routes now use `with get_session() as db:`
   - Created `get_session()` in database.py
   - Refactored all 29 instances across routes/
-- [ ] **`orders_filled` increment timing** — Verify correct increment logic
+- [x] **`orders_filled` increment timing — FIXED** — Implemented Position State Machine (Jan 11)
+  - Created `PositionStatus` enum with 6 states: `pending_fill`, `open`, `scaling`, `partial`, `closed`, `rejected`
+  - Orders now start as `pending_fill`, transition to `open` only on confirmed fill
+  - `orders_filled` only incremented when `result.status == "filled"`
+  - Added 30-test suite for state transitions
 - [ ] **API server restart** — Test ability to restart uvicorn from API without manual intervention
 - [x] **Hardcoded values to settings** — max_trades_per_cycle, sim_initial_cash now configurable
 - [x] **Scanner version tracking — ALREADY IMPLEMENTED** — Git hash captured in `scanner_settings` JSON
