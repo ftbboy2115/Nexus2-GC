@@ -1065,8 +1065,7 @@ async def enable_warrior_broker():
                 quantity=shares,
                 order_type=order_type,
                 limit_price=Decimal(str(limit_price)) if limit_price else None,
-                time_in_force="day",
-                extended_hours=True,  # Required for pre-market and post-market fills
+                extended_hours=True,  # Required for pre-market and post-market fills; time_in_force is hardcoded in AlpacaBroker
             )
             print(f"[Warrior] LIMIT order submitted: {symbol} x{shares} @ ${limit_price} ({side})")
             return result
