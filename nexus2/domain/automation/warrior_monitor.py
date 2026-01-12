@@ -459,7 +459,7 @@ class WarriorMonitor:
                         # Auto-recover: Add position back to monitor
                         from uuid import uuid4
                         stop_price = entry_price - self.settings.mental_stop_cents / 100
-                        profit_target_r = self.settings.profit_target_r
+                        profit_target_r = Decimal(str(self.settings.profit_target_r))
                         target_price = entry_price + (self.settings.mental_stop_cents / 100 * profit_target_r)
                         
                         position = WarriorPosition(
