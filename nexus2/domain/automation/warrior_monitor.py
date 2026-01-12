@@ -379,6 +379,11 @@ class WarriorMonitor:
         try:
             broker_positions = await self._get_broker_positions()
             
+            # Skip sync if broker returned error (None)
+            if broker_positions is None:
+                logger.warning("[Warrior Sync] Skipping sync - broker returned error")
+                return
+            
             # Build lookup: symbol -> broker qty
             broker_map = {}
             for pos in broker_positions:

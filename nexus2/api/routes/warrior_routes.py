@@ -1191,7 +1191,7 @@ async def enable_warrior_broker():
             ]
         except Exception as e:
             print(f"[Warrior] Error getting broker positions: {e}")
-            return []
+            return None  # Return None on error, not empty list - sync will skip if None
     
     monitor.set_callbacks(get_broker_positions=broker_get_positions_async)
     
