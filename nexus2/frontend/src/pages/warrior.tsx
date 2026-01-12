@@ -843,11 +843,12 @@ export default function Warrior() {
                                             value={selectedTestCase}
                                             onChange={(e) => setSelectedTestCase(e.target.value)}
                                             className={styles.selectInput}
+                                            title={testCases.find(tc => tc.id === selectedTestCase)?.description || ''}
                                         >
                                             <option value="">Select a test case...</option>
                                             {testCases.map((tc) => (
                                                 <option key={tc.id} value={tc.id}>
-                                                    {tc.symbol} - {tc.description}
+                                                    {tc.symbol} - {tc.description.length > 40 ? tc.description.slice(0, 40) + '...' : tc.description}
                                                 </option>
                                             ))}
                                         </select>
@@ -855,6 +856,7 @@ export default function Warrior() {
                                             onClick={loadTestCase}
                                             className={styles.btnPrimary}
                                             disabled={!selectedTestCase || actionLoading === 'loadTest'}
+                                            style={{ flexShrink: 0 }}
                                         >
                                             {actionLoading === 'loadTest' ? '...' : '📦 Load'}
                                         </button>
