@@ -632,26 +632,34 @@ class WarriorMonitor:
                 if self._get_quote_with_spread:
                     try:
                         spread_data = await self._get_quote_with_spread(position.symbol)
-                        if spread_data and spread_data.get("spread_percent", 0) > s.max_spread_percent:
-                            spread_pct = spread_data["spread_percent"]
+                        if spread_data:
+                            spread_pct = spread_data.get("spread_percent", 0)
                             bid = spread_data.get("bid", 0)
                             ask = spread_data.get("ask", 0)
-                            pnl = (current_price - position.entry_price) * position.shares
-                            logger.warning(
-                                f"[Warrior] {position.symbol}: SPREAD EXIT - spread {spread_pct:.1f}% "
-                                f"(max={s.max_spread_percent}%, bid=${bid}, ask=${ask})"
+                            
+                            # Log spread evaluation for monitoring
+                            logger.info(
+                                f"[Warrior] {position.symbol}: Spread {spread_pct:.1f}% "
+                                f"(max={s.max_spread_percent}%, bid=${bid:.2f}, ask=${ask:.2f})"
                             )
-                            return WarriorExitSignal(
-                                position_id=position.position_id,
-                                symbol=position.symbol,
-                                reason=WarriorExitReason.SPREAD_EXIT,
-                                exit_price=current_price,
-                                shares_to_exit=position.shares,
-                                pnl_estimate=pnl,
-                                stop_price=position.current_stop,
-                                r_multiple=r_multiple,
-                                trigger_description=f"Spread {spread_pct:.1f}% > max {s.max_spread_percent}%",
-                            )
+                            
+                            if spread_pct > s.max_spread_percent:
+                                pnl = (current_price - position.entry_price) * position.shares
+                                logger.warning(
+                                    f"[Warrior] {position.symbol}: SPREAD EXIT - spread {spread_pct:.1f}% "
+                                    f"(max={s.max_spread_percent}%, bid=${bid}, ask=${ask})"
+                                )
+                                return WarriorExitSignal(
+                                    position_id=position.position_id,
+                                    symbol=position.symbol,
+                                    reason=WarriorExitReason.SPREAD_EXIT,
+                                    exit_price=current_price,
+                                    shares_to_exit=position.shares,
+                                    pnl_estimate=pnl,
+                                    stop_price=position.current_stop,
+                                    r_multiple=r_multiple,
+                                    trigger_description=f"Spread {spread_pct:.1f}% > max {s.max_spread_percent}%",
+                                )
                     except Exception as e:
                         logger.debug(f"[Warrior] {position.symbol}: Spread check failed: {e}")
         
