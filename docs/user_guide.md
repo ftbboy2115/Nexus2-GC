@@ -8,7 +8,7 @@ A comprehensive guide to operating the Nexus trading platform.
 
 1. [Quick Start](#quick-start)
 2. [Dashboard Overview](#dashboard-overview)
-3. [NAC (Night-Algo-Close) Strategy](#nac-strategy)
+3. [NAC (Nexus Automation Controller)](#nac-strategy)
 4. [Warrior Strategy](#warrior-strategy)
 5. [Scheduler Controls](#scheduler-controls)
 6. [Position Management](#position-management)
@@ -75,17 +75,16 @@ tmux attach -t nexus  # If session exists
 ## NAC Strategy
 
 ### What is NAC?
-**N**ight-**A**lgo-**C**lose is KK-style swing trading:
-- Scans run 3 times per market day
+**N**exus **A**utomation **C**ontroller is the KK-style swing trading system:
+- Scans run every 5 minutes by default (configurable interval)
 - EP (Episodic Pivot), Breakout, and HTF setups
 - Holds 1-7 days with MA trailing stops
 
-### Scanner Schedule
-| Time (ET) | Scanner |
-|-----------|---------|
-| 9:30 AM | Morning scan |
-| 12:00 PM | Midday scan |
-| 3:00 PM | Afternoon scan |
+### Scan Frequency
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Interval | 300s (5 min) | Time between scans |
+| Active Hours | Market hours | Auto-skips weekends/holidays |
 
 ### Exit Rules
 | Condition | Action |
