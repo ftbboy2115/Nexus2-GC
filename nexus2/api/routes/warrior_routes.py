@@ -1039,20 +1039,25 @@ async def enable_warrior_broker():
         symbol: str,
         shares: int,
         side: str = "buy",
-        order_type: str = "market",
+        order_type: str = "limit",  # Ross Cameron: always limit orders
         stop_loss: float = None,
         limit_price: float = None,
         **kwargs,  # Accept any extra args
     ):
-        """Submit order to Alpaca Account B."""
+        """Submit order to Alpaca Account B.
+        
+        Ross Cameron methodology: ALWAYS use limit orders, never market orders.
+        - Prevents slippage on volatile low-float stocks
+        - Allows pre-market and post-market trading with extended_hours=True
+        """
         alpaca = get_warrior_alpaca_broker()
         if alpaca is None:
             print(f"[Warrior] No broker configured")
             return None
         
         try:
-            # Warrior uses mental stops, so we use regular market order
-            # (not bracket order since stops are managed by monitor)
+            # Warrior uses mental stops (managed by monitor, not broker)
+            # All orders are LIMIT orders with extended hours enabled
             result = alpaca.submit_order(
                 client_order_id=uuid4(),
                 symbol=symbol,
@@ -1060,8 +1065,10 @@ async def enable_warrior_broker():
                 quantity=shares,
                 order_type=order_type,
                 limit_price=Decimal(str(limit_price)) if limit_price else None,
+                time_in_force="day",
+                extended_hours=True,  # Required for pre-market and post-market fills
             )
-            print(f"[Warrior] Order submitted: {symbol} x{shares} ({side})")
+            print(f"[Warrior] LIMIT order submitted: {symbol} x{shares} @ ${limit_price} ({side})")
             return result
         except Exception as e:
             error_str = str(e).lower()
@@ -1107,6 +1114,10 @@ async def enable_warrior_broker():
     async def broker_execute_exit(signal):
         """Execute exit order via Alpaca broker.
         
+        Ross Cameron methodology: ALWAYS use limit orders, never market orders.
+        - Prevents slippage on volatile low-float stocks
+        - Required for extended hours trading
+        
         Args:
             signal: WarriorExitSignal object with position_id, shares_to_exit, reason, etc.
         """
@@ -1121,16 +1132,29 @@ async def enable_warrior_broker():
         symbol = signal.symbol
         
         try:
-            # Submit market sell order
+            # Get current price for limit order
+            current_price = await broker_get_quote(symbol)
+            if current_price is None:
+                print(f"[Warrior] Cannot get price for {symbol} - exit failed")
+                return None
+            
+            # Ross Cameron style: limit order slightly below bid for quick fill
+            # Use 0.5% below current price to ensure fill while avoiding slippage
+            limit_price = round(current_price * 0.995, 2)
+            
+            # Submit limit sell order with extended hours enabled
             from uuid import uuid4
             order = alpaca.submit_order(
                 symbol=symbol,
                 quantity=shares,
                 side="sell",
-                order_type="market",
+                order_type="limit",
+                limit_price=limit_price,
+                time_in_force="day",
+                extended_hours=True,
                 client_order_id=str(uuid4()),
             )
-            print(f"[Warrior] Exit order submitted: {symbol} x{shares} ({reason})")
+            print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
             
             # Log exit to DB
             try:
