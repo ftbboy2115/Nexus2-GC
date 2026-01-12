@@ -1134,6 +1134,40 @@ async def enable_warrior_broker():
             print(f"[Warrior] Batch quote failed: {e}")
             return {}
     
+    async def broker_get_quote_with_spread(symbol: str):
+        """Get quote with bid/ask spread for liquidity monitoring.
+        
+        Returns: dict with price, bid, ask, spread_cents, spread_percent
+        Returns None if quote unavailable.
+        """
+        try:
+            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+            alpaca = AlpacaAdapter()
+            quotes = alpaca.get_quotes_batch([symbol])
+            if symbol in quotes and quotes[symbol]:
+                quote = quotes[symbol]
+                bid = float(quote.bid) if quote.bid else 0
+                ask = float(quote.ask) if quote.ask else 0
+                price = float(quote.price) if quote.price else (bid + ask) / 2
+                
+                if bid > 0 and ask > 0:
+                    spread_cents = (ask - bid) * 100
+                    spread_percent = ((ask - bid) / price) * 100 if price > 0 else 0
+                else:
+                    spread_cents = 0
+                    spread_percent = 0
+                
+                return {
+                    "price": price,
+                    "bid": bid,
+                    "ask": ask,
+                    "spread_cents": round(spread_cents, 2),
+                    "spread_percent": round(spread_percent, 2),
+                }
+        except Exception as e:
+            logger.debug(f"[Warrior] Quote with spread failed for {symbol}: {e}")
+        return None
+    
     async def broker_execute_exit(signal):
         """Execute exit order via Alpaca broker.
         
@@ -1233,6 +1267,7 @@ async def enable_warrior_broker():
         get_broker_positions=broker_get_positions_async,
         get_prices_batch=broker_get_quotes_batch,  # Batch quotes for reduced API calls
         get_price=broker_get_quote,  # Fallback for individual quotes
+        get_quote_with_spread=broker_get_quote_with_spread,  # For spread exit trigger
         execute_exit=broker_execute_exit,  # Wire up exit execution
     )
     

@@ -40,6 +40,7 @@ class WarriorExitReason(Enum):
     BREAKOUT_FAILURE = "breakout_failure"  # Failed to hold breakout
     TIME_STOP = "time_stop"  # No momentum after entry
     AFTER_HOURS_EXIT = "after_hours_exit"  # Forced exit before overnight hold
+    SPREAD_EXIT = "spread_exit"  # Liquidity drying up - spread too wide
     MANUAL = "manual"
 
 
@@ -88,6 +89,11 @@ class WarriorMonitorSettings:
     enable_after_hours_exit: bool = True
     tighten_stop_time_et: str = "18:00"  # 6 PM ET - tighten stops to breakeven
     force_exit_time_et: str = "19:30"  # 7:30 PM ET - force exit all positions
+    
+    # Spread Exit (liquidity protection)
+    enable_spread_exit: bool = True
+    max_spread_percent: float = 3.0  # Exit if spread exceeds 3%
+    spread_grace_period_seconds: int = 60  # Wait 60s after entry before checking spread
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
@@ -154,6 +160,7 @@ class WarriorMonitor:
         # Callbacks
         self._get_price: Optional[Callable] = None
         self._get_prices_batch: Optional[Callable] = None  # Batch quotes to reduce API calls
+        self._get_quote_with_spread: Optional[Callable] = None  # For spread exit trigger
         self._get_intraday_candles: Optional[Callable] = None  # For pattern detection
         self._execute_exit: Optional[Callable] = None
         self._update_stop: Optional[Callable] = None
@@ -187,6 +194,7 @@ class WarriorMonitor:
         self,
         get_price: Callable = None,
         get_prices_batch: Callable = None,
+        get_quote_with_spread: Callable = None,
         get_intraday_candles: Callable = None,
         execute_exit: Callable = None,
         update_stop: Callable = None,
@@ -202,6 +210,8 @@ class WarriorMonitor:
             self._get_price = get_price
         if get_prices_batch is not None:
             self._get_prices_batch = get_prices_batch
+        if get_quote_with_spread is not None:
+            self._get_quote_with_spread = get_quote_with_spread
         if get_intraday_candles is not None:
             self._get_intraday_candles = get_intraday_candles
         if execute_exit is not None:
@@ -610,6 +620,40 @@ class WarriorMonitor:
                         f"[Warrior] {position.symbol}: After-hours stop tightened to breakeven "
                         f"${position.current_stop} (was ${old_stop})"
                     )
+        
+        # =====================================================================
+        # CHECK 0.5: Spread Exit (liquidity protection)
+        # =====================================================================
+        if s.enable_spread_exit:
+            # Only check spread after grace period (avoid exit on volatile open)
+            seconds_since_entry = (datetime.utcnow() - position.entry_time).total_seconds()
+            if seconds_since_entry >= s.spread_grace_period_seconds:
+                # Get bid/ask spread from quote callback if available
+                if self._get_quote_with_spread:
+                    try:
+                        spread_data = await self._get_quote_with_spread(position.symbol)
+                        if spread_data and spread_data.get("spread_percent", 0) > s.max_spread_percent:
+                            spread_pct = spread_data["spread_percent"]
+                            bid = spread_data.get("bid", 0)
+                            ask = spread_data.get("ask", 0)
+                            pnl = (current_price - position.entry_price) * position.shares
+                            logger.warning(
+                                f"[Warrior] {position.symbol}: SPREAD EXIT - spread {spread_pct:.1f}% "
+                                f"(max={s.max_spread_percent}%, bid=${bid}, ask=${ask})"
+                            )
+                            return WarriorExitSignal(
+                                position_id=position.position_id,
+                                symbol=position.symbol,
+                                reason=WarriorExitReason.SPREAD_EXIT,
+                                exit_price=current_price,
+                                shares_to_exit=position.shares,
+                                pnl_estimate=pnl,
+                                stop_price=position.current_stop,
+                                r_multiple=r_multiple,
+                                trigger_description=f"Spread {spread_pct:.1f}% > max {s.max_spread_percent}%",
+                            )
+                    except Exception as e:
+                        logger.debug(f"[Warrior] {position.symbol}: Spread check failed: {e}")
         
         # =====================================================================
         # CHECK 1: Stop Hit (Mental or Technical)

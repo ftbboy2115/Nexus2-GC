@@ -49,6 +49,7 @@ class TradeEventService:
     WARRIOR_TOPPING_TAIL_EXIT = "TOPPING_TAIL_EXIT"
     WARRIOR_TIME_STOP_EXIT = "TIME_STOP_EXIT"
     WARRIOR_AFTER_HOURS_EXIT = "AFTER_HOURS_EXIT"
+    WARRIOR_SPREAD_EXIT = "SPREAD_EXIT"  # Liquidity protection
     WARRIOR_FULL_EXIT = "FULL_EXIT"
     
     def __init__(self):
@@ -385,6 +386,7 @@ class TradeEventService:
             "topping_tail": self.WARRIOR_TOPPING_TAIL_EXIT,
             "time_stop": self.WARRIOR_TIME_STOP_EXIT,
             "after_hours_exit": self.WARRIOR_AFTER_HOURS_EXIT,
+            "spread_exit": self.WARRIOR_SPREAD_EXIT,
         }
         event_type = event_type_map.get(exit_reason, self.WARRIOR_FULL_EXIT)
         
