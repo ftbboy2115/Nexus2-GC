@@ -100,6 +100,10 @@ Last updated: 2026-01-11
 - [x] **Column totals on Open Positions table** — Footer row with Cost Basis, Value, P/L totals (Jan 10)
 - [x] **Scheduler Last Run shows UTC — FIXED** — Now displays ET with label (Jan 10)
 - [ ] **Account-Strategy Locking** — Lock navbar account dropdown to specific strategies (e.g., Account A for NAC, Account B for Warrior) to prevent accidental mixing
+- [ ] **Connection Status Indicator** — Visual badge + smart event logging for backend connectivity
+  - Show 🟢/🔴 badge near Refresh button for current connection state
+  - Only log transitions: "❌ Failed to connect" → "✅ Connection restored"
+  - Avoids log spam from repeated poll failures
 
 ---
 
