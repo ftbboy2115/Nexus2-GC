@@ -216,7 +216,17 @@ class TestProfitTarget:
             m.add_position("pos-123", "AAPL", Decimal("150.00"), 100)
             yield m
     
-    def test_profit_target_triggers_partial(self, monitor):
+    @pytest.fixture
+    def mock_trading_hours(self):
+        """Mock datetime to simulate trading hours (2:00 PM ET)."""
+        et = ZoneInfo("America/New_York")
+        mock_dt = datetime(2026, 1, 12, 14, 0, 0, tzinfo=et)  # 2:00 PM ET
+        with patch("nexus2.domain.automation.warrior_monitor.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_dt
+            mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
+            yield mock_datetime
+    
+    def test_profit_target_triggers_partial(self, monitor, mock_trading_hours):
         """Hitting profit target triggers partial exit."""
         # Target is $150.30 (2:1 R)
         monitor._get_price = AsyncMock(return_value=Decimal("150.35"))
@@ -228,7 +238,7 @@ class TestProfitTarget:
         assert signal.reason == WarriorExitReason.PARTIAL_EXIT
         assert signal.shares_to_exit == 50  # 50% of 100
     
-    def test_partial_taken_no_repeat(self, monitor):
+    def test_partial_taken_no_repeat(self, monitor, mock_trading_hours):
         """Partial already taken does not trigger again."""
         monitor._get_price = AsyncMock(return_value=Decimal("150.50"))
         
