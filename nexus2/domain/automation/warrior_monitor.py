@@ -535,11 +535,24 @@ class WarriorMonitor:
             current_price = Decimal(str(prefetched_price))
         elif self._get_price:
             price = await self._get_price(position.symbol)
-            # Explicit None check - a price of $0 is also invalid for real stocks
+            
+            # If Alpaca fails, try FMP as backup source
             if price is None or price == 0:
-                # CRITICAL: Log when price fetch fails - stop checks will be skipped!
+                logger.info(f"[Warrior] {position.symbol}: Alpaca quote failed, trying FMP fallback...")
+                try:
+                    from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                    fmp = get_fmp_adapter()
+                    fmp_quote = fmp.get_quote(position.symbol)
+                    if fmp_quote and fmp_quote.price and fmp_quote.price > 0:
+                        price = float(fmp_quote.price)
+                        logger.info(f"[Warrior] {position.symbol}: FMP fallback successful, price=${price}")
+                except Exception as e:
+                    logger.warning(f"[Warrior] {position.symbol}: FMP fallback failed: {e}")
+            
+            # If still no valid price after fallback
+            if price is None or price == 0:
                 logger.warning(
-                    f"[Warrior] {position.symbol}: Price fetch failed (price={price})! "
+                    f"[Warrior] {position.symbol}: All quote sources failed (price={price})! "
                     f"STOP CHECK SKIPPED (stop=${position.current_stop})"
                 )
                 return None
