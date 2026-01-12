@@ -1172,6 +1172,22 @@ async def enable_warrior_broker():
     monitor = get_warrior_monitor()
     monitor._execute_exit = broker_execute_exit
     
+    # Add async wrapper for broker.get_positions() for monitor sync
+    async def broker_get_positions_async():
+        """Async wrapper for broker.get_positions() for monitor sync."""
+        try:
+            positions = broker.get_positions()
+            # Convert to list of dicts for the sync method
+            return [
+                {"symbol": symbol, "qty": pos.qty, "avg_price": pos.avg_entry_price}
+                for symbol, pos in positions.items()
+            ]
+        except Exception as e:
+            print(f"[Warrior] Error getting broker positions: {e}")
+            return []
+    
+    monitor.set_callbacks(get_broker_positions=broker_get_positions_async)
+    
     engine.set_callbacks(
         submit_order=broker_submit_order,
         get_quote=broker_get_quote,

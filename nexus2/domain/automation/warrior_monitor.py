@@ -156,6 +156,11 @@ class WarriorMonitor:
         self._get_intraday_candles: Optional[Callable] = None  # For pattern detection
         self._execute_exit: Optional[Callable] = None
         self._update_stop: Optional[Callable] = None
+        self._get_broker_positions: Optional[Callable] = None  # For Alpaca sync
+        
+        # Sync tracking
+        self._sync_counter = 0
+        self._sync_interval = 5  # Sync every 5 checks (~10 seconds)
         
         # Stats
         self.checks_run = 0
@@ -177,6 +182,7 @@ class WarriorMonitor:
         get_intraday_candles: Callable = None,
         execute_exit: Callable = None,
         update_stop: Callable = None,
+        get_broker_positions: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -191,6 +197,8 @@ class WarriorMonitor:
             self._execute_exit = execute_exit
         if update_stop is not None:
             self._update_stop = update_stop
+        if get_broker_positions is not None:
+            self._get_broker_positions = get_broker_positions
     
     # =========================================================================
     # POSITION MANAGEMENT
@@ -340,6 +348,12 @@ class WarriorMonitor:
         self.last_check = datetime.utcnow()
         self.checks_run += 1
         
+        # Periodic sync with broker (every N checks)
+        self._sync_counter += 1
+        if self._sync_counter >= self._sync_interval:
+            self._sync_counter = 0
+            await self._sync_with_broker()
+        
         if not self._positions:
             return
         
@@ -350,6 +364,66 @@ class WarriorMonitor:
                     await self._handle_exit(signal)
             except Exception as e:
                 logger.error(f"[Warrior] Error checking {position.symbol}: {e}")
+    
+    async def _sync_with_broker(self):
+        """Sync monitor state with Alpaca broker positions.
+        
+        Fixes state drift where:
+        - Partial orders submitted but not filled
+        - Positions closed manually at broker
+        - Shares differ between monitor and broker
+        """
+        if not self._get_broker_positions:
+            return
+        
+        try:
+            broker_positions = await self._get_broker_positions()
+            
+            # Build lookup: symbol -> broker qty
+            broker_map = {}
+            for pos in broker_positions:
+                # Handle both dict and object types
+                if isinstance(pos, dict):
+                    symbol = pos.get("symbol")
+                    qty = int(pos.get("qty", 0))
+                else:
+                    symbol = pos.symbol
+                    qty = int(pos.qty)
+                broker_map[symbol] = qty
+            
+            # Sync each monitored position
+            for position_id, position in list(self._positions.items()):
+                symbol = position.symbol
+                broker_qty = broker_map.get(symbol, 0)
+                
+                if broker_qty == 0:
+                    # Position closed at broker - remove from monitor
+                    logger.warning(
+                        f"[Warrior Sync] {symbol}: Broker has 0 shares, removing from monitor"
+                    )
+                    self.remove_position(position_id)
+                elif broker_qty != position.shares:
+                    # Shares mismatch - update monitor to match broker
+                    old_shares = position.shares
+                    position.shares = broker_qty
+                    
+                    # If broker has fewer shares, partial was taken
+                    if broker_qty < old_shares:
+                        position.partial_taken = True
+                    
+                    logger.info(
+                        f"[Warrior Sync] {symbol}: Updated shares {old_shares} -> {broker_qty}"
+                    )
+            
+            # Check for broker positions not in monitor (orphaned at broker)
+            monitored_symbols = {p.symbol for p in self._positions.values()}
+            for symbol, qty in broker_map.items():
+                if symbol not in monitored_symbols and qty > 0:
+                    logger.warning(
+                        f"[Warrior Sync] {symbol}: Found at broker ({qty} shares) but not in monitor"
+                    )
+        except Exception as e:
+            logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
     
     # =========================================================================
     # EXIT EVALUATION (Ross Cameron Rules)
