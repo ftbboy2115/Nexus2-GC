@@ -650,10 +650,31 @@ class WarriorEngine:
                 else:
                     order_id = symbol
                 
+                # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
+                # This prevents immediate stop-outs when market price differs from quote
+                actual_fill_price = entry_price  # Default to intended price
+                if hasattr(order_result, 'filled_avg_price') and order_result.filled_avg_price:
+                    actual_fill_price = Decimal(str(order_result.filled_avg_price))
+                    if actual_fill_price != entry_price:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: Fill price ${actual_fill_price} differs from "
+                            f"intended ${entry_price} - using fill price for stops"
+                        )
+                elif isinstance(order_result, dict) and order_result.get("filled_avg_price"):
+                    actual_fill_price = Decimal(str(order_result["filled_avg_price"]))
+                    if actual_fill_price != entry_price:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: Fill price ${actual_fill_price} differs from "
+                            f"intended ${entry_price} - using fill price for stops"
+                        )
+                
+                # Recalculate stop based on actual fill price
+                actual_stop = actual_fill_price - self.monitor.settings.mental_stop_cents / 100
+                
                 self.monitor.add_position(
                     position_id=order_id,
                     symbol=symbol,
-                    entry_price=entry_price,
+                    entry_price=actual_fill_price,  # Use ACTUAL fill price
                     shares=shares,
                     support_level=support_level,
                 )
@@ -663,13 +684,13 @@ class WarriorEngine:
                     from nexus2.db.warrior_db import log_warrior_entry
                     mental_stop_cents = Decimal(str(self.monitor.settings.mental_stop_cents))
                     profit_target_r = Decimal(str(self.monitor.settings.profit_target_r))
-                    target = entry_price + (mental_stop_cents / 100 * profit_target_r)
+                    target = actual_fill_price + (mental_stop_cents / 100 * profit_target_r)
                     log_warrior_entry(
                         trade_id=order_id,
                         symbol=symbol,
-                        entry_price=float(entry_price),
+                        entry_price=float(actual_fill_price),  # Use actual fill
                         quantity=shares,
-                        stop_price=float(mental_stop),
+                        stop_price=float(actual_stop),  # Use recalculated stop
                         target_price=float(target),
                         trigger_type=trigger_type.value,
                         support_level=float(support_level),
@@ -678,7 +699,7 @@ class WarriorEngine:
                     logger.warning(f"[Warrior Entry] DB log failed: {e}")
                 
                 logger.info(
-                    f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${entry_price} "
+                    f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${actual_fill_price} "
                     f"({trigger_type.value})"
                 )
                 
