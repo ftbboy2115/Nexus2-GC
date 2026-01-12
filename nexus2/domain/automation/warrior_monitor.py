@@ -188,7 +188,7 @@ class WarriorMonitor:
         # Recently exited tracking - prevents auto-recovery race conditions
         # Format: {symbol: exit_time}
         self._recently_exited: Dict[str, datetime] = {}
-        self._recovery_cooldown_seconds = 30  # Don't auto-recover for 30s after exit
+        self._recovery_cooldown_seconds = 120  # Don't auto-recover for 120s after exit (orders need time to fill)
     
     def set_callbacks(
         self,
