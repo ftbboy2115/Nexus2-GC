@@ -1145,14 +1145,13 @@ async def enable_warrior_broker():
             # Submit limit sell order with extended hours enabled
             from uuid import uuid4
             order = alpaca.submit_order(
+                client_order_id=uuid4(),  # UUID, not string
                 symbol=symbol,
                 quantity=shares,
                 side="sell",
                 order_type="limit",
-                limit_price=limit_price,
-                time_in_force="day",
-                extended_hours=True,
-                client_order_id=str(uuid4()),
+                limit_price=Decimal(str(limit_price)),
+                extended_hours=True,  # time_in_force is hardcoded to "day" in AlpacaBroker
             )
             print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
             
