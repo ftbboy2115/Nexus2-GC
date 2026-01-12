@@ -1147,9 +1147,19 @@ async def enable_warrior_broker():
             
             # Get current price for limit order
             current_price = await broker_get_quote(symbol)
+            
+            # CRITICAL: Detect stale quotes from FMP fallback during Alpaca rate limits
+            # The signal.exit_price is the ACTUAL price that triggered the exit from the monitor
+            # If quoted price is significantly higher than trigger price, quote is stale
+            signal_price = float(signal.exit_price)
             if current_price is None:
-                print(f"[Warrior] Cannot get price for {symbol} - exit failed")
-                return None
+                # No quote at all - use signal's exit price
+                print(f"[Warrior] Cannot get quote for {symbol} - using signal exit price ${signal_price:.2f}")
+                current_price = signal_price
+            elif current_price > signal_price * 1.05:
+                # Quote is >5% higher than what triggered the stop - stale FMP data
+                print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
+                current_price = signal_price
             
             # Ross Cameron style: limit order slightly below bid for quick fill
             # Use 0.5% below current price to ensure fill while avoiding slippage
