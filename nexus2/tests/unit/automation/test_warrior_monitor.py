@@ -186,8 +186,9 @@ class TestMentalStop:
         assert signal.shares_to_exit == 100
     
     def test_price_above_stop_no_exit(self, monitor):
-        """Price above stop does not trigger exit."""
-        monitor._get_price = AsyncMock(return_value=Decimal("150.50"))
+        """Price above stop but below target does not trigger exit."""
+        # Price between stop ($149.85) and target ($150.30) = no exit
+        monitor._get_price = AsyncMock(return_value=Decimal("150.10"))
         
         position = list(monitor._positions.values())[0]
         signal = _run(monitor._evaluate_position(position))
