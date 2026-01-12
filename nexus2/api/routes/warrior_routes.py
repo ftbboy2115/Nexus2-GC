@@ -399,6 +399,79 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
     return {"status": "updated", "settings": await get_warrior_monitor_settings()}
 
 
+class ManualExitRequest(BaseModel):
+    """Request to manually exit a position."""
+    symbol: str
+    limit_price: float = Field(..., description="Limit price for the sell order")
+    shares: Optional[int] = Field(None, description="Shares to sell (default: all)")
+
+
+@router.post("/manual_exit")
+async def manual_exit_position(request: ManualExitRequest):
+    """Manually exit a position at specified limit price.
+    
+    Cancels all pending sell orders for the symbol and submits a new limit sell.
+    Useful for illiquid stocks where automated exits failed.
+    """
+    alpaca = get_warrior_alpaca_broker()
+    if alpaca is None:
+        raise HTTPException(status_code=400, detail="Warrior broker not enabled")
+    
+    symbol = request.symbol.upper()
+    
+    # Get current position from Alpaca
+    positions = alpaca.get_positions()
+    position = None
+    for p in positions:
+        pos_symbol = p.get("symbol") if isinstance(p, dict) else getattr(p, "symbol", None)
+        if pos_symbol == symbol:
+            position = p
+            break
+    
+    if position is None:
+        raise HTTPException(status_code=404, detail=f"No position found for {symbol}")
+    
+    # Get shares to sell
+    if isinstance(position, dict):
+        total_shares = int(float(position.get("qty", 0)))
+    else:
+        total_shares = int(float(getattr(position, "qty", 0)))
+    
+    shares_to_sell = request.shares if request.shares else total_shares
+    
+    # Cancel pending sell orders
+    cancelled = alpaca.cancel_open_orders(symbol, side="sell")
+    
+    # Submit new limit sell
+    from uuid import uuid4
+    order = alpaca.submit_order(
+        client_order_id=uuid4(),
+        symbol=symbol,
+        quantity=shares_to_sell,
+        side="sell",
+        order_type="limit",
+        limit_price=Decimal(str(request.limit_price)),
+        extended_hours=True,
+    )
+    
+    # Remove from monitor if present
+    engine = get_engine()
+    for pos_id, pos in list(engine.monitor._positions.items()):
+        if pos.symbol == symbol:
+            engine.monitor.remove_position(pos_id)
+            engine.monitor._recently_exited[symbol] = __import__('datetime').datetime.utcnow()
+            break
+    
+    return {
+        "status": "submitted",
+        "symbol": symbol,
+        "shares": shares_to_sell,
+        "limit_price": request.limit_price,
+        "cancelled_orders": cancelled,
+        "order_id": str(order.client_order_id) if order else None,
+    }
+
+
 # =============================================================================
 # POSITIONS & WATCHLIST ROUTES
 # =============================================================================
