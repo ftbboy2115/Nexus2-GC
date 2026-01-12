@@ -176,6 +176,11 @@ class WarriorMonitor:
         # P&L Tracking
         self.realized_pnl_today: Decimal = Decimal("0")
         self._pnl_date: Optional[datetime] = None  # Track date for reset
+        
+        # Recently exited tracking - prevents auto-recovery race conditions
+        # Format: {symbol: exit_time}
+        self._recently_exited: Dict[str, datetime] = {}
+        self._recovery_cooldown_seconds = 30  # Don't auto-recover for 30s after exit
     
     def set_callbacks(
         self,
@@ -439,8 +444,22 @@ class WarriorMonitor:
             # Check for broker positions not in monitor (orphaned at broker)
             # Auto-recover these by adding them back to monitor
             monitored_symbols = {p.symbol for p in self._positions.values()}
+            now = datetime.utcnow()
+            
+            # Clean up old entries from recently exited
+            expired = [s for s, t in self._recently_exited.items() 
+                       if (now - t).total_seconds() > self._recovery_cooldown_seconds]
+            for s in expired:
+                del self._recently_exited[s]
+            
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
+                    # Skip if recently exited (prevent race condition with pending sell orders)
+                    if symbol in self._recently_exited:
+                        exit_time = self._recently_exited[symbol]
+                        secs_ago = (now - exit_time).total_seconds()
+                        logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (exited {secs_ago:.0f}s ago)")
+                        continue
                     # Find the broker position data to get entry price
                     broker_pos = None
                     for pos in broker_positions:
@@ -747,6 +766,8 @@ class WarriorMonitor:
                 
                 # Remove position if full exit
                 if signal.reason != WarriorExitReason.PARTIAL_EXIT:
+                    # Track as recently exited to prevent auto-recovery race
+                    self._recently_exited[signal.symbol] = datetime.utcnow()
                     self.remove_position(signal.position_id)
                     
             except Exception as e:
