@@ -1131,6 +1131,12 @@ async def enable_warrior_broker():
         symbol = signal.symbol
         
         try:
+            # Cancel any pending sell orders for this symbol first
+            # This prevents "insufficient qty available" errors when partials didn't fill
+            cancelled = alpaca.cancel_open_orders(symbol, side="sell")
+            if cancelled > 0:
+                print(f"[Warrior] Cancelled {cancelled} pending sell order(s) for {symbol} before exit")
+            
             # Get current price for limit order
             current_price = await broker_get_quote(symbol)
             if current_price is None:

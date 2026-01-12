@@ -272,6 +272,48 @@ class AlpacaBroker:
         self._request("DELETE", f"orders/{broker_order_id}")
         return self.get_order_status(broker_order_id)
     
+    def get_open_orders(self, symbol: str = None) -> list[dict]:
+        """Get open (pending) orders, optionally filtered by symbol.
+        
+        Args:
+            symbol: If provided, only return orders for this symbol.
+            
+        Returns:
+            List of order dicts with id, symbol, side, qty, status, etc.
+        """
+        endpoint = "orders?status=open"
+        if symbol:
+            endpoint += f"&symbols={symbol}"
+        
+        data = self._request("GET", endpoint)
+        return data if data else []
+    
+    def cancel_open_orders(self, symbol: str, side: str = None) -> int:
+        """Cancel all open orders for a symbol, optionally filtered by side.
+        
+        Args:
+            symbol: Symbol to cancel orders for.
+            side: If provided, only cancel "buy" or "sell" orders.
+            
+        Returns:
+            Number of orders cancelled.
+        """
+        orders = self.get_open_orders(symbol)
+        cancelled = 0
+        
+        for order in orders:
+            if side and order.get("side") != side:
+                continue
+            try:
+                order_id = order.get("id")
+                self._request("DELETE", f"orders/{order_id}")
+                print(f"[Warrior] Cancelled pending order: {symbol} {order.get('side')} {order.get('qty')}")
+                cancelled += 1
+            except Exception as e:
+                print(f"[Warrior] Failed to cancel order {order.get('id')}: {e}")
+        
+        return cancelled
+    
     def get_order_status(self, broker_order_id: str) -> BrokerOrder:
         """Get current order status."""
         data = self._request("GET", f"orders/{broker_order_id}")
