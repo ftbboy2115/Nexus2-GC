@@ -31,44 +31,56 @@ test_cases:
     setup_type: pmh
     outcome: winner
     ross_traded: false  # Ross did NOT trade this - market opportunity case
-    description: "ACON Jan 8 2026 - Massive gap +42%, did Warrior Bot catch it?"
+    description: "ACON Jan 8 2026 - 2025 business update + Nociscan growth, +50% move"
     trade_date: "2026-01-08"
     target_pnl: null  # No Ross P&L - validation case only
+    data_source: "Verified: stockanalysis.com, nasdaq.com"
     premarket_data:
-      gap_percent: 42.1
-      volume: 43000000
+      gap_percent: 42.1  # Open $8.17 vs prev close $5.75 = 42%
+      volume: 43000000  # 43M shares traded
       float_shares: null  # Low float
-      catalyst: "news"
-      previous_close: 1.50
-      premarket_high: 2.20
+      catalyst: "news"  # 2025 business update, 114% YoY Nociscan growth
+      previous_close: 5.75  # CORRECTED from wrong $1.50
+      premarket_high: 8.17  # CORRECTED - open price
+    price_action:
+      open: 8.17
+      high: 9.36
+      low: 7.29
+      close: 8.17
     expected:
-      entry_near: 2.25  # PMH breakout
-      stop_near: 2.10   # Below PMH
-      mental_stop_cents: 15
+      entry_near: 8.30  # PMH break
+      stop_near: 8.00  # 30 cents mental stop
+      mental_stop_cents: 30  # Higher stop for $8+ stock
       profit_target_r: 2.0
-    notes: "Monster volume 725x RVOL, news catalyst - BIGGEST WINNER"
+    notes: "50% gainer on business update news, high volume"
 
   - id: flyx_2026_01_08
     symbol: FLYX
     setup_type: pmh
     outcome: winner
     ross_traded: false  # Ross did NOT trade this - market opportunity case
-    description: "FLYX Jan 8 2026 - +130% gap, extreme RVOL, 5282x - MASSIVE MOVE Ross missed"
+    description: "FLYX Jan 8 2026 - Starlink dealer announcement, +93% gap at open"
     trade_date: "2026-01-08"
     target_pnl: null  # No Ross P&L - validation case only
+    data_source: "Verified: stockanalysis.com, investing.com, nasdaq.com"
     premarket_data:
-      gap_percent: 130.3
-      volume: 50000000
-      float_shares: null
-      catalyst: "former_runner"
-      previous_close: 0.50
-      premarket_high: 1.25
+      gap_percent: 93.6  # Corrected: open $6.08 vs prev close $3.14
+      volume: 43000000  # Low estimate (reports vary 43M-115M)
+      float_shares: 5680000  # 5.68M per stocksinplay.net
+      catalyst: "news"  # Starlink Aviation dealer + public offering
+      previous_close: 3.14  # CORRECTED from wrong $0.50
+      premarket_high: 6.08  # CORRECTED - open price (PMH not separately reported)
+    price_action:
+      open: 6.08
+      high: 8.88
+      low: 5.73
+      close: 7.23
     expected:
-      entry_near: 1.30
-      stop_near: 1.15
-      mental_stop_cents: 15
+      entry_near: 6.20  # PMH break
+      stop_near: 5.90  # 30 cents mental stop
+      mental_stop_cents: 30  # Higher stop for $6+ stock
       profit_target_r: 2.0
-    notes: "5282x RVOL, former runner pattern"
+    notes: "CAUTION: Had public offering announcement same day - dilution filter would reject"
 
   # ==========================================================================
   # ROSS CAMERON TRADES - January 6, 2026
