@@ -375,6 +375,32 @@ class AlpacaBroker:
         
         return Decimal(str(data.get("equity", 0)))
     
+    def get_account_daily_pnl(self) -> dict:
+        """Get account-level daily P&L from Alpaca.
+        
+        Returns:
+            Dict with:
+            - equity: Current account equity
+            - last_equity: Yesterday's closing equity
+            - daily_pnl: Today's P&L (equity - last_equity)
+            - daily_pnl_percent: Today's P&L as percentage
+        """
+        data = self._request("GET", "account")
+        if not data:
+            raise AlpacaBrokerError("Could not get account info")
+        
+        equity = Decimal(str(data.get("equity", 0)))
+        last_equity = Decimal(str(data.get("last_equity", 0)))
+        daily_pnl = equity - last_equity if last_equity > 0 else Decimal("0")
+        daily_pnl_percent = (daily_pnl / last_equity * 100) if last_equity > 0 else Decimal("0")
+        
+        return {
+            "equity": float(equity),
+            "last_equity": float(last_equity),
+            "daily_pnl": float(daily_pnl),
+            "daily_pnl_percent": float(daily_pnl_percent),
+        }
+    
     def get_position_entry_dates(self, symbols: list[str] = None) -> Dict[str, datetime]:
         """
         Get the earliest fill date for each open position.

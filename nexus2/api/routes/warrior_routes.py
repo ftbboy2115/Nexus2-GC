@@ -895,21 +895,21 @@ async def get_warrior_broker_status():
             total_unrealized_pnl += float(p.unrealized_pnl) if p.unrealized_pnl else 0
             total_invested += float(p.avg_price) * p.quantity if p.avg_price else 0
         
-        # Get realized P&L from monitor
+        # Get realized P&L from monitor (for display/tracking purposes)
         from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
         monitor = get_warrior_monitor()
-        realized_pnl_today = float(monitor.realized_pnl_today)
+        monitor_realized_pnl = float(monitor.realized_pnl_today)
         
-        # Get accurate capital stats from today's order history
+        # Get accurate daily P&L from Alpaca account (equity - last_equity)
+        # This is the source of truth for total account P&L
+        account_pnl = broker.get_account_daily_pnl()
+        total_daily_pnl = account_pnl["daily_pnl"]
+        daily_pnl_percent = account_pnl["daily_pnl_percent"]
+        
+        # Get capital stats from today's order history
         capital_stats = broker.get_daily_capital_stats()
         peak_exposure = capital_stats["peak_exposure"]
         total_capital_deployed = capital_stats["total_capital_deployed"]
-        
-        # Calculate total daily P&L and % based on peak exposure (more accurate)
-        total_daily_pnl = realized_pnl_today + total_unrealized_pnl
-        # Use peak exposure for ROI % (the max you had at risk)
-        roi_denominator = peak_exposure if peak_exposure > 0 else total_invested
-        daily_pnl_percent = (total_daily_pnl / roi_denominator * 100) if roi_denominator > 0 else 0
         
         return {
             "broker_enabled": True,
@@ -917,7 +917,7 @@ async def get_warrior_broker_status():
             "account_value": account_value,
             "positions_count": len(positions_list),
             # Daily P&L Summary
-            "realized_pnl_today": realized_pnl_today,
+            "realized_pnl_today": monitor_realized_pnl,
             "unrealized_pnl": total_unrealized_pnl,
             "total_daily_pnl": total_daily_pnl,
             # Capital stats
