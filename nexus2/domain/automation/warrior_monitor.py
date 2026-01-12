@@ -752,10 +752,13 @@ class WarriorMonitor:
             f"{signal.shares_to_exit} shares (P&L: ${signal.pnl_estimate:.2f})"
         )
         
+        order_success = False
+        
         if self._execute_exit:
             try:
                 await self._execute_exit(signal)
                 self.exits_triggered += 1
+                order_success = True
                 
                 # Log trade event
                 exit_reason_map = {
@@ -788,29 +791,32 @@ class WarriorMonitor:
                 
                 # Track realized P&L
                 self._add_realized_pnl(signal.pnl_estimate)
-                
-                # Remove position if full exit
-                if signal.reason != WarriorExitReason.PARTIAL_EXIT:
-                    # Track as recently exited to prevent auto-recovery race
-                    self._recently_exited[signal.symbol] = datetime.utcnow()
-                    
-                    # 2-Strike Rule: record failure for stop exits
-                    # Only count MENTAL_STOP and TECHNICAL_STOP as true "failures"
-                    stop_reasons = {
-                        WarriorExitReason.MENTAL_STOP,
-                        WarriorExitReason.TECHNICAL_STOP,
-                        WarriorExitReason.BREAKOUT_FAILURE,
-                    }
-                    if signal.reason in stop_reasons and self._record_symbol_fail:
-                        self._record_symbol_fail(signal.symbol)
-                    
-                    self.remove_position(signal.position_id)
                     
             except Exception as e:
                 logger.error(f"[Warrior] Exit execution failed: {e}")
                 self.last_error = str(e)
         else:
             logger.warning("[Warrior] No execute_exit callback - signal not acted on")
+        
+        # CRITICAL: Always remove position on FULL exit, even if order fails!
+        # This prevents infinite loop when Alpaca rejects (wash trade, etc.)
+        # The position will remain on Alpaca and need manual close.
+        if signal.reason != WarriorExitReason.PARTIAL_EXIT:
+            # Track as recently exited to prevent auto-recovery race
+            self._recently_exited[signal.symbol] = datetime.utcnow()
+            
+            # 2-Strike Rule: only count if order was successful
+            if order_success:
+                stop_reasons = {
+                    WarriorExitReason.MENTAL_STOP,
+                    WarriorExitReason.TECHNICAL_STOP,
+                    WarriorExitReason.BREAKOUT_FAILURE,
+                }
+                if signal.reason in stop_reasons and self._record_symbol_fail:
+                    self._record_symbol_fail(signal.symbol)
+            
+            self.remove_position(signal.position_id)
+            logger.info(f"[Warrior] {signal.symbol}: Removed from monitor (order_success={order_success})")
     
     # =========================================================================
     # STATUS
