@@ -530,14 +530,16 @@ class WarriorMonitor:
             prefetched_price: Pre-fetched price from batch quote (avoids individual API call)
         """
         # Use pre-fetched price if available, otherwise fall back to individual call
-        if prefetched_price is not None:
+        # Note: price=0 is treated as invalid (impossible for real tradeable stocks)
+        if prefetched_price is not None and prefetched_price != 0:
             current_price = Decimal(str(prefetched_price))
         elif self._get_price:
             price = await self._get_price(position.symbol)
-            if not price:
+            # Explicit None check - a price of $0 is also invalid for real stocks
+            if price is None or price == 0:
                 # CRITICAL: Log when price fetch fails - stop checks will be skipped!
                 logger.warning(
-                    f"[Warrior] {position.symbol}: Price fetch failed! "
+                    f"[Warrior] {position.symbol}: Price fetch failed (price={price})! "
                     f"STOP CHECK SKIPPED (stop=${position.current_stop})"
                 )
                 return None
