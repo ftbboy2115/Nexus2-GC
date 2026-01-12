@@ -123,7 +123,13 @@ class RejectionTracker:
         }
         
         with open(self.log_file, 'w') as f:
-            json.dump(data, f, indent=2)
+            # Custom encoder to handle Decimal types
+            def default_encoder(obj):
+                from decimal import Decimal
+                if isinstance(obj, Decimal):
+                    return float(obj)
+                raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+            json.dump(data, f, indent=2, default=default_encoder)
     
     def record(
         self,
