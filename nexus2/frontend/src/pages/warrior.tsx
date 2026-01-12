@@ -735,11 +735,18 @@ export default function Warrior() {
                             {/* Simulation Mode Card */}
                             <CollapsibleCard
                                 id="simulation"
-                                title="🧪 Simulation Mode"
+                                title="🧪 Trading Mode"
                                 badge={
-                                    <span className={`${styles.badge} ${simStatus?.sim_enabled ? styles.badgeGreen : styles.badgeGray}`}>
-                                        {simStatus?.sim_enabled ? 'Enabled' : 'Disabled'}
-                                    </span>
+                                    <>
+                                        {brokerStatus?.broker_enabled && (
+                                            <span className={`${styles.badge} ${styles.badgeBlue}`} style={{ marginRight: '4px' }}>
+                                                📈 Broker
+                                            </span>
+                                        )}
+                                        <span className={`${styles.badge} ${simStatus?.sim_enabled ? styles.badgeGreen : styles.badgeGray}`}>
+                                            {simStatus?.sim_enabled ? '🧪 Sim' : 'Off'}
+                                        </span>
+                                    </>
                                 }
                             >
                                 <div className={styles.cardBody}>

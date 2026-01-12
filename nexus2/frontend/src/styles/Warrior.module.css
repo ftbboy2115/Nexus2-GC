@@ -94,6 +94,12 @@
     border: 1px solid rgba(108, 117, 125, 0.3);
 }
 
+.badgeBlue {
+    background: rgba(99, 102, 241, 0.2);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
 .countBadge {
     background: rgba(255, 107, 53, 0.2);
     color: #ff6b35;
