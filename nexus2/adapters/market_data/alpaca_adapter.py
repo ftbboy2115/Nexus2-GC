@@ -6,10 +6,11 @@ Ported from: core/scan_ep.py
 """
 
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone, date
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -61,6 +62,11 @@ class AlpacaAdapter:
                 "APCA-API-SECRET-KEY": self.config.api_secret,
             }
         )
+        
+        # Quote cache with 2-second TTL to reduce rate limits
+        # Format: {symbol: (quote, timestamp)}
+        self._quote_cache: Dict[str, Tuple[Quote, float]] = {}
+        self._quote_ttl = 2.0  # 2 seconds - short enough for trading, long enough to reduce calls
     
     def __del__(self):
         if hasattr(self, '_client'):
@@ -83,7 +89,14 @@ class AlpacaAdapter:
     # =========================================================================
     
     def get_quote(self, symbol: str) -> Optional[Quote]:
-        """Get latest quote for a symbol."""
+        """Get latest quote for a symbol. Cached for 2 seconds to reduce rate limits."""
+        # Check cache first
+        now = time.time()
+        if symbol in self._quote_cache:
+            cached_quote, cached_time = self._quote_cache[symbol]
+            if now - cached_time < self._quote_ttl:
+                return cached_quote
+        
         data = self._get(f"v2/stocks/{symbol}/quotes/latest")
         if not data or "quote" not in data:
             return None
@@ -94,7 +107,7 @@ class AlpacaAdapter:
         ask = Decimal(str(q.get("ap", 0)))
         price = (bid + ask) / 2 if bid and ask else bid or ask
         
-        return Quote(
+        quote = Quote(
             symbol=symbol,
             price=price,
             change=Decimal("0"),  # Would need prev close to calculate
@@ -102,6 +115,10 @@ class AlpacaAdapter:
             volume=0,  # Quote doesn't include volume
             timestamp=datetime.fromisoformat(q.get("t", "").replace("Z", "+00:00")),
         )
+        
+        # Cache the result
+        self._quote_cache[symbol] = (quote, now)
+        return quote
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
         """Get quotes for multiple symbols."""

@@ -421,12 +421,50 @@ class WarriorMonitor:
                     )
             
             # Check for broker positions not in monitor (orphaned at broker)
+            # Auto-recover these by adding them back to monitor
             monitored_symbols = {p.symbol for p in self._positions.values()}
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
-                    logger.warning(
-                        f"[Warrior Sync] {symbol}: Found at broker ({qty} shares) but not in monitor"
-                    )
+                    # Find the broker position data to get entry price
+                    broker_pos = None
+                    for pos in broker_positions:
+                        pos_symbol = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", None)
+                        if pos_symbol == symbol:
+                            broker_pos = pos
+                            break
+                    
+                    # Get entry price from broker or estimate from current
+                    if isinstance(broker_pos, dict):
+                        entry_price = Decimal(str(broker_pos.get("avg_price", 0)))
+                    else:
+                        entry_price = Decimal(str(getattr(broker_pos, "avg_price", 0)))
+                    
+                    if entry_price > 0:
+                        # Auto-recover: Add position back to monitor
+                        from uuid import uuid4
+                        stop_price = entry_price - self.settings.mental_stop_cents / 100
+                        profit_target_r = self.settings.profit_target_r
+                        target_price = entry_price + (self.settings.mental_stop_cents / 100 * profit_target_r)
+                        
+                        position = WarriorPosition(
+                            position_id=str(uuid4()),
+                            symbol=symbol,
+                            entry_price=entry_price,
+                            shares=qty,
+                            entry_time=datetime.utcnow(),
+                            current_stop=stop_price,
+                            profit_target=target_price,
+                            mental_stop=stop_price,
+                            technical_stop=None,
+                        )
+                        self._positions[position.position_id] = position
+                        logger.info(
+                            f"[Warrior Sync] {symbol}: Auto-recovered from broker ({qty} shares @ ${entry_price:.2f})"
+                        )
+                    else:
+                        logger.warning(
+                            f"[Warrior Sync] {symbol}: Found at broker ({qty} shares) but cannot recover - no entry price"
+                        )
         except Exception as e:
             logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
     
