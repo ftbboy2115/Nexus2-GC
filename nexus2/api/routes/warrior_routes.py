@@ -1178,8 +1178,9 @@ async def enable_warrior_broker():
         try:
             positions = broker.get_positions()
             # Convert to list of dicts for the sync method
+            # BrokerPosition uses 'quantity' not 'qty'
             return [
-                {"symbol": symbol, "qty": pos.qty, "avg_price": pos.avg_entry_price}
+                {"symbol": symbol, "qty": pos.quantity, "avg_price": pos.avg_price}
                 for symbol, pos in positions.items()
             ]
         except Exception as e:
