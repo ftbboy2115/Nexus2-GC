@@ -452,6 +452,7 @@ export default function Warrior() {
     // Simulation Controls
     const enableSim = () => handleAction('Enable Sim', '/warrior/sim/enable')
     const resetSim = () => handleAction('Reset Sim', '/warrior/sim/reset')
+    const disableSim = () => handleAction('Disable Sim', '/warrior/sim/disable')
 
     // Broker Controls (Alpaca Paper)
     const enableBroker = () => handleAction('Enable Broker', '/warrior/broker/enable')
@@ -819,13 +820,22 @@ export default function Warrior() {
                                             </button>
                                         </>
                                     ) : (
-                                        <button
-                                            onClick={resetSim}
-                                            className={styles.btnSecondary}
-                                            disabled={actionLoading !== null}
-                                        >
-                                            {actionLoading === 'Reset Sim' ? '...' : '🔄 Reset Sim'}
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={resetSim}
+                                                className={styles.btnSecondary}
+                                                disabled={actionLoading !== null}
+                                            >
+                                                {actionLoading === 'Reset Sim' ? '...' : '🔄 Reset Sim'}
+                                            </button>
+                                            <button
+                                                onClick={disableSim}
+                                                className={styles.btnDanger}
+                                                disabled={actionLoading !== null}
+                                            >
+                                                {actionLoading === 'Disable Sim' ? '...' : '🛑 Disable Sim'}
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </CollapsibleCard>

@@ -687,6 +687,27 @@ async def reset_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnableR
     }
 
 
+@router.post("/sim/disable")
+async def disable_warrior_sim():
+    """
+    Disable Warrior simulation mode.
+    
+    Clears MockBroker and resets engine to non-sim mode.
+    """
+    # Clear the MockBroker
+    set_warrior_sim_broker(None)
+    
+    # Reset engine sim flags
+    engine = get_engine()
+    engine.config.sim_only = False
+    engine.monitor.sim_mode = False
+    
+    return {
+        "status": "disabled",
+        "message": "Warrior simulation mode disabled",
+    }
+
+
 @router.post("/sim/order")
 async def submit_warrior_sim_order(request: WarriorSimOrderRequest):
     """
