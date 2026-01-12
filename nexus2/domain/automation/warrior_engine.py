@@ -650,6 +650,24 @@ class WarriorEngine:
                 else:
                     order_id = symbol
                 
+                # Check if order is filled (not just submitted)
+                order_status = None
+                filled_qty = 0
+                if hasattr(order_result, 'status'):
+                    order_status = str(order_result.status)
+                    filled_qty = getattr(order_result, 'filled_qty', 0) or 0
+                elif isinstance(order_result, dict):
+                    order_status = order_result.get("status")
+                    filled_qty = order_result.get("filled_qty", 0) or 0
+                
+                # If order is not filled yet, skip monitor add - auto-recovery will handle it
+                if order_status and order_status.lower() not in ("filled", "partially_filled"):
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Order pending (status={order_status}) - "
+                        f"auto-recovery will sync when filled"
+                    )
+                    return
+                
                 # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
                 # This prevents immediate stop-outs when market price differs from quote
                 actual_fill_price = entry_price  # Default to intended price
@@ -675,7 +693,7 @@ class WarriorEngine:
                     position_id=order_id,
                     symbol=symbol,
                     entry_price=actual_fill_price,  # Use ACTUAL fill price
-                    shares=shares,
+                    shares=int(filled_qty) if filled_qty else shares,  # Use actual filled qty
                     support_level=support_level,
                 )
                 
