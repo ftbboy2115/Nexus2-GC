@@ -32,6 +32,8 @@ class Quote:
     timestamp: datetime
     day_low: Optional[Decimal] = None  # Today's low (for KK-style LOD stop)
     day_high: Optional[Decimal] = None  # Today's high
+    bid: Optional[Decimal] = None  # Bid price for spread calculation
+    ask: Optional[Decimal] = None  # Ask price for spread calculation
 
 
 @dataclass

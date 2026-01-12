@@ -143,6 +143,8 @@ class AlpacaAdapter:
                 change_percent=Decimal("0"),
                 volume=0,
                 timestamp=datetime.fromisoformat(q.get("t", "").replace("Z", "+00:00")),
+                bid=bid if bid else None,
+                ask=ask if ask else None,
             )
         
         return quotes
