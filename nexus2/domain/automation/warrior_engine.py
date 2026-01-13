@@ -613,6 +613,8 @@ class WarriorEngine:
         
         # Entry Spread Filter: reject stocks with wide bid-ask spreads
         # Wide spreads cause unpredictable fills and difficult exits (e.g., SOGP 46% spread)
+        # Also capture current ask for limit price calculation
+        current_ask = None  # Will be set if we get valid quote data
         if self._get_quote_with_spread and self.config.max_entry_spread_percent > 0:
             try:
                 spread_data = await self._get_quote_with_spread(symbol)
@@ -621,6 +623,7 @@ class WarriorEngine:
                     ask = spread_data.get("ask", 0)
                     
                     if bid > 0 and ask > 0:
+                        current_ask = Decimal(str(ask))  # Store for limit price
                         spread_percent = ((ask - bid) / bid) * 100
                         
                         if spread_percent > self.config.max_entry_spread_percent:
@@ -679,10 +682,17 @@ class WarriorEngine:
             logger.info(f"[Warrior Entry] {symbol}: Position too small")
             return
         
-        # Submit order - Ross uses limit order with 5¢ offset above ask
-        # This prevents slippage on fast stocks while ensuring quick fills
-        limit_offset = Decimal("0.05")  # 5 cents above entry price
-        limit_price = (entry_price + limit_offset).quantize(Decimal("0.01"))  # Round to 2 decimals for Alpaca
+        # Submit order - Ross uses limit order with offset above ask
+        # Use current ask if available, otherwise fall back to entry price
+        limit_offset = Decimal("0.05")  # 5 cents offset
+        if current_ask and current_ask > 0:
+            # Use current ask price (more accurate for fast movers)
+            limit_price = (current_ask + limit_offset).quantize(Decimal("0.01"))
+            logger.info(f"[Warrior Entry] {symbol}: Limit based on ask ${current_ask:.2f} + ${limit_offset} = ${limit_price:.2f}")
+        else:
+            # Fallback to entry price if no quote data
+            limit_price = (entry_price + limit_offset).quantize(Decimal("0.01"))
+            logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} + ${limit_offset} = ${limit_price:.2f}")
         
         if self._submit_order:
             try:
@@ -691,7 +701,7 @@ class WarriorEngine:
                     shares=shares,
                     side="buy",
                     order_type="limit",  # Limit order, not market
-                    limit_price=float(limit_price),  # 5¢ above current price
+                    limit_price=float(limit_price),  # offset above ask
                     stop_loss=None,  # Mental stop, not broker stop
                 )
                 
