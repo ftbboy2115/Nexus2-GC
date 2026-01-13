@@ -138,7 +138,7 @@ async def lifespan(app: FastAPI):
                 # Wire callbacks and sync positions automatically
                 try:
                     result = await wire_warrior_callbacks(warrior_broker)
-                    print(f"[Startup] Warrior callbacks wired, {len(result.get('account_value', 0))} account synced")
+                    print(f"[Startup] Warrior callbacks wired, account value: ${result.get('account_value', 0):.2f}")
                 except Exception as wire_err:
                     print(f"[Startup] Warrior callback wiring failed (will need manual enable): {wire_err}")
             else:
