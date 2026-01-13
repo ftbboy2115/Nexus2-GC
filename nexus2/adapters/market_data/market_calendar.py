@@ -219,15 +219,19 @@ class MarketCalendar:
         # (handles holidays where market is closed entirely)
         try:
             status = self.get_market_status()
-            # If market is open or was open today, it's a trading day
+            # If market is open, it's a trading day
             if status.is_open:
                 return True
-            # If next_open is tomorrow or later, today WAS a trading day (post-market)
+            # Check next_open to determine if we're pre-market or post-holiday
             if status.next_open:
                 next_open_et = status.next_open.astimezone(ET)
-                if next_open_et.date() != now_et.date():
+                # Pre-market: next_open is TODAY = trading day, in pre-market window
+                if next_open_et.date() == now_et.date():
+                    return True  # Pre-market of a trading day
+                # Post-market: next_open is TOMORROW = trading day just ended
+                if next_open_et.date() > now_et.date():
                     return True  # Post-market of a trading day
-            # If API says not a trading day, trust it (holiday)
+            # If API says not a trading day (e.g., holiday), trust it
             return False
         except Exception:
             # Fallback: assume weekdays are trading days
