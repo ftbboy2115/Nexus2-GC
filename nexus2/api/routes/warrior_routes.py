@@ -1283,6 +1283,7 @@ async def wire_warrior_callbacks(broker) -> dict:
             
             @dataclass
             class Bar:
+                open: float
                 high: float
                 low: float
                 close: float
@@ -1295,6 +1296,7 @@ async def wire_warrior_callbacks(broker) -> dict:
                 if bars:
                     # Convert to simple bar objects
                     return [Bar(
+                        open=float(b.open),
                         high=float(b.high), 
                         low=float(b.low), 
                         close=float(b.close), 
@@ -1311,6 +1313,7 @@ async def wire_warrior_callbacks(broker) -> dict:
                     # FMP returns OHLCV objects, get last N bars
                     bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
                     return [Bar(
+                        open=float(b.open),
                         high=float(b.high),
                         low=float(b.low),
                         close=float(b.close),
