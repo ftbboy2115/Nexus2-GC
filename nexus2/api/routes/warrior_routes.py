@@ -1212,21 +1212,44 @@ async def wire_warrior_callbacks(broker) -> dict:
             return {}
     
     async def broker_get_quote_with_spread(symbol: str):
-        """Get quote with bid/ask spread for spread exit trigger."""
+        """Get quote with bid/ask spread for spread exit trigger.
+        
+        Priority: Alpaca (primary) -> Schwab (fallback when bid/ask = 0)
+        """
+        bid = 0
+        ask = 0
+        price = 0
+        
+        # Try Alpaca first
         try:
             from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
             alpaca = AlpacaAdapter()
             quote = alpaca.get_quote(symbol)
             if quote:
-                return {
-                    "price": float(quote.price),
-                    "bid": float(quote.bid) if hasattr(quote, 'bid') and quote.bid else 0,
-                    "ask": float(quote.ask) if hasattr(quote, 'ask') and quote.ask else 0,
-                }
-            return None
+                price = float(quote.price)
+                bid = float(quote.bid) if hasattr(quote, 'bid') and quote.bid else 0
+                ask = float(quote.ask) if hasattr(quote, 'ask') and quote.ask else 0
         except Exception as e:
-            print(f"[Warrior] Quote with spread failed for {symbol}: {e}")
-            return None
+            print(f"[Warrior] Alpaca quote failed for {symbol}: {e}")
+        
+        # Schwab fallback if Alpaca doesn't have bid/ask
+        if bid <= 0 or ask <= 0:
+            try:
+                from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+                schwab = get_schwab_adapter()
+                if schwab.is_authenticated():
+                    schwab_quote = schwab.get_quote(symbol)
+                    if schwab_quote and schwab_quote.get("bid", 0) > 0:
+                        bid = schwab_quote["bid"]
+                        ask = schwab_quote["ask"]
+                        price = schwab_quote.get("price", price)
+                        print(f"[Warrior] Schwab fallback for {symbol}: bid=${bid:.2f}, ask=${ask:.2f}")
+            except Exception as e:
+                print(f"[Warrior] Schwab fallback failed for {symbol}: {e}")
+        
+        if price > 0 or bid > 0:
+            return {"price": price, "bid": bid, "ask": ask}
+        return None
     
     async def broker_execute_exit(signal):
         """Execute exit order for a position."""

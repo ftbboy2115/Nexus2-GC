@@ -52,6 +52,10 @@ TRADING_MODE = get_env("TRADING_MODE", "SIMULATION")
 # Discord Webhook
 DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
 
+# Schwab API (for Level 2 bid/ask quotes)
+SCHWAB_CLIENT_ID = get_env("SCHWAB_CLIENT_ID")
+SCHWAB_CLIENT_SECRET = get_env("SCHWAB_CLIENT_SECRET")
+
 # Validate on import
 if not FMP_API_KEY:
     print("[Config] WARNING: FMP_API_KEY not set")

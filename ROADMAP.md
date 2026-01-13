@@ -166,6 +166,9 @@ Last updated: 2026-01-11
   - [ ] Persist stop updates to DB when monitor moves stop
   - [ ] Event replay for full state recovery after restart
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
+- [ ] **Cancel Orders Endpoint** — `DELETE /warrior/broker/orders/{symbol}` for manual cancellation
+- [ ] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending
+- [ ] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
 
 ---
 
