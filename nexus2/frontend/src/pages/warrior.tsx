@@ -588,7 +588,11 @@ export default function Warrior() {
 
     const formatTime = (iso: string | null) => {
         if (!iso) return '-'
-        return new Date(iso).toLocaleTimeString()
+        return new Date(iso).toLocaleTimeString('en-US', {
+            timeZone: 'America/New_York',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) + ' ET'
     }
 
     // ========================================================================
