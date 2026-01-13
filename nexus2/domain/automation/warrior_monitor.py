@@ -197,11 +197,8 @@ class WarriorMonitor:
         self._recently_exited_file = Path(__file__).parent.parent.parent.parent / "data" / "recently_exited.json"
         self._load_recently_exited()
         
-        # Pending exit tracking - prevents duplicate exit orders
-        # Format: {symbol: exit_submitted_at}
-        self._pending_exits: Dict[str, datetime] = {}
-        self._pending_exits_file = Path(__file__).parent.parent.parent.parent / "data" / "pending_exits.json"
-        self._load_pending_exits()
+        # NOTE: Pending exit tracking now uses DB status (PENDING_EXIT) instead of in-memory dict
+        # See: _is_pending_exit(), _mark_pending_exit(), _clear_pending_exit()
     
     def _load_recently_exited(self):
         """Load recently exited symbols from disk (survives restarts)."""
@@ -233,34 +230,64 @@ class WarriorMonitor:
         except Exception as e:
             logger.warning(f"[Warrior] Failed to save recently exited: {e}")
     
-    def _load_pending_exits(self):
-        """Load pending exits from disk (survives restarts)."""
-        try:
-            if self._pending_exits_file.exists():
-                import json
-                with open(self._pending_exits_file, "r") as f:
-                    data = json.load(f)
-                now = datetime.utcnow()
-                # Only load entries less than 1 hour old (stale entries are cleared)
-                for symbol, ts_str in data.items():
-                    exit_time = datetime.fromisoformat(ts_str)
-                    if (now - exit_time).total_seconds() < 3600:  # 1 hour max
-                        self._pending_exits[symbol] = exit_time
-                if self._pending_exits:
-                    logger.info(f"[Warrior] Loaded {len(self._pending_exits)} pending exits from disk")
-        except Exception as e:
-            logger.warning(f"[Warrior] Failed to load pending exits: {e}")
+    # =========================================================================
+    # PENDING EXIT TRACKING (PSM-based - single source of truth in DB)
+    # =========================================================================
     
-    def _save_pending_exits(self):
-        """Save pending exits to disk."""
+    def _is_pending_exit(self, symbol: str) -> bool:
+        """Check if symbol has a pending exit order (DB status = PENDING_EXIT)."""
         try:
-            import json
-            data = {symbol: dt.isoformat() for symbol, dt in self._pending_exits.items()}
-            self._pending_exits_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self._pending_exits_file, "w") as f:
-                json.dump(data, f)
+            from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+            from nexus2.domain.positions.position_state_machine import PositionStatus
+            trade = get_warrior_trade_by_symbol(symbol)
+            if trade and trade["status"] == PositionStatus.PENDING_EXIT.value:
+                return True
+            return False
         except Exception as e:
-            logger.warning(f"[Warrior] Failed to save pending exits: {e}")
+            logger.warning(f"[Warrior] Error checking pending exit for {symbol}: {e}")
+            return False
+    
+    def _mark_pending_exit(self, symbol: str) -> bool:
+        """Mark symbol as pending exit (update DB status to PENDING_EXIT)."""
+        try:
+            from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
+            from nexus2.domain.positions.position_state_machine import PositionStatus
+            trade = get_warrior_trade_by_symbol(symbol)
+            if trade:
+                update_warrior_status(trade["id"], PositionStatus.PENDING_EXIT.value)
+                logger.info(f"[Warrior] {symbol}: Marked PENDING_EXIT in DB")
+                return True
+            return False
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to mark pending exit for {symbol}: {e}")
+            return False
+    
+    def _clear_pending_exit(self, symbol: str, to_closed: bool = True) -> bool:
+        """Clear pending exit status (transition to CLOSED or OPEN)."""
+        try:
+            from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
+            from nexus2.domain.positions.position_state_machine import PositionStatus
+            trade = get_warrior_trade_by_symbol(symbol)
+            if trade and trade["status"] == PositionStatus.PENDING_EXIT.value:
+                new_status = PositionStatus.CLOSED.value if to_closed else PositionStatus.OPEN.value
+                update_warrior_status(trade["id"], new_status)
+                logger.info(f"[Warrior] {symbol}: {PositionStatus.PENDING_EXIT.value} → {new_status}")
+                return True
+            return False
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to clear pending exit for {symbol}: {e}")
+            return False
+    
+    def _get_pending_exit_symbols(self) -> set:
+        """Get all symbols with PENDING_EXIT status."""
+        try:
+            from nexus2.db.warrior_db import get_warrior_trades_by_status
+            from nexus2.domain.positions.position_state_machine import PositionStatus
+            trades = get_warrior_trades_by_status(PositionStatus.PENDING_EXIT.value)
+            return {t["symbol"] for t in trades}
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to get pending exits: {e}")
+            return set()
     
     def set_callbacks(
         self,
@@ -465,7 +492,7 @@ class WarriorMonitor:
         for position_id, position in list(self._positions.items()):
             try:
                 # Skip positions with pending exit orders (prevents duplicate exits)
-                if position.symbol in self._pending_exits:
+                if self._is_pending_exit(position.symbol):
                     continue
                 
                 # Pass pre-fetched price to avoid individual API calls
@@ -545,7 +572,7 @@ class WarriorMonitor:
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
                     # Skip if pending exit (prevents re-adding position we're trying to close)
-                    if symbol in self._pending_exits:
+                    if self._is_pending_exit(symbol):
                         logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
                         continue
                     # Skip if recently exited (prevent race condition with pending sell orders)
@@ -635,22 +662,11 @@ class WarriorMonitor:
                         )
             
             # Confirm pending exits that are now fully closed at broker
-            for symbol in list(self._pending_exits.keys()):
+            for symbol in self._get_pending_exit_symbols():
                 if broker_map.get(symbol, 0) == 0:
                     # Position gone from broker = exit confirmed
-                    del self._pending_exits[symbol]
-                    self._save_pending_exits()
+                    self._clear_pending_exit(symbol, to_closed=True)
                     logger.info(f"[Warrior Sync] {symbol}: Exit confirmed by broker")
-                    
-                    # PSM: Update DB status to CLOSED
-                    try:
-                        from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
-                        from nexus2.domain.positions.position_state_machine import PositionStatus
-                        trade = get_warrior_trade_by_symbol(symbol)
-                        if trade:
-                            update_warrior_status(trade["id"], PositionStatus.CLOSED.value)
-                    except Exception as e:
-                        logger.warning(f"[Warrior Sync] Failed to update DB status: {e}")
         except Exception as e:
             logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
     
@@ -976,19 +992,7 @@ class WarriorMonitor:
         
         # Mark pending exit BEFORE submitting order (prevents duplicate exit signals)
         if signal.reason != WarriorExitReason.PARTIAL_EXIT:
-            self._pending_exits[signal.symbol] = datetime.utcnow()
-            self._save_pending_exits()
-            logger.info(f"[Warrior] {signal.symbol}: Marked pending exit")
-            
-            # PSM: Also update DB status to PENDING_EXIT
-            try:
-                from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
-                from nexus2.domain.positions.position_state_machine import PositionStatus
-                trade = get_warrior_trade_by_symbol(signal.symbol)
-                if trade:
-                    update_warrior_status(trade["id"], PositionStatus.PENDING_EXIT.value)
-            except Exception as e:
-                logger.warning(f"[Warrior] Failed to update DB status: {e}")
+            self._mark_pending_exit(signal.symbol)
         
         if self._execute_exit:
             try:
