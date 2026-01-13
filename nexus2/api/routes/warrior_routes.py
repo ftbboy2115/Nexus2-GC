@@ -1272,11 +1272,18 @@ async def wire_warrior_callbacks(broker) -> dict:
             print(f"[Warrior] Batch quote failed: {e}")
             return {}
     
+    # Schwab quote cache (10-second TTL to stay under 120 calls/min limit)
+    _schwab_quote_cache: dict = {}
+    _schwab_cache_ttl = 10  # seconds
+    
     async def broker_get_quote_with_spread(symbol: str):
         """Get quote with bid/ask spread for spread exit trigger.
         
         Priority: Alpaca (primary) -> Schwab (fallback when bid/ask = 0)
+        Schwab fallback is cached for 10 seconds to respect rate limits.
         """
+        import time
+        
         bid = 0
         ask = 0
         price = 0
@@ -1295,18 +1302,37 @@ async def wire_warrior_callbacks(broker) -> dict:
         
         # Schwab fallback if Alpaca doesn't have bid/ask
         if bid <= 0 or ask <= 0:
-            try:
-                from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
-                schwab = get_schwab_adapter()
-                if schwab.is_authenticated():
-                    schwab_quote = schwab.get_quote(symbol)
-                    if schwab_quote and schwab_quote.get("bid", 0) > 0:
-                        bid = schwab_quote["bid"]
-                        ask = schwab_quote["ask"]
-                        price = schwab_quote.get("price", price)
-                        print(f"[Warrior] Schwab fallback for {symbol}: bid=${bid:.2f}, ask=${ask:.2f}")
-            except Exception as e:
-                print(f"[Warrior] Schwab fallback failed for {symbol}: {e}")
+            # Check cache first
+            cache_key = symbol
+            now = time.time()
+            if cache_key in _schwab_quote_cache:
+                cached_time, cached_data = _schwab_quote_cache[cache_key]
+                if now - cached_time < _schwab_cache_ttl:
+                    # Use cached Schwab data
+                    bid = cached_data.get("bid", bid)
+                    ask = cached_data.get("ask", ask)
+                    price = cached_data.get("price", price)
+                    # Don't print on cache hit to reduce log noise
+                else:
+                    # Cache expired, fetch new
+                    del _schwab_quote_cache[cache_key]
+            
+            # Fetch from Schwab if not in cache
+            if cache_key not in _schwab_quote_cache and (bid <= 0 or ask <= 0):
+                try:
+                    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+                    schwab = get_schwab_adapter()
+                    if schwab.is_authenticated():
+                        schwab_quote = schwab.get_quote(symbol)
+                        if schwab_quote and schwab_quote.get("bid", 0) > 0:
+                            bid = schwab_quote["bid"]
+                            ask = schwab_quote["ask"]
+                            price = schwab_quote.get("price", price)
+                            # Cache the result
+                            _schwab_quote_cache[cache_key] = (now, {"bid": bid, "ask": ask, "price": price})
+                            print(f"[Warrior] Schwab fallback for {symbol}: bid=${bid:.2f}, ask=${ask:.2f} (cached 10s)")
+                except Exception as e:
+                    print(f"[Warrior] Schwab fallback failed for {symbol}: {e}")
         
         if price > 0 or bid > 0:
             return {"price": price, "bid": bid, "ask": ask}
