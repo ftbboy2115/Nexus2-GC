@@ -41,21 +41,13 @@ export default function Automation() {
     const [showSchedulerModal, setShowSchedulerModal] = useState(false)
 
     // Scanner diagnostics for visibility (persisted in localStorage, collapsed by default)
+    // Initialize to false for SSR safety, restore from localStorage in useEffect
     const [diagnostics, setDiagnostics] = useState<ScanDiagnostics | null>(null)
-    const [showDiagnostics, setShowDiagnostics] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('nexus_showDiagnostics') === 'true'
-        }
-        return false
-    })
+    const [showDiagnostics, setShowDiagnostics] = useState(false)
 
     // How to Use section collapse state (persisted, collapsed by default)
-    const [showHowToUse, setShowHowToUse] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('nexus_showHowToUse') === 'true'
-        }
-        return false
-    })
+    // Initialize to false for SSR safety, then update from localStorage in useEffect
+    const [showHowToUse, setShowHowToUse] = useState(false)
 
     // Broker positions (actual Alpaca positions)
     const [positions, setPositions] = useState<PositionsData | null>(null)
@@ -80,13 +72,9 @@ export default function Automation() {
     const [positionsMaximized, setPositionsMaximized] = useState(false)
 
     // Trade events log
+    // Initialize to false for SSR safety, restore from localStorage in useEffect
     const [tradeEvents, setTradeEvents] = useState<any[]>([])
-    const [showTradeEvents, setShowTradeEvents] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('nexus_showTradeEvents') === 'true'
-        }
-        return false
-    })
+    const [showTradeEvents, setShowTradeEvents] = useState(false)
 
     // Countdown timer state
     const [countdown, setCountdown] = useState<string>('')
@@ -132,6 +120,14 @@ export default function Automation() {
         const interval = setInterval(updateCountdown, 1000)
         return () => clearInterval(interval)
     }, [scheduler?.running, scheduler?.next_run, scheduler?.is_market_hours])
+
+    // Persist collapse states to localStorage
+    // Restore collapse states from localStorage after mount (SSR hydration safety)
+    useEffect(() => {
+        setShowDiagnostics(localStorage.getItem('nexus_showDiagnostics') === 'true')
+        setShowHowToUse(localStorage.getItem('nexus_showHowToUse') === 'true')
+        setShowTradeEvents(localStorage.getItem('nexus_showTradeEvents') === 'true')
+    }, [])
 
     // Persist collapse states to localStorage
     useEffect(() => {
