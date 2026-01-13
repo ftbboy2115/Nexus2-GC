@@ -96,6 +96,9 @@ class WarriorEngineConfig:
     
     # Execution
     sim_only: bool = False  # Default to paper trading on Alpaca
+    
+    # Debug
+    debug_catalyst: bool = True  # Log catalyst classification details (temp enabled for AHMA debug)
 
 
 @dataclass
@@ -437,7 +440,7 @@ class WarriorEngine:
         
         logger.info("[Warrior Scan] Running scan...")
         
-        result = self.scanner.scan(verbose=False)
+        result = self.scanner.scan(verbose=self.config.debug_catalyst)
         
         # Count only NEW candidates (not seen before this session)
         for candidate in result.candidates:
