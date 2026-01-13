@@ -125,12 +125,12 @@ class CatalystClassifier:
                     is_positive=True,
                 )
         
-        # Fallback: sentiment-based
+        # Fallback: sentiment-based (0.5 confidence = below threshold, not a real catalyst)
         if self.positive_sentiment.search(h):
             return CatalystMatch(
                 headline=h,
                 catalyst_type="positive_sentiment",
-                confidence=0.6,
+                confidence=0.5,  # Below 0.6 threshold - sentiment alone is not enough
                 is_positive=True,
             )
         
