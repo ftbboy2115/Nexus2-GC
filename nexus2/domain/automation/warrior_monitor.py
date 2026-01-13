@@ -571,7 +571,45 @@ class WarriorMonitor:
                     if entry_price > 0:
                         # Auto-recover: Add position back to monitor
                         from uuid import uuid4
-                        stop_price = entry_price - self.settings.mental_stop_cents / 100
+                        
+                        # Try to calculate technical stop from candle data
+                        stop_price = None
+                        stop_method = "fallback_15c"
+                        
+                        if self._get_intraday_candles:
+                            try:
+                                candles = await self._get_intraday_candles(symbol, "5min", limit=50)
+                                if candles and len(candles) >= 5:
+                                    from nexus2.domain.indicators import get_stop_calculator
+                                    stop_calc = get_stop_calculator()
+                                    stop_price, stop_method = stop_calc.get_best_stop(
+                                        [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles],
+                                        entry_price,
+                                        symbol,
+                                    )
+                                    
+                                    # Get current price to check if already below stop
+                                    current_price = None
+                                    if self._get_price:
+                                        current_price = await self._get_price(symbol)
+                                        if current_price:
+                                            current_price = Decimal(str(current_price))
+                                    
+                                    # If already below stop, skip sync (position is invalidated)
+                                    if current_price and current_price < stop_price:
+                                        logger.warning(
+                                            f"[Warrior Sync] {symbol}: Already below stop "
+                                            f"(${current_price:.2f} < ${stop_price:.2f} via {stop_method}) - skipping sync"
+                                        )
+                                        continue
+                            except Exception as e:
+                                logger.debug(f"[Warrior Sync] {symbol}: Technical stop calc failed: {e}")
+                        
+                        # Fallback to original 15¢ stop if technical calc failed
+                        if stop_price is None:
+                            stop_price = entry_price - self.settings.mental_stop_cents / 100
+                            stop_method = "fallback_15c"
+                        
                         profit_target_r = Decimal(str(self.settings.profit_target_r))
                         target_price = entry_price + (self.settings.mental_stop_cents / 100 * profit_target_r)
                         
@@ -588,7 +626,8 @@ class WarriorMonitor:
                         )
                         self._positions[position.position_id] = position
                         logger.info(
-                            f"[Warrior Sync] {symbol}: Auto-recovered from broker ({qty} shares @ ${entry_price:.2f})"
+                            f"[Warrior Sync] {symbol}: Auto-recovered ({qty} shares @ ${entry_price:.2f}, "
+                            f"stop=${stop_price:.2f} via {stop_method})"
                         )
                     else:
                         logger.warning(

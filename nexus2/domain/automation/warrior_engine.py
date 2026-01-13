@@ -705,6 +705,50 @@ class WarriorEngine:
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - proceeding")
         
+        # Technical Validation: Check VWAP/EMA alignment per Ross Cameron
+        # Entry should be above VWAP and near 9 EMA support
+        if self._get_intraday_bars:
+            try:
+                candles = await self._get_intraday_bars(symbol, "5min", limit=50)
+                if candles and len(candles) >= 10:
+                    from nexus2.domain.indicators import get_technical_service
+                    tech = get_technical_service()
+                    
+                    # Convert candles to dict format for pandas-ta
+                    candle_dicts = [
+                        {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                        for c in candles
+                    ]
+                    snapshot = tech.get_snapshot(symbol, candle_dicts, entry_price)
+                    
+                    # Check: price should be above VWAP (Ross Cameron rule)
+                    if snapshot.vwap and entry_price < snapshot.vwap:
+                        logger.warning(
+                            f"[Warrior Entry] {symbol}: REJECTED - below VWAP "
+                            f"(${entry_price:.2f} < VWAP ${snapshot.vwap:.2f})"
+                        )
+                        watched.entry_triggered = True
+                        return
+                    
+                    # Check: price should be above 9 EMA (within 1% tolerance)
+                    if snapshot.ema_9 and entry_price < snapshot.ema_9 * Decimal("0.99"):
+                        logger.warning(
+                            f"[Warrior Entry] {symbol}: REJECTED - below 9 EMA "
+                            f"(${entry_price:.2f} < 9EMA ${snapshot.ema_9:.2f})"
+                        )
+                        watched.entry_triggered = True
+                        return
+                    
+                    # Log technical confirmation
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Technical OK - "
+                        f"VWAP=${snapshot.vwap:.2f if snapshot.vwap else 'N/A'}, "
+                        f"9EMA=${snapshot.ema_9:.2f if snapshot.ema_9 else 'N/A'}, "
+                        f"MACD={snapshot.macd_crossover}"
+                    )
+            except Exception as e:
+                logger.debug(f"[Warrior Entry] {symbol}: Technical check failed: {e} - proceeding")
+        
         # Check if we can open new position (max positions, daily loss)
         if not await self._can_open_position():
             logger.info(f"[Warrior Entry] {symbol}: Cannot open (max positions or daily loss)")
@@ -715,8 +759,34 @@ class WarriorEngine:
         self.stats.entries_triggered += 1
         
         # Calculate position size
-        # Mental stop = entry - 15 cents (default)
-        mental_stop = entry_price - self.monitor.settings.mental_stop_cents / 100
+        # Use technical stop (swing low, VWAP, or EMA) per Ross Cameron methodology
+        # Falls back to 15 cents if technical data unavailable
+        mental_stop = None
+        stop_method = "fallback_15c"
+        
+        if self._get_intraday_bars:
+            try:
+                candles = await self._get_intraday_bars(symbol, "5min", limit=50)
+                if candles and len(candles) >= 5:
+                    from nexus2.domain.indicators import get_stop_calculator
+                    stop_calc = get_stop_calculator()
+                    candle_dicts = [
+                        {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                        for c in candles
+                    ]
+                    mental_stop, stop_method = stop_calc.get_best_stop(
+                        candle_dicts, entry_price, symbol
+                    )
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method}"
+                    )
+            except Exception as e:
+                logger.debug(f"[Warrior Entry] {symbol}: Technical stop calc failed: {e}")
+        
+        if mental_stop is None:
+            mental_stop = entry_price - self.monitor.settings.mental_stop_cents / 100
+            stop_method = "fallback_15c"
+        
         risk_per_share = entry_price - mental_stop
         
         if risk_per_share <= 0:
