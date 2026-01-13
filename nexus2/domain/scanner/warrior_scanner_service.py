@@ -99,7 +99,7 @@ class WarriorScanSettings:
     min_dollar_volume: Decimal = Decimal("500000")  # $500K minimum turnover
     exclude_chinese_stocks: bool = True  # Ross avoids HKD, TOP, MEGL, etc.
     require_catalyst: bool = True  # Require news/earnings
-    include_former_runners: bool = True  # "Former MOMO" stocks
+    include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
     
     # Pre-market Filters
     min_premarket_volume: int = 100_000  # 100K shares pre-market
