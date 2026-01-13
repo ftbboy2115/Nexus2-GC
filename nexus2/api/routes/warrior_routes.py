@@ -1301,21 +1301,21 @@ async def wire_warrior_callbacks(broker) -> dict:
                         volume=int(b.volume)
                     ) for b in bars]
             
-            # Fallback: try FMP historical data
+            # Fallback: try FMP intraday bars
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
             if fmp:
-                # Get 5min bars from FMP
-                chart = fmp.get_historical_chart(symbol, interval="5min")
-                if chart and len(chart) >= limit:
-                    # FMP returns newest first, we want oldest first
-                    bars = chart[-limit:]
+                # Get 5min bars from FMP using correct method
+                fmp_bars = fmp.get_intraday_bars(symbol, timeframe="5min")
+                if fmp_bars and len(fmp_bars) >= 5:
+                    # FMP returns OHLCV objects, get last N bars
+                    bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
                     return [Bar(
-                        high=float(b.get('high', 0)),
-                        low=float(b.get('low', 0)),
-                        close=float(b.get('close', 0)),
-                        volume=int(b.get('volume', 0))
-                    ) for b in reversed(bars)]
+                        high=float(b.high),
+                        low=float(b.low),
+                        close=float(b.close),
+                        volume=int(b.volume)
+                    ) for b in bars_to_use]
             
             return None
         except Exception as e:
