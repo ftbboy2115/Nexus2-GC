@@ -427,3 +427,39 @@ class TestTwoStrikeRule:
         
         # Should NOT call fail recorder for profit-taking
         fail_recorder.assert_not_called()
+
+
+# =============================================================================
+# PSM Helper Tests (Jan 2026)
+# =============================================================================
+
+class TestWarriorPSMHelpers:
+    """Test the PSM-based helper methods in warrior_monitor."""
+    
+    def test_warrior_monitor_has_psm_helpers(self):
+        """Test warrior_monitor has the new PSM helper methods."""
+        monitor = WarriorMonitor.__new__(WarriorMonitor)
+        
+        # Check all helper methods exist
+        assert hasattr(monitor, '_is_pending_exit')
+        assert hasattr(monitor, '_mark_pending_exit')
+        assert hasattr(monitor, '_clear_pending_exit')
+        assert hasattr(monitor, '_get_pending_exit_symbols')
+        
+        # All should be callable
+        assert callable(getattr(monitor, '_is_pending_exit'))
+        assert callable(getattr(monitor, '_mark_pending_exit'))
+        assert callable(getattr(monitor, '_clear_pending_exit'))
+        assert callable(getattr(monitor, '_get_pending_exit_symbols'))
+    
+    def test_warrior_db_has_psm_functions(self):
+        """Test warrior_db has all required PSM functions."""
+        from nexus2.db import warrior_db
+        
+        # Check all functions exist
+        assert hasattr(warrior_db, 'update_warrior_status')
+        assert hasattr(warrior_db, 'get_warrior_trades_by_status')
+        assert hasattr(warrior_db, 'get_warrior_trade_by_symbol')
+        assert hasattr(warrior_db, 'get_open_warrior_trades')
+        assert hasattr(warrior_db, 'log_warrior_entry')
+        assert hasattr(warrior_db, 'log_warrior_exit')
