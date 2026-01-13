@@ -95,7 +95,24 @@ class TechnicalService:
             for col in required:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
             
-            # Calculate VWAP
+            # Check for 'open' column for proper VWAP (HLCV is bare minimum)
+            if 'open' in df.columns:
+                df['open'] = pd.to_numeric(df['open'], errors='coerce')
+            
+            # Set DatetimeIndex for pandas-ta VWAP requirement
+            # If candles have timestamp, use it; otherwise create synthetic timestamps
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df = df.set_index('timestamp')
+            else:
+                # Create synthetic 5-min intervals for VWAP anchor
+                df.index = pd.date_range(
+                    start='2026-01-01 09:30:00',
+                    periods=len(df),
+                    freq='5min'
+                )
+            
+            # Calculate VWAP (now with proper DatetimeIndex)
             vwap = None
             try:
                 vwap_series = ta.vwap(df['high'], df['low'], df['close'], df['volume'])
