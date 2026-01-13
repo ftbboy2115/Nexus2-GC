@@ -168,7 +168,12 @@ Last updated: 2026-01-11
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
 - [ ] **Cancel Orders Endpoint** — `DELETE /warrior/broker/orders/{symbol}` for manual cancellation
 - [ ] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending
-- [ ] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
+- [/] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
+  - [x] Create SchwabAdapter with OAuth 2.0 token management (Jan 13)
+  - [x] Add `/schwab/auth-url`, `/schwab/callback`, `/schwab/status` endpoints
+  - [ ] Seamless OAuth: Auto-refresh reminder (Discord/email alert before 7-day expiry)
+  - [ ] Seamless OAuth: OAuth proxy via nginx HTTPS for direct VPS callback
+  - [ ] Seamless OAuth: One-click weekly re-auth workflow
 
 ---
 

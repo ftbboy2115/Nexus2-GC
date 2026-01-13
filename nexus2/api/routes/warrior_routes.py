@@ -110,6 +110,67 @@ def get_engine() -> WarriorEngine:
 # ENGINE CONTROL ROUTES
 # =============================================================================
 
+
+# =============================================================================
+# SCHWAB OAUTH ROUTES
+# =============================================================================
+
+@router.get("/schwab/auth-url")
+async def get_schwab_auth_url():
+    """
+    Get Schwab OAuth authorization URL.
+    
+    Open this URL in a browser to log in to Schwab.
+    After login, copy the 'code' from the callback URL and POST to /schwab/callback.
+    """
+    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+    schwab = get_schwab_adapter()
+    
+    if not schwab.client_id:
+        raise HTTPException(400, "SCHWAB_CLIENT_ID not configured in .env")
+    
+    return {
+        "auth_url": schwab.get_auth_url(),
+        "instructions": "Open auth_url in browser, login, then POST the 'code' param to /warrior/schwab/callback",
+    }
+
+
+@router.post("/schwab/callback")
+async def schwab_oauth_callback(code: str):
+    """
+    Exchange Schwab OAuth code for access tokens.
+    
+    After logging in via the auth_url, Schwab redirects to 127.0.0.1 with a code.
+    Copy that code and POST here to complete authentication.
+    """
+    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+    schwab = get_schwab_adapter()
+    
+    success = schwab.exchange_code_for_tokens(code)
+    
+    if success:
+        return {"status": "authenticated", "message": "Schwab tokens saved successfully"}
+    else:
+        raise HTTPException(400, "Failed to exchange code for tokens - check logs")
+
+
+@router.get("/schwab/status")
+async def get_schwab_status():
+    """Check Schwab authentication status."""
+    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+    schwab = get_schwab_adapter()
+    
+    return {
+        "authenticated": schwab.is_authenticated(),
+        "has_refresh_token": schwab._refresh_token is not None,
+        "token_expiry": schwab._token_expiry.isoformat() if schwab._token_expiry else None,
+    }
+
+
+# =============================================================================
+# ENGINE STATUS ROUTES
+# =============================================================================
+
 @router.get("/status")
 async def get_warrior_status():
     """
