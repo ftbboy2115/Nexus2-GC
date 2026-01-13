@@ -537,6 +537,9 @@ class WarriorScannerService:
         
         # Check headlines with classifier (confidence-based)
         if headlines:
+            if verbose:
+                print(f"[Catalyst Debug] {symbol}: Found {len(headlines)} headlines")
+            
             has_positive, best_type, best_headline = classifier.has_positive_catalyst(headlines)
             if has_positive and best_type:
                 # Get confidence for the best match
@@ -554,6 +557,9 @@ class WarriorScannerService:
                     catalyst_desc = best_headline[:80] if best_headline else ""
                 else:
                     catalyst_desc = f"Weak catalyst (confidence {catalyst_confidence:.1f})"
+            else:
+                if verbose:
+                    print(f"[Catalyst Debug] {symbol}: No positive catalyst pattern matched")
             
             # Also check for negative catalysts (offering, sec, miss) - reject these
             has_negative, neg_type, neg_headline = classifier.has_negative_catalyst(headlines)
