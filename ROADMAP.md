@@ -161,11 +161,11 @@ Last updated: 2026-01-11
 - [x] **Full Auto-Enable on Startup** — Callbacks, position sync, and recently_exited now auto-wire on server start (Jan 12)
 - [x] **Settings Persistence** — Persists to `data/warrior_settings.json` (scan interval, risk/trade, max_positions, etc.)
 - [x] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
-- [/] **Integrate Warrior with Position State Machine** — Replace separate `WarriorPosition` tracking with centralized PSM
-  - [x] Add PENDING_EXIT state to prevent duplicate exits (Jan 13)
-  - [ ] Migrate to `PositionRepository` with `strategy="warrior"` filter
-  - [ ] Handle scaling-in (multiple adds) with `SCALING` state
-  - [ ] Handle partials with `PARTIAL` state transitions
+- [x] **Integrate Warrior with Position State Machine** — Commit `164ebab` (Jan 11)
+  - [x] Add PENDING_EXIT state to prevent duplicate exits
+  - [x] PositionStatus enum with SCALING, PARTIAL, PENDING_EXIT states
+  - [x] Valid transition matrix enforces lifecycle invariants
+  - [x] Unit tests in `test_position_state_machine.py`
 - [ ] **Trade Event Log** — Audit trail for all position changes (stop moves, partials, breakeven adjustments)
   - [ ] `trade_events` table with event_type, old_value, new_value, timestamp
   - [ ] Persist stop updates to DB when monitor moves stop
