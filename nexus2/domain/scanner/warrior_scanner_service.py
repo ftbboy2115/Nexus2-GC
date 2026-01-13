@@ -543,6 +543,10 @@ class WarriorScannerService:
                 match = classifier.classify(best_headline)
                 catalyst_confidence = match.confidence
                 
+                # Debug logging when verbose
+                if verbose:
+                    print(f"[Catalyst Debug] {symbol}: type={best_type}, conf={catalyst_confidence:.2f}, headline='{best_headline[:60]}...'")
+                
                 # Require confidence >= 0.6 (filters weak catalysts like conferences)
                 if catalyst_confidence >= 0.6:
                     has_catalyst = True
