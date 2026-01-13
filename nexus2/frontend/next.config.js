@@ -33,6 +33,11 @@ const nextConfig = {
                 source: '/warrior',
                 destination: 'http://localhost:8000/warrior',
             },
+            // TRADE EVENTS
+            {
+                source: '/trade-events/:path*',
+                destination: 'http://localhost:8000/trade-events/:path*',
+            },
             {
                 source: '/api/:path*',
                 destination: 'http://localhost:8000/:path*',
