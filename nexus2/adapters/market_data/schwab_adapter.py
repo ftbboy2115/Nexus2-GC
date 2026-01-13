@@ -11,13 +11,14 @@ Usage:
     print(f"Bid: {quote['bid']}, Ask: {quote['ask']}")
 """
 
+import base64
 import json
 import logging
 import webbrowser
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote
 
 import httpx
 
@@ -120,14 +121,23 @@ class SchwabAdapter:
     def exchange_code_for_tokens(self, auth_code: str) -> bool:
         """Exchange authorization code for access/refresh tokens."""
         try:
+            # URL-decode the code (may contain %40 etc from URL)
+            auth_code = unquote(auth_code)
+            
+            # Schwab requires Basic Auth header with base64(client_id:secret)
+            credentials = f"{self.client_id}:{self.client_secret}"
+            basic_auth = base64.b64encode(credentials.encode()).decode()
+            
             response = self._client.post(
                 SCHWAB_TOKEN_URL,
                 data={
                     "grant_type": "authorization_code",
                     "code": auth_code,
                     "redirect_uri": self.callback_url,
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
+                },
+                headers={
+                    "Authorization": f"Basic {basic_auth}",
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
             )
             response.raise_for_status()
@@ -153,13 +163,19 @@ class SchwabAdapter:
             return False
         
         try:
+            # Schwab requires Basic Auth header
+            credentials = f"{self.client_id}:{self.client_secret}"
+            basic_auth = base64.b64encode(credentials.encode()).decode()
+            
             response = self._client.post(
                 SCHWAB_TOKEN_URL,
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": self._refresh_token,
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
+                },
+                headers={
+                    "Authorization": f"Basic {basic_auth}",
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
             )
             response.raise_for_status()
