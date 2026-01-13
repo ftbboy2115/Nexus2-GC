@@ -1564,11 +1564,41 @@ async def wire_warrior_callbacks(broker) -> dict:
                 entry_price = float(pos.avg_price)
                 mental_stop_cents = float(monitor.settings.mental_stop_cents)
                 profit_target_r = float(monitor.settings.profit_target_r)
-                stop_price = entry_price - (mental_stop_cents / 100)
+                
+                # Try technical stop calculation using candle data
+                stop_price = None
+                stop_method = "fallback_15c"
+                
+                try:
+                    candles = await broker_get_intraday_bars(symbol, "5min", limit=50)
+                    if candles and len(candles) >= 5:
+                        from nexus2.domain.indicators import get_stop_calculator
+                        stop_calc = get_stop_calculator()
+                        candle_dicts = [
+                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                            for c in candles
+                        ]
+                        stop_price, stop_method = stop_calc.get_best_stop(
+                            candle_dicts, Decimal(str(entry_price)), symbol
+                        )
+                        stop_price = float(stop_price)
+                        
+                        # Check if already below stop - skip sync if underwater
+                        current_price = float(pos.current_price) if pos.current_price else 0
+                        if current_price > 0 and current_price < stop_price:
+                            print(f"[Warrior] {symbol}: Already below stop (${current_price:.2f} < ${stop_price:.2f} via {stop_method}) - skipping")
+                            continue
+                except Exception as e:
+                    print(f"[Warrior] {symbol}: Technical stop calc failed: {e}")
+                
+                if stop_price is None:
+                    stop_price = entry_price - (mental_stop_cents / 100)
+                    stop_method = "fallback_15c"
+                
                 target_price = entry_price + (mental_stop_cents / 100 * profit_target_r)
                 support_level = stop_price
                 trade_id = str(uuid4())
-                print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
+                print(f"[Warrior] Synced {symbol}: entry=${entry_price:.2f}, stop=${stop_price:.2f} via {stop_method}")
             
             risk_per_share = Decimal(str(entry_price)) - Decimal(str(stop_price))
             new_pos = WarriorPosition(
