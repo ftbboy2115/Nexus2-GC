@@ -1587,6 +1587,13 @@ async def wire_warrior_callbacks(broker) -> dict:
                         current_price = float(pos.current_price) if pos.current_price else 0
                         if current_price > 0 and current_price < stop_price:
                             print(f"[Warrior] {symbol}: UNDERWATER (${current_price:.2f} < stop ${stop_price:.2f} via {stop_method}) - EXITING NOW")
+                            # Cancel any existing sell orders first
+                            try:
+                                cancelled = broker.cancel_open_orders(symbol, side="sell")
+                                if cancelled > 0:
+                                    print(f"[Warrior] {symbol}: Cancelled {cancelled} stale sell order(s)")
+                            except Exception as cancel_err:
+                                print(f"[Warrior] {symbol}: Cancel orders failed: {cancel_err}")
                             # Submit immediate exit at market-like limit
                             try:
                                 exit_price = round(current_price * 0.98, 2)  # Aggressive limit, rounded
