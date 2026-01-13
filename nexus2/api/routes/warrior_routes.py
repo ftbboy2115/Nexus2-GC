@@ -1616,6 +1616,20 @@ async def wire_warrior_callbacks(broker) -> dict:
             )
             monitor._positions[trade_id] = new_pos
             synced_count += 1
+            
+            # Persist to DB so future syncs don't need to recalculate technical stop
+            if not saved_trade:
+                from nexus2.db.warrior_db import log_warrior_entry
+                log_warrior_entry(
+                    trade_id=trade_id,
+                    symbol=symbol,
+                    entry_price=entry_price,
+                    quantity=pos.quantity,
+                    stop_price=stop_price,
+                    target_price=target_price,
+                    trigger_type="synced",
+                    support_level=support_level,
+                )
         
         if synced_count > 0:
             print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")
