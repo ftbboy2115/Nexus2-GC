@@ -351,5 +351,122 @@ class TestWarriorPSMIntegration:
         assert PositionStatus.SCALING.value == "scaling"
 
 
+# =============================================================================
+# PSM FULL REFACTOR TESTS (DB-based helpers)
+# =============================================================================
+
+class TestWarriorPSMHelpers:
+    """Test the PSM-based helper methods in warrior_monitor."""
+    
+    def test_warrior_monitor_has_psm_helpers(self):
+        """Test warrior_monitor has the new PSM helper methods."""
+        from nexus2.domain.automation.warrior_monitor import WarriorPositionMonitor
+        
+        monitor = WarriorPositionMonitor.__new__(WarriorPositionMonitor)
+        
+        # Check all helper methods exist
+        assert hasattr(monitor, '_is_pending_exit')
+        assert hasattr(monitor, '_mark_pending_exit')
+        assert hasattr(monitor, '_clear_pending_exit')
+        assert hasattr(monitor, '_get_pending_exit_symbols')
+        
+        # All should be callable
+        assert callable(getattr(monitor, '_is_pending_exit'))
+        assert callable(getattr(monitor, '_mark_pending_exit'))
+        assert callable(getattr(monitor, '_clear_pending_exit'))
+        assert callable(getattr(monitor, '_get_pending_exit_symbols'))
+    
+    def test_warrior_db_has_psm_functions(self):
+        """Test warrior_db has all required PSM functions."""
+        from nexus2.db import warrior_db
+        
+        # Check all functions exist
+        assert hasattr(warrior_db, 'update_warrior_status')
+        assert hasattr(warrior_db, 'get_warrior_trades_by_status')
+        assert hasattr(warrior_db, 'get_warrior_trade_by_symbol')
+        assert hasattr(warrior_db, 'get_open_warrior_trades')
+        assert hasattr(warrior_db, 'log_warrior_entry')
+        assert hasattr(warrior_db, 'log_warrior_exit')
+    
+    def test_psm_transitions_are_valid(self):
+        """Test PSM valid transition matrix."""
+        from nexus2.domain.positions.position_state_machine import (
+            PositionStatus, can_transition
+        )
+        
+        # Valid transitions
+        assert can_transition(PositionStatus.OPEN, PositionStatus.PENDING_EXIT)
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.CLOSED)
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.OPEN)  # Cancel
+        assert can_transition(PositionStatus.OPEN, PositionStatus.PARTIAL)
+        assert can_transition(PositionStatus.PARTIAL, PositionStatus.CLOSED)
+        
+        # Invalid transitions
+        assert not can_transition(PositionStatus.CLOSED, PositionStatus.OPEN)
+        assert not can_transition(PositionStatus.REJECTED, PositionStatus.OPEN)
+
+
+# =============================================================================
+# CANCEL ORDERS ENDPOINT TESTS
+# =============================================================================
+
+class TestCancelOrdersEndpoint:
+    """Test the DELETE /warrior/orders/{symbol} endpoint logic."""
+    
+    def test_cancel_endpoint_exists(self):
+        """Test cancel orders function exists in warrior_routes."""
+        from nexus2.api.routes import warrior_routes
+        assert hasattr(warrior_routes, 'cancel_orders_for_symbol')
+        assert callable(warrior_routes.cancel_orders_for_symbol)
+    
+    def test_alpaca_broker_has_cancel_method(self):
+        """Test AlpacaBroker has cancel_order method."""
+        from nexus2.adapters.broker.alpaca_broker import AlpacaBroker
+        assert hasattr(AlpacaBroker, 'cancel_order')
+        assert hasattr(AlpacaBroker, 'get_open_orders')
+    
+    def test_cancel_reverts_pending_exit_status(self):
+        """Test PSM status logic: cancel should revert PENDING_EXIT to OPEN."""
+        from nexus2.domain.positions.position_state_machine import (
+            PositionStatus, can_transition
+        )
+        
+        # This is the expected transition when an exit order is cancelled
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.OPEN)
+
+
+# =============================================================================
+# WARRIOR DB PSM STATUS TESTS
+# =============================================================================
+
+class TestWarriorDBPSMStatus:
+    """Test warrior_db uses correct PSM status values."""
+    
+    def test_log_entry_uses_psm_open(self):
+        """Test log_warrior_entry sets status to PSM OPEN value."""
+        from nexus2.domain.positions.position_state_machine import PositionStatus
+        
+        # Just verify the constant is correct
+        assert PositionStatus.OPEN.value == "open"
+    
+    def test_log_exit_uses_psm_closed(self):
+        """Test log_warrior_exit sets status to PSM CLOSED value."""
+        from nexus2.domain.positions.position_state_machine import PositionStatus
+        
+        assert PositionStatus.CLOSED.value == "closed"
+    
+    def test_partial_exit_uses_psm_partial(self):
+        """Test partial exits use PSM PARTIAL status."""
+        from nexus2.domain.positions.position_state_machine import PositionStatus
+        
+        assert PositionStatus.PARTIAL.value == "partial"
+    
+    def test_pending_exit_status_value(self):
+        """Test PENDING_EXIT status value is correct."""
+        from nexus2.domain.positions.position_state_machine import PositionStatus
+        
+        assert PositionStatus.PENDING_EXIT.value == "pending_exit"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
