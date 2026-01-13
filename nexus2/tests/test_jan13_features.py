@@ -360,9 +360,9 @@ class TestWarriorPSMHelpers:
     
     def test_warrior_monitor_has_psm_helpers(self):
         """Test warrior_monitor has the new PSM helper methods."""
-        from nexus2.domain.automation.warrior_monitor import WarriorPositionMonitor
+        from nexus2.domain.automation.warrior_monitor import WarriorMonitor
         
-        monitor = WarriorPositionMonitor.__new__(WarriorPositionMonitor)
+        monitor = WarriorMonitor.__new__(WarriorMonitor)
         
         # Check all helper methods exist
         assert hasattr(monitor, '_is_pending_exit')
