@@ -52,6 +52,7 @@ interface WarriorStatus {
         pmh_enabled: boolean
         max_shares_per_trade?: number
     }
+    auto_enable?: boolean  // Auto-enable on server startup
     last_scan_result?: {
         scan_time: string
         processed_count: number
@@ -458,6 +459,30 @@ export default function Warrior() {
     // Broker Controls (Alpaca Paper)
     const enableBroker = () => handleAction('Enable Broker', '/warrior/broker/enable')
 
+    // Auto-enable toggle
+    const toggleAutoEnable = async () => {
+        setActionLoading('autoEnable')
+        try {
+            const newValue = !status?.auto_enable
+            const res = await fetch(`${API_BASE}/warrior/auto-enable`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: newValue }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                addToLog(`⚙️ Auto-enable ${newValue ? 'enabled' : 'disabled'}: takes effect on next restart`)
+                await fetchStatus()
+            } else {
+                addToLog('❌ Failed to toggle auto-enable')
+            }
+        } catch (err) {
+            addToLog('❌ Failed to toggle auto-enable')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
     // Config Updates
     const updateConfig = async (field: string, value: number | boolean) => {
         setActionLoading(`config-${field}`)
@@ -807,6 +832,31 @@ export default function Warrior() {
                                     ) : (
                                         <p className={styles.emptyMessage}>Simulation not active. Click Enable to start.</p>
                                     )}
+
+                                    {/* Auto-enable on startup toggle */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '10px 0',
+                                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                                        marginTop: '12px'
+                                    }}>
+                                        <div>
+                                            <span style={{ color: '#e5e7eb' }}>Auto-start on restart</span>
+                                            <span style={{ color: '#9ca3af', fontSize: '0.8em', marginLeft: '8px' }}>
+                                                (Wire broker on server startup)
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={toggleAutoEnable}
+                                            className={status?.auto_enable ? styles.btnSuccess : styles.btnSecondary}
+                                            disabled={actionLoading === 'autoEnable'}
+                                            style={{ padding: '4px 12px', fontSize: '0.9em' }}
+                                        >
+                                            {actionLoading === 'autoEnable' ? '...' : (status?.auto_enable ? '✅ ON' : '❌ OFF')}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className={styles.cardActions}>
                                     {!simStatus?.sim_enabled ? (

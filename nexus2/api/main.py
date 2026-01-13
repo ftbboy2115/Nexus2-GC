@@ -114,9 +114,19 @@ async def lifespan(app: FastAPI):
     print("[Startup] Automation engine initialized")
     
     # Auto-enable Warrior Alpaca broker (Account B) and wire callbacks
-    # Set WARRIOR_AUTO_ENABLE=false in .env to disable
+    # Can be disabled via: 1) GUI toggle, 2) WARRIOR_AUTO_ENABLE=false in .env
     import os
-    warrior_auto_enable = os.getenv("WARRIOR_AUTO_ENABLE", "true").lower() != "false"
+    from nexus2.db.warrior_settings import get_auto_enable
+    
+    # Env var takes precedence (for emergency override), otherwise use persisted setting
+    env_override = os.getenv("WARRIOR_AUTO_ENABLE", "").lower()
+    if env_override == "false":
+        warrior_auto_enable = False
+        print("[Startup] Warrior auto-enable disabled via WARRIOR_AUTO_ENABLE=false env var")
+    else:
+        warrior_auto_enable = get_auto_enable()
+        if not warrior_auto_enable:
+            print("[Startup] Warrior auto-enable disabled via settings")
     
     if warrior_auto_enable:
         try:
@@ -135,8 +145,6 @@ async def lifespan(app: FastAPI):
                 print("[Startup] Warrior Alpaca broker not available (missing credentials)")
         except Exception as e:
             print(f"[Startup] Warrior broker auto-enable failed: {e}")
-    else:
-        print("[Startup] Warrior auto-enable disabled (WARRIOR_AUTO_ENABLE=false)")
     
     # Create shared FMP adapter singleton first
     from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, set_fmp_adapter

@@ -74,6 +74,32 @@ def load_warrior_settings() -> Optional[dict]:
         return None
 
 
+def get_auto_enable() -> bool:
+    """Get Warrior auto-enable setting.
+    
+    Returns:
+        True if auto-enable is enabled (default), False if disabled
+    """
+    settings = load_warrior_settings()
+    if settings is None:
+        return True  # Default: enabled
+    return settings.get("auto_enable", True)
+
+
+def set_auto_enable(enabled: bool) -> bool:
+    """Set Warrior auto-enable setting.
+    
+    Args:
+        enabled: True to enable auto-enable on startup, False to disable
+        
+    Returns:
+        True if saved successfully
+    """
+    settings = load_warrior_settings() or {}
+    settings["auto_enable"] = enabled
+    return save_warrior_settings(settings)
+
+
 def get_config_dict(config) -> dict:
     """Convert WarriorEngineConfig to a saveable dictionary.
     

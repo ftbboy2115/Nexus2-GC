@@ -118,7 +118,38 @@ async def get_warrior_status():
     Returns engine state, watchlist, and statistics.
     """
     engine = get_engine()
-    return engine.get_status()
+    status = engine.get_status()
+    
+    # Add auto_enable setting to status
+    from nexus2.db.warrior_settings import get_auto_enable
+    status["auto_enable"] = get_auto_enable()
+    
+    return status
+
+
+class AutoEnableRequest(BaseModel):
+    """Request to toggle auto-enable on startup."""
+    enabled: bool = Field(..., description="True to auto-enable on startup, False to disable")
+
+
+@router.patch("/auto-enable")
+async def set_warrior_auto_enable(request: AutoEnableRequest):
+    """
+    Toggle Warrior auto-enable on server startup.
+    
+    When enabled, Warrior broker callbacks and position sync happen automatically
+    when the server starts. Takes effect on next restart.
+    """
+    from nexus2.db.warrior_settings import set_auto_enable
+    success = set_auto_enable(request.enabled)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save setting")
+    
+    return {
+        "auto_enable": request.enabled,
+        "message": f"Warrior auto-enable {'enabled' if request.enabled else 'disabled'}. Takes effect on next restart."
+    }
 
 
 @router.post("/start")
