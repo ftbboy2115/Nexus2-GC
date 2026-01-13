@@ -172,6 +172,11 @@ class WarriorEngine:
         # Blacklist - symbols that can't be traded (Alpaca rejects)
         self._blacklist: set = set()
         
+        # Pending entries - track symbols with pending buy orders (prevents duplicates)
+        self._pending_entries: Dict[str, datetime] = {}  # symbol -> order_submitted_at
+        self._pending_entries_file = Path(__file__).parent.parent.parent.parent / "data" / "pending_entries.json"
+        self._load_pending_entries()
+        
         # 2-Strike Rule: track daily stop-out failures per symbol
         # After max_fails stops, block further entries for the day
         self._symbol_fails: Dict[str, int] = {}  # symbol -> stop count
@@ -192,6 +197,8 @@ class WarriorEngine:
         self._get_quote_with_spread: Optional[Callable] = None  # For entry spread filter
         self._get_positions: Optional[Callable] = None
         self._get_intraday_bars: Optional[Callable] = None
+        self._check_pending_fill: Optional[Callable] = None  # Check for pending buy orders
+        self._create_pending_position: Optional[Callable] = None  # Create PENDING_FILL position
     
     def set_callbacks(
         self,
@@ -200,6 +207,8 @@ class WarriorEngine:
         get_quote_with_spread: Callable = None,
         get_positions: Callable = None,
         get_intraday_bars: Callable = None,
+        check_pending_fill: Callable = None,
+        create_pending_position: Callable = None,
     ):
         """Set callbacks for order execution and data."""
         self._submit_order = submit_order
@@ -207,6 +216,8 @@ class WarriorEngine:
         self._get_quote_with_spread = get_quote_with_spread
         self._get_positions = get_positions
         self._get_intraday_bars = get_intraday_bars
+        self._check_pending_fill = check_pending_fill
+        self._create_pending_position = create_pending_position
         
         # Also wire up monitor callbacks
         self.monitor.set_callbacks(
@@ -214,6 +225,41 @@ class WarriorEngine:
             get_intraday_candles=get_intraday_bars,
             record_symbol_fail=self.record_symbol_fail,
         )
+    
+    def _load_pending_entries(self):
+        """Load pending entries from disk (survives restarts)."""
+        try:
+            if self._pending_entries_file.exists():
+                import json
+                with open(self._pending_entries_file, "r") as f:
+                    data = json.load(f)
+                for symbol, ts in data.items():
+                    entry_time = datetime.fromisoformat(ts)
+                    # Expire pending entries older than 10 minutes (order likely filled or cancelled)
+                    if (datetime.utcnow() - entry_time).total_seconds() < 600:
+                        self._pending_entries[symbol] = entry_time
+                if self._pending_entries:
+                    logger.info(f"[Warrior Engine] Loaded {len(self._pending_entries)} pending entries from disk")
+        except Exception as e:
+            logger.warning(f"[Warrior Engine] Failed to load pending entries: {e}")
+    
+    def _save_pending_entries(self):
+        """Save pending entries to disk."""
+        try:
+            import json
+            data = {symbol: dt.isoformat() for symbol, dt in self._pending_entries.items()}
+            self._pending_entries_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._pending_entries_file, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.warning(f"[Warrior Engine] Failed to save pending entries: {e}")
+    
+    def clear_pending_entry(self, symbol: str):
+        """Clear a pending entry (called when order fills or is cancelled)."""
+        if symbol in self._pending_entries:
+            del self._pending_entries[symbol]
+            self._save_pending_entries()
+            logger.info(f"[Warrior Engine] Cleared pending entry for {symbol}")
     
     # =========================================================================
     # STATE MANAGEMENT
@@ -597,6 +643,12 @@ class WarriorEngine:
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: Position check failed: {e}")
         
+        # Check for pending entry orders (unfilled buy orders) - prevents duplicates
+        if symbol in self._pending_entries:
+            logger.info(f"[Warrior Entry] {symbol}: Pending buy order exists, skipping")
+            watched.entry_triggered = True  # Mark as triggered to prevent retries
+            return
+        
         # Check re-entry cooldown: block entry if symbol was recently exited
         # This prevents immediately buying back after exit (e.g., after spread exit or stop)
         if symbol in self.monitor._recently_exited:
@@ -695,6 +747,11 @@ class WarriorEngine:
             fallback_multiplier = Decimal("1.015")  # 1.5% above entry
             limit_price = (entry_price * fallback_multiplier).quantize(Decimal("0.01"))
             logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
+        
+        # Mark pending entry BEFORE submitting order (prevents duplicate entries on restart)
+        self._pending_entries[symbol] = datetime.utcnow()
+        self._save_pending_entries()
+        logger.info(f"[Warrior Entry] {symbol}: Marked pending entry")
         
         if self._submit_order:
             try:
@@ -802,9 +859,14 @@ class WarriorEngine:
                     f"({trigger_type.value})"
                 )
                 
+                # Clear pending entry on successful fill
+                self.clear_pending_entry(symbol)
+                
             except Exception as e:
                 logger.error(f"[Warrior Entry] {symbol}: Order failed: {e}")
                 self.stats.last_error = str(e)
+                # Clear pending entry on failure (allow retry)
+                self.clear_pending_entry(symbol)
         else:
             logger.warning(f"[Warrior Entry] {symbol}: No submit_order callback")
     

@@ -1312,6 +1312,31 @@ async def wire_warrior_callbacks(broker) -> dict:
             return {"price": price, "bid": bid, "ask": ask}
         return None
     
+    async def check_pending_fill(symbol: str) -> bool:
+        """Check if there's a PENDING_FILL position for this symbol (unfilled buy order).
+        
+        Prevents duplicate buy orders when engine restarts before order fills.
+        """
+        try:
+            from nexus2.db.database import SessionLocal
+            from nexus2.db.repository import PositionRepository
+            
+            db = SessionLocal()
+            try:
+                repo = PositionRepository(db)
+                # Get pending_fill positions, filter by symbol and account B (Warrior)
+                pending = repo.get_all(status="pending_fill")
+                for p in pending:
+                    if p.symbol == symbol and p.account == "B":
+                        print(f"[Warrior] {symbol}: Found existing PENDING_FILL position")
+                        return True
+                return False
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[Warrior] Pending fill check failed: {e}")
+            return False  # Proceed if check fails
+    
     async def broker_execute_exit(signal):
         """Execute exit order for a position."""
         alpaca = get_warrior_alpaca_broker()
@@ -1412,6 +1437,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_quote=broker_get_quote,
         get_quote_with_spread=broker_get_quote_with_spread,
         get_positions=broker_get_positions,
+        check_pending_fill=check_pending_fill,
     )
     
     # Sync existing Alpaca positions to Monitor for restart recovery
