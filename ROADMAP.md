@@ -145,14 +145,15 @@ Last updated: 2026-01-11
   - [ ] Multi-session ORB (4am, 6am, 7am)
   - [ ] 10:00 AM exit time priority
   - [ ] First red 5-min candle exit signal
-- [ ] **Spread Management** — Bid/ask spread considerations for cleaner execution
+- [x] **Spread Management** — Bid/ask spread considerations for cleaner execution (Jan 12)
+  - [x] Spread exit trigger (exit if spread > 3% after grace period)
+  - [x] Bid-based limit exits for illiquid stocks
+  - [x] Escalating exit ladder for after-hours (2-10% below bid)
   - [ ] Wide spread filter at entry (reject if spread > X% of price)
-  - [ ] Spread-adjusted stops (trigger when bid reaches stop, not last trade)
-  - [ ] Limit-on-bid exits instead of market orders for less slippage
   - [ ] Slippage tracking (expected vs actual fill prices)
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
 - [ ] **Full Auto-Enable on Startup** — Extract broker/callback wiring + position sync from `/broker/enable` so it runs automatically on server start (currently only sets broker object, doesn't wire callbacks or sync positions)
-- [ ] **Settings Persistence** — Persist Warrior config to DB (scan interval, risk/trade, etc.)
+- [x] **Settings Persistence** — Persists to `data/warrior_settings.json` (scan interval, risk/trade, max_positions, etc.)
 - [x] **Trade Log Persistence** — Store entry/exit events to DB for restart recovery with accurate metrics
 - [ ] **Integrate Warrior with Position State Machine** — Replace separate `WarriorPosition` tracking with centralized PSM
   - Migrate to `PositionRepository` with `strategy="warrior"` filter
