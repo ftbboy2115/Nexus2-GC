@@ -3,14 +3,89 @@ AI Catalyst Validator
 
 Uses Gemini AI to validate ambiguous headlines when regex doesn't match.
 Only called as a fallback when deterministic checks are inconclusive.
+
+Includes shared cache for cross-strategy catalyst validation.
 """
 
 import os
 import logging
-from typing import Optional, Tuple
+from datetime import datetime, timedelta
+from typing import Optional, Tuple, Dict
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# SHARED CATALYST CACHE (Cross-Strategy)
+# =============================================================================
+
+@dataclass
+class CachedCatalyst:
+    """Cached catalyst validation result."""
+    is_valid: bool
+    catalyst_type: Optional[str]
+    description: str
+    cached_at: datetime
+
+
+class CatalystCache:
+    """
+    Shared cache for catalyst validation results.
+    
+    Both Warrior and NAC strategies can reuse AI validation results
+    to reduce API calls and avoid rate limiting.
+    """
+    
+    def __init__(self, ttl_minutes: int = 5):
+        self._cache: Dict[str, CachedCatalyst] = {}
+        self._ttl = timedelta(minutes=ttl_minutes)
+    
+    def get(self, symbol: str) -> Optional[CachedCatalyst]:
+        """Get cached catalyst if fresh, else None."""
+        if symbol not in self._cache:
+            return None
+        
+        cached = self._cache[symbol]
+        if datetime.now() - cached.cached_at > self._ttl:
+            # Expired
+            del self._cache[symbol]
+            return None
+        
+        return cached
+    
+    def set(self, symbol: str, is_valid: bool, catalyst_type: Optional[str], description: str):
+        """Cache a catalyst validation result."""
+        self._cache[symbol] = CachedCatalyst(
+            is_valid=is_valid,
+            catalyst_type=catalyst_type,
+            description=description,
+            cached_at=datetime.now(),
+        )
+    
+    def clear(self):
+        """Clear all cached results."""
+        self._cache.clear()
+    
+    def stats(self) -> dict:
+        """Return cache statistics."""
+        return {
+            "size": len(self._cache),
+            "valid_count": sum(1 for c in self._cache.values() if c.is_valid),
+            "invalid_count": sum(1 for c in self._cache.values() if not c.is_valid),
+        }
+
+
+# Singleton cache instance
+_catalyst_cache: Optional[CatalystCache] = None
+
+
+def get_catalyst_cache() -> CatalystCache:
+    """Get shared catalyst cache singleton."""
+    global _catalyst_cache
+    if _catalyst_cache is None:
+        _catalyst_cache = CatalystCache(ttl_minutes=5)
+    return _catalyst_cache
 
 
 @dataclass
