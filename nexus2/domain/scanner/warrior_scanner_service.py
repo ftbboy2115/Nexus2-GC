@@ -577,6 +577,8 @@ class WarriorScannerService:
                 catalyst_type = "earnings"
                 catalyst_desc = f"Earnings {earnings_date}"
                 catalyst_confidence = 0.9
+                if verbose:
+                    print(f"[Catalyst Debug] {symbol}: EARNINGS catalyst - {earnings_date}")
         
         # Check if it's a "former runner" (history of big moves)
         if s.require_catalyst and not has_catalyst:
@@ -587,6 +589,8 @@ class WarriorScannerService:
                     catalyst_type = "former_runner"
                     catalyst_desc = "History of big moves"
                     catalyst_confidence = 0.7
+                    if verbose:
+                        print(f"[Catalyst Debug] {symbol}: FORMER RUNNER catalyst")
         
         if s.require_catalyst and not has_catalyst:
             tracker.record(
