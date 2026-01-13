@@ -1097,7 +1097,7 @@ async def close_warrior_position(symbol: str, limit_price: float = None):
             side="sell",
             quantity=qty,
             order_type="limit",
-            limit_price=Decimal(str(limit_price)),
+            limit_price=Decimal(str(round(limit_price, 2))),
             extended_hours=True,
         )
         

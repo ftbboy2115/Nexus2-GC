@@ -149,8 +149,9 @@ Last updated: 2026-01-11
   - [x] Spread exit trigger (exit if spread > 3% after grace period)
   - [x] Bid-based limit exits for illiquid stocks
   - [x] Escalating exit ladder for after-hours (2-10% below bid)
-  - [ ] Wide spread filter at entry (reject if spread > X% of price)
+  - [x] Wide spread filter at entry (reject if spread > 3% of price) ✅ Jan 13
   - [ ] Slippage tracking (expected vs actual fill prices)
+- [ ] **Manual Close Button (GUI)** — Add close button to position cards for manual liquidation
 - [ ] **Multi-Account Support** — Alpaca Account B isolation for day trades
 - [x] **Full Auto-Enable on Startup** — Callbacks, position sync, and recently_exited now auto-wire on server start (Jan 12)
 - [x] **Settings Persistence** — Persists to `data/warrior_settings.json` (scan interval, risk/trade, max_positions, etc.)
