@@ -103,13 +103,14 @@ class WarriorEngineStats:
     """Runtime statistics for the engine."""
     started_at: Optional[datetime] = None
     scans_run: int = 0
-    candidates_found: int = 0
+    candidates_found: int = 0  # Unique candidates found (not duplicates)
     entries_triggered: int = 0
     orders_submitted: int = 0
     orders_filled: int = 0
     daily_pnl: Decimal = Decimal("0")
     last_scan_at: Optional[datetime] = None
     last_error: Optional[str] = None
+    _seen_candidates: set = field(default_factory=set)  # Track unique symbols
 
 
 @dataclass
@@ -438,7 +439,11 @@ class WarriorEngine:
         
         result = self.scanner.scan(verbose=False)
         
-        self.stats.candidates_found += len(result.candidates)
+        # Count only NEW candidates (not seen before this session)
+        for candidate in result.candidates:
+            if candidate.symbol not in self.stats._seen_candidates:
+                self.stats._seen_candidates.add(candidate.symbol)
+                self.stats.candidates_found += 1
         
         # Add top candidates to watchlist
         for candidate in result.candidates[:self.config.max_candidates]:
