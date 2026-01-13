@@ -17,6 +17,7 @@ from decimal import Decimal
 from typing import Optional, List, Callable, Dict
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
@@ -189,6 +190,38 @@ class WarriorMonitor:
         # Format: {symbol: exit_time}
         self._recently_exited: Dict[str, datetime] = {}
         self._recovery_cooldown_seconds = 120  # Don't auto-recover for 120s after exit (orders need time to fill)
+        self._recently_exited_file = Path(__file__).parent.parent.parent.parent / "data" / "recently_exited.json"
+        self._load_recently_exited()
+    
+    def _load_recently_exited(self):
+        """Load recently exited symbols from disk (survives restarts)."""
+        try:
+            if self._recently_exited_file.exists():
+                import json
+                with open(self._recently_exited_file, "r") as f:
+                    data = json.load(f)
+                now = datetime.utcnow()
+                # Only load entries less than 1 hour old (stale entries are useless)
+                for symbol, ts_str in data.items():
+                    exit_time = datetime.fromisoformat(ts_str)
+                    if (now - exit_time).total_seconds() < 3600:  # 1 hour max
+                        self._recently_exited[symbol] = exit_time
+                if self._recently_exited:
+                    logger.info(f"[Warrior] Loaded {len(self._recently_exited)} recently exited symbols from disk")
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to load recently exited: {e}")
+    
+    def _save_recently_exited(self):
+        """Save recently exited symbols to disk."""
+        try:
+            import json
+            # Convert datetime to ISO strings
+            data = {symbol: dt.isoformat() for symbol, dt in self._recently_exited.items()}
+            self._recently_exited_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._recently_exited_file, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to save recently exited: {e}")
     
     def set_callbacks(
         self,
@@ -874,6 +907,7 @@ class WarriorMonitor:
         if signal.reason != WarriorExitReason.PARTIAL_EXIT:
             # Track as recently exited to prevent auto-recovery race
             self._recently_exited[signal.symbol] = datetime.utcnow()
+            self._save_recently_exited()  # Persist to disk for restart survival
             
             # 2-Strike Rule: only count if order was successful
             if order_success:

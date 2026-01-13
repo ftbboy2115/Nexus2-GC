@@ -460,6 +460,7 @@ async def manual_exit_position(request: ManualExitRequest):
         if pos.symbol == symbol:
             engine.monitor.remove_position(pos_id)
             engine.monitor._recently_exited[symbol] = __import__('datetime').datetime.utcnow()
+            engine.monitor._save_recently_exited()  # Persist for restart survival
             break
     
     return {
