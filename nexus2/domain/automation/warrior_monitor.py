@@ -933,11 +933,26 @@ class WarriorMonitor:
         
         if self._execute_exit:
             try:
-                await self._execute_exit(signal)
+                # execute_exit returns {"order": order, "actual_exit_price": float} or None
+                result = await self._execute_exit(signal)
                 self.exits_triggered += 1
                 order_success = True
                 
-                # Log trade event
+                # Get actual exit price from broker execution (more accurate than signal estimate)
+                if result and isinstance(result, dict) and "actual_exit_price" in result:
+                    actual_exit_price = Decimal(str(result["actual_exit_price"]))
+                    # Recalculate P&L with actual exit price
+                    position = self._positions.get(signal.position_id)
+                    if position:
+                        actual_pnl = (actual_exit_price - position.entry_price) * signal.shares_to_exit
+                    else:
+                        actual_pnl = signal.pnl_estimate  # Fallback
+                else:
+                    # Fallback to signal values if no actual price returned
+                    actual_exit_price = signal.exit_price
+                    actual_pnl = signal.pnl_estimate
+                
+                # Log trade event with actual values
                 exit_reason_map = {
                     WarriorExitReason.MENTAL_STOP: "mental_stop",
                     WarriorExitReason.TECHNICAL_STOP: "technical_stop",
@@ -953,21 +968,21 @@ class WarriorMonitor:
                         position_id=signal.position_id,
                         symbol=signal.symbol,
                         shares_sold=signal.shares_to_exit,
-                        exit_price=signal.exit_price,
-                        pnl=signal.pnl_estimate,
+                        exit_price=actual_exit_price,
+                        pnl=actual_pnl,
                         r_multiple=signal.r_multiple,
                     )
                 else:
                     trade_event_service.log_warrior_exit(
                         position_id=signal.position_id,
                         symbol=signal.symbol,
-                        exit_price=signal.exit_price,
+                        exit_price=actual_exit_price,
                         exit_reason=exit_reason_map.get(signal.reason, "manual"),
-                        pnl=signal.pnl_estimate,
+                        pnl=actual_pnl,
                     )
                 
-                # Track realized P&L
-                self._add_realized_pnl(signal.pnl_estimate)
+                # Track realized P&L with actual value
+                self._add_realized_pnl(actual_pnl)
                     
             except Exception as e:
                 logger.error(f"[Warrior] Exit execution failed: {e}")

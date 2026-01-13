@@ -1397,12 +1397,15 @@ async def wire_warrior_callbacks(broker) -> dict:
             
             try:
                 from nexus2.db.warrior_db import log_warrior_exit
-                exit_price = float(signal.exit_price)
+                # Use current_price (market price at exit) not signal.exit_price (price when signal triggered)
+                # The limit order fills at or better than limit_price, so current_price is close to actual fill
+                exit_price = float(current_price)
                 log_warrior_exit(position_id, exit_price, reason, shares)
             except Exception as e:
                 print(f"[Warrior] Exit DB log failed: {e}")
             
-            return order
+            # Return dict with actual exit price so monitor can log accurate P&L
+            return {"order": order, "actual_exit_price": float(current_price)}
         except Exception as e:
             print(f"[Warrior] Exit order failed: {e}")
             return None
