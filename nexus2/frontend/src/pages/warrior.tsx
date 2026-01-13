@@ -588,7 +588,9 @@ export default function Warrior() {
 
     const formatTime = (iso: string | null) => {
         if (!iso) return '-'
-        return new Date(iso).toLocaleTimeString('en-US', {
+        // Ensure ISO string is treated as UTC (append Z if missing)
+        const utcIso = iso.endsWith('Z') ? iso : iso + 'Z'
+        return new Date(utcIso).toLocaleTimeString('en-US', {
             timeZone: 'America/New_York',
             hour: '2-digit',
             minute: '2-digit'
