@@ -683,16 +683,18 @@ class WarriorEngine:
             return
         
         # Submit order - Ross uses limit order with offset above ask
-        # Use current ask if available, otherwise fall back to entry price
-        limit_offset = Decimal("0.05")  # 5 cents offset
+        # Use current ask if available, otherwise fall back to percentage offset
+        limit_offset = Decimal("0.05")  # 5 cents offset when ask is available
         if current_ask and current_ask > 0:
             # Use current ask price (more accurate for fast movers)
             limit_price = (current_ask + limit_offset).quantize(Decimal("0.01"))
             logger.info(f"[Warrior Entry] {symbol}: Limit based on ask ${current_ask:.2f} + ${limit_offset} = ${limit_price:.2f}")
         else:
-            # Fallback to entry price if no quote data
-            limit_price = (entry_price + limit_offset).quantize(Decimal("0.01"))
-            logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} + ${limit_offset} = ${limit_price:.2f}")
+            # Fallback: 1.5% above entry price (scales better for runners)
+            # This handles pre-market when Alpaca doesn't provide bid/ask
+            fallback_multiplier = Decimal("1.015")  # 1.5% above entry
+            limit_price = (entry_price * fallback_multiplier).quantize(Decimal("0.01"))
+            logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
         
         if self._submit_order:
             try:
