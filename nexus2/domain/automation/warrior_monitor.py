@@ -641,6 +641,16 @@ class WarriorMonitor:
                     del self._pending_exits[symbol]
                     self._save_pending_exits()
                     logger.info(f"[Warrior Sync] {symbol}: Exit confirmed by broker")
+                    
+                    # PSM: Update DB status to CLOSED
+                    try:
+                        from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
+                        from nexus2.domain.positions.position_state_machine import PositionStatus
+                        trade = get_warrior_trade_by_symbol(symbol)
+                        if trade:
+                            update_warrior_status(trade["id"], PositionStatus.CLOSED.value)
+                    except Exception as e:
+                        logger.warning(f"[Warrior Sync] Failed to update DB status: {e}")
         except Exception as e:
             logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
     
@@ -969,6 +979,16 @@ class WarriorMonitor:
             self._pending_exits[signal.symbol] = datetime.utcnow()
             self._save_pending_exits()
             logger.info(f"[Warrior] {signal.symbol}: Marked pending exit")
+            
+            # PSM: Also update DB status to PENDING_EXIT
+            try:
+                from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
+                from nexus2.domain.positions.position_state_machine import PositionStatus
+                trade = get_warrior_trade_by_symbol(signal.symbol)
+                if trade:
+                    update_warrior_status(trade["id"], PositionStatus.PENDING_EXIT.value)
+            except Exception as e:
+                logger.warning(f"[Warrior] Failed to update DB status: {e}")
         
         if self._execute_exit:
             try:

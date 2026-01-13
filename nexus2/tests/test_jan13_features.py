@@ -314,5 +314,42 @@ class TestSlippageCalculation:
         assert slippage_cents == Decimal("0")
 
 
+# =============================================================================
+# PSM INTEGRATION TESTS
+# =============================================================================
+
+class TestWarriorPSMIntegration:
+    """Test Position State Machine integration with Warrior."""
+    
+    def test_warrior_db_uses_psm_import(self):
+        """Test warrior_db imports PositionStatus."""
+        from nexus2.db.warrior_db import PositionStatus
+        assert hasattr(PositionStatus, 'OPEN')
+        assert hasattr(PositionStatus, 'CLOSED')
+        assert hasattr(PositionStatus, 'PENDING_EXIT')
+        assert hasattr(PositionStatus, 'PENDING_FILL')
+    
+    def test_update_warrior_status_function_exists(self):
+        """Test update_warrior_status function is available."""
+        from nexus2.db.warrior_db import update_warrior_status
+        assert callable(update_warrior_status)
+    
+    def test_get_warrior_trades_by_status_function_exists(self):
+        """Test get_warrior_trades_by_status function is available."""
+        from nexus2.db.warrior_db import get_warrior_trades_by_status
+        assert callable(get_warrior_trades_by_status)
+    
+    def test_position_status_values(self):
+        """Test PSM status values are strings."""
+        from nexus2.domain.positions.position_state_machine import PositionStatus
+        
+        assert PositionStatus.OPEN.value == "open"
+        assert PositionStatus.CLOSED.value == "closed"
+        assert PositionStatus.PENDING_FILL.value == "pending_fill"
+        assert PositionStatus.PENDING_EXIT.value == "pending_exit"
+        assert PositionStatus.PARTIAL.value == "partial"
+        assert PositionStatus.SCALING.value == "scaling"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

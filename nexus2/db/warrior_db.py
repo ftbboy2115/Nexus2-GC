@@ -12,6 +12,9 @@ from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean
 from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
+# PSM integration
+from nexus2.domain.positions.position_state_machine import PositionStatus
+
 # Database path
 DB_DIR = Path(__file__).parent.parent.parent / "data"
 DB_DIR.mkdir(exist_ok=True)
@@ -125,7 +128,7 @@ def log_warrior_entry(
         trade = WarriorTradeModel(
             id=trade_id,
             symbol=symbol,
-            status="open",
+            status=PositionStatus.OPEN.value,
             entry_price=str(entry_price),
             quantity=quantity,
             entry_time=datetime.utcnow(),
@@ -155,7 +158,7 @@ def log_warrior_exit(
         
         if quantity_exited is None or quantity_exited >= trade.remaining_quantity:
             # Full exit
-            trade.status = "closed"
+            trade.status = PositionStatus.CLOSED.value
             trade.exit_price = str(exit_price)
             trade.exit_time = datetime.utcnow()
             trade.exit_reason = exit_reason
@@ -165,7 +168,8 @@ def log_warrior_exit(
             pnl = (exit_price - entry) * trade.quantity
             trade.realized_pnl = str(round(pnl, 2))
         else:
-            # Partial exit
+            # Partial exit - transition to PARTIAL state
+            trade.status = PositionStatus.PARTIAL.value
             trade.partial_taken = True
             trade.remaining_quantity -= quantity_exited
         
@@ -174,19 +178,69 @@ def log_warrior_exit(
 
 
 def get_open_warrior_trades():
-    """Get all open Warrior trades for restart recovery."""
+    """Get all open/active Warrior trades for restart recovery."""
     with get_warrior_session() as db:
-        trades = db.query(WarriorTradeModel).filter_by(status="open").all()
+        # Include all active states + legacy "open" for backwards compatibility
+        active_statuses = [
+            PositionStatus.OPEN.value,
+            PositionStatus.PENDING_FILL.value,
+            PositionStatus.PENDING_EXIT.value,
+            PositionStatus.PARTIAL.value,
+            "open",  # Legacy compatibility
+        ]
+        trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.status.in_(active_statuses)
+        ).all()
         return [t.to_dict() for t in trades]
 
 
 def get_warrior_trade_by_symbol(symbol: str):
-    """Get open trade for a symbol (if any)."""
+    """Get open/active trade for a symbol (if any)."""
     with get_warrior_session() as db:
-        trade = db.query(WarriorTradeModel).filter_by(
-            symbol=symbol, status="open"
+        # Check for active states (open, pending_fill, pending_exit, partial)
+        active_statuses = [
+            PositionStatus.OPEN.value,
+            PositionStatus.PENDING_FILL.value,
+            PositionStatus.PENDING_EXIT.value,
+            PositionStatus.PARTIAL.value,
+        ]
+        trade = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.symbol == symbol,
+            WarriorTradeModel.status.in_(active_statuses)
         ).first()
         return trade.to_dict() if trade else None
+
+
+def update_warrior_status(trade_id: str, new_status: str):
+    """
+    Update a warrior trade's status using PSM values.
+    
+    Args:
+        trade_id: The trade ID to update
+        new_status: New status (use PositionStatus.X.value)
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if trade:
+            old_status = trade.status
+            trade.status = new_status
+            trade.updated_at = datetime.utcnow()
+            db.commit()
+            print(f"[Warrior DB] {trade.symbol}: {old_status} → {new_status}")
+            return True
+        return False
+
+
+def get_warrior_trades_by_status(status: str) -> list:
+    """
+    Get all trades with a specific status.
+    
+    Args:
+        status: Status to filter by (use PositionStatus.X.value)
+    """
+    with get_warrior_session() as db:
+        trades = db.query(WarriorTradeModel).filter_by(status=status).all()
+        return [t.to_dict() for t in trades]
 
 
 def close_orphaned_trades(active_symbols: set):
@@ -203,12 +257,15 @@ def close_orphaned_trades(active_symbols: set):
     """
     closed = []
     with get_warrior_session() as db:
-        open_trades = db.query(WarriorTradeModel).filter_by(status="open").all()
+        # Check both 'open' (legacy) and PositionStatus.OPEN.value
+        open_trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.status.in_([PositionStatus.OPEN.value, "open"])
+        ).all()
         
         for trade in open_trades:
             if trade.symbol not in active_symbols:
                 print(f"[Warrior DB] Closing orphan: {trade.symbol} (not on broker)")
-                trade.status = "closed"
+                trade.status = PositionStatus.CLOSED.value
                 trade.exit_reason = "orphan_cleanup"
                 trade.exit_time = datetime.utcnow()
                 closed.append(trade.symbol)
