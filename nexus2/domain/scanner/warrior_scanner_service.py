@@ -161,6 +161,7 @@ class WarriorCandidate:
     is_ideal_float: bool = False  # < 20M shares
     is_ideal_rvol: bool = False  # > 3x
     is_ideal_gap: bool = False  # > 5%
+    is_former_runner: bool = False  # History of big moves (score boost)
     
     # Technical context
     session_high: Decimal = Decimal("0")
@@ -218,6 +219,10 @@ class WarriorCandidate:
         # Price quality (1 point max)
         if Decimal("5") <= self.price <= Decimal("15"):
             score += 1  # Sweet spot
+        
+        # Former runner bonus (1 point)
+        if self.is_former_runner:
+            score += 1  # History of big moves adds conviction
         
         return min(score, 10)
 
@@ -723,6 +728,9 @@ class WarriorScannerService:
         # =========================================================================
         atr = self.market_data.get_atr(symbol, period=14) or Decimal("1")
         
+        # Check former runner status for score boost (but NOT as catalyst bypass)
+        is_former_runner = self._is_former_runner(symbol)
+        
         candidate = WarriorCandidate(
             symbol=symbol,
             name=name,
@@ -735,6 +743,7 @@ class WarriorScannerService:
             is_ideal_float=is_ideal_float,
             is_ideal_rvol=is_ideal_rvol,
             is_ideal_gap=is_ideal_gap,
+            is_former_runner=is_former_runner,
             session_high=Decimal(str(session_high)),
             session_low=Decimal(str(session_low)),
             session_volume=session_volume,
