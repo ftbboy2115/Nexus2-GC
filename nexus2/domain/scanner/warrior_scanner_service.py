@@ -24,6 +24,7 @@ from nexus2.domain.automation.rejection_tracker import (
     get_rejection_tracker,
     RejectionReason,
 )
+from nexus2.domain.automation.catalyst_classifier import get_classifier
 
 
 # =============================================================================
@@ -524,19 +525,64 @@ class WarriorScannerService:
         
         # =========================================================================
         # PILLAR 3: Catalyst (News/Earnings/Former Runner)
+        # Uses CatalystClassifier with confidence scoring to filter weak catalysts
         # =========================================================================
-        has_catalyst, catalyst_type, catalyst_desc = self.market_data.has_recent_catalyst(
-            symbol, days=s.catalyst_lookback_days
-        )
+        classifier = get_classifier()
+        headlines = self.market_data.fmp.get_recent_headlines(symbol, days=s.catalyst_lookback_days)
         
+        has_catalyst = False
+        catalyst_type = "none"
+        catalyst_desc = "No catalyst found"
+        catalyst_confidence = 0.0
+        
+        # Check headlines with classifier (confidence-based)
+        if headlines:
+            has_positive, best_type, best_headline = classifier.has_positive_catalyst(headlines)
+            if has_positive and best_type:
+                # Get confidence for the best match
+                match = classifier.classify(best_headline)
+                catalyst_confidence = match.confidence
+                
+                # Require confidence >= 0.6 (filters weak catalysts like conferences)
+                if catalyst_confidence >= 0.6:
+                    has_catalyst = True
+                    catalyst_type = best_type
+                    catalyst_desc = best_headline[:80] if best_headline else ""
+                else:
+                    catalyst_desc = f"Weak catalyst (confidence {catalyst_confidence:.1f})"
+            
+            # Also check for negative catalysts (offering, sec, miss) - reject these
+            has_negative, neg_type, neg_headline = classifier.has_negative_catalyst(headlines)
+            if has_negative:
+                tracker.record(
+                    symbol=symbol,
+                    scanner="warrior",
+                    reason=RejectionReason.CATALYST_DILUTION,
+                    details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
+                )
+                scan_logger.info(f"FAIL | {symbol} | Reason: negative_catalyst | Type: {neg_type}")
+                if verbose:
+                    print(f"{symbol}: Rejected - Negative catalyst: {neg_type}")
+                return None
+        
+        # Check for recent earnings as backup (strongest catalyst)
+        if not has_catalyst:
+            has_earnings, earnings_date = self.market_data.fmp.has_recent_earnings(symbol, days=s.catalyst_lookback_days)
+            if has_earnings:
+                has_catalyst = True
+                catalyst_type = "earnings"
+                catalyst_desc = f"Earnings {earnings_date}"
+                catalyst_confidence = 0.9
+        
+        # Check if it's a "former runner" (history of big moves)
         if s.require_catalyst and not has_catalyst:
-            # Check if it's a "former runner" (could add historical volatility check)
             if s.include_former_runners:
                 is_former_runner = self._is_former_runner(symbol)
                 if is_former_runner:
                     has_catalyst = True
                     catalyst_type = "former_runner"
                     catalyst_desc = "History of big moves"
+                    catalyst_confidence = 0.7
         
         if s.require_catalyst and not has_catalyst:
             tracker.record(
@@ -545,9 +591,9 @@ class WarriorScannerService:
                 reason=RejectionReason.NO_CATALYST,
                 details=catalyst_desc,
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: no_catalyst")
+            scan_logger.info(f"FAIL | {symbol} | Reason: no_catalyst | {catalyst_desc}")
             if verbose:
-                print(f"{symbol}: Rejected - No catalyst found")
+                print(f"{symbol}: Rejected - {catalyst_desc}")
             return None
         
         # =========================================================================
