@@ -41,19 +41,23 @@ class CatalystClassifier:
         # Positive catalyst patterns (KK-aligned)
         self.positive_patterns = {
             "earnings": re.compile(
-                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter)\b",
+                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter|preliminary\s+(fourth|first|second|third)\s+quarter|full[- ]year\s+results?)\\b",
                 re.IGNORECASE,
             ),
             "fda": re.compile(
-                r"\b(fda\s+approv\w*|fda\s+clear\w*|phase\s+[1-3]\s+(success|positive|met)|clinical\s+trial\s+(success|positive)|breakthrough\s+designation|drug\s+approv\w*)\b",
+                r"\b(fda\s+approv\w*|fda\s+clear\w*|phase\s+[1-3]\s+(success|positive|met)|clinical\s+(trial\s+)?(success|positive|results?|data)|breakthrough\s+designation|drug\s+approv\w*|complete\s+resol\w*|complete\s+response|interim\s+safety|promising\s+(early\s+)?clinical)\\b",
                 re.IGNORECASE,
             ),
             "contract": re.compile(
-                r"\b(contract|award|major\s+order|partnership|collaboration|strategic\s+alliance|multi-year\s+deal)\b",
+                r"\b(contract|award|major\s+order|partnership|collaboration|strategic\s+alliance|multi-year\s+deal|purchase\s+orders?|receives?\s+\$?\d+\s*(m|million|b|billion)|supplies?\s+(to|for)|government\s+(order|contract))\\b",
                 re.IGNORECASE,
             ),
             "guidance_raise": re.compile(
-                r"\b(raises?\s+(outlook|guidance|forecast)|upward\s+revision|increases?\s+guidance)\b",
+                r"\b(raises?\s+(outlook|guidance|forecast)|upward\s+revision|increases?\s+guidance)\\b",
+                re.IGNORECASE,
+            ),
+            "acquisition": re.compile(
+                r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement)\\b",
                 re.IGNORECASE,
             ),
         }
