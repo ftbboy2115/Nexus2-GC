@@ -60,6 +60,10 @@ class WarriorExitSignal:
     # Analytics
     r_multiple: float = 0.0
     trigger_description: str = ""
+    
+    # Escalating exit - offset percent below bid (e.g., 0.02 = 2% below bid)
+    exit_offset_percent: float = 0.01  # Default 1%
+
 
 
 @dataclass
@@ -625,12 +629,24 @@ class WarriorMonitor:
             et_now = datetime.now(ZoneInfo("America/New_York"))
             current_time_str = et_now.strftime("%H:%M")
             
-            # Force exit at 7:30 PM ET
+            # Force exit at 7:30 PM ET with ESCALATING offset
+            # Every 2 minutes, increase offset by 2% to ensure fill before 8 PM
             if current_time_str >= s.force_exit_time_et:
                 pnl = (current_price - position.entry_price) * position.shares
+                
+                # Parse force_exit_time to calculate minutes elapsed
+                force_hour, force_min = map(int, s.force_exit_time_et.split(":"))
+                force_exit_dt = et_now.replace(hour=force_hour, minute=force_min, second=0, microsecond=0)
+                minutes_since_force = (et_now - force_exit_dt).total_seconds() / 60
+                
+                # Escalating offset: 2% base, +2% every 2 minutes, max 10%
+                # 0-2 min: 2%, 2-4 min: 4%, 4-6 min: 6%, 6-8 min: 8%, 8+ min: 10%
+                offset_tier = min(int(minutes_since_force / 2), 4)  # 0-4 tiers
+                exit_offset = 0.02 + (offset_tier * 0.02)  # 2% to 10%
+                
                 logger.warning(
                     f"[Warrior] {position.symbol}: AFTER-HOURS EXIT at ${current_price} "
-                    f"(force exit time {s.force_exit_time_et} ET)"
+                    f"(offset={exit_offset*100:.0f}%, {minutes_since_force:.1f}min since {s.force_exit_time_et} ET)"
                 )
                 return WarriorExitSignal(
                     position_id=position.position_id,
@@ -641,7 +657,8 @@ class WarriorMonitor:
                     pnl_estimate=pnl,
                     stop_price=position.current_stop,
                     r_multiple=r_multiple,
-                    trigger_description=f"Force exit at {s.force_exit_time_et} ET to avoid overnight hold",
+                    trigger_description=f"Force exit at {s.force_exit_time_et} ET (offset={exit_offset*100:.0f}%)",
+                    exit_offset_percent=exit_offset,  # Pass offset to executor
                 )
             
             # Tighten stop to breakeven at 6 PM ET (if profitable)

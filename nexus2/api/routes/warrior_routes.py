@@ -1293,16 +1293,16 @@ async def enable_warrior_broker():
             if cancelled > 0:
                 print(f"[Warrior] Cancelled {cancelled} pending sell order(s) for {symbol} before exit")
             
-            # For spread exits, use actual bid from quote callback (spread is wide)
+            # For spread exits and after-hours exits, use actual bid (wide spread or illiquid)
             # For other exits, use midpoint from regular quote
-            is_spread_exit = reason == "spread_exit"
+            use_bid_pricing = reason in ("spread_exit", "after_hours_exit")
             
-            if is_spread_exit:
-                # Get actual bid for spread exit - the spread is wide so midpoint is misleading
+            if use_bid_pricing:
+                # Get actual bid - spread is wide or we're in illiquid extended hours
                 spread_data = await broker_get_quote_with_spread(symbol)
                 if spread_data and spread_data.get("bid", 0) > 0:
                     current_price = spread_data["bid"]
-                    print(f"[Warrior] Spread exit using bid: ${current_price:.2f} (ask=${spread_data.get('ask', 0):.2f})")
+                    print(f"[Warrior] {reason} using bid: ${current_price:.2f} (ask=${spread_data.get('ask', 0):.2f})")
                 else:
                     # Fallback to signal price if no bid
                     current_price = float(signal.exit_price)
@@ -1324,10 +1324,17 @@ async def enable_warrior_broker():
                     print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
                     current_price = signal_price
             
-            # Ross Cameron style: limit order slightly below bid for quick fill
-            # Use wider offset for stop exits (urgent) vs partials/profits
-            is_stop_exit = reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop", "spread_exit")
-            offset = 0.99 if is_stop_exit else 0.995  # 1% for stops/spread exits, 0.5% for partials
+            # Calculate limit price with offset
+            # Use signal's exit_offset_percent if provided (escalating exits), else use defaults
+            if hasattr(signal, 'exit_offset_percent') and signal.exit_offset_percent > 0.01:
+                # Escalating exit - use signal's offset (e.g., 2-10% for after-hours)
+                offset = 1.0 - signal.exit_offset_percent
+                print(f"[Warrior] Using escalating offset: {signal.exit_offset_percent*100:.0f}% below bid")
+            elif reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop", "spread_exit", "after_hours_exit"):
+                offset = 0.99  # 1% for urgent exits
+            else:
+                offset = 0.995  # 0.5% for partials
+            
             limit_price = round(current_price * offset, 2)
             
             # Submit limit sell order with extended hours enabled
