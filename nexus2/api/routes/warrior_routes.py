@@ -1589,7 +1589,7 @@ async def wire_warrior_callbacks(broker) -> dict:
                             print(f"[Warrior] {symbol}: UNDERWATER (${current_price:.2f} < stop ${stop_price:.2f} via {stop_method}) - EXITING NOW")
                             # Submit immediate exit at market-like limit
                             try:
-                                exit_price = current_price * 0.98  # Aggressive limit to ensure fill
+                                exit_price = round(current_price * 0.98, 2)  # Aggressive limit, rounded
                                 result = await broker_submit_order(
                                     symbol=symbol,
                                     shares=pos.quantity,
