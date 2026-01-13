@@ -888,19 +888,25 @@ class WarriorEngine:
                 # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
                 # This prevents immediate stop-outs when market price differs from quote
                 actual_fill_price = entry_price  # Default to intended price
+                slippage_cents = Decimal("0")  # Track slippage
+                
                 if hasattr(order_result, 'filled_avg_price') and order_result.filled_avg_price:
                     actual_fill_price = Decimal(str(order_result.filled_avg_price))
-                    if actual_fill_price != entry_price:
+                    slippage_cents = (actual_fill_price - entry_price) * 100  # In cents
+                    if slippage_cents != 0:
+                        slippage_bps = (actual_fill_price / entry_price - 1) * 10000  # Basis points
                         logger.info(
-                            f"[Warrior Entry] {symbol}: Fill price ${actual_fill_price} differs from "
-                            f"intended ${entry_price} - using fill price for stops"
+                            f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
+                            f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
                         )
                 elif isinstance(order_result, dict) and order_result.get("filled_avg_price"):
                     actual_fill_price = Decimal(str(order_result["filled_avg_price"]))
-                    if actual_fill_price != entry_price:
+                    slippage_cents = (actual_fill_price - entry_price) * 100
+                    if slippage_cents != 0:
+                        slippage_bps = (actual_fill_price / entry_price - 1) * 10000
                         logger.info(
-                            f"[Warrior Entry] {symbol}: Fill price ${actual_fill_price} differs from "
-                            f"intended ${entry_price} - using fill price for stops"
+                            f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
+                            f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
                         )
                 
                 # Recalculate stop based on actual fill price

@@ -267,14 +267,25 @@ class TradeEventService:
         stop_price: Decimal,
         shares: int,
         trigger_type: str = "ORB",
+        intended_price: Decimal = None,
+        slippage_cents: Decimal = None,
     ) -> Optional[int]:
-        """Log Warrior position entry."""
+        """Log Warrior position entry with optional slippage tracking."""
         metadata = {
             "entry_price": str(entry_price),
             "stop_price": str(stop_price),
             "shares": shares,
             "trigger_type": trigger_type,
         }
+        
+        # Track slippage if provided
+        if intended_price and slippage_cents is not None:
+            metadata["intended_price"] = str(intended_price)
+            metadata["slippage_cents"] = float(slippage_cents)
+            if intended_price > 0:
+                slippage_bps = float((entry_price / intended_price - 1) * 10000)
+                metadata["slippage_bps"] = round(slippage_bps, 1)
+        
         # Add market context
         metadata.update(self._get_market_context())
         
