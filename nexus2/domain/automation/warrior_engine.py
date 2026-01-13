@@ -98,7 +98,7 @@ class WarriorEngineConfig:
     sim_only: bool = False  # Default to paper trading on Alpaca
     
     # Debug
-    debug_catalyst: bool = True  # Log catalyst classification details (temp enabled for AHMA debug)
+    debug_catalyst: bool = False  # Set True to log catalyst classification details
 
 
 @dataclass
