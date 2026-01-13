@@ -196,6 +196,12 @@ class WarriorMonitor:
         self._recovery_cooldown_seconds = 120  # Don't auto-recover for 120s after exit (orders need time to fill)
         self._recently_exited_file = Path(__file__).parent.parent.parent.parent / "data" / "recently_exited.json"
         self._load_recently_exited()
+        
+        # Pending exit tracking - prevents duplicate exit orders
+        # Format: {symbol: exit_submitted_at}
+        self._pending_exits: Dict[str, datetime] = {}
+        self._pending_exits_file = Path(__file__).parent.parent.parent.parent / "data" / "pending_exits.json"
+        self._load_pending_exits()
     
     def _load_recently_exited(self):
         """Load recently exited symbols from disk (survives restarts)."""
@@ -226,6 +232,35 @@ class WarriorMonitor:
                 json.dump(data, f)
         except Exception as e:
             logger.warning(f"[Warrior] Failed to save recently exited: {e}")
+    
+    def _load_pending_exits(self):
+        """Load pending exits from disk (survives restarts)."""
+        try:
+            if self._pending_exits_file.exists():
+                import json
+                with open(self._pending_exits_file, "r") as f:
+                    data = json.load(f)
+                now = datetime.utcnow()
+                # Only load entries less than 1 hour old (stale entries are cleared)
+                for symbol, ts_str in data.items():
+                    exit_time = datetime.fromisoformat(ts_str)
+                    if (now - exit_time).total_seconds() < 3600:  # 1 hour max
+                        self._pending_exits[symbol] = exit_time
+                if self._pending_exits:
+                    logger.info(f"[Warrior] Loaded {len(self._pending_exits)} pending exits from disk")
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to load pending exits: {e}")
+    
+    def _save_pending_exits(self):
+        """Save pending exits to disk."""
+        try:
+            import json
+            data = {symbol: dt.isoformat() for symbol, dt in self._pending_exits.items()}
+            self._pending_exits_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._pending_exits_file, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.warning(f"[Warrior] Failed to save pending exits: {e}")
     
     def set_callbacks(
         self,
@@ -429,6 +464,10 @@ class WarriorMonitor:
         
         for position_id, position in list(self._positions.items()):
             try:
+                # Skip positions with pending exit orders (prevents duplicate exits)
+                if position.symbol in self._pending_exits:
+                    continue
+                
                 # Pass pre-fetched price to avoid individual API calls
                 current_price = prices.get(position.symbol)
                 signal = await self._evaluate_position(position, current_price)
@@ -505,6 +544,10 @@ class WarriorMonitor:
             
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
+                    # Skip if pending exit (prevents re-adding position we're trying to close)
+                    if symbol in self._pending_exits:
+                        logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
+                        continue
                     # Skip if recently exited (prevent race condition with pending sell orders)
                     if symbol in self._recently_exited:
                         exit_time = self._recently_exited[symbol]
@@ -551,6 +594,14 @@ class WarriorMonitor:
                         logger.warning(
                             f"[Warrior Sync] {symbol}: Found at broker ({qty} shares) but cannot recover - no entry price"
                         )
+            
+            # Confirm pending exits that are now fully closed at broker
+            for symbol in list(self._pending_exits.keys()):
+                if broker_map.get(symbol, 0) == 0:
+                    # Position gone from broker = exit confirmed
+                    del self._pending_exits[symbol]
+                    self._save_pending_exits()
+                    logger.info(f"[Warrior Sync] {symbol}: Exit confirmed by broker")
         except Exception as e:
             logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
     
@@ -873,6 +924,12 @@ class WarriorMonitor:
         )
         
         order_success = False
+        
+        # Mark pending exit BEFORE submitting order (prevents duplicate exit signals)
+        if signal.reason != WarriorExitReason.PARTIAL_EXIT:
+            self._pending_exits[signal.symbol] = datetime.utcnow()
+            self._save_pending_exits()
+            logger.info(f"[Warrior] {signal.symbol}: Marked pending exit")
         
         if self._execute_exit:
             try:

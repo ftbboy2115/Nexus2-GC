@@ -21,6 +21,7 @@ class PositionStatus(Enum):
     OPEN = "open"                   # Order filled, position active
     SCALING = "scaling"             # Add order pending (Warrior)
     PARTIAL = "partial"             # Some shares exited
+    PENDING_EXIT = "pending_exit"   # Exit order submitted, awaiting fill
     CLOSED = "closed"               # All shares exited
     REJECTED = "rejected"           # Order rejected by broker
 
@@ -32,15 +33,22 @@ VALID_TRANSITIONS: Dict[PositionStatus, Set[PositionStatus]] = {
         PositionStatus.REJECTED,  # Order rejected
     },
     PositionStatus.OPEN: {
-        PositionStatus.SCALING,   # Add order submitted (Warrior)
-        PositionStatus.PARTIAL,   # Partial exit
-        PositionStatus.CLOSED,    # Full exit
+        PositionStatus.SCALING,      # Add order submitted (Warrior)
+        PositionStatus.PARTIAL,      # Partial exit
+        PositionStatus.PENDING_EXIT, # Exit order submitted
+        PositionStatus.CLOSED,       # Direct/manual close
     },
     PositionStatus.SCALING: {
         PositionStatus.OPEN,      # Add fills or is rejected
     },
     PositionStatus.PARTIAL: {
-        PositionStatus.CLOSED,    # Remaining shares exited
+        PositionStatus.PENDING_EXIT, # Exit remaining shares
+        PositionStatus.CLOSED,       # Remaining shares exited
+    },
+    PositionStatus.PENDING_EXIT: {
+        PositionStatus.OPEN,    # Exit order rejected/cancelled
+        PositionStatus.PARTIAL, # Partial exit fill
+        PositionStatus.CLOSED,  # Full exit confirmed
     },
     # Terminal states - no transitions out
     PositionStatus.CLOSED: set(),
@@ -122,3 +130,8 @@ def is_active(status: str) -> bool:
 def is_pending(status: str) -> bool:
     """Check if a position is awaiting fill confirmation."""
     return status == PositionStatus.PENDING_FILL.value
+
+
+def is_exiting(status: str) -> bool:
+    """Check if a position has a pending exit order."""
+    return status == PositionStatus.PENDING_EXIT.value

@@ -13,6 +13,7 @@ from nexus2.domain.positions.position_state_machine import (
     is_terminal,
     is_active,
     is_pending,
+    is_exiting,
     InvalidPositionTransitionError,
 )
 
@@ -174,3 +175,59 @@ class TestStatusHelpers:
     def test_is_pending_open_false(self):
         """OPEN is not pending."""
         assert not is_pending("open")
+
+
+class TestPendingExitTransitions:
+    """Tests for PENDING_EXIT state transitions."""
+    
+    def test_pending_exit_status_defined(self):
+        """Verify PENDING_EXIT status exists."""
+        assert PositionStatus.PENDING_EXIT.value == "pending_exit"
+    
+    def test_open_to_pending_exit(self):
+        """Exit order submitted -> PENDING_EXIT."""
+        assert can_transition(PositionStatus.OPEN, PositionStatus.PENDING_EXIT)
+    
+    def test_partial_to_pending_exit(self):
+        """Exit remaining shares -> PENDING_EXIT."""
+        assert can_transition(PositionStatus.PARTIAL, PositionStatus.PENDING_EXIT)
+    
+    def test_pending_exit_to_closed(self):
+        """Exit fill confirmed -> CLOSED."""
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.CLOSED)
+    
+    def test_pending_exit_to_open(self):
+        """Exit order rejected/cancelled -> back to OPEN."""
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.OPEN)
+    
+    def test_pending_exit_to_partial(self):
+        """Partial exit fill -> PARTIAL."""
+        assert can_transition(PositionStatus.PENDING_EXIT, PositionStatus.PARTIAL)
+    
+    def test_pending_exit_cannot_go_to_scaling(self):
+        """Cannot add to position while exiting."""
+        assert not can_transition(PositionStatus.PENDING_EXIT, PositionStatus.SCALING)
+    
+    def test_pending_exit_is_not_terminal(self):
+        """PENDING_EXIT is not terminal (can still transition)."""
+        assert not is_terminal("pending_exit")
+
+
+class TestIsExiting:
+    """Tests for is_exiting helper function."""
+    
+    def test_is_exiting_pending_exit(self):
+        """PENDING_EXIT is exiting."""
+        assert is_exiting("pending_exit")
+    
+    def test_is_exiting_open_false(self):
+        """OPEN is not exiting."""
+        assert not is_exiting("open")
+    
+    def test_is_exiting_closed_false(self):
+        """CLOSED is not exiting (already done)."""
+        assert not is_exiting("closed")
+    
+    def test_is_exiting_partial_false(self):
+        """PARTIAL is not exiting (position still active)."""
+        assert not is_exiting("partial")
