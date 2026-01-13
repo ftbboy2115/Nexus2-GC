@@ -1583,10 +1583,22 @@ async def wire_warrior_callbacks(broker) -> dict:
                         )
                         stop_price = float(stop_price)
                         
-                        # Check if already below stop - skip sync if underwater
+                        # Check if already below stop - EXIT IMMEDIATELY if underwater
                         current_price = float(pos.current_price) if pos.current_price else 0
                         if current_price > 0 and current_price < stop_price:
-                            print(f"[Warrior] {symbol}: Already below stop (${current_price:.2f} < ${stop_price:.2f} via {stop_method}) - skipping")
+                            print(f"[Warrior] {symbol}: UNDERWATER (${current_price:.2f} < stop ${stop_price:.2f} via {stop_method}) - EXITING NOW")
+                            # Submit immediate exit at market-like limit
+                            try:
+                                exit_price = current_price * 0.98  # Aggressive limit to ensure fill
+                                result = await broker_submit_order(
+                                    symbol=symbol,
+                                    shares=pos.quantity,
+                                    side="sell",
+                                    limit_price=exit_price,
+                                )
+                                print(f"[Warrior] {symbol}: Emergency exit order submitted @ ${exit_price:.2f}")
+                            except Exception as exit_err:
+                                print(f"[Warrior] {symbol}: Emergency exit failed: {exit_err}")
                             continue
                 except Exception as e:
                     print(f"[Warrior] {symbol}: Technical stop calc failed: {e}")
