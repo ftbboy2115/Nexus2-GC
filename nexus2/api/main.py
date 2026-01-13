@@ -139,6 +139,12 @@ async def lifespan(app: FastAPI):
                 try:
                     result = await wire_warrior_callbacks(warrior_broker)
                     print(f"[Startup] Warrior callbacks wired, account value: ${result.get('account_value', 0):.2f}")
+                    
+                    # Auto-start engine (scan loop) when toggle is ON
+                    from nexus2.api.routes.warrior_routes import get_engine
+                    engine = get_engine()
+                    await engine.start()
+                    print("[Startup] Warrior engine auto-started")
                 except Exception as wire_err:
                     print(f"[Startup] Warrior callback wiring failed (will need manual enable): {wire_err}")
             else:
