@@ -127,10 +127,10 @@ Last updated: 2026-01-11
   - Priority retry when rate limits clear
   - Staggered API requests to avoid hitting limits
   - Cross-strategy rate limit awareness (VPS KK + local Warrior share quota)
-- [ ] **Former Runner Score Boost** — Use former runner as score boost, not catalyst bypass
-  - Require real catalyst (news/earnings) to pass scanner
-  - If stock also has former-runner status → add +1 or +2 to quality score
-  - Former runner alone → still reject (no catalyst bypass)
+- [x] **Former Runner Score Boost** — Use former runner as score boost, not catalyst bypass (Jan 13)
+  - Require real catalyst (news/earnings) to pass scanner ✅
+  - If stock also has former-runner status → add +1 to quality score ✅
+  - Former runner alone → still reject (no catalyst bypass) ✅
   - Per Ross Cameron research: former runner increases conviction when catalyst exists
 
 ---
