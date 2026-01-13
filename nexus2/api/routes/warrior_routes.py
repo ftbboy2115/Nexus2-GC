@@ -1978,3 +1978,74 @@ async def load_warrior_test_case(case_id: str):
         "synthetic": case.get("synthetic", False),
         "added_to_watchlist": candidate is not None,
     }
+
+
+# =============================================================================
+# CANCEL ORDERS ENDPOINT
+# =============================================================================
+
+@router.delete("/orders/{symbol}", response_model=dict)
+async def cancel_orders_for_symbol(symbol: str):
+    """
+    Cancel all open orders for a symbol.
+    
+    This cancels both entry and exit orders for the specified symbol.
+    Useful for manual intervention when an order is stuck or unwanted.
+    
+    Args:
+        symbol: Stock symbol (case-insensitive)
+    
+    Returns:
+        List of cancelled order IDs
+    """
+    from nexus2.domain.automation.warrior_engine import get_warrior_engine
+    
+    engine = get_warrior_engine()
+    if not engine:
+        raise HTTPException(status_code=500, detail="Warrior engine not initialized")
+    
+    symbol = symbol.upper()
+    
+    # Check if engine has broker access
+    if not engine.broker:
+        raise HTTPException(status_code=400, detail="No broker configured")
+    
+    try:
+        cancelled = []
+        
+        # Get all open orders from Alpaca
+        orders = engine.broker.get_open_orders()
+        
+        for order in orders:
+            order_symbol = getattr(order, 'symbol', None) or order.get('symbol', '')
+            if order_symbol.upper() == symbol:
+                order_id = getattr(order, 'id', None) or order.get('id', '')
+                try:
+                    engine.broker.cancel_order(order_id)
+                    cancelled.append(str(order_id))
+                    print(f"[Warrior] Cancelled order {order_id} for {symbol}")
+                except Exception as e:
+                    print(f"[Warrior] Failed to cancel order {order_id}: {e}")
+        
+        # Also clear pending exit status if cancelling exit orders
+        if cancelled:
+            try:
+                from nexus2.db.warrior_db import get_warrior_trade_by_symbol, update_warrior_status
+                from nexus2.domain.positions.position_state_machine import PositionStatus
+                trade = get_warrior_trade_by_symbol(symbol)
+                if trade and trade["status"] == PositionStatus.PENDING_EXIT.value:
+                    # Revert to OPEN since exit was cancelled
+                    update_warrior_status(trade["id"], PositionStatus.OPEN.value)
+                    print(f"[Warrior] {symbol}: PENDING_EXIT → OPEN (exit cancelled)")
+            except Exception as e:
+                print(f"[Warrior] Failed to update status after cancel: {e}")
+        
+        return {
+            "status": "success" if cancelled else "no_orders",
+            "symbol": symbol,
+            "cancelled_count": len(cancelled),
+            "cancelled_order_ids": cancelled,
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel orders: {e}")
