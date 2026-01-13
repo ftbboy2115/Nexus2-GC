@@ -102,7 +102,7 @@ class WarriorScanSettings:
     require_catalyst: bool = True  # Require news/earnings
     include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
     use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
-    debug_ai_comparison: bool = True  # Log both regex & AI results for debugging
+    debug_ai_comparison: bool = False  # Disabled: Gemini 10 RPM limit reached
     
     # Pre-market Filters
     min_premarket_volume: int = 100_000  # 100K shares pre-market
