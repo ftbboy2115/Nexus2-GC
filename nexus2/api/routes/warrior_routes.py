@@ -1272,6 +1272,55 @@ async def wire_warrior_callbacks(broker) -> dict:
             print(f"[Warrior] Batch quote failed: {e}")
             return {}
     
+    async def broker_get_intraday_bars(symbol: str, timeframe: str = "5min", limit: int = 50):
+        """Get intraday bars for technical indicator calculation (VWAP, EMA, MACD).
+        
+        Returns list of bar objects with high, low, close, volume attributes.
+        """
+        try:
+            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+            from dataclasses import dataclass
+            
+            @dataclass
+            class Bar:
+                high: float
+                low: float
+                close: float
+                volume: int
+            
+            alpaca = AlpacaAdapter()
+            # Use the existing bars method if available
+            if hasattr(alpaca, 'get_bars'):
+                bars = alpaca.get_bars(symbol, timeframe=timeframe, limit=limit)
+                if bars:
+                    # Convert to simple bar objects
+                    return [Bar(
+                        high=float(b.high), 
+                        low=float(b.low), 
+                        close=float(b.close), 
+                        volume=int(b.volume)
+                    ) for b in bars]
+            
+            # Fallback: try FMP historical data
+            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+            fmp = get_fmp_adapter()
+            if fmp:
+                # Get 5min bars from FMP
+                chart = fmp.get_historical_chart(symbol, interval="5min")
+                if chart and len(chart) >= limit:
+                    # FMP returns newest first, we want oldest first
+                    bars = chart[-limit:]
+                    return [Bar(
+                        high=float(b.get('high', 0)),
+                        low=float(b.get('low', 0)),
+                        close=float(b.get('close', 0)),
+                        volume=int(b.get('volume', 0))
+                    ) for b in reversed(bars)]
+            
+            return None
+        except Exception as e:
+            print(f"[Warrior] Intraday bars failed for {symbol}: {e}")
+            return None
     # Schwab quote cache (10-second TTL to stay under 120 calls/min limit)
     _schwab_quote_cache: dict = {}
     _schwab_cache_ttl = 10  # seconds
@@ -1459,6 +1508,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_price=broker_get_quote,
         get_quote_with_spread=broker_get_quote_with_spread,
         execute_exit=broker_execute_exit,
+        get_intraday_candles=broker_get_intraday_bars,  # For technical stop calculation
     )
     
     engine.set_callbacks(
@@ -1467,6 +1517,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_quote_with_spread=broker_get_quote_with_spread,
         get_positions=broker_get_positions,
         check_pending_fill=check_pending_fill,
+        get_intraday_bars=broker_get_intraday_bars,  # For technical entry validation
     )
     
     # Sync existing Alpaca positions to Monitor for restart recovery
