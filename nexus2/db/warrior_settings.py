@@ -66,7 +66,6 @@ def load_warrior_settings() -> Optional[dict]:
         if 'static_blacklist' in settings and isinstance(settings['static_blacklist'], list):
             settings['static_blacklist'] = set(settings['static_blacklist'])
         
-        print(f"[Warrior Settings] Loaded from {SETTINGS_FILE}")
         return settings
         
     except Exception as e:
