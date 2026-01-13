@@ -90,6 +90,9 @@ class WarriorEngineConfig:
     # Blacklist - symbols to never trade
     static_blacklist: set = field(default_factory=lambda: {"PLBY"})
     
+    # Entry Spread Filter - reject entries with wide bid-ask spreads
+    max_entry_spread_percent: float = 3.0  # 3% threshold (Ross Cameron avoids >2-3%)
+    
     # Execution
     sim_only: bool = False  # Default to paper trading on Alpaca
 
@@ -186,6 +189,7 @@ class WarriorEngine:
         # Callbacks (to be wired up)
         self._submit_order: Optional[Callable] = None
         self._get_quote: Optional[Callable] = None
+        self._get_quote_with_spread: Optional[Callable] = None  # For entry spread filter
         self._get_positions: Optional[Callable] = None
         self._get_intraday_bars: Optional[Callable] = None
     
@@ -193,12 +197,14 @@ class WarriorEngine:
         self,
         submit_order: Callable = None,
         get_quote: Callable = None,
+        get_quote_with_spread: Callable = None,
         get_positions: Callable = None,
         get_intraday_bars: Callable = None,
     ):
         """Set callbacks for order execution and data."""
         self._submit_order = submit_order
         self._get_quote = get_quote
+        self._get_quote_with_spread = get_quote_with_spread
         self._get_positions = get_positions
         self._get_intraday_bars = get_intraday_bars
         
@@ -604,6 +610,39 @@ class WarriorEngine:
                 )
                 watched.entry_triggered = True  # Mark as triggered to prevent retries
                 return
+        
+        # Entry Spread Filter: reject stocks with wide bid-ask spreads
+        # Wide spreads cause unpredictable fills and difficult exits (e.g., SOGP 46% spread)
+        if self._get_quote_with_spread and self.config.max_entry_spread_percent > 0:
+            try:
+                spread_data = await self._get_quote_with_spread(symbol)
+                if spread_data:
+                    bid = spread_data.get("bid", 0)
+                    ask = spread_data.get("ask", 0)
+                    
+                    if bid > 0 and ask > 0:
+                        spread_percent = ((ask - bid) / bid) * 100
+                        
+                        if spread_percent > self.config.max_entry_spread_percent:
+                            logger.warning(
+                                f"[Warrior Entry] {symbol}: REJECTED - spread {spread_percent:.1f}% > "
+                                f"{self.config.max_entry_spread_percent}% threshold "
+                                f"(bid=${bid:.2f}, ask=${ask:.2f})"
+                            )
+                            watched.entry_triggered = True  # Mark to prevent retries
+                            return
+                        else:
+                            logger.debug(
+                                f"[Warrior Entry] {symbol}: Spread OK {spread_percent:.1f}% "
+                                f"(max={self.config.max_entry_spread_percent}%)"
+                            )
+                    elif bid <= 0 or ask <= 0:
+                        logger.warning(
+                            f"[Warrior Entry] {symbol}: No valid bid/ask data "
+                            f"(bid=${bid}, ask=${ask}) - proceeding with caution"
+                        )
+            except Exception as e:
+                logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - proceeding")
         
         # Check if we can open new position (max positions, daily loss)
         if not await self._can_open_position():

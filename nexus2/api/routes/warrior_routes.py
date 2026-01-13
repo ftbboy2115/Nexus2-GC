@@ -1326,6 +1326,7 @@ async def wire_warrior_callbacks(broker) -> dict:
     engine.set_callbacks(
         submit_order=broker_submit_order,
         get_quote=broker_get_quote,
+        get_quote_with_spread=broker_get_quote_with_spread,
         get_positions=broker_get_positions,
     )
     
