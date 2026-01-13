@@ -49,7 +49,7 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "contract": re.compile(
-                r"\b(contract|award|major\s+order|partnership|collaboration|strategic\s+alliance|multi-year\s+deal|purchase\s+orders?|receives?\s+\$?\d+\s*(m|million|b|billion)|supplies?\s+(to|for)|government\s+(order|contract))\b",
+                r"\b(contract|award|major\s+order|partnership|collaboration|strategic\s+alliance|multi-year\s+deal|purchase\s+orders?|receives?\s+\$?\d+\s*(m|million|b|billion)|supplies?\s+\w+\s+(to|for)|government\s+(order|contract))\b",
                 re.IGNORECASE,
             ),
             "guidance_raise": re.compile(
