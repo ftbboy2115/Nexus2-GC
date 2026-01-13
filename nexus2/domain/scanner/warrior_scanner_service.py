@@ -539,6 +539,9 @@ class WarriorScannerService:
         if headlines:
             if verbose:
                 print(f"[Catalyst Debug] {symbol}: Found {len(headlines)} headlines")
+                # Show first 2 raw headlines for debugging
+                for i, h in enumerate(headlines[:2]):
+                    print(f"[Catalyst Debug] {symbol}: [{i+1}] {h[:80]}...")
             
             has_positive, best_type, best_headline = classifier.has_positive_catalyst(headlines)
             if has_positive and best_type:
