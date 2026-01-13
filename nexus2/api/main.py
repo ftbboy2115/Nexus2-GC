@@ -113,13 +113,19 @@ async def lifespan(app: FastAPI):
     set_engine(app.state.automation_engine)
     print("[Startup] Automation engine initialized")
     
-    # Auto-enable Warrior Alpaca broker (Account B)
+    # Auto-enable Warrior Alpaca broker (Account B) and wire callbacks
     try:
-        from nexus2.api.routes.warrior_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker
+        from nexus2.api.routes.warrior_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker, wire_warrior_callbacks
         warrior_broker = create_warrior_alpaca_broker()
         if warrior_broker:
             set_warrior_alpaca_broker(warrior_broker)
             print("[Startup] Warrior Alpaca broker (Account B) auto-enabled")
+            # Wire callbacks and sync positions automatically
+            try:
+                result = await wire_warrior_callbacks(warrior_broker)
+                print(f"[Startup] Warrior callbacks wired, {len(result.get('account_value', 0))} account synced")
+            except Exception as wire_err:
+                print(f"[Startup] Warrior callback wiring failed (will need manual enable): {wire_err}")
         else:
             print("[Startup] Warrior Alpaca broker not available (missing credentials)")
     except Exception as e:

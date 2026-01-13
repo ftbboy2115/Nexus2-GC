@@ -1082,6 +1082,301 @@ async def close_warrior_position(symbol: str, limit_price: float = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+async def wire_warrior_callbacks(broker) -> dict:
+    """Wire WarriorEngine and Monitor callbacks to Alpaca broker.
+    
+    Extracted for reuse from both /broker/enable endpoint and startup auto-enable.
+    
+    Args:
+        broker: AlpacaBroker instance (Account B)
+        
+    Returns:
+        dict with status and account_value, or raises exception on failure
+    """
+    # Verify connection
+    try:
+        account_value = broker.get_account_value()
+    except Exception as e:
+        raise Exception(f"Failed to connect to Alpaca: {e}")
+    
+    # Wire engine callbacks to broker
+    engine = get_engine()
+    engine.config.sim_only = False  # Enable real order submission
+    
+    async def broker_submit_order(
+        symbol: str,
+        shares: int,
+        side: str = "buy",
+        order_type: str = "limit",  # Ross Cameron: always limit orders
+        stop_loss: float = None,
+        limit_price: float = None,
+        **kwargs,  # Accept any extra args
+    ):
+        """Submit order to Alpaca Account B."""
+        alpaca = get_warrior_alpaca_broker()
+        if alpaca is None:
+            print(f"[Warrior] No broker configured")
+            return None
+        
+        try:
+            result = alpaca.submit_order(
+                client_order_id=uuid4(),
+                symbol=symbol,
+                side=side,
+                quantity=shares,
+                order_type=order_type,
+                limit_price=Decimal(str(limit_price)) if limit_price else None,
+                extended_hours=True,
+            )
+            print(f"[Warrior] LIMIT order submitted: {symbol} x{shares} @ ${limit_price} ({side})")
+            return result
+        except Exception as e:
+            error_str = str(e).lower()
+            if "not tradable" in error_str or "is not fractionable" in error_str or "asset not found" in error_str:
+                print(f"[Warrior] {symbol} is not tradable - adding to blacklist")
+                return {"blacklist": True, "symbol": symbol, "error": str(e)}
+            print(f"[Warrior] Alpaca order failed: {e}")
+            return None
+    
+    async def broker_get_positions():
+        """Get positions from Alpaca Account B."""
+        alpaca = get_warrior_alpaca_broker()
+        if alpaca is None:
+            return []
+        
+        try:
+            positions = alpaca.get_positions()
+            return [
+                {
+                    "symbol": p.symbol,
+                    "qty": p.quantity,
+                    "avg_price": float(p.avg_price),
+                    "current_price": float(p.current_price) if p.current_price else 0,
+                    "unrealized_pnl": float(p.unrealized_pnl),
+                }
+                for p in positions.values()
+            ]
+        except Exception as e:
+            print(f"[Warrior] Failed to get positions: {e}")
+            return []
+    
+    # Wire up quotes from UnifiedMarketData
+    from nexus2.adapters.market_data.unified import UnifiedMarketData
+    umd = UnifiedMarketData()
+    
+    async def broker_get_quote(symbol: str):
+        """Get quote from real market data."""
+        quote = umd.get_quote(symbol)
+        return float(quote.price) if quote else None
+    
+    async def broker_get_quotes_batch(symbols: list):
+        """Get quotes for multiple symbols in ONE API call."""
+        try:
+            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+            alpaca = AlpacaAdapter()
+            quotes = alpaca.get_quotes_batch(symbols)
+            return {sym: float(q.price) for sym, q in quotes.items() if q}
+        except Exception as e:
+            print(f"[Warrior] Batch quote failed: {e}")
+            return {}
+    
+    async def broker_get_quote_with_spread(symbol: str):
+        """Get quote with bid/ask spread for spread exit trigger."""
+        try:
+            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+            alpaca = AlpacaAdapter()
+            quote = alpaca.get_quote(symbol)
+            if quote:
+                return {
+                    "price": float(quote.price),
+                    "bid": float(quote.bid) if hasattr(quote, 'bid') and quote.bid else 0,
+                    "ask": float(quote.ask) if hasattr(quote, 'ask') and quote.ask else 0,
+                }
+            return None
+        except Exception as e:
+            print(f"[Warrior] Quote with spread failed for {symbol}: {e}")
+            return None
+    
+    async def broker_execute_exit(signal):
+        """Execute exit order for a position."""
+        alpaca = get_warrior_alpaca_broker()
+        if alpaca is None:
+            print("[Warrior] No broker - cannot execute exit")
+            return None
+        
+        position_id = signal.position_id
+        shares = signal.shares_to_exit
+        reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
+        symbol = signal.symbol
+        
+        try:
+            cancelled = alpaca.cancel_open_orders(symbol, side="sell")
+            if cancelled > 0:
+                print(f"[Warrior] Cancelled {cancelled} pending sell order(s) for {symbol} before exit")
+            
+            use_bid_pricing = reason in ("spread_exit", "after_hours_exit")
+            
+            if use_bid_pricing:
+                spread_data = await broker_get_quote_with_spread(symbol)
+                if spread_data and spread_data.get("bid", 0) > 0:
+                    current_price = spread_data["bid"]
+                    print(f"[Warrior] {reason} using bid: ${current_price:.2f} (ask=${spread_data.get('ask', 0):.2f})")
+                else:
+                    current_price = float(signal.exit_price)
+                    print(f"[Warrior] No bid available, using signal price: ${current_price:.2f}")
+            else:
+                current_price = await broker_get_quote(symbol)
+                signal_price = float(signal.exit_price)
+                if current_price is None:
+                    print(f"[Warrior] Cannot get quote for {symbol} - using signal exit price ${signal_price:.2f}")
+                    current_price = signal_price
+                elif current_price > signal_price * 1.05:
+                    print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
+                    current_price = signal_price
+            
+            if hasattr(signal, 'exit_offset_percent') and signal.exit_offset_percent > 0.01:
+                offset = 1.0 - signal.exit_offset_percent
+                print(f"[Warrior] Using escalating offset: {signal.exit_offset_percent*100:.0f}% below bid")
+            elif reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop", "spread_exit", "after_hours_exit"):
+                offset = 0.99
+            else:
+                offset = 0.995
+            
+            limit_price = round(current_price * offset, 2)
+            
+            order = alpaca.submit_order(
+                client_order_id=uuid4(),
+                symbol=symbol,
+                quantity=shares,
+                side="sell",
+                order_type="limit",
+                limit_price=Decimal(str(limit_price)),
+                extended_hours=True,
+            )
+            print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
+            
+            try:
+                from nexus2.db.warrior_db import log_warrior_exit
+                exit_price = float(signal.exit_price)
+                log_warrior_exit(position_id, exit_price, reason, shares)
+            except Exception as e:
+                print(f"[Warrior] Exit DB log failed: {e}")
+            
+            return order
+        except Exception as e:
+            print(f"[Warrior] Exit order failed: {e}")
+            return None
+    
+    # Wire up monitor callbacks
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+    monitor = get_warrior_monitor()
+    monitor._execute_exit = broker_execute_exit
+    
+    async def broker_get_positions_async():
+        """Async wrapper for broker.get_positions() for monitor sync."""
+        try:
+            positions = broker.get_positions()
+            return [
+                {"symbol": symbol, "qty": pos.quantity, "avg_price": pos.avg_price}
+                for symbol, pos in positions.items()
+            ]
+        except Exception as e:
+            print(f"[Warrior] Error getting broker positions: {e}")
+            return None
+    
+    monitor.set_callbacks(
+        get_broker_positions=broker_get_positions_async,
+        get_prices_batch=broker_get_quotes_batch,
+        get_price=broker_get_quote,
+        get_quote_with_spread=broker_get_quote_with_spread,
+        execute_exit=broker_execute_exit,
+    )
+    
+    engine.set_callbacks(
+        submit_order=broker_submit_order,
+        get_quote=broker_get_quote,
+        get_positions=broker_get_positions,
+    )
+    
+    # Sync existing Alpaca positions to Monitor for restart recovery
+    from nexus2.db.warrior_db import init_warrior_db, get_warrior_trade_by_symbol, close_orphaned_trades
+    init_warrior_db()
+    
+    try:
+        from nexus2.domain.automation.warrior_monitor import WarriorPosition
+        from datetime import datetime
+        
+        alpaca_positions = broker.get_positions()
+        print(f"[Warrior] Found {len(alpaca_positions)} Alpaca positions to sync")
+        
+        active_symbols = set(alpaca_positions.keys())
+        close_orphaned_trades(active_symbols)
+        
+        synced_count = 0
+        
+        for symbol, pos in alpaca_positions.items():
+            existing = [p for p in monitor.get_positions() if p.symbol == symbol]
+            if existing:
+                print(f"[Warrior] {symbol} already in monitor, skipping")
+                continue
+            
+            saved_trade = get_warrior_trade_by_symbol(symbol)
+            
+            if saved_trade:
+                entry_price = float(saved_trade["entry_price"])
+                stop_price = float(saved_trade["stop_price"])
+                target_price = float(saved_trade["target_price"]) if saved_trade["target_price"] else None
+                support_level = float(saved_trade["support_level"]) if saved_trade["support_level"] else stop_price
+                trade_id = saved_trade["id"]
+                partial_taken = saved_trade.get("partial_taken", False)
+                
+                if partial_taken and stop_price < entry_price:
+                    print(f"[Warrior] {symbol}: Partial taken, moving stop to breakeven (${entry_price:.2f})")
+                    stop_price = entry_price
+                
+                print(f"[Warrior] Recovered {symbol} from DB: entry=${entry_price:.2f}, stop=${stop_price:.2f}")
+            else:
+                entry_price = float(pos.avg_price)
+                mental_stop_cents = float(monitor.settings.mental_stop_cents)
+                profit_target_r = float(monitor.settings.profit_target_r)
+                stop_price = entry_price - (mental_stop_cents / 100)
+                target_price = entry_price + (mental_stop_cents / 100 * profit_target_r)
+                support_level = stop_price
+                trade_id = str(uuid4())
+                print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
+            
+            risk_per_share = Decimal(str(entry_price)) - Decimal(str(stop_price))
+            new_pos = WarriorPosition(
+                position_id=trade_id,
+                symbol=symbol,
+                entry_price=Decimal(str(entry_price)),
+                shares=pos.quantity,
+                entry_time=datetime.utcnow(),
+                mental_stop=Decimal(str(stop_price)),
+                technical_stop=Decimal(str(support_level)),
+                current_stop=Decimal(str(stop_price)),
+                profit_target=Decimal(str(target_price)) if target_price else Decimal("0"),
+                risk_per_share=risk_per_share,
+                high_since_entry=Decimal(str(entry_price)),
+            )
+            monitor._positions[trade_id] = new_pos
+            synced_count += 1
+        
+        if synced_count > 0:
+            print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")
+        else:
+            print(f"[Warrior] No new positions to sync")
+    except Exception as e:
+        import traceback
+        print(f"[Warrior] Position sync failed: {e}")
+        traceback.print_exc()
+    
+    return {
+        "status": "enabled",
+        "broker": "alpaca_paper_b",
+        "account_value": account_value,
+    }
+
 
 @router.post("/broker/enable")
 async def enable_warrior_broker():
@@ -1103,391 +1398,14 @@ async def enable_warrior_broker():
     
     _warrior_alpaca_broker = broker
     
-    # Verify connection
+    # Wire callbacks and sync positions using shared function
     try:
-        account_value = broker.get_account_value()
+        result = await wire_warrior_callbacks(broker)
+        result["message"] = "WarriorEngine connected to Alpaca Account B (paper)"
+        return result
     except Exception as e:
         _warrior_alpaca_broker = None
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to connect to Alpaca: {e}",
-        )
-    
-    # Wire engine callbacks to broker
-    engine = get_engine()
-    engine.config.sim_only = False  # Enable real order submission
-    
-    async def broker_submit_order(
-        symbol: str,
-        shares: int,
-        side: str = "buy",
-        order_type: str = "limit",  # Ross Cameron: always limit orders
-        stop_loss: float = None,
-        limit_price: float = None,
-        **kwargs,  # Accept any extra args
-    ):
-        """Submit order to Alpaca Account B.
-        
-        Ross Cameron methodology: ALWAYS use limit orders, never market orders.
-        - Prevents slippage on volatile low-float stocks
-        - Allows pre-market and post-market trading with extended_hours=True
-        """
-        alpaca = get_warrior_alpaca_broker()
-        if alpaca is None:
-            print(f"[Warrior] No broker configured")
-            return None
-        
-        try:
-            # Warrior uses mental stops (managed by monitor, not broker)
-            # All orders are LIMIT orders with extended hours enabled
-            result = alpaca.submit_order(
-                client_order_id=uuid4(),
-                symbol=symbol,
-                side=side,
-                quantity=shares,
-                order_type=order_type,
-                limit_price=Decimal(str(limit_price)) if limit_price else None,
-                extended_hours=True,  # Required for pre-market and post-market fills; time_in_force is hardcoded in AlpacaBroker
-            )
-            print(f"[Warrior] LIMIT order submitted: {symbol} x{shares} @ ${limit_price} ({side})")
-            return result
-        except Exception as e:
-            error_str = str(e).lower()
-            # Check for untradable asset errors
-            if "not tradable" in error_str or "is not fractionable" in error_str or "asset not found" in error_str:
-                print(f"[Warrior] {symbol} is not tradable - adding to blacklist")
-                return {"blacklist": True, "symbol": symbol, "error": str(e)}
-            print(f"[Warrior] Alpaca order failed: {e}")
-            return None
-    
-    async def broker_get_positions():
-        """Get positions from Alpaca Account B."""
-        alpaca = get_warrior_alpaca_broker()
-        if alpaca is None:
-            return []
-        
-        try:
-            positions = alpaca.get_positions()
-            # positions is Dict[str, BrokerPosition], iterate values
-            return [
-                {
-                    "symbol": p.symbol,
-                    "qty": p.quantity,
-                    "avg_price": float(p.avg_price),
-                    "current_price": float(p.current_price) if p.current_price else 0,
-                    "unrealized_pnl": float(p.unrealized_pnl),
-                }
-                for p in positions.values()
-            ]
-        except Exception as e:
-            print(f"[Warrior] Failed to get positions: {e}")
-            return []
-    
-    # Wire up quotes from UnifiedMarketData (Alpaca for real-time pre-market)
-    from nexus2.adapters.market_data.unified import UnifiedMarketData
-    umd = UnifiedMarketData()
-    
-    async def broker_get_quote(symbol: str):
-        """Get quote from real market data (Alpaca for pre-market)."""
-        quote = umd.get_quote(symbol)
-        return float(quote.price) if quote else None
-    
-    async def broker_get_quotes_batch(symbols: list):
-        """Get quotes for multiple symbols in ONE API call.
-        
-        Dramatically reduces API calls vs individual quotes.
-        Returns: dict[symbol, price] for all symbols
-        """
-        try:
-            # Use Alpaca's batch quote endpoint (1 call for all symbols)
-            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-            alpaca = AlpacaAdapter()
-            quotes = alpaca.get_quotes_batch(symbols)
-            return {sym: float(q.price) for sym, q in quotes.items() if q}
-        except Exception as e:
-            print(f"[Warrior] Batch quote failed: {e}")
-            return {}
-    
-    async def broker_get_quote_with_spread(symbol: str):
-        """Get quote with bid/ask spread for liquidity monitoring.
-        
-        Returns: dict with price, bid, ask, spread_cents, spread_percent,
-                 and liquidity_status ('ok', 'no_ask_liquidity', 'no_bid_liquidity', 'no_quote')
-        Returns None if quote unavailable.
-        """
-        try:
-            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-            alpaca = AlpacaAdapter()
-            quotes = alpaca.get_quotes_batch([symbol])
-            if symbol in quotes and quotes[symbol]:
-                quote = quotes[symbol]
-                bid = float(quote.bid) if quote.bid else 0
-                ask = float(quote.ask) if quote.ask else 0
-                price = float(quote.price) if quote.price else 0
-                
-                # Calculate price fallback
-                if price == 0 and bid > 0 and ask > 0:
-                    price = (bid + ask) / 2
-                elif price == 0 and bid > 0:
-                    price = bid
-                elif price == 0 and ask > 0:
-                    price = ask
-                
-                # Determine liquidity status and calculate spread
-                if bid > 0 and ask > 0:
-                    liquidity_status = "ok"
-                    spread_cents = (ask - bid) * 100
-                    spread_percent = ((ask - bid) / price) * 100 if price > 0 else 0
-                elif bid > 0 and ask == 0:
-                    # Has buyers but no sellers - potential liquidity concern in extended hours
-                    liquidity_status = "no_ask_liquidity"
-                    spread_cents = None
-                    spread_percent = None  # Can't calculate without ask
-                elif bid == 0 and ask > 0:
-                    # Has sellers but no buyers - bearish signal
-                    liquidity_status = "no_bid_liquidity"
-                    spread_cents = None
-                    spread_percent = None
-                else:
-                    # No quote data at all
-                    liquidity_status = "no_quote"
-                    spread_cents = None
-                    spread_percent = None
-                
-                return {
-                    "price": price,
-                    "bid": bid,
-                    "ask": ask,
-                    "spread_cents": round(spread_cents, 2) if spread_cents is not None else None,
-                    "spread_percent": round(spread_percent, 2) if spread_percent is not None else None,
-                    "liquidity_status": liquidity_status,
-                }
-        except Exception as e:
-            logger.debug(f"[Warrior] Quote with spread failed for {symbol}: {e}")
-        return None
-    
-    async def broker_execute_exit(signal):
-        """Execute exit order via Alpaca broker.
-        
-        Ross Cameron methodology: ALWAYS use limit orders, never market orders.
-        - Prevents slippage on volatile low-float stocks
-        - Required for extended hours trading
-        
-        Args:
-            signal: WarriorExitSignal object with position_id, shares_to_exit, reason, etc.
-        """
-        alpaca = get_warrior_alpaca_broker()
-        if alpaca is None:
-            print(f"[Warrior] No broker to execute exit")
-            return None
-        
-        position_id = signal.position_id
-        shares = signal.shares_to_exit
-        reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
-        symbol = signal.symbol
-        
-        try:
-            # Cancel any pending sell orders for this symbol first
-            # This prevents "insufficient qty available" errors when partials didn't fill
-            cancelled = alpaca.cancel_open_orders(symbol, side="sell")
-            if cancelled > 0:
-                print(f"[Warrior] Cancelled {cancelled} pending sell order(s) for {symbol} before exit")
-            
-            # For spread exits and after-hours exits, use actual bid (wide spread or illiquid)
-            # For other exits, use midpoint from regular quote
-            use_bid_pricing = reason in ("spread_exit", "after_hours_exit")
-            
-            if use_bid_pricing:
-                # Get actual bid - spread is wide or we're in illiquid extended hours
-                spread_data = await broker_get_quote_with_spread(symbol)
-                if spread_data and spread_data.get("bid", 0) > 0:
-                    current_price = spread_data["bid"]
-                    print(f"[Warrior] {reason} using bid: ${current_price:.2f} (ask=${spread_data.get('ask', 0):.2f})")
-                else:
-                    # Fallback to signal price if no bid
-                    current_price = float(signal.exit_price)
-                    print(f"[Warrior] No bid available, using signal price: ${current_price:.2f}")
-            else:
-                # Regular exit - use midpoint
-                current_price = await broker_get_quote(symbol)
-                
-                # CRITICAL: Detect stale quotes from FMP fallback during Alpaca rate limits
-                # The signal.exit_price is the ACTUAL price that triggered the exit from the monitor
-                # If quoted price is significantly higher than trigger price, quote is stale
-                signal_price = float(signal.exit_price)
-                if current_price is None:
-                    # No quote at all - use signal's exit price
-                    print(f"[Warrior] Cannot get quote for {symbol} - using signal exit price ${signal_price:.2f}")
-                    current_price = signal_price
-                elif current_price > signal_price * 1.05:
-                    # Quote is >5% higher than what triggered the stop - stale FMP data
-                    print(f"[Warrior] Stale quote detected: ${current_price:.2f} vs trigger ${signal_price:.2f} - using trigger price")
-                    current_price = signal_price
-            
-            # Calculate limit price with offset
-            # Use signal's exit_offset_percent if provided (escalating exits), else use defaults
-            if hasattr(signal, 'exit_offset_percent') and signal.exit_offset_percent > 0.01:
-                # Escalating exit - use signal's offset (e.g., 2-10% for after-hours)
-                offset = 1.0 - signal.exit_offset_percent
-                print(f"[Warrior] Using escalating offset: {signal.exit_offset_percent*100:.0f}% below bid")
-            elif reason in ("mental_stop", "technical_stop", "breakout_failure", "time_stop", "spread_exit", "after_hours_exit"):
-                offset = 0.99  # 1% for urgent exits
-            else:
-                offset = 0.995  # 0.5% for partials
-            
-            limit_price = round(current_price * offset, 2)
-            
-            # Submit limit sell order with extended hours enabled
-            from uuid import uuid4
-            order = alpaca.submit_order(
-                client_order_id=uuid4(),  # UUID, not string
-                symbol=symbol,
-                quantity=shares,
-                side="sell",
-                order_type="limit",
-                limit_price=Decimal(str(limit_price)),
-                extended_hours=True,  # time_in_force is hardcoded to "day" in AlpacaBroker
-            )
-            print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
-            
-            # Log exit to DB
-            try:
-                from nexus2.db.warrior_db import log_warrior_exit
-                exit_price = float(signal.exit_price)
-                log_warrior_exit(position_id, exit_price, reason, shares)
-            except Exception as e:
-                print(f"[Warrior] Exit DB log failed: {e}")
-            
-            return order
-        except Exception as e:
-            print(f"[Warrior] Exit order failed: {e}")
-            return None
-    
-    # Wire up monitor callbacks
-    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
-    monitor = get_warrior_monitor()
-    monitor._execute_exit = broker_execute_exit
-    
-    # Add async wrapper for broker.get_positions() for monitor sync
-    async def broker_get_positions_async():
-        """Async wrapper for broker.get_positions() for monitor sync."""
-        try:
-            positions = broker.get_positions()
-            # Convert to list of dicts for the sync method
-            # BrokerPosition uses 'quantity' not 'qty'
-            return [
-                {"symbol": symbol, "qty": pos.quantity, "avg_price": pos.avg_price}
-                for symbol, pos in positions.items()
-            ]
-        except Exception as e:
-            print(f"[Warrior] Error getting broker positions: {e}")
-            return None  # Return None on error, not empty list - sync will skip if None
-    
-    monitor.set_callbacks(
-        get_broker_positions=broker_get_positions_async,
-        get_prices_batch=broker_get_quotes_batch,  # Batch quotes for reduced API calls
-        get_price=broker_get_quote,  # Fallback for individual quotes
-        get_quote_with_spread=broker_get_quote_with_spread,  # For spread exit trigger
-        execute_exit=broker_execute_exit,  # Wire up exit execution
-    )
-    
-    engine.set_callbacks(
-        submit_order=broker_submit_order,
-        get_quote=broker_get_quote,
-        get_positions=broker_get_positions,
-    )
-    
-    # Sync existing Alpaca positions to Monitor for restart recovery
-    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
-    monitor = get_warrior_monitor()
-    
-    # Initialize Warrior DB
-    from nexus2.db.warrior_db import init_warrior_db, get_warrior_trade_by_symbol, close_orphaned_trades
-    init_warrior_db()
-    
-    try:
-        from nexus2.domain.automation.warrior_monitor import WarriorPosition
-        from uuid import uuid4
-        from datetime import datetime
-        
-        alpaca_positions = broker.get_positions()
-        print(f"[Warrior] Found {len(alpaca_positions)} Alpaca positions to sync")
-        
-        # Clean up orphaned trades in DB (marked 'open' but not on Alpaca)
-        active_symbols = set(alpaca_positions.keys())
-        close_orphaned_trades(active_symbols)
-        
-        synced_count = 0
-        
-        for symbol, pos in alpaca_positions.items():
-            # Check if already in monitor
-            existing = [p for p in monitor.get_positions() if p.symbol == symbol]
-            if existing:
-                print(f"[Warrior] {symbol} already in monitor, skipping")
-                continue
-            
-            # First check Warrior DB for saved trade data
-            saved_trade = get_warrior_trade_by_symbol(symbol)
-            
-            if saved_trade:
-                # Use saved metrics from DB
-                entry_price = float(saved_trade["entry_price"])
-                stop_price = float(saved_trade["stop_price"])
-                target_price = float(saved_trade["target_price"]) if saved_trade["target_price"] else None
-                support_level = float(saved_trade["support_level"]) if saved_trade["support_level"] else stop_price
-                trade_id = saved_trade["id"]
-                partial_taken = saved_trade.get("partial_taken", False)
-                
-                # If partial was taken, stop should be at breakeven
-                if partial_taken and stop_price < entry_price:
-                    print(f"[Warrior] {symbol}: Partial taken, moving stop to breakeven (${entry_price:.2f})")
-                    stop_price = entry_price
-                
-                print(f"[Warrior] Recovered {symbol} from DB: entry=${entry_price:.2f}, stop=${stop_price:.2f}")
-            else:
-                # Fall back to calculating defaults
-                entry_price = float(pos.avg_price)
-                mental_stop_cents = float(monitor.settings.mental_stop_cents)
-                profit_target_r = float(monitor.settings.profit_target_r)
-                stop_price = entry_price - (mental_stop_cents / 100)
-                target_price = entry_price + (mental_stop_cents / 100 * profit_target_r)
-                support_level = stop_price
-                trade_id = str(uuid4())
-                print(f"[Warrior] Synced {symbol} (no DB record): entry=${entry_price:.2f}, stop=${stop_price:.2f}")
-            
-            # Add to monitor - use correct field names for WarriorPosition dataclass
-            risk_per_share = Decimal(str(entry_price)) - Decimal(str(stop_price))
-            new_pos = WarriorPosition(
-                position_id=trade_id,
-                symbol=symbol,
-                entry_price=Decimal(str(entry_price)),
-                shares=pos.quantity,
-                entry_time=datetime.utcnow(),
-                mental_stop=Decimal(str(stop_price)),
-                technical_stop=Decimal(str(support_level)),
-                current_stop=Decimal(str(stop_price)),
-                profit_target=Decimal(str(target_price)) if target_price else Decimal("0"),
-                risk_per_share=risk_per_share,
-                high_since_entry=Decimal(str(entry_price)),
-            )
-            monitor._positions[trade_id] = new_pos  # It's a dict, not a list
-            synced_count += 1
-        
-        if synced_count > 0:
-            print(f"[Warrior] Synced {synced_count} positions from Alpaca to Monitor")
-        else:
-            print(f"[Warrior] No new positions to sync")
-    except Exception as e:
-        import traceback
-        print(f"[Warrior] Position sync failed: {e}")
-        traceback.print_exc()
-    
-    return {
-        "status": "enabled",
-        "broker": "alpaca_paper_b",
-        "account_value": account_value,
-        "message": "WarriorEngine connected to Alpaca Account B (paper)",
-    }
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/broker/test")
