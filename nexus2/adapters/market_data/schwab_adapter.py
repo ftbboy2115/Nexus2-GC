@@ -152,6 +152,10 @@ class SchwabAdapter:
             logger.info("[Schwab] Successfully authenticated!")
             return True
             
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[Schwab] Token exchange failed: {e}")
+            logger.error(f"[Schwab] Response body: {e.response.text}")
+            return False
         except Exception as e:
             logger.error(f"[Schwab] Token exchange failed: {e}")
             return False
