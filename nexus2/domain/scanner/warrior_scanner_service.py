@@ -25,6 +25,7 @@ from nexus2.domain.automation.rejection_tracker import (
     RejectionReason,
 )
 from nexus2.domain.automation.catalyst_classifier import get_classifier
+from nexus2.domain.automation.ai_catalyst_validator import get_ai_validator
 
 
 # =============================================================================
@@ -100,6 +101,8 @@ class WarriorScanSettings:
     exclude_chinese_stocks: bool = True  # Ross avoids HKD, TOP, MEGL, etc.
     require_catalyst: bool = True  # Require news/earnings
     include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
+    use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
+    debug_ai_comparison: bool = True  # Log both regex & AI results for debugging
     
     # Pre-market Filters
     min_premarket_volume: int = 100_000  # 100K shares pre-market
@@ -600,6 +603,38 @@ class WarriorScannerService:
                     catalyst_confidence = 0.7
                     if verbose:
                         print(f"[Catalyst Debug] {symbol}: FORMER RUNNER catalyst")
+        
+        # =====================================================================
+        # AI CATALYST FALLBACK (when regex fails)
+        # =====================================================================
+        ai_result = None
+        if headlines and (s.use_ai_catalyst_fallback or s.debug_ai_comparison):
+            # Run AI validation if: (1) regex failed or (2) debug comparison mode
+            should_run_ai = (not has_catalyst and s.use_ai_catalyst_fallback) or s.debug_ai_comparison
+            
+            if should_run_ai:
+                try:
+                    ai_validator = get_ai_validator()
+                    ai_valid, ai_type, ai_headline = ai_validator.validate_headlines(headlines, symbol)
+                    ai_result = (ai_valid, ai_type, ai_headline)
+                    
+                    if verbose or s.debug_ai_comparison:
+                        regex_status = "PASS" if has_catalyst else "FAIL"
+                        ai_status = "PASS" if ai_valid else "FAIL"
+                        print(f"[AI vs Regex] {symbol}: Regex={regex_status} AI={ai_status} (AI type: {ai_type})")
+                    
+                    # Use AI result as fallback if regex failed
+                    if not has_catalyst and ai_valid:
+                        has_catalyst = True
+                        catalyst_type = f"ai_{ai_type}"
+                        catalyst_desc = f"AI: {ai_headline}" if ai_headline else f"AI: {ai_type}"
+                        catalyst_confidence = 0.8  # AI-validated confidence
+                        if verbose:
+                            print(f"[Catalyst Debug] {symbol}: AI FALLBACK catalyst - {ai_type}")
+                            
+                except Exception as e:
+                    if verbose:
+                        print(f"[Catalyst Debug] {symbol}: AI validation error - {e}")
         
         if s.require_catalyst and not has_catalyst:
             tracker.record(
