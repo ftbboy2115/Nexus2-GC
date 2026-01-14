@@ -183,6 +183,7 @@ class WarriorMonitor:
         self._update_stop: Optional[Callable] = None
         self._get_broker_positions: Optional[Callable] = None  # For Alpaca sync
         self._record_symbol_fail: Optional[Callable] = None  # 2-strike rule callback
+        self._submit_scale_order: Optional[Callable] = None  # Scaling order callback
         
         # Sync tracking
         self._sync_counter = 0
@@ -520,11 +521,8 @@ class WarriorMonitor:
                             position, Decimal(str(current_price))
                         )
                         if scale_signal:
-                            # Log the scale opportunity (execution is future work)
-                            logger.info(
-                                f"[Warrior Scale] {position.symbol}: Scaling opportunity - "
-                                f"would add {scale_signal['add_shares']} shares at ${scale_signal['price']}"
-                            )
+                            # Execute scale-in order
+                            await self._execute_scale_in(position, scale_signal)
             except Exception as e:
                 logger.error(f"[Warrior] Error checking {position.symbol}: {e}")
     
@@ -1082,6 +1080,86 @@ class WarriorMonitor:
             "support": float(support),
             "scale_count": position.scale_count + 1,
         }
+    
+    async def _execute_scale_in(
+        self,
+        position: WarriorPosition,
+        scale_signal: Dict,
+    ) -> bool:
+        """
+        Execute a scale-in order (Ross Cameron methodology).
+        
+        1. Submit buy order for additional shares
+        2. Update position state (scale_count, shares)
+        3. Move stop to breakeven (if enabled)
+        
+        Returns True if scale was executed successfully.
+        """
+        if not self._submit_scale_order:
+            logger.warning(f"[Warrior Scale] {position.symbol}: No scale order callback configured")
+            return False
+        
+        symbol = position.symbol
+        add_shares = scale_signal["add_shares"]
+        price = Decimal(str(scale_signal["price"]))
+        
+        try:
+            # Submit scale order (limit order at current price + buffer)
+            limit_price = (price + Decimal("0.03")).quantize(Decimal("0.01"))  # 3 cents above
+            
+            logger.info(
+                f"[Warrior Scale] {symbol}: Submitting scale order - "
+                f"{add_shares} shares @ limit ${limit_price}"
+            )
+            
+            order_result = await self._submit_scale_order(
+                symbol=symbol,
+                shares=add_shares,
+                side="buy",
+                order_type="limit",
+                limit_price=float(limit_price),
+            )
+            
+            if order_result is None:
+                logger.warning(f"[Warrior Scale] {symbol}: Scale order returned None")
+                return False
+            
+            # Update position state
+            position.scale_count += 1
+            position.shares += add_shares
+            
+            # Move stop to breakeven (original entry price)
+            if self.settings.move_stop_to_breakeven_after_scale:
+                old_stop = position.current_stop
+                position.current_stop = position.entry_price
+                
+                if self._update_stop:
+                    await self._update_stop(position.position_id, position.entry_price)
+                
+                # Log event
+                trade_event_service.log_warrior_stop_update(
+                    position_id=position.position_id,
+                    symbol=symbol,
+                    old_stop=old_stop,
+                    new_stop=position.entry_price,
+                    reason="scale_breakeven",
+                )
+                
+                logger.info(
+                    f"[Warrior Scale] {symbol}: Stop moved to breakeven ${position.entry_price} "
+                    f"(was ${old_stop})"
+                )
+            
+            logger.info(
+                f"[Warrior Scale] {symbol}: Scale #{position.scale_count} complete - "
+                f"now {position.shares} shares"
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"[Warrior Scale] {symbol}: Scale order failed: {e}")
+            return False
     
     async def _handle_exit(self, signal: WarriorExitSignal):
         """Handle an exit signal."""
