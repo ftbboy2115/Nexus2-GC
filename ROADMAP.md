@@ -132,6 +132,17 @@ Last updated: 2026-01-13
   - If stock also has former-runner status → add +1 to quality score ✅
   - Former runner alone → still reject (no catalyst bypass) ✅
   - Per Ross Cameron research: former runner increases conviction when catalyst exists
+- [x] **NAC P&L Calculation Fix** — NAC positions now correctly record realized_pnl on close (Jan 14)
+  - Fixed broker sync and execute_monitor_exit to calculate P&L
+- [ ] **IPO Calendar Integration** — Detect and trade newly-listed stocks (Ross Cameron trades IPOs)
+  - Add FMP `/api/v3/ipo_calendar` endpoint to `fmp_adapter.py`
+  - IPO catalyst score: Day 1 = +2, Days 2-7 = +1, Days 8-14 = +0
+  - Tiered stop logic based on days since IPO
+- [ ] **S-3 Shelf Filing Detection** — Score penalty for dilution risk (not disqualifier)
+  - Add FMP `/api/v3/sec_filings/{SYMBOL}?type=S-3` endpoint
+  - Recent S-3 (< 30 days) = -2, Active (30-365 days) = -1
+  - News about shelf offering = still hard reject (existing behavior)
+- [ ] **NAC P&L Backfill Script** — Recalculate P&L for Jan 2-14 positions from stored entry/exit prices
 
 ---
 
