@@ -130,7 +130,7 @@ async def lifespan(app: FastAPI):
     
     if warrior_auto_enable:
         try:
-            from nexus2.api.routes.warrior_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker, wire_warrior_callbacks
+            from nexus2.api.routes.warrior_broker_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker, wire_warrior_callbacks
             warrior_broker = create_warrior_alpaca_broker()
             if warrior_broker:
                 set_warrior_alpaca_broker(warrior_broker)
