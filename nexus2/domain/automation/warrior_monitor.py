@@ -678,6 +678,23 @@ class WarriorMonitor:
                             technical_stop=None,
                         )
                         self._positions[position.position_id] = position
+                        
+                        # Persist to warrior_db for Trade History
+                        try:
+                            from nexus2.db.warrior_db import log_warrior_entry
+                            log_warrior_entry(
+                                trade_id=position.position_id,
+                                symbol=symbol,
+                                entry_price=float(entry_price),
+                                quantity=qty,
+                                stop_price=float(stop_price),
+                                target_price=float(target_price),
+                                trigger_type="synced",
+                                support_level=float(stop_price),
+                            )
+                        except Exception as db_err:
+                            logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")
+                        
                         logger.info(
                             f"[Warrior Sync] {symbol}: Auto-recovered ({qty} shares @ ${entry_price:.2f}, "
                             f"stop=${stop_price:.2f} via {stop_method})"
