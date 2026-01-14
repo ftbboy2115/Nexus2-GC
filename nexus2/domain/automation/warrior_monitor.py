@@ -100,6 +100,14 @@ class WarriorMonitorSettings:
     max_spread_percent: float = 3.0  # Exit if spread exceeds 3%
     spread_grace_period_seconds: int = 60  # Wait 60s after entry before checking spread
     
+    # Scaling In (Ross Cameron Methodology)
+    enable_scaling: bool = False  # Off by default (advanced feature)
+    max_scale_count: int = 2  # Starter position + 1-2 adds
+    scale_size_pct: int = 50  # Add 50% of original size
+    min_rvol_for_scale: float = 2.0  # Volume confirmation (2x relative volume)
+    allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
+    move_stop_to_breakeven_after_scale: bool = True  # Move stop to breakeven after add
+    
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
 
@@ -129,6 +137,10 @@ class WarriorPosition:
     # Tracking
     high_since_entry: Decimal = Decimal("0")  # For trailing
     partial_taken: bool = False
+    
+    # Scaling In
+    scale_count: int = 0  # Number of adds taken
+    original_shares: int = 0  # Initial position size (for calculating add size)
     
     # Intraday candle tracking (for pattern exits)
     last_candle_low: Decimal = Decimal("0")
@@ -378,6 +390,7 @@ class WarriorMonitor:
             profit_target=profit_target,
             risk_per_share=risk_per_share,
             high_since_entry=entry_price,
+            original_shares=shares,  # Track for scaling calculations
         )
         
         self._positions[position_id] = position
@@ -500,6 +513,18 @@ class WarriorMonitor:
                 signal = await self._evaluate_position(position, current_price)
                 if signal:
                     await self._handle_exit(signal)
+                else:
+                    # No exit signal - check for scaling opportunity
+                    if current_price and self.settings.enable_scaling:
+                        scale_signal = await self._check_scale_opportunity(
+                            position, Decimal(str(current_price))
+                        )
+                        if scale_signal:
+                            # Log the scale opportunity (execution is future work)
+                            logger.info(
+                                f"[Warrior Scale] {position.symbol}: Scaling opportunity - "
+                                f"would add {scale_signal['add_shares']} shares at ${scale_signal['price']}"
+                            )
             except Exception as e:
                 logger.error(f"[Warrior] Error checking {position.symbol}: {e}")
     
@@ -996,6 +1021,67 @@ class WarriorMonitor:
                 )
         
         return None
+    
+    async def _check_scale_opportunity(
+        self,
+        position: WarriorPosition,
+        current_price: Decimal,
+    ) -> Optional[Dict]:
+        """
+        Check if position qualifies for scaling in (Ross Cameron methodology).
+        
+        Criteria:
+        1. Scaling enabled and position not at max scale count
+        2. RVOL strong enough (volume confirmation)
+        3. Price at support zone (pullback, can be below entry)
+        4. Support holding (not breaking down)
+        
+        Returns dict with scale signal details if opportunity detected, else None.
+        """
+        s = self.settings
+        
+        if not s.enable_scaling:
+            return None
+        
+        if position.scale_count >= s.max_scale_count:
+            return None
+        
+        # Check if price is at support (technical stop is our support level)
+        # Allow scaling if price is near or at support but not below it
+        support = position.technical_stop or position.mental_stop
+        
+        if not support or support <= 0:
+            return None
+        
+        # Price must be above support (not breaking down)
+        if current_price < support:
+            return None
+        
+        # Check if this is a pullback opportunity
+        # Price should be between support and entry (or above if allow_scale_below_entry is False)
+        is_pullback_zone = current_price <= position.entry_price or s.allow_scale_below_entry
+        
+        if not is_pullback_zone:
+            return None
+        
+        # Calculate scale size
+        add_shares = int(position.original_shares * s.scale_size_pct / 100)
+        if add_shares < 1:
+            add_shares = 1
+        
+        logger.info(
+            f"[Warrior Scale] {position.symbol}: Scale opportunity detected - "
+            f"price=${current_price}, support=${support}, add_shares={add_shares}"
+        )
+        
+        return {
+            "position_id": position.position_id,
+            "symbol": position.symbol,
+            "add_shares": add_shares,
+            "price": float(current_price),
+            "support": float(support),
+            "scale_count": position.scale_count + 1,
+        }
     
     async def _handle_exit(self, signal: WarriorExitSignal):
         """Handle an exit signal."""
