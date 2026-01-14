@@ -173,12 +173,12 @@ Last updated: 2026-01-13
   - [x] Persist stop updates to DB when monitor moves stop
   - [x] Event replay for full state recovery after restart
   - [x] `/trade-events/position/{id}` and `/trade-events/symbol/{symbol}` endpoints
-- [/] **Scaling In** — Add to winners on first pullback (Ross Cameron methodology)
-  - [x] Detection logic and settings (v1, Jan 13)
-  - [x] Order execution and PSM integration (v2, Jan 13)
-  - [x] Callback wiring for sim/broker (v3, Jan 13)
-  - [x] API endpoints: GET/PUT /monitor/settings (Jan 13)
-  - [ ] GUI toggle + Advanced settings in warrior.tsx
+- [x] **Scaling In** — Add to winners on first pullback (Ross Cameron methodology) (Jan 13)
+  - [x] Detection logic and settings (v1)
+  - [x] Order execution and PSM integration (v2)
+  - [x] Callback wiring for sim/broker (v3)
+  - [x] API endpoints: GET/PUT /monitor/settings
+  - [x] GUI toggle (clickable Scale badge) + persistence
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
 - [x] **Fix Startup Callback Wiring** — `object of type 'decimal.Decimal' has no len()` blocks auto-start (Jan 13)
