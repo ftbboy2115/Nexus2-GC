@@ -523,26 +523,42 @@ Is this a valid Qullamaggie EP catalyst?"""
         logger.debug(f"[MultiModel] Queued {symbol} for comparison (queue size: {len(self._queue)})")
     
     def process_queue(self, max_items: int = 5) -> List[ComparisonResult]:
-        """Process queued comparisons (call periodically from background task)."""
+        """Process queued comparisons (call periodically from background task).
+        
+        Strategy:
+        1. Always run flash_lite (15 RPM - generous limit)
+        2. Only run pro (5 RPM) as tiebreaker when regex and flash_lite disagree
+        
+        This conserves Pro's limited RPM for edge cases that need arbitration.
+        """
         results = []
         processed = 0
         
         while self._queue and processed < max_items:
-            # Check if any model can accept calls
-            can_call_any = any(self._can_call_model(m) for m in self.models)
-            if not can_call_any:
+            # Need at least flash_lite available
+            if not self._can_call_model("flash_lite"):
                 break
             
             symbol, headline, regex_type, regex_conf = self._queue.pop(0)
             
-            # Run available models
+            # Step 1: Always run Flash-Lite (primary AI comparison)
             model_results = {}
-            for model_name in self.models:
-                if self._can_call_model(model_name):
-                    result = self._validate_with_model(model_name, headline, symbol)
-                    model_results[model_name] = result
+            flash_result = self._validate_with_model("flash_lite", headline, symbol)
+            model_results["flash_lite"] = flash_result
             
-            if model_results:  # At least one model ran
+            # Step 2: Determine if we need Pro as tiebreaker
+            regex_valid = regex_type is not None and regex_conf >= 0.6
+            flash_valid = flash_result.is_valid
+            
+            need_tiebreaker = regex_valid != flash_valid  # Disagreement
+            
+            # Step 3: Only call Pro if there's a disagreement AND we have capacity
+            if need_tiebreaker and "pro" in self.models and self._can_call_model("pro"):
+                pro_result = self._validate_with_model("pro", headline, symbol)
+                model_results["pro"] = pro_result
+                logger.info(f"[MultiModel] {symbol}: Tiebreaker called - regex={regex_valid}, flash={flash_valid}, pro={pro_result.is_valid}")
+            
+            if model_results:
                 comparison = ComparisonResult(
                     symbol=symbol,
                     headline=headline,
