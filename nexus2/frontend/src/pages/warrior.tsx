@@ -1633,7 +1633,7 @@ export default function Warrior() {
                                                 </thead>
                                                 <tbody>
                                                     {[...tradeHistory]
-                                                        .sort((a, b) => new Date(b.closed_at || 0).getTime() - new Date(a.closed_at || 0).getTime())
+                                                        .sort((a, b) => new Date(b.exit_time || 0).getTime() - new Date(a.exit_time || 0).getTime())
                                                         .map((trade: any) => (
                                                             <tr key={trade.id}>
                                                                 <td><strong>{trade.symbol}</strong></td>
@@ -1645,10 +1645,10 @@ export default function Warrior() {
                                                                     ${parseFloat(trade.realized_pnl || 0).toFixed(2)}
                                                                 </td>
                                                                 <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#888' }}>
-                                                                    {trade.opened_at ? new Date(trade.opened_at).toLocaleDateString() : '--'}
+                                                                    {trade.entry_time ? new Date(trade.entry_time).toLocaleDateString() : '--'}
                                                                 </td>
                                                                 <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                                                                    {trade.closed_at ? new Date(trade.closed_at).toLocaleDateString() : '--'}
+                                                                    {trade.exit_time ? new Date(trade.exit_time).toLocaleDateString() : '--'}
                                                                 </td>
                                                                 <td>
                                                                     <button
