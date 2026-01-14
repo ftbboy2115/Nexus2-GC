@@ -481,6 +481,17 @@ class WarriorEngine:
         }
         
         logger.info(f"[Warrior Scan] Found {len(result.candidates)} candidates, watching {len(self._watchlist)}")
+        
+        # Process queued multi-model comparisons (non-blocking, respects rate limits)
+        try:
+            from nexus2.domain.automation.ai_catalyst_validator import get_multi_validator
+            multi_validator = get_multi_validator()
+            comparisons = multi_validator.process_queue(max_items=5)
+            if comparisons:
+                stats = multi_validator.get_stats()
+                logger.info(f"[MultiModel] Processed {len(comparisons)} comparisons, queue: {stats['queue_size']} remaining")
+        except Exception as e:
+            logger.debug(f"[MultiModel] Queue processing error: {e}")
     
     async def _get_premarket_high(self, symbol: str) -> Optional[Decimal]:
         """Get pre-market high for a symbol.

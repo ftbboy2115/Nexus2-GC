@@ -10,7 +10,8 @@ Includes shared cache for cross-strategy catalyst validation.
 import os
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, Dict
+from pathlib import Path
+from typing import Optional, Tuple, Dict, List
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -273,3 +274,320 @@ def ai_validate_catalyst(
     """Convenience function for single headline validation."""
     validator = get_ai_validator()
     return validator.validate_headline(headline, symbol)
+
+
+# =============================================================================
+# MULTI-MODEL COMPARISON SYSTEM
+# =============================================================================
+
+@dataclass
+class ModelConfig:
+    """Configuration for a single AI model."""
+    name: str
+    model_id: str
+    rpm_limit: int
+    description: str
+
+
+# Available models for comparison (Jan 2026 rate limits)
+AVAILABLE_MODELS = {
+    "flash_lite": ModelConfig(
+        name="flash_lite",
+        model_id="gemini-2.5-flash-lite",
+        rpm_limit=15,
+        description="Fast, highest RPM for comparison",
+    ),
+    "flash": ModelConfig(
+        name="flash",
+        model_id="gemini-2.5-flash",
+        rpm_limit=10,
+        description="Balanced speed/quality",
+    ),
+    "pro": ModelConfig(
+        name="pro",
+        model_id="gemini-2.5-pro",
+        rpm_limit=5,
+        description="Best reasoning, limited calls",
+    ),
+}
+
+
+@dataclass
+class ModelResult:
+    """Result from a single model."""
+    model_name: str
+    is_valid: bool
+    catalyst_type: Optional[str]
+    reason: str
+    latency_ms: int
+
+
+@dataclass
+class ComparisonResult:
+    """Combined result from all models + regex."""
+    symbol: str
+    headline: str
+    timestamp: datetime
+    regex_type: Optional[str]
+    regex_confidence: float
+    model_results: Dict[str, ModelResult]
+    
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dict for logging."""
+        return {
+            "symbol": self.symbol,
+            "headline": self.headline[:100],
+            "timestamp": self.timestamp.isoformat(),
+            "regex": {"type": self.regex_type, "conf": self.regex_confidence},
+            "models": {
+                name: {
+                    "valid": r.is_valid,
+                    "type": r.catalyst_type,
+                    "reason": r.reason[:50] if r.reason else None,
+                    "latency_ms": r.latency_ms,
+                }
+                for name, r in self.model_results.items()
+            },
+        }
+
+
+class MultiModelValidator:
+    """
+    Run catalyst validation across multiple AI models for comparison.
+    
+    Used to train regex patterns by comparing regex vs AI results.
+    Trading decisions still use regex only.
+    """
+    
+    def __init__(
+        self,
+        models: List[str] = None,
+        api_key: Optional[str] = None,
+    ):
+        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+        self._client = None
+        
+        # Models to run (default: flash_lite + pro for high/low RPM coverage)
+        model_names = models or ["flash_lite", "pro"]
+        self.models = {
+            name: AVAILABLE_MODELS[name]
+            for name in model_names
+            if name in AVAILABLE_MODELS
+        }
+        
+        # Rate limiting: track calls per minute per model
+        self._call_counts: Dict[str, List[datetime]] = {
+            name: [] for name in self.models
+        }
+        
+        # Comparison queue for deferred processing
+        self._queue: List[Tuple[str, str, str, float]] = []  # (symbol, headline, regex_type, regex_conf)
+        self._queue_lock = None  # Lazy init for async
+        
+        # Comparison log file
+        self._log_path = Path(__file__).parent.parent.parent.parent / "data" / "catalyst_comparison.jsonl"
+        
+    def _get_client(self):
+        """Lazy initialization of Gemini client."""
+        if self._client is None:
+            try:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
+            except ImportError:
+                logger.error("google-genai package not installed")
+                raise
+        return self._client
+    
+    def _can_call_model(self, model_name: str) -> bool:
+        """Check if we're under rate limit for this model."""
+        config = self.models.get(model_name)
+        if not config:
+            return False
+        
+        now = datetime.now()
+        minute_ago = now - timedelta(minutes=1)
+        
+        # Remove old entries
+        self._call_counts[model_name] = [
+            t for t in self._call_counts[model_name]
+            if t > minute_ago
+        ]
+        
+        return len(self._call_counts[model_name]) < config.rpm_limit
+    
+    def _record_call(self, model_name: str):
+        """Record a call for rate limiting."""
+        self._call_counts[model_name].append(datetime.now())
+    
+    def _validate_with_model(
+        self,
+        model_name: str,
+        headline: str,
+        symbol: str,
+    ) -> ModelResult:
+        """Validate headline with a specific model."""
+        import time
+        
+        config = self.models.get(model_name)
+        if not config:
+            return ModelResult(
+                model_name=model_name,
+                is_valid=False,
+                catalyst_type=None,
+                reason="Model not configured",
+                latency_ms=0,
+            )
+        
+        if not self._can_call_model(model_name):
+            return ModelResult(
+                model_name=model_name,
+                is_valid=False,
+                catalyst_type=None,
+                reason="Rate limited",
+                latency_ms=0,
+            )
+        
+        try:
+            client = self._get_client()
+            self._record_call(model_name)
+            
+            start = time.perf_counter()
+            
+            user_prompt = f"""Headline: "{headline}"
+Symbol: {symbol}
+
+Is this a valid Qullamaggie EP catalyst?"""
+            
+            response = client.models.generate_content(
+                model=config.model_id,
+                contents=user_prompt,
+                config={
+                    "system_instruction": SYSTEM_PROMPT,
+                    "temperature": 0.0,
+                    "max_output_tokens": 50,
+                },
+            )
+            
+            latency = int((time.perf_counter() - start) * 1000)
+            raw = response.text.strip()
+            
+            if raw.upper().startswith("VALID:"):
+                catalyst_type = raw.split(":", 1)[1].strip().lower()
+                return ModelResult(
+                    model_name=model_name,
+                    is_valid=True,
+                    catalyst_type=catalyst_type,
+                    reason=f"AI confirmed: {catalyst_type}",
+                    latency_ms=latency,
+                )
+            else:
+                reason = raw.split(":", 1)[1].strip() if ":" in raw else raw
+                return ModelResult(
+                    model_name=model_name,
+                    is_valid=False,
+                    catalyst_type=None,
+                    reason=reason,
+                    latency_ms=latency,
+                )
+                
+        except Exception as e:
+            logger.error(f"[{model_name}] Validation error: {e}")
+            return ModelResult(
+                model_name=model_name,
+                is_valid=False,
+                catalyst_type=None,
+                reason=f"Error: {str(e)[:50]}",
+                latency_ms=0,
+            )
+    
+    def queue_comparison(
+        self,
+        symbol: str,
+        headline: str,
+        regex_type: Optional[str],
+        regex_confidence: float,
+    ):
+        """Queue a headline for multi-model comparison (non-blocking)."""
+        self._queue.append((symbol, headline, regex_type, regex_confidence))
+        logger.debug(f"[MultiModel] Queued {symbol} for comparison (queue size: {len(self._queue)})")
+    
+    def process_queue(self, max_items: int = 5) -> List[ComparisonResult]:
+        """Process queued comparisons (call periodically from background task)."""
+        results = []
+        processed = 0
+        
+        while self._queue and processed < max_items:
+            # Check if any model can accept calls
+            can_call_any = any(self._can_call_model(m) for m in self.models)
+            if not can_call_any:
+                break
+            
+            symbol, headline, regex_type, regex_conf = self._queue.pop(0)
+            
+            # Run available models
+            model_results = {}
+            for model_name in self.models:
+                if self._can_call_model(model_name):
+                    result = self._validate_with_model(model_name, headline, symbol)
+                    model_results[model_name] = result
+            
+            if model_results:  # At least one model ran
+                comparison = ComparisonResult(
+                    symbol=symbol,
+                    headline=headline,
+                    timestamp=datetime.now(),
+                    regex_type=regex_type,
+                    regex_confidence=regex_conf,
+                    model_results=model_results,
+                )
+                results.append(comparison)
+                self._log_comparison(comparison)
+                processed += 1
+        
+        if processed:
+            logger.info(f"[MultiModel] Processed {processed} comparisons, {len(self._queue)} remaining in queue")
+        
+        return results
+    
+    def _log_comparison(self, result: ComparisonResult):
+        """Log comparison to JSONL file for training data."""
+        import json
+        
+        try:
+            self._log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._log_path, "a") as f:
+                f.write(json.dumps(result.to_dict()) + "\n")
+        except Exception as e:
+            logger.error(f"[MultiModel] Failed to log comparison: {e}")
+    
+    def get_stats(self) -> dict:
+        """Get rate limit and queue stats."""
+        now = datetime.now()
+        minute_ago = now - timedelta(minutes=1)
+        
+        return {
+            "queue_size": len(self._queue),
+            "models": {
+                name: {
+                    "rpm_limit": config.rpm_limit,
+                    "calls_last_minute": len([
+                        t for t in self._call_counts.get(name, [])
+                        if t > minute_ago
+                    ]),
+                    "available": self._can_call_model(name),
+                }
+                for name, config in self.models.items()
+            },
+        }
+
+
+# Singleton instance
+_multi_validator: Optional[MultiModelValidator] = None
+
+
+def get_multi_validator() -> MultiModelValidator:
+    """Get or create singleton multi-model validator."""
+    global _multi_validator
+    if _multi_validator is None:
+        _multi_validator = MultiModelValidator()
+    return _multi_validator

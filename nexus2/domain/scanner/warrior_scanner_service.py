@@ -25,7 +25,11 @@ from nexus2.domain.automation.rejection_tracker import (
     RejectionReason,
 )
 from nexus2.domain.automation.catalyst_classifier import get_classifier
-from nexus2.domain.automation.ai_catalyst_validator import get_ai_validator, get_catalyst_cache
+from nexus2.domain.automation.ai_catalyst_validator import (
+    get_ai_validator,
+    get_catalyst_cache,
+    get_multi_validator,
+)
 
 
 # =============================================================================
@@ -102,7 +106,15 @@ class WarriorScanSettings:
     require_catalyst: bool = True  # Require news/earnings
     include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
     use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
-    debug_ai_comparison: bool = False  # Disabled: Gemini 10 RPM limit reached
+    debug_ai_comparison: bool = False  # Disabled: replaced by multi-model comparison
+    
+    # Multi-Model Comparison (for training regex patterns)
+    enable_multi_model_comparison: bool = True  # Queue headlines for AI comparison
+    comparison_models: list = None  # Default: ["flash_lite", "pro"] - set in __post_init__
+    
+    def __post_init__(self):
+        if self.comparison_models is None:
+            self.comparison_models = ["flash_lite", "pro"]
     
     # Pre-market Filters
     min_premarket_volume: int = 100_000  # 100K shares pre-market
@@ -675,6 +687,26 @@ class WarriorScannerService:
                     except Exception as e:
                         if verbose:
                             print(f"[Catalyst Debug] {symbol}: AI validation error - {e}")
+        
+        # =====================================================================
+        # MULTI-MODEL COMPARISON (for training regex patterns)
+        # Queue headline for comparison across Flash-Lite (15 RPM) and Pro (5 RPM)
+        # Results are logged to data/catalyst_comparison.jsonl for analysis
+        # =====================================================================
+        if s.enable_multi_model_comparison and headlines:
+            try:
+                multi_validator = get_multi_validator()
+                # Queue best headline for comparison (non-blocking)
+                best_headline = headlines[0] if headlines else ""
+                multi_validator.queue_comparison(
+                    symbol=symbol,
+                    headline=best_headline,
+                    regex_type=catalyst_type if has_catalyst else None,
+                    regex_confidence=catalyst_confidence,
+                )
+            except Exception as e:
+                if verbose:
+                    print(f"[MultiModel] {symbol}: Queue error - {e}")
         
         if s.require_catalyst and not has_catalyst:
             tracker.record(
