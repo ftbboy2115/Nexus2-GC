@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/Warrior.module.css'
@@ -247,7 +247,7 @@ export default function WarriorPerformance() {
     }, [fetchTrades])
 
     // Get unique symbols for filter dropdown
-    const uniqueSymbols = [...new Set(trades.map(t => t.symbol))].sort()
+    const uniqueSymbols = Array.from(new Set(trades.map(t => t.symbol))).sort()
 
     // Active positions (non-closed)
     const activePositions = trades.filter(t =>
@@ -456,9 +456,8 @@ export default function WarriorPerformance() {
                                                     const isExpanded = expandedTrade === trade.id
 
                                                     return (
-                                                        <>
+                                                        <React.Fragment key={trade.id}>
                                                             <tr
-                                                                key={trade.id}
                                                                 onClick={() => setExpandedTrade(
                                                                     isExpanded ? null : trade.id
                                                                 )}
@@ -484,13 +483,13 @@ export default function WarriorPerformance() {
                                                                 <td style={{ color: '#888' }}>{duration}</td>
                                                             </tr>
                                                             {isExpanded && (
-                                                                <tr key={`${trade.id}-events`}>
+                                                                <tr>
                                                                     <td colSpan={9} style={{ padding: 0 }}>
                                                                         <TradeEventsTimeline tradeId={trade.id} />
                                                                     </td>
                                                                 </tr>
                                                             )}
-                                                        </>
+                                                        </React.Fragment>
                                                     )
                                                 })}
                                             </tbody>
