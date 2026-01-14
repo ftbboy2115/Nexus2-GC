@@ -766,6 +766,19 @@ class WarriorMonitor:
                         except Exception as db_err:
                             logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")
                         
+                        # Log entry event for AI trade analysis
+                        try:
+                            trade_event_service.log_warrior_entry(
+                                position_id=position.position_id,
+                                symbol=symbol,
+                                entry_price=entry_price,
+                                stop_price=stop_price,
+                                shares=qty,
+                                trigger_type="synced",
+                            )
+                        except Exception as event_err:
+                            logger.warning(f"[Warrior Sync] {symbol}: Event log failed: {event_err}")
+                        
                         logger.info(
                             f"[Warrior Sync] {symbol}: Auto-recovered ({qty} shares @ ${entry_price:.2f}, "
                             f"stop=${stop_price:.2f} via {stop_method})"
