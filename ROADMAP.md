@@ -177,7 +177,8 @@ Last updated: 2026-01-13
   - [x] Detection logic and settings (v1, Jan 13)
   - [x] Order execution and PSM integration (v2, Jan 13)
   - [x] Callback wiring for sim/broker (v3, Jan 13)
-  - [ ] GUI toggle + Advanced settings
+  - [x] API endpoints: GET/PUT /monitor/settings (Jan 13)
+  - [ ] GUI toggle + Advanced settings in warrior.tsx
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
 - [x] **Fix Startup Callback Wiring** — `object of type 'decimal.Decimal' has no len()` blocks auto-start (Jan 13)
