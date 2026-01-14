@@ -408,3 +408,53 @@ class TradeEventModel(Base):
             "metadata": json.loads(self.metadata_json) if self.metadata_json else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class TradeAnalysisModel(Base):
+    """
+    AI Trade Analysis - stores AI-generated trade reviews.
+    
+    Provides post-trade analysis with grades, lessons, and market context impact.
+    """
+    __tablename__ = "trade_analyses"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    position_id = Column(String(36), nullable=False, index=True)
+    strategy = Column(String(10), nullable=False)  # 'NAC' or 'WARRIOR'
+    symbol = Column(String(10), nullable=False)
+    
+    # Grades
+    entry_grade = Column(String(2), nullable=True)
+    exit_grade = Column(String(2), nullable=True)
+    management_grade = Column(String(2), nullable=True)
+    overall_grade = Column(String(2), nullable=True)
+    
+    # Analysis content (JSON)
+    analysis_json = Column(Text, nullable=False)  # Full analysis result
+    
+    # Metadata
+    event_count = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    def to_dict(self):
+        """Convert to dictionary."""
+        import json
+        analysis = json.loads(self.analysis_json) if self.analysis_json else {}
+        return {
+            "id": self.id,
+            "position_id": self.position_id,
+            "strategy": self.strategy,
+            "symbol": self.symbol,
+            "grades": {
+                "entry": self.entry_grade,
+                "exit": self.exit_grade,
+                "management": self.management_grade,
+                "overall": self.overall_grade,
+            },
+            "summary": analysis.get("summary", ""),
+            "what_went_well": analysis.get("what_went_well", []),
+            "lessons_learned": analysis.get("lessons_learned", []),
+            "market_conditions": analysis.get("market_conditions", ""),
+            "event_count": self.event_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

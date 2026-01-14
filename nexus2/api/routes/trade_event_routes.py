@@ -58,3 +58,32 @@ async def get_symbol_events(
         "count": len(symbol_events),
         "events": symbol_events,
     }
+
+
+# =============================================================================
+# AI TRADE ANALYSIS
+# =============================================================================
+
+@router.post("/analyze/{position_id}")
+async def analyze_trade(position_id: str):
+    """
+    Analyze a completed trade using AI.
+    
+    Returns grades, summary, lessons learned, and market context impact.
+    Uses strategy-specific prompts (Warrior or NAC methodology).
+    """
+    from nexus2.domain.automation.trade_analysis_service import get_trade_analysis_service
+    
+    service = get_trade_analysis_service()
+    analysis = service.analyze_trade(position_id)
+    
+    if not analysis:
+        return {
+            "success": False,
+            "error": f"No events found for position {position_id} or analysis failed",
+        }
+    
+    return {
+        "success": True,
+        "analysis": analysis.to_dict(),
+    }
