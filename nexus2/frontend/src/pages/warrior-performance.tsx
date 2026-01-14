@@ -38,6 +38,17 @@ interface TradeHistoryResponse {
     summary: TradeSummary
 }
 
+interface TradeEvent {
+    id: number
+    timestamp: string
+    event_type: string
+    old_value: string | null
+    new_value: string | null
+    reason: string | null
+    symbol: string
+    position_id: string
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
@@ -67,6 +78,17 @@ const formatTime = (iso: string | null) => {
     })
 }
 
+const formatEventTime = (iso: string | null) => {
+    if (!iso) return '-'
+    const utcIso = iso.endsWith('Z') ? iso : iso + 'Z'
+    return new Date(utcIso).toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
+}
+
 const getPSMBadge = (status: string) => {
     const badges: Record<string, { emoji: string, color: string, label: string }> = {
         'open': { emoji: '🟢', color: '#28a745', label: 'OPEN' },
@@ -92,6 +114,102 @@ const getPSMBadge = (status: string) => {
     )
 }
 
+const getEventIcon = (eventType: string) => {
+    const icons: Record<string, string> = {
+        'ENTRY': '🚀',
+        'EXIT': '🏁',
+        'PARTIAL_EXIT': '📤',
+        'STOP_MOVED': '🎯',
+        'BREAKEVEN': '⚖️',
+        'SCALE_IN': '➕',
+    }
+    return icons[eventType] || '📝'
+}
+
+// =============================================================================
+// Trade Events Component
+// =============================================================================
+
+function TradeEventsTimeline({ tradeId }: { tradeId: string }) {
+    const [events, setEvents] = useState<TradeEvent[]>([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                const res = await fetch(`/trade-events/position/${tradeId}?strategy=WARRIOR`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setEvents(data.events || [])
+                }
+            } catch (err) {
+                console.error('Error fetching events:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchEvents()
+    }, [tradeId])
+
+    if (loading) {
+        return <div style={{ padding: '1rem', color: '#888', fontSize: '0.85rem' }}>Loading events...</div>
+    }
+
+    if (events.length === 0) {
+        return <div style={{ padding: '1rem', color: '#666', fontSize: '0.85rem', fontStyle: 'italic' }}>No events recorded</div>
+    }
+
+    return (
+        <div style={{
+            padding: '1rem',
+            background: 'rgba(0,0,0,0.3)',
+            borderTop: '1px solid rgba(255,255,255,0.1)'
+        }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.75rem', color: '#9ca3af' }}>
+                📋 Trade Management Log
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {events.map((event, idx) => (
+                    <div key={event.id || idx} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                        padding: '0.5rem',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem'
+                    }}>
+                        <span style={{ fontSize: '1rem' }}>{getEventIcon(event.event_type)}</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: '#e0e0e0' }}>
+                                {event.event_type.replace('_', ' ')}
+                            </div>
+                            {event.old_value && event.new_value && (
+                                <div style={{ color: '#888', fontSize: '0.75rem' }}>
+                                    {event.old_value} → {event.new_value}
+                                </div>
+                            )}
+                            {event.new_value && !event.old_value && (
+                                <div style={{ color: '#888', fontSize: '0.75rem' }}>
+                                    {event.new_value}
+                                </div>
+                            )}
+                            {event.reason && (
+                                <div style={{ color: '#6b7280', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                    {event.reason}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                            {formatEventTime(event.timestamp)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 // =============================================================================
 // Main Component
 // =============================================================================
@@ -101,6 +219,7 @@ export default function WarriorPerformance() {
     const [summary, setSummary] = useState<TradeSummary | null>(null)
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<string>('all')
+    const [symbolFilter, setSymbolFilter] = useState<string>('')
     const [expandedTrade, setExpandedTrade] = useState<string | null>(null)
 
     const API_BASE = ''
@@ -127,14 +246,18 @@ export default function WarriorPerformance() {
         return () => clearInterval(interval)
     }, [fetchTrades])
 
+    // Get unique symbols for filter dropdown
+    const uniqueSymbols = [...new Set(trades.map(t => t.symbol))].sort()
+
     // Active positions (non-closed)
     const activePositions = trades.filter(t =>
         t.status !== 'closed' && t.status !== 'rejected'
     )
 
-    // Closed trades for history
+    // Closed trades for history (with symbol filter)
     const closedTrades = trades.filter(t =>
-        t.status === 'closed' || t.status === 'rejected'
+        (t.status === 'closed' || t.status === 'rejected') &&
+        (!symbolFilter || t.symbol === symbolFilter)
     )
 
     return (
@@ -238,7 +361,13 @@ export default function WarriorPerformance() {
                                             </thead>
                                             <tbody>
                                                 {activePositions.map(trade => (
-                                                    <tr key={trade.id}>
+                                                    <tr
+                                                        key={trade.id}
+                                                        onClick={() => setExpandedTrade(
+                                                            expandedTrade === trade.id ? null : trade.id
+                                                        )}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
                                                         <td className={styles.symbol}>{trade.symbol}</td>
                                                         <td>{getPSMBadge(trade.status)}</td>
                                                         <td>{formatCurrency(trade.entry_price)}</td>
@@ -255,6 +384,10 @@ export default function WarriorPerformance() {
                                             </tbody>
                                         </table>
                                     </div>
+                                    {/* Expanded Events for Active Positions */}
+                                    {expandedTrade && activePositions.some(t => t.id === expandedTrade) && (
+                                        <TradeEventsTimeline tradeId={expandedTrade} />
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -264,6 +397,19 @@ export default function WarriorPerformance() {
                             <div className={styles.cardHeader}>
                                 <h2>📜 Trade History</h2>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {/* Symbol Filter */}
+                                    <select
+                                        value={symbolFilter}
+                                        onChange={(e) => setSymbolFilter(e.target.value)}
+                                        className={styles.selectInput}
+                                        style={{ minWidth: '100px' }}
+                                    >
+                                        <option value="">All Symbols</option>
+                                        {uniqueSymbols.map(sym => (
+                                            <option key={sym} value={sym}>{sym}</option>
+                                        ))}
+                                    </select>
+                                    {/* Status Filter */}
                                     <select
                                         value={filter}
                                         onChange={(e) => setFilter(e.target.value)}
@@ -279,13 +425,14 @@ export default function WarriorPerformance() {
                             <div className={styles.cardBody}>
                                 {closedTrades.length === 0 ? (
                                     <div className={styles.emptyMessage}>
-                                        No trade history yet
+                                        {symbolFilter ? `No trades for ${symbolFilter}` : 'No trade history yet'}
                                     </div>
                                 ) : (
                                     <div className={styles.positionsTable}>
                                         <table>
                                             <thead>
                                                 <tr>
+                                                    <th></th>
                                                     <th>Symbol</th>
                                                     <th>Status</th>
                                                     <th>Entry</th>
@@ -306,28 +453,44 @@ export default function WarriorPerformance() {
                                                         const mins = Math.round((end.getTime() - start.getTime()) / 60000)
                                                         duration = mins < 60 ? `${mins}m` : `${Math.round(mins / 60)}h`
                                                     }
+                                                    const isExpanded = expandedTrade === trade.id
 
                                                     return (
-                                                        <tr
-                                                            key={trade.id}
-                                                            onClick={() => setExpandedTrade(
-                                                                expandedTrade === trade.id ? null : trade.id
+                                                        <>
+                                                            <tr
+                                                                key={trade.id}
+                                                                onClick={() => setExpandedTrade(
+                                                                    isExpanded ? null : trade.id
+                                                                )}
+                                                                style={{
+                                                                    cursor: 'pointer',
+                                                                    background: isExpanded ? 'rgba(99, 102, 241, 0.1)' : undefined
+                                                                }}
+                                                            >
+                                                                <td style={{ width: '30px', color: '#666' }}>
+                                                                    {isExpanded ? '▼' : '▶'}
+                                                                </td>
+                                                                <td className={styles.symbol}>{trade.symbol}</td>
+                                                                <td>{getPSMBadge(trade.status)}</td>
+                                                                <td>{formatCurrency(trade.entry_price)}</td>
+                                                                <td>{trade.exit_price ? formatCurrency(trade.exit_price) : '-'}</td>
+                                                                <td>{trade.quantity}</td>
+                                                                <td className={pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}>
+                                                                    {formatPnL(pnl)}
+                                                                </td>
+                                                                <td style={{ color: '#888', fontSize: '0.8rem' }}>
+                                                                    {trade.exit_reason || '-'}
+                                                                </td>
+                                                                <td style={{ color: '#888' }}>{duration}</td>
+                                                            </tr>
+                                                            {isExpanded && (
+                                                                <tr key={`${trade.id}-events`}>
+                                                                    <td colSpan={9} style={{ padding: 0 }}>
+                                                                        <TradeEventsTimeline tradeId={trade.id} />
+                                                                    </td>
+                                                                </tr>
                                                             )}
-                                                            style={{ cursor: 'pointer' }}
-                                                        >
-                                                            <td className={styles.symbol}>{trade.symbol}</td>
-                                                            <td>{getPSMBadge(trade.status)}</td>
-                                                            <td>{formatCurrency(trade.entry_price)}</td>
-                                                            <td>{trade.exit_price ? formatCurrency(trade.exit_price) : '-'}</td>
-                                                            <td>{trade.quantity}</td>
-                                                            <td className={pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}>
-                                                                {formatPnL(pnl)}
-                                                            </td>
-                                                            <td style={{ color: '#888', fontSize: '0.8rem' }}>
-                                                                {trade.exit_reason || '-'}
-                                                            </td>
-                                                            <td style={{ color: '#888' }}>{duration}</td>
-                                                        </tr>
+                                                        </>
                                                     )
                                                 })}
                                             </tbody>
