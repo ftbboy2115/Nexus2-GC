@@ -141,6 +141,7 @@ class WarriorPosition:
     # Scaling In
     scale_count: int = 0  # Number of adds taken
     original_shares: int = 0  # Initial position size (for calculating add size)
+    last_scale_attempt: Optional[datetime] = None  # Track last scale attempt for cooldown
     
     # Intraday candle tracking (for pattern exits)
     last_candle_low: Decimal = Decimal("0")
@@ -1154,6 +1155,14 @@ class WarriorMonitor:
             logger.debug(f"[Warrior Scale] {symbol}: Skipping - price too close to stop ({stop_buffer_pct:.1f}% buffer)")
             return None
         
+        # SAFETY: Skip scaling if we recently attempted (60-second cooldown to prevent spam)
+        if position.last_scale_attempt:
+            cooldown_seconds = 60
+            elapsed = (datetime.now() - position.last_scale_attempt).total_seconds()
+            if elapsed < cooldown_seconds:
+                logger.debug(f"[Warrior Scale] {symbol}: Skipping - cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
+                return None
+        
         # Price must be above support (not breaking down)
         if current_price < support:
             return None
@@ -1214,6 +1223,9 @@ class WarriorMonitor:
                 f"[Warrior Scale] {symbol}: Submitting scale order - "
                 f"{add_shares} shares @ limit ${limit_price}"
             )
+            
+            # Mark attempt timestamp (for cooldown on retry)
+            position.last_scale_attempt = datetime.now()
             
             order_result = await self._submit_scale_order(
                 symbol=symbol,
