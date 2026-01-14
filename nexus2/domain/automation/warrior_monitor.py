@@ -597,6 +597,14 @@ class WarriorMonitor:
             
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
+                    # Find the broker position data to get entry price (need this early for pending_exit check)
+                    broker_pos = None
+                    for pos in broker_positions:
+                        pos_symbol = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", None)
+                        if pos_symbol == symbol:
+                            broker_pos = pos
+                            break
+                    
                     # Skip if pending exit (prevents re-adding position we're trying to close)
                     # BUT: If broker has this position with a DIFFERENT entry price, the old
                     # exit likely completed and a new position was entered. Clear stale pending_exit.
@@ -604,10 +612,10 @@ class WarriorMonitor:
                         # Get current pending_exit trade's entry price from DB
                         from nexus2.db.warrior_db import get_warrior_trade_by_symbol
                         pending_trade = get_warrior_trade_by_symbol(symbol, status="pending_exit")
-                        broker_entry = Decimal(str(broker_pos.get("avg_price", 0) if isinstance(broker_pos, dict) else getattr(broker_pos, "avg_price", 0)))
+                        broker_entry = Decimal(str(broker_pos.get("avg_price", 0) if isinstance(broker_pos, dict) else getattr(broker_pos, "avg_price", 0))) if broker_pos else Decimal("0")
                         
                         if pending_trade and broker_entry > 0:
-                            db_entry = Decimal(str(pending_trade.entry_price))
+                            db_entry = Decimal(str(pending_trade.get("entry_price", 0)))
                             # If entry prices differ by more than 1%, this is a NEW position
                             price_diff_pct = abs((broker_entry - db_entry) / db_entry * 100) if db_entry > 0 else 100
                             if price_diff_pct > 1.0:
@@ -629,13 +637,6 @@ class WarriorMonitor:
                         secs_ago = (now - exit_time).total_seconds()
                         logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (exited {secs_ago:.0f}s ago)")
                         continue
-                    # Find the broker position data to get entry price
-                    broker_pos = None
-                    for pos in broker_positions:
-                        pos_symbol = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", None)
-                        if pos_symbol == symbol:
-                            broker_pos = pos
-                            break
                     
                     # Get entry price from broker or estimate from current
                     if isinstance(broker_pos, dict):
