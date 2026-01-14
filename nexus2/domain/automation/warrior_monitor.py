@@ -312,6 +312,7 @@ class WarriorMonitor:
         update_stop: Callable = None,
         get_broker_positions: Callable = None,
         record_symbol_fail: Callable = None,
+        submit_scale_order: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -334,6 +335,8 @@ class WarriorMonitor:
             self._get_broker_positions = get_broker_positions
         if record_symbol_fail is not None:
             self._record_symbol_fail = record_symbol_fail
+        if submit_scale_order is not None:
+            self._submit_scale_order = submit_scale_order
     
     # =========================================================================
     # POSITION MANAGEMENT

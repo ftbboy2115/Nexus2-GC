@@ -828,6 +828,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         get_price=sim_get_quote,
         execute_exit=sim_execute_exit,
         update_stop=sim_update_stop,
+        submit_scale_order=sim_submit_order,  # Reuse for scaling
     )
     
     return {
@@ -1512,6 +1513,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_quote_with_spread=broker_get_quote_with_spread,
         execute_exit=broker_execute_exit,
         get_intraday_candles=broker_get_intraday_bars,  # For technical stop calculation
+        submit_scale_order=broker_submit_order,  # Reuse for scaling
     )
     
     engine.set_callbacks(
