@@ -182,14 +182,14 @@ Last updated: 2026-01-13
   - [x] Active positions with PSM badges
   - [x] Trade history table with symbol, date, status filters
   - [x] Expandable rows with trade event timeline
-  - [ ] Schwab-style metrics: Total Proceeds, Cost Basis, Gain/Loss Ratio gauge
+  - [x] Schwab-style metrics: Total Proceeds, Cost Basis, Gain/Loss Ratio gauge (Jan 13)
 - [/] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
   - [x] Create SchwabAdapter with OAuth 2.0 token management (Jan 13)
   - [x] Add `/schwab/auth-url`, `/schwab/callback`, `/schwab/status` endpoints
+  - [x] Harden Monitor Price Checks: Schwab fallback for exit/stop price checks (Jan 13)
   - [ ] Seamless OAuth: Auto-refresh reminder (Discord/email alert before 7-day expiry)
   - [ ] Seamless OAuth: OAuth proxy via nginx HTTPS for direct VPS callback
   - [ ] Seamless OAuth: One-click weekly re-auth workflow
-  - [ ] Harden Monitor Price Checks: Schwab fallback for exit/stop price checks (if Alpaca unreliable)
 
 ---
 
