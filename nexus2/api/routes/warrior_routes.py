@@ -2049,3 +2049,47 @@ async def cancel_orders_for_symbol(symbol: str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cancel orders: {e}")
+
+
+# =============================================================================
+# TRADE HISTORY ENDPOINTS
+# =============================================================================
+
+@router.get("/trades", response_model=dict)
+async def get_trade_history(limit: int = 50, status: str = None):
+    """
+    Get Warrior trade history with summary statistics.
+    
+    Args:
+        limit: Maximum trades to return (default 50)
+        status: Filter by status ('open', 'closed', or None for all)
+    
+    Returns:
+        trades: List of trades
+        summary: Win rate, total P&L, trade counts
+    """
+    from nexus2.db.warrior_db import get_all_warrior_trades
+    
+    result = get_all_warrior_trades(limit=limit, status_filter=status)
+    return result
+
+
+@router.get("/trades/{trade_id}", response_model=dict)
+async def get_trade_detail(trade_id: str):
+    """
+    Get a single trade by ID.
+    
+    Args:
+        trade_id: Trade UUID
+    
+    Returns:
+        Trade details or 404
+    """
+    from nexus2.db.warrior_db import get_trade_by_id
+    
+    trade = get_trade_by_id(trade_id)
+    if not trade:
+        raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found")
+    
+    return {"trade": trade}
+

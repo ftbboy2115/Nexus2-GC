@@ -619,6 +619,9 @@ export default function Warrior() {
                         <span className={styles.subtitle}>Ross Cameron Strategy</span>
                     </div>
                     <div className={styles.headerRight}>
+                        <Link href="/warrior-performance" className={styles.refreshBtn} style={{ textDecoration: 'none' }}>
+                            📊 Performance
+                        </Link>
                         <span className={`${styles.badge} ${status?.config?.sim_only ? styles.badgeSim : styles.badgeLive}`}>
                             {status?.config?.sim_only ? '🧪 SIM' : '🔴 LIVE'}
                         </span>

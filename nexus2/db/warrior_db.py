@@ -277,3 +277,51 @@ def close_orphaned_trades(active_symbols: set):
     
     return closed
 
+
+def get_all_warrior_trades(limit: int = 50, status_filter: str = None):
+    """
+    Get all Warrior trades with summary statistics.
+    
+    Args:
+        limit: Maximum trades to return
+        status_filter: Optional status filter ('open', 'closed', or None for all)
+    
+    Returns:
+        Dict with trades list and summary stats
+    """
+    with get_warrior_session() as db:
+        query = db.query(WarriorTradeModel).order_by(WarriorTradeModel.entry_time.desc())
+        
+        if status_filter:
+            query = query.filter(WarriorTradeModel.status == status_filter)
+        
+        trades = query.limit(limit).all()
+        
+        # Calculate summary
+        all_trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.status == PositionStatus.CLOSED.value
+        ).all()
+        
+        total_trades = len(all_trades)
+        winning = sum(1 for t in all_trades if float(t.realized_pnl or 0) > 0)
+        losing = sum(1 for t in all_trades if float(t.realized_pnl or 0) < 0)
+        total_pnl = sum(float(t.realized_pnl or 0) for t in all_trades)
+        
+        return {
+            "trades": [t.to_dict() for t in trades],
+            "summary": {
+                "total_trades": total_trades,
+                "winning_trades": winning,
+                "losing_trades": losing,
+                "win_rate": winning / total_trades if total_trades > 0 else 0,
+                "total_pnl": round(total_pnl, 2),
+            }
+        }
+
+
+def get_trade_by_id(trade_id: str):
+    """Get a single trade by ID."""
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        return trade.to_dict() if trade else None
+
