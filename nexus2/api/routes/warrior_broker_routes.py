@@ -309,7 +309,7 @@ async def wire_warrior_callbacks(broker) -> dict:
     
     # Sync broker positions
     print("[Warrior] Syncing positions from Alpaca...")
-    await monitor.sync_broker_positions()
+    await monitor._sync_with_broker()
     
     return {
         "status": "enabled",
