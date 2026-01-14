@@ -442,15 +442,16 @@ export default function WarriorPerformance() {
 
                                             {/* Right: Gain/Loss Ratio Gauge */}
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
                                                     Gain/Loss Ratio
                                                 </div>
                                                 {/* Gauge */}
                                                 <div style={{
                                                     position: 'relative',
                                                     width: '100px',
-                                                    height: '55px',
-                                                    overflow: 'hidden'
+                                                    height: '50px',
+                                                    overflow: 'hidden',
+                                                    marginTop: '5px'
                                                 }}>
                                                     {/* Background arc */}
                                                     <div style={{
