@@ -281,6 +281,9 @@ async def wire_warrior_callbacks(broker) -> dict:
         check_pending_fill=check_pending_fill,
     )
     
+    # Wire scanner to broker for HTB/ETB lookups (Ross Cameron methodology)
+    engine.scanner.alpaca_broker = broker
+    
     # Wire monitor callbacks
     from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
     monitor = get_warrior_monitor()

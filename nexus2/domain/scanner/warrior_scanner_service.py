@@ -163,6 +163,11 @@ class WarriorCandidate:
     is_ideal_gap: bool = False  # > 5%
     is_former_runner: bool = False  # History of big moves (score boost)
     
+    # Borrow status (from Alpaca)
+    # Ross Cameron: "If it's easy to borrow with no news, it's probably going to just drop right back down"
+    hard_to_borrow: bool = False  # HTB = squeezable, shorts can't pile in
+    easy_to_borrow: bool = True  # ETB = default assumption if no data
+    
     # Technical context
     session_high: Decimal = Decimal("0")
     session_low: Decimal = Decimal("0")
@@ -224,7 +229,12 @@ class WarriorCandidate:
         if self.is_former_runner:
             score += 1  # History of big moves adds conviction
         
-        return min(score, 10)
+        # Hard-to-borrow bonus (1 point)
+        # HTB stocks have higher squeeze potential - shorts can't easily cover
+        if self.hard_to_borrow:
+            score += 1  # HTB = squeezability bonus
+        
+        return min(score, 11)  # Max now 11 with HTB bonus
 
 
 @dataclass
@@ -256,9 +266,11 @@ class WarriorScannerService:
         self,
         settings: Optional[WarriorScanSettings] = None,
         market_data: Optional[UnifiedMarketData] = None,
+        alpaca_broker=None,  # Optional: for HTB/ETB lookups
     ):
         self.settings = settings or WarriorScanSettings()
         self.market_data = market_data or UnifiedMarketData()
+        self.alpaca_broker = alpaca_broker  # Used for get_asset_info() HTB checks
     
     def scan(self, verbose: bool = False) -> WarriorScanResult:
         """
@@ -754,6 +766,20 @@ class WarriorScannerService:
         # Check former runner status for score boost (but NOT as catalyst bypass)
         is_former_runner = self._is_former_runner(symbol)
         
+        # Check HTB/ETB status from Alpaca (if broker available)
+        # Ross Cameron: "If it's easy to borrow with no news, it's probably going to just drop right back down"
+        hard_to_borrow = False
+        easy_to_borrow = True  # Default assumption
+        if self.alpaca_broker:
+            try:
+                asset_info = self.alpaca_broker.get_asset_info(symbol)
+                hard_to_borrow = asset_info.get("hard_to_borrow", False)
+                easy_to_borrow = asset_info.get("easy_to_borrow", True)
+                if hard_to_borrow:
+                    scan_logger.info(f"HTB BONUS | {symbol} is Hard-to-Borrow (+1 score)")
+            except Exception as e:
+                scan_logger.debug(f"Could not get HTB status for {symbol}: {e}")
+        
         candidate = WarriorCandidate(
             symbol=symbol,
             name=name,
@@ -767,6 +793,8 @@ class WarriorScannerService:
             is_ideal_rvol=is_ideal_rvol,
             is_ideal_gap=is_ideal_gap,
             is_former_runner=is_former_runner,
+            hard_to_borrow=hard_to_borrow,
+            easy_to_borrow=easy_to_borrow,
             session_high=Decimal(str(session_high)),
             session_low=Decimal(str(session_low)),
             session_volume=session_volume,
@@ -777,7 +805,8 @@ class WarriorScannerService:
         )
         
         if verbose:
-            print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score})")
+            htb_note = " [HTB]" if hard_to_borrow else ""
+            print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score}){htb_note}")
         
         return candidate
     

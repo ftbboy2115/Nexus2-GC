@@ -416,6 +416,55 @@ class AlpacaBroker:
         
         return Decimal(str(data.get("equity", 0)))
     
+    def get_asset_info(self, symbol: str) -> dict:
+        """Get asset information including shortable and easy_to_borrow status.
+        
+        Used by Warrior scanner to detect Hard-to-Borrow (HTB) stocks.
+        Ross Cameron notes: "If it's easy to borrow with no news, 
+        it's probably going to just drop right back down."
+        
+        Args:
+            symbol: Stock symbol to look up
+            
+        Returns:
+            Dict with:
+            - symbol: The symbol
+            - tradable: Whether the asset can be traded
+            - shortable: Whether the asset can be shorted
+            - easy_to_borrow: Whether shares are readily available to borrow
+            - hard_to_borrow: Convenience flag (shortable but not easy_to_borrow)
+        """
+        try:
+            data = self._cached_request(f"assets/{symbol}", ttl=60.0)  # Cache for 1 minute
+            if not data:
+                return {
+                    "symbol": symbol,
+                    "tradable": False,
+                    "shortable": False,
+                    "easy_to_borrow": False,
+                    "hard_to_borrow": False,
+                }
+            
+            shortable = data.get("shortable", False)
+            easy_to_borrow = data.get("easy_to_borrow", False)
+            
+            return {
+                "symbol": symbol,
+                "tradable": data.get("tradable", False),
+                "shortable": shortable,
+                "easy_to_borrow": easy_to_borrow,
+                "hard_to_borrow": shortable and not easy_to_borrow,  # HTB = shortable but not ETB
+            }
+        except Exception as e:
+            print(f"[Alpaca] Failed to get asset info for {symbol}: {e}")
+            return {
+                "symbol": symbol,
+                "tradable": False,
+                "shortable": False,
+                "easy_to_borrow": False,
+                "hard_to_borrow": False,
+            }
+    
     def get_account_daily_pnl(self) -> dict:
         """Get account-level daily P&L from Alpaca (cached for 5s).
         
