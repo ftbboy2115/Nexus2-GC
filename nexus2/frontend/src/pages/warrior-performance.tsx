@@ -403,11 +403,11 @@ export default function WarriorPerformance() {
                                                 <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
                                                     Reporting Period
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.25rem' }}>
                                                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Cost Basis</span>
                                                     <span style={{ color: '#e0e0e0', fontWeight: 500 }}>{formatCurrency(filteredStats.costBasis)}</span>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                <div style={{ display: 'flex', gap: '1.5rem' }}>
                                                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Proceeds</span>
                                                     <span style={{ color: '#e0e0e0', fontWeight: 500 }}>{formatCurrency(filteredStats.proceeds)}</span>
                                                 </div>
@@ -418,15 +418,15 @@ export default function WarriorPerformance() {
                                                 <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
                                                     Gain/Loss
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.25rem' }}>
                                                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Total Gains</span>
                                                     <span style={{ color: '#28a745', fontWeight: 500 }}>+{formatCurrency(filteredStats.totalGains)}</span>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                                                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.25rem' }}>
                                                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Total Losses</span>
                                                     <span style={{ color: '#dc3545', fontWeight: 500 }}>-{formatCurrency(filteredStats.totalLosses)}</span>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                                <div style={{ display: 'flex', gap: '1.5rem', paddingTop: '0.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                                                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Net Gain</span>
                                                     <span style={{
                                                         color: filteredStats.totalPnl >= 0 ? '#28a745' : '#dc3545',
