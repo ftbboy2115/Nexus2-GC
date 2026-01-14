@@ -387,6 +387,9 @@ class TradeEventService:
             reason=reason,
         )
     
+    # Alias for log_warrior_stop_moved (used by scaling logic)
+    log_warrior_stop_update = log_warrior_stop_moved
+    
     def log_warrior_breakeven(
         self,
         position_id: str,
