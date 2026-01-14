@@ -57,6 +57,13 @@ class WarriorMonitorSettingsRequest(BaseModel):
     profit_target_r: Optional[float] = Field(None, description="Profit target R multiple (default 2.0)")
     profit_target_cents: Optional[float] = Field(None, description="Fixed cents target (0 = use R-based)")
     partial_exit_fraction: Optional[float] = Field(None, description="Partial exit % (default 0.5)")
+    # Scaling settings (Ross Cameron methodology)
+    enable_scaling: Optional[bool] = Field(None, description="Enable scaling into winners")
+    max_scale_count: Optional[int] = Field(None, description="Max adds (1-5)")
+    scale_size_pct: Optional[int] = Field(None, description="Add size as % of original")
+    min_rvol_for_scale: Optional[float] = Field(None, description="Min RVOL for scaling")
+    allow_scale_below_entry: Optional[bool] = Field(None, description="Allow scaling below entry")
+    move_stop_to_breakeven_after_scale: Optional[bool] = Field(None, description="Move stop to breakeven after add")
 
 
 class WarriorEngineConfigRequest(BaseModel):
@@ -70,6 +77,16 @@ class WarriorEngineConfigRequest(BaseModel):
     pmh_enabled: Optional[bool] = Field(None, description="Enable PMH breakouts")
     max_shares_per_trade: Optional[int] = Field(None, ge=1, description="Max shares per trade (for testing)")
     max_value_per_trade: Optional[float] = Field(None, gt=0, description="Max $ value per trade (for testing)")
+
+
+class ScalingSettingsRequest(BaseModel):
+    """Request to update scaling settings (Ross Cameron methodology)."""
+    enable_scaling: Optional[bool] = Field(None, description="Enable scaling into winners")
+    max_scale_count: Optional[int] = Field(None, ge=1, le=5, description="Max adds (1-5)")
+    scale_size_pct: Optional[int] = Field(None, ge=10, le=200, description="Add size as % of original (10-200)")
+    min_rvol_for_scale: Optional[float] = Field(None, ge=1.0, le=10.0, description="Min RVOL for scaling (1-10)")
+    allow_scale_below_entry: Optional[bool] = Field(None, description="Allow scaling on pullback below entry")
+    move_stop_to_breakeven_after_scale: Optional[bool] = Field(None, description="Move stop to breakeven after add")
 
 
 class WarriorCandidateResponse(BaseModel):
@@ -473,6 +490,13 @@ async def get_warrior_monitor_settings():
         "enable_topping_tail": s.enable_topping_tail,
         "topping_tail_threshold": s.topping_tail_threshold,
         "check_interval_seconds": s.check_interval_seconds,
+        # Scaling settings (Ross Cameron methodology)
+        "enable_scaling": s.enable_scaling,
+        "max_scale_count": s.max_scale_count,
+        "scale_size_pct": s.scale_size_pct,
+        "min_rvol_for_scale": s.min_rvol_for_scale,
+        "allow_scale_below_entry": s.allow_scale_below_entry,
+        "move_stop_to_breakeven_after_scale": s.move_stop_to_breakeven_after_scale,
     }
 
 
@@ -487,6 +511,20 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
         engine.monitor.settings.profit_target_r = request.profit_target_r
     if request.partial_exit_fraction is not None:
         engine.monitor.settings.partial_exit_fraction = request.partial_exit_fraction
+    
+    # Scaling settings (Ross Cameron methodology)
+    if hasattr(request, 'enable_scaling') and request.enable_scaling is not None:
+        engine.monitor.settings.enable_scaling = request.enable_scaling
+    if hasattr(request, 'max_scale_count') and request.max_scale_count is not None:
+        engine.monitor.settings.max_scale_count = request.max_scale_count
+    if hasattr(request, 'scale_size_pct') and request.scale_size_pct is not None:
+        engine.monitor.settings.scale_size_pct = request.scale_size_pct
+    if hasattr(request, 'min_rvol_for_scale') and request.min_rvol_for_scale is not None:
+        engine.monitor.settings.min_rvol_for_scale = request.min_rvol_for_scale
+    if hasattr(request, 'allow_scale_below_entry') and request.allow_scale_below_entry is not None:
+        engine.monitor.settings.allow_scale_below_entry = request.allow_scale_below_entry
+    if hasattr(request, 'move_stop_to_breakeven_after_scale') and request.move_stop_to_breakeven_after_scale is not None:
+        engine.monitor.settings.move_stop_to_breakeven_after_scale = request.move_stop_to_breakeven_after_scale
     
     return {"status": "updated", "settings": await get_warrior_monitor_settings()}
 
