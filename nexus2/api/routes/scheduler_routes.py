@@ -135,12 +135,25 @@ async def start_scheduler(
                     for p in positions:
                         if p.symbol not in broker_symbols and p.remaining_shares > 0:
                             # Position closed at broker (stop hit or manual) - close locally
-                            # Preserve metadata by only updating status, not overwriting other fields
-                            logger.info(f"[Monitor] Syncing closed position: {p.symbol} (no longer at broker)")
+                            # Calculate P&L: need exit price from broker history or use last known
+                            try:
+                                from decimal import Decimal
+                                entry_price = Decimal(str(p.entry_price)) if p.entry_price else Decimal("0")
+                                exit_price = Decimal(str(p.exit_price)) if getattr(p, 'exit_price', None) else entry_price
+                                shares = int(p.remaining_shares)
+                                pnl = (exit_price - entry_price) * shares
+                                existing_pnl = Decimal(str(p.realized_pnl or "0"))
+                                total_pnl = existing_pnl + pnl
+                                logger.info(f"[Monitor] Syncing closed position: {p.symbol} (no longer at broker), P&L: ${pnl:.2f}")
+                            except Exception as pnl_err:
+                                logger.warning(f"[Monitor] P&L calculation failed for {p.symbol}: {pnl_err}")
+                                total_pnl = Decimal("0")
+                            
                             position_repo.update(p.id, {
                                 "status": "closed",
                                 "remaining_shares": 0,
                                 "closed_at": datetime.utcnow(),
+                                "realized_pnl": str(total_pnl),
                             })
                             # Add to recent exits for potential re-entry
                             from nexus2.api.routes.automation_state import add_recent_exit
@@ -264,12 +277,28 @@ async def start_scheduler(
                         positions = position_repo.get_open()
                         for pos in positions:
                             if pos.symbol == signal.symbol:
-                                exit_price = str(result.avg_fill_price) if result.avg_fill_price else None
+                                exit_price_str = str(result.avg_fill_price) if result.avg_fill_price else None
                                 remaining = pos.remaining_shares - signal.shares_to_exit
+                                
+                                # Calculate P&L for this exit
+                                try:
+                                    from decimal import Decimal
+                                    entry_price = Decimal(str(pos.entry_price)) if pos.entry_price else Decimal("0")
+                                    exit_price = Decimal(str(result.avg_fill_price)) if result.avg_fill_price else entry_price
+                                    shares_exited = int(signal.shares_to_exit)
+                                    pnl = (exit_price - entry_price) * shares_exited
+                                    existing_pnl = Decimal(str(pos.realized_pnl or "0"))
+                                    total_pnl = existing_pnl + pnl
+                                    logger.info(f"[Monitor] {signal.symbol}: P&L ${pnl:.2f} (total: ${total_pnl:.2f})")
+                                except Exception as pnl_err:
+                                    logger.warning(f"[Monitor] P&L calculation failed for {signal.symbol}: {pnl_err}")
+                                    total_pnl = Decimal("0")
+                                
                                 updates = {
                                     "remaining_shares": max(0, remaining),
-                                    "exit_price": exit_price,
+                                    "exit_price": exit_price_str,
                                     "exit_date": datetime.utcnow(),
+                                    "realized_pnl": str(total_pnl),
                                 }
                                 # If fully closed, update status
                                 if remaining <= 0:
