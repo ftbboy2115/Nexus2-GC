@@ -136,3 +136,17 @@ def _run_migrations():
                 print("[DB] Migration: Added sim_mode column to scheduler_settings")
             except Exception:
                 pass
+        
+        # Migration 5: Add scheduler_running column to scheduler_settings if missing
+        try:
+            conn.execute(text("SELECT scheduler_running FROM scheduler_settings LIMIT 1"))
+        except Exception:
+            try:
+                conn.execute(text(
+                    "ALTER TABLE scheduler_settings ADD COLUMN scheduler_running VARCHAR(5) DEFAULT 'false'"
+                ))
+                conn.commit()
+                print("[DB] Migration: Added scheduler_running column to scheduler_settings")
+            except Exception:
+                pass
+

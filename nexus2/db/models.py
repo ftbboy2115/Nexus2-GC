@@ -269,6 +269,9 @@ class SchedulerSettingsModel(Base):
     # Discord notification settings
     discord_alerts_enabled = Column(String(5), default="true")  # "true" or "false"
     
+    # State-based auto-recovery: track if scheduler was running before restart
+    scheduler_running = Column(String(5), default="false")  # "true" or "false"
+    
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
@@ -294,6 +297,7 @@ class SchedulerSettingsModel(Base):
             "min_price": float(self.min_price) if self.min_price else 5.0,
             "min_rvol": float(self.min_rvol) if self.min_rvol else 1.5,
             "discord_alerts_enabled": self.discord_alerts_enabled == "true",
+            "scheduler_running": self.scheduler_running == "true",
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 

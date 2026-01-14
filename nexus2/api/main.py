@@ -174,6 +174,38 @@ async def lifespan(app: FastAPI):
     start_auto_start_checker()
     print("[Startup] Auto-start checker running")
     
+    # Auto-resume NAC scheduler if it was running before restart
+    from nexus2.db.database import get_session
+    from nexus2.db import SchedulerSettingsRepository
+    try:
+        with get_session() as db:
+            settings = SchedulerSettingsRepository(db).get()
+            if settings and settings.scheduler_running == "true":
+                print("[Startup] NAC scheduler was running before restart - auto-resuming...")
+                # Import and trigger scheduler start
+                from nexus2.api.routes.scheduler_routes import start_scheduler
+                from nexus2.api.routes.automation_state import get_engine
+                
+                # Create a mock request with app state
+                from unittest.mock import MagicMock
+                mock_request = MagicMock()
+                mock_request.app = app
+                
+                # Start in background task to not block startup
+                import asyncio
+                async def resume_scheduler():
+                    try:
+                        result = await start_scheduler(mock_request, engine=get_engine())
+                        print(f"[Startup] NAC scheduler auto-resumed: {result.get('message', 'OK')}")
+                    except Exception as e:
+                        print(f"[Startup] NAC scheduler auto-resume failed: {e}")
+                
+                asyncio.create_task(resume_scheduler())
+            else:
+                print("[Startup] NAC scheduler was not running - skipping auto-resume")
+    except Exception as e:
+        print(f"[Startup] NAC auto-resume check failed: {e}")
+    
     yield
     
     # Shutdown - cleanup

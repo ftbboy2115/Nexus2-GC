@@ -325,6 +325,13 @@ async def start_scheduler(
     await _monitor.start()
     logger.info("[Scheduler] PositionMonitor started with KK-style partials")
     
+    # Persist running state for auto-recovery on restart
+    from nexus2.db import SchedulerSettingsRepository
+    with get_session() as db:
+        settings_repo = SchedulerSettingsRepository(db)
+        settings_repo.update({"scheduler_running": "true"})
+        logger.info("[Scheduler] State persisted: scheduler_running=true")
+    
     return {
         **result,
         "message": f"Scheduler running every {req.interval_minutes} min with auto MA check at 3:45 PM",
@@ -351,6 +358,13 @@ async def stop_scheduler(
     if monitor._running:
         await monitor.stop()
         logger.info("[Scheduler] PositionMonitor stopped")
+    
+    # Persist stopped state for auto-recovery on restart
+    from nexus2.db import SchedulerSettingsRepository
+    with get_session() as db:
+        settings_repo = SchedulerSettingsRepository(db)
+        settings_repo.update({"scheduler_running": "false"})
+        logger.info("[Scheduler] State persisted: scheduler_running=false")
     
     return {**result, "engine_stopped": True, "monitor_stopped": True}
 
