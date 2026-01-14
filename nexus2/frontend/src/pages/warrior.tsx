@@ -1512,11 +1512,7 @@ export default function Warrior() {
                                                 {tradeEvents.map((event: any, idx: number) => (
                                                     <tr key={event.id || idx}>
                                                         <td style={{ whiteSpace: 'nowrap' }}>
-                                                            {event.created_at ? new Date(event.created_at).toLocaleTimeString('en-US', {
-                                                                timeZone: 'America/New_York',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            }) + ' ET' : '--'}
+                                                            {formatTime(event.created_at)}
                                                         </td>
                                                         <td><strong>{event.symbol}</strong></td>
                                                         <td>

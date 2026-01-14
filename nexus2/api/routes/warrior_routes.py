@@ -1519,17 +1519,39 @@ async def wire_warrior_callbacks(broker) -> dict:
             )
             print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
             
+            # Poll for actual fill price (up to 2 seconds)
+            actual_fill_price = None
+            order_id = str(order.id) if hasattr(order, 'id') else None
+            if order_id:
+                import asyncio
+                for _ in range(4):  # 4 attempts, 500ms each = 2 seconds max
+                    await asyncio.sleep(0.5)
+                    try:
+                        filled_order = alpaca.get_order(order_id)
+                        if hasattr(filled_order, 'filled_avg_price') and filled_order.filled_avg_price:
+                            actual_fill_price = float(filled_order.filled_avg_price)
+                            print(f"[Warrior] {symbol} filled @ ${actual_fill_price:.2f}")
+                            break
+                        if hasattr(filled_order, 'status') and filled_order.status in ('filled', 'partially_filled'):
+                            if filled_order.filled_avg_price:
+                                actual_fill_price = float(filled_order.filled_avg_price)
+                                print(f"[Warrior] {symbol} filled @ ${actual_fill_price:.2f}")
+                                break
+                    except Exception as poll_err:
+                        print(f"[Warrior] Poll error: {poll_err}")
+                        break
+            
+            # Use actual fill price if available, else fall back to limit price
+            exit_price = actual_fill_price if actual_fill_price else float(limit_price)
+            
             try:
                 from nexus2.db.warrior_db import log_warrior_exit
-                # Use current_price (market price at exit) not signal.exit_price (price when signal triggered)
-                # The limit order fills at or better than limit_price, so current_price is close to actual fill
-                exit_price = float(current_price)
                 log_warrior_exit(position_id, exit_price, reason, shares)
             except Exception as e:
                 print(f"[Warrior] Exit DB log failed: {e}")
             
             # Return dict with actual exit price so monitor can log accurate P&L
-            return {"order": order, "actual_exit_price": float(current_price)}
+            return {"order": order, "actual_exit_price": exit_price}
         except Exception as e:
             print(f"[Warrior] Exit order failed: {e}")
             return None
