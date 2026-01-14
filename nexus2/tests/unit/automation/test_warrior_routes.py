@@ -9,10 +9,10 @@ class TestCancelOrdersEndpoint:
     """Test the DELETE /warrior/orders/{symbol} endpoint logic."""
     
     def test_cancel_endpoint_exists(self):
-        """Test cancel orders function exists in warrior_routes."""
-        from nexus2.api.routes import warrior_routes
-        assert hasattr(warrior_routes, 'cancel_orders_for_symbol')
-        assert callable(warrior_routes.cancel_orders_for_symbol)
+        """Test cancel orders function exists in warrior_broker_routes."""
+        from nexus2.api.routes import warrior_broker_routes
+        assert hasattr(warrior_broker_routes, 'cancel_orders_for_symbol')
+        assert callable(warrior_broker_routes.cancel_orders_for_symbol)
     
     def test_alpaca_broker_has_cancel_method(self):
         """Test AlpacaBroker has cancel_order method."""
