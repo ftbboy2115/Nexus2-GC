@@ -1141,6 +1141,19 @@ class WarriorMonitor:
         if not support or support <= 0:
             return None
         
+        # SAFETY: Skip scaling if position is pending exit (prevents wash trade errors)
+        symbol = position.symbol
+        if self._is_pending_exit(symbol):
+            logger.debug(f"[Warrior Scale] {symbol}: Skipping - pending exit in progress")
+            return None
+        
+        # SAFETY: Skip scaling if price is too close to stop (< 1% buffer)
+        # This prevents submitting buy orders right before stop is hit
+        stop_buffer_pct = (current_price - support) / current_price * 100 if current_price > 0 else 0
+        if stop_buffer_pct < 1.0:
+            logger.debug(f"[Warrior Scale] {symbol}: Skipping - price too close to stop ({stop_buffer_pct:.1f}% buffer)")
+            return None
+        
         # Price must be above support (not breaking down)
         if current_price < support:
             return None
