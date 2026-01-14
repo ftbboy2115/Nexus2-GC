@@ -184,6 +184,7 @@ class WarriorMonitor:
         self._get_broker_positions: Optional[Callable] = None  # For Alpaca sync
         self._record_symbol_fail: Optional[Callable] = None  # 2-strike rule callback
         self._submit_scale_order: Optional[Callable] = None  # Scaling order callback
+        self._get_order_status: Optional[Callable] = None  # For exit order confirmation
         
         # Sync tracking
         self._sync_counter = 0
@@ -313,6 +314,7 @@ class WarriorMonitor:
         get_broker_positions: Callable = None,
         record_symbol_fail: Callable = None,
         submit_scale_order: Callable = None,
+        get_order_status: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -337,6 +339,8 @@ class WarriorMonitor:
             self._record_symbol_fail = record_symbol_fail
         if submit_scale_order is not None:
             self._submit_scale_order = submit_scale_order
+        if get_order_status is not None:
+            self._get_order_status = get_order_status
     
     # =========================================================================
     # POSITION MANAGEMENT
@@ -617,7 +621,27 @@ class WarriorMonitor:
                         
                         if pending_trade and broker_entry > 0:
                             db_entry = Decimal(str(pending_trade.get("entry_price", 0)))
-                            # If entry prices differ by more than 1%, this is a NEW position
+                            
+                            # First: Try to confirm by order ID if available
+                            exit_order_id = pending_trade.get("exit_order_id")
+                            if exit_order_id and self._get_order_status:
+                                try:
+                                    order_status = await self._get_order_status(exit_order_id)
+                                    if order_status:
+                                        status = order_status.status.value if hasattr(order_status.status, 'value') else str(order_status.status)
+                                        if status == "filled":
+                                            logger.info(f"[Warrior Sync] {symbol}: Exit confirmed by order ID (filled)")
+                                            self._clear_pending_exit(symbol, to_closed=True)
+                                            continue
+                                        elif status in ["cancelled", "expired", "rejected"]:
+                                            logger.info(f"[Warrior Sync] {symbol}: Exit order {status}, reverting to open")
+                                            self._clear_pending_exit(symbol, to_closed=False)
+                                            # Don't continue - allow recovery below
+                                        # If still pending, continue with heuristics below
+                                except Exception as e:
+                                    logger.debug(f"[Warrior Sync] {symbol}: Order status check failed: {e}")
+                            
+                            # Fallback: If entry prices differ by more than 1%, this is a NEW position
                             price_diff_pct = abs((broker_entry - db_entry) / db_entry * 100) if db_entry > 0 else 100
                             
                             # Check if pending_exit is stale (>2 minutes old)
@@ -1260,6 +1284,15 @@ class WarriorMonitor:
                     # Fallback to signal values if no actual price returned
                     actual_exit_price = signal.exit_price
                     actual_pnl = signal.pnl_estimate
+                
+                # Store broker order ID for confirmation tracking
+                if result and isinstance(result, dict) and "order" in result:
+                    order = result["order"]
+                    broker_order_id = getattr(order, "broker_order_id", None) if order else None
+                    if broker_order_id:
+                        from nexus2.db.warrior_db import set_exit_order_id
+                        set_exit_order_id(signal.position_id, broker_order_id)
+                        logger.debug(f"[Warrior] {signal.symbol}: Stored exit order ID {broker_order_id}")
                 
                 # Log trade event with actual values
                 exit_reason_map = {

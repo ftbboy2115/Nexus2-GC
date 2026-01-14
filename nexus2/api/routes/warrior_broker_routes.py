@@ -299,6 +299,14 @@ async def wire_warrior_callbacks(broker) -> dict:
             print(f"[Warrior] Error getting broker positions: {e}")
             return None
     
+    async def broker_get_order_status(order_id: str):
+        """Get order status from Alpaca by broker_order_id."""
+        try:
+            return broker.get_order_status(order_id)
+        except Exception as e:
+            print(f"[Warrior] Error getting order status: {e}")
+            return None
+    
     monitor.set_callbacks(
         get_broker_positions=broker_get_positions_async,
         get_prices_batch=broker_get_quotes_batch,
@@ -307,6 +315,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_intraday_candles=broker_get_intraday_bars,
         execute_exit=broker_execute_exit,
         submit_scale_order=broker_submit_order,
+        get_order_status=broker_get_order_status,
     )
     monitor._execute_exit = broker_execute_exit
     

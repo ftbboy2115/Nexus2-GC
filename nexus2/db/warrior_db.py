@@ -66,6 +66,10 @@ class WarriorTradeModel(WarriorBase):
     partial_taken = Column(Boolean, default=False)
     remaining_quantity = Column(Integer, nullable=True)
     
+    # Broker order tracking
+    entry_order_id = Column(String(36), nullable=True)  # Alpaca order ID for entry
+    exit_order_id = Column(String(36), nullable=True)   # Alpaca order ID for exit
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -88,6 +92,8 @@ class WarriorTradeModel(WarriorBase):
             "realized_pnl": self.realized_pnl,
             "partial_taken": self.partial_taken,
             "remaining_quantity": self.remaining_quantity,
+            "entry_order_id": self.entry_order_id,
+            "exit_order_id": self.exit_order_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -106,6 +112,21 @@ def get_warrior_session():
 def init_warrior_db():
     """Initialize Warrior database tables."""
     WarriorBase.metadata.create_all(bind=warrior_engine)
+    
+    # Migration: Add new columns if they don't exist
+    from sqlalchemy import text
+    with warrior_engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN entry_order_id TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN exit_order_id TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+    
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
 
@@ -240,6 +261,42 @@ def update_warrior_status(trade_id: str, new_status: str):
             trade.updated_at = datetime.utcnow()
             db.commit()
             print(f"[Warrior DB] {trade.symbol}: {old_status} → {new_status}")
+            return True
+        return False
+
+
+def set_entry_order_id(trade_id: str, order_id: str):
+    """
+    Set the entry order ID when entry order is submitted.
+    
+    Args:
+        trade_id: The trade ID to update
+        order_id: Alpaca broker order ID
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if trade:
+            trade.entry_order_id = order_id
+            trade.updated_at = datetime.utcnow()
+            db.commit()
+            return True
+        return False
+
+
+def set_exit_order_id(trade_id: str, order_id: str):
+    """
+    Set the exit order ID when exit order is submitted.
+    
+    Args:
+        trade_id: The trade ID to update
+        order_id: Alpaca broker order ID
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if trade:
+            trade.exit_order_id = order_id
+            trade.updated_at = datetime.utcnow()
+            db.commit()
             return True
         return False
 
