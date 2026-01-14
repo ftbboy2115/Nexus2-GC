@@ -173,7 +173,10 @@ Last updated: 2026-01-13
   - [x] Persist stop updates to DB when monitor moves stop
   - [x] Event replay for full state recovery after restart
   - [x] `/trade-events/position/{id}` and `/trade-events/symbol/{symbol}` endpoints
-- [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
+- [/] **Scaling In** — Add to winners on first pullback (Ross Cameron methodology)
+  - [x] Detection logic and settings (v1, Jan 13)
+  - [ ] Order execution and PSM integration (v2)
+  - [ ] GUI toggle + Advanced settings
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
 - [x] **Fix Startup Callback Wiring** — `object of type 'decimal.Decimal' has no len()` blocks auto-start (Jan 13)
