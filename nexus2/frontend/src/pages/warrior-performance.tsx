@@ -494,7 +494,7 @@ export default function WarriorPerformance() {
                                                     fontSize: '1.25rem',
                                                     fontWeight: 700,
                                                     color: gainLossRatio < 40 ? '#dc3545' : gainLossRatio < 60 ? '#ffc107' : '#28a745',
-                                                    marginTop: '-10px'
+                                                    marginTop: '8px'
                                                 }}>
                                                     {gainLossRatio.toFixed(1)}%
                                                 </div>
