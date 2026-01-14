@@ -207,6 +207,7 @@ def get_open_warrior_trades():
             PositionStatus.PENDING_FILL.value,
             PositionStatus.PENDING_EXIT.value,
             PositionStatus.PARTIAL.value,
+            PositionStatus.SCALING.value,
             "open",  # Legacy compatibility
         ]
         trades = db.query(WarriorTradeModel).filter(
@@ -231,12 +232,13 @@ def get_warrior_trade_by_symbol(symbol: str, status: str = None):
                 WarriorTradeModel.status == status
             ).first()
         else:
-            # Check for active states (open, pending_fill, pending_exit, partial)
+            # Check for active states (open, pending_fill, pending_exit, partial, scaling)
             active_statuses = [
                 PositionStatus.OPEN.value,
                 PositionStatus.PENDING_FILL.value,
                 PositionStatus.PENDING_EXIT.value,
                 PositionStatus.PARTIAL.value,
+                PositionStatus.SCALING.value,
             ]
             trade = db.query(WarriorTradeModel).filter(
                 WarriorTradeModel.symbol == symbol,
@@ -299,6 +301,127 @@ def set_exit_order_id(trade_id: str, order_id: str):
             db.commit()
             return True
         return False
+
+
+# =============================================================================
+# SCALING STATUS HELPERS (PSM INTEGRATION)
+# =============================================================================
+
+def set_scaling_status(trade_id: str) -> bool:
+    """
+    Mark position as SCALING before submitting add order.
+    
+    Uses PSM transition validation: OPEN → SCALING
+    Returns False if transition is invalid (not in OPEN state).
+    
+    Args:
+        trade_id: The trade ID to update
+    
+    Returns:
+        True if status was set to SCALING, False if transition invalid
+    """
+    from nexus2.domain.positions.position_state_machine import (
+        can_transition, PositionStatus
+    )
+    
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if not trade:
+            print(f"[Warrior DB] set_scaling_status: Trade not found: {trade_id}")
+            return False
+        
+        # Check if transition is valid via PSM
+        try:
+            current = PositionStatus(trade.status)
+        except ValueError:
+            # Unknown status - treat as legacy "open"
+            current = PositionStatus.OPEN
+        
+        if not can_transition(current, PositionStatus.SCALING):
+            print(f"[Warrior DB] {trade.symbol}: Cannot scale - status is {trade.status}")
+            return False
+        
+        # Valid transition - set SCALING
+        old_status = trade.status
+        trade.status = PositionStatus.SCALING.value
+        trade.updated_at = datetime.utcnow()
+        db.commit()
+        print(f"[Warrior DB] {trade.symbol}: {old_status} → scaling (add order pending)")
+        return True
+
+
+def complete_scaling(trade_id: str, new_quantity: int, new_avg_price: float = None) -> bool:
+    """
+    Complete scaling: update shares and transition SCALING → OPEN.
+    
+    Called after scale order fills successfully.
+    
+    Args:
+        trade_id: The trade ID to update
+        new_quantity: New total quantity after add
+        new_avg_price: New average price (optional - if broker provides)
+    
+    Returns:
+        True if scaling completed successfully
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if not trade:
+            print(f"[Warrior DB] complete_scaling: Trade not found: {trade_id}")
+            return False
+        
+        old_qty = trade.quantity
+        trade.quantity = new_quantity
+        trade.remaining_quantity = new_quantity
+        trade.status = PositionStatus.OPEN.value
+        
+        if new_avg_price:
+            trade.entry_price = str(new_avg_price)
+        
+        trade.updated_at = datetime.utcnow()
+        db.commit()
+        print(f"[Warrior DB] {trade.symbol}: scaling → open (qty: {old_qty} → {new_quantity})")
+        return True
+
+
+def revert_scaling(trade_id: str) -> bool:
+    """
+    Revert SCALING → OPEN when scale order fails or is rejected.
+    
+    Args:
+        trade_id: The trade ID to update
+    
+    Returns:
+        True if reverted successfully
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if not trade:
+            return False
+        
+        if trade.status == PositionStatus.SCALING.value:
+            trade.status = PositionStatus.OPEN.value
+            trade.updated_at = datetime.utcnow()
+            db.commit()
+            print(f"[Warrior DB] {trade.symbol}: scaling → open (scale order failed)")
+            return True
+        return False
+
+
+def check_scaling_positions() -> list:
+    """
+    Get all positions in SCALING status for startup sync.
+    
+    Used during startup to reconcile in-flight scale orders with broker.
+    
+    Returns:
+        List of trade dicts in SCALING status
+    """
+    with get_warrior_session() as db:
+        trades = db.query(WarriorTradeModel).filter_by(
+            status=PositionStatus.SCALING.value
+        ).all()
+        return [t.to_dict() for t in trades]
 
 
 def get_warrior_trades_by_status(status: str) -> list:

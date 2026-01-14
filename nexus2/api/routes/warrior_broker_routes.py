@@ -323,6 +323,30 @@ async def wire_warrior_callbacks(broker) -> dict:
     print("[Warrior] Syncing positions from Alpaca...")
     await monitor._sync_with_broker()
     
+    # Sync SCALING positions - reconcile in-flight scale orders
+    from nexus2.db.warrior_db import check_scaling_positions, complete_scaling, revert_scaling
+    scaling_positions = check_scaling_positions()
+    if scaling_positions:
+        print(f"[Warrior] Syncing {len(scaling_positions)} SCALING positions...")
+        broker_positions = broker.get_positions()
+        for pos in scaling_positions:
+            symbol = pos["symbol"]
+            db_qty = pos["quantity"]
+            if symbol in broker_positions:
+                broker_qty = broker_positions[symbol].quantity
+                if broker_qty > db_qty:
+                    # Scale filled - update DB with new quantity
+                    print(f"[Warrior] {symbol}: Scale filled (DB:{db_qty} → Broker:{broker_qty})")
+                    complete_scaling(pos["id"], broker_qty)
+                else:
+                    # Scale didn't fill - revert to OPEN
+                    print(f"[Warrior] {symbol}: Scale not filled, reverting to OPEN")
+                    revert_scaling(pos["id"])
+            else:
+                # Position no longer at broker - revert to OPEN
+                print(f"[Warrior] {symbol}: Position not at broker, reverting to OPEN")
+                revert_scaling(pos["id"])
+    
     return {
         "status": "enabled",
         "broker": "alpaca_paper_b",

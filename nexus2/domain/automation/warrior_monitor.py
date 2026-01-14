@@ -1201,9 +1201,11 @@ class WarriorMonitor:
         """
         Execute a scale-in order (Ross Cameron methodology).
         
-        1. Submit buy order for additional shares
-        2. Update position state (scale_count, shares)
-        3. Move stop to breakeven (if enabled)
+        1. Set SCALING status (PSM transition)
+        2. Submit buy order for additional shares
+        3. Update position state (scale_count, shares)
+        4. Move stop to breakeven (if enabled)
+        5. Complete scaling (PSM transition back to OPEN)
         
         Returns True if scale was executed successfully.
         """
@@ -1214,6 +1216,12 @@ class WarriorMonitor:
         symbol = position.symbol
         add_shares = scale_signal["add_shares"]
         price = Decimal(str(scale_signal["price"]))
+        
+        # Set SCALING status before submitting order (PSM validates transition)
+        from nexus2.db.warrior_db import set_scaling_status, complete_scaling, revert_scaling
+        if not set_scaling_status(position.position_id):
+            logger.warning(f"[Warrior Scale] {symbol}: Cannot scale - PSM transition blocked")
+            return False
         
         try:
             # Submit scale order (limit order at current price + buffer)
@@ -1237,11 +1245,17 @@ class WarriorMonitor:
             
             if order_result is None:
                 logger.warning(f"[Warrior Scale] {symbol}: Scale order returned None")
+                # Revert to OPEN since order couldn't be submitted
+                revert_scaling(position.position_id)
                 return False
             
             # Update position state
             position.scale_count += 1
             position.shares += add_shares
+            new_total_shares = position.shares
+            
+            # Complete scaling in DB (SCALING → OPEN with updated shares)
+            complete_scaling(position.position_id, new_total_shares)
             
             # Move stop to breakeven (original entry price)
             if self.settings.move_stop_to_breakeven_after_scale:
@@ -1274,6 +1288,8 @@ class WarriorMonitor:
             
         except Exception as e:
             logger.error(f"[Warrior Scale] {symbol}: Scale order failed: {e}")
+            # Revert to OPEN on exception
+            revert_scaling(position.position_id)
             return False
     
     async def _handle_exit(self, signal: WarriorExitSignal):
