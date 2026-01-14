@@ -469,6 +469,17 @@ Is this a valid Qullamaggie EP catalyst?"""
             )
             
             latency = int((time.perf_counter() - start) * 1000)
+            
+            # Handle None response (Gemini sometimes returns empty)
+            if response.text is None:
+                return ModelResult(
+                    model_name=model_name,
+                    is_valid=False,
+                    catalyst_type=None,
+                    reason="Empty response from Gemini",
+                    latency_ms=latency,
+                )
+            
             raw = response.text.strip()
             
             if raw.upper().startswith("VALID:"):
