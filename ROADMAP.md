@@ -175,7 +175,8 @@ Last updated: 2026-01-13
   - [x] `/trade-events/position/{id}` and `/trade-events/symbol/{symbol}` endpoints
 - [/] **Scaling In** — Add to winners on first pullback (Ross Cameron methodology)
   - [x] Detection logic and settings (v1, Jan 13)
-  - [ ] Order execution and PSM integration (v2)
+  - [x] Order execution and PSM integration (v2, Jan 13)
+  - [x] Callback wiring for sim/broker (v3, Jan 13)
   - [ ] GUI toggle + Advanced settings
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
