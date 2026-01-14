@@ -57,9 +57,9 @@ class TradeEventService:
     
     def _get_market_context(self) -> Dict[str, Any]:
         """
-        Capture current market conditions (SPY, VIX) for event context.
+        Capture current market conditions (SPY, VIX, MAs) for event context.
         
-        Returns dict with spy_price, spy_change_pct, vix, timestamp.
+        Returns dict with spy_price, spy_change_pct, vix, spy_ma_status, timestamp.
         Failures return empty dict (non-blocking).
         """
         try:
@@ -82,11 +82,80 @@ class TradeEventService:
             if vix_quote:
                 context["vix"] = float(vix_quote.price)
             
+            # SPY Moving Average Status
+            try:
+                spy_ma = self._get_spy_ma_status(umd)
+                if spy_ma:
+                    context.update(spy_ma)
+            except Exception as e:
+                logger.debug(f"[TradeEvent] SPY MA calculation failed: {e}")
+            
             context["market_snapshot_time"] = datetime.utcnow().isoformat()
             
             return context
         except Exception as e:
             logger.debug(f"[TradeEvent] Market context capture failed: {e}")
+            return {}
+    
+    def _get_spy_ma_status(self, umd) -> Dict[str, Any]:
+        """
+        Calculate SPY's position relative to 20/50/200 day moving averages.
+        
+        Returns:
+            {
+                "spy_above_20ma": True/False,
+                "spy_above_50ma": True/False,
+                "spy_above_200ma": True/False,
+                "spy_ma_trend": "bullish" / "neutral" / "bearish"
+            }
+        """
+        try:
+            # Get 200 days of SPY data (need 200 for 200 MA)
+            bars = umd.fmp.get_daily_bars("SPY", limit=210)
+            if not bars or len(bars) < 20:
+                return {}
+            
+            # Bars are typically newest-first, so reverse for chronological
+            closes = [float(bar.get('close', bar.get('c', 0))) for bar in bars]
+            if not closes or closes[0] == 0:
+                return {}
+            
+            # For FMP, bars are usually newest first, so closes[0] is current
+            current_price = closes[0]
+            
+            # Calculate MAs (simple moving averages)
+            result = {}
+            
+            if len(closes) >= 20:
+                ma20 = sum(closes[:20]) / 20
+                result["spy_20ma"] = round(ma20, 2)
+                result["spy_above_20ma"] = current_price > ma20
+            
+            if len(closes) >= 50:
+                ma50 = sum(closes[:50]) / 50
+                result["spy_50ma"] = round(ma50, 2)
+                result["spy_above_50ma"] = current_price > ma50
+            
+            if len(closes) >= 200:
+                ma200 = sum(closes[:200]) / 200
+                result["spy_200ma"] = round(ma200, 2)
+                result["spy_above_200ma"] = current_price > ma200
+            
+            # Determine overall trend
+            above_all = result.get("spy_above_20ma") and result.get("spy_above_50ma") and result.get("spy_above_200ma")
+            below_all = not result.get("spy_above_20ma") and not result.get("spy_above_50ma") and not result.get("spy_above_200ma", True)
+            
+            if above_all:
+                result["spy_ma_trend"] = "bullish"
+            elif below_all:
+                result["spy_ma_trend"] = "bearish"
+            else:
+                result["spy_ma_trend"] = "neutral"
+            
+            return result
+            
+        except Exception as e:
+            logger.debug(f"[TradeEvent] SPY MA status failed: {e}")
             return {}
     
     def _log_event(
