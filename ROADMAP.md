@@ -143,6 +143,10 @@ Last updated: 2026-01-13
   - Recent S-3 (< 30 days) = -2, Active (30-365 days) = -1
   - News about shelf offering = still hard reject (existing behavior)
 - [ ] **NAC P&L Backfill Script** — Recalculate P&L for Jan 2-14 positions from stored entry/exit prices
+- [ ] **Dedicated Log Files** — Separate logs for easier debugging (append mode, persist across restarts)
+  - `warrior_trades.log` - All entries/exits/P&L events
+  - `warrior_scaling.log` - Scale operations with PSM transitions
+  - `errors.log` - All errors across strategies
 
 ---
 
