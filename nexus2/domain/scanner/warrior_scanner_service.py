@@ -665,7 +665,9 @@ class WarriorScannerService:
                     try:
                         # Check regex first for this headline
                         classifier = get_classifier()
-                        regex_valid, regex_type_h, regex_conf_h = classifier.classify_catalyst(headline)
+                        regex_match = classifier.classify(headline)
+                        regex_valid = regex_match.is_positive and regex_match.confidence >= 0.6
+                        regex_type_h = regex_match.catalyst_type if regex_valid else None
                         
                         # Sync dual validation: Regex + Flash-Lite
                         final_valid, final_type, _, flash_passed, method = multi_validator.validate_sync(
