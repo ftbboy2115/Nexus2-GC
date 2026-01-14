@@ -89,6 +89,161 @@ def get_catalyst_cache() -> CatalystCache:
     return _catalyst_cache
 
 
+# =============================================================================
+# PERSISTENT HEADLINE CACHE (14-day TTL, disk-backed)
+# =============================================================================
+
+import json
+import hashlib
+
+
+@dataclass
+class CachedHeadline:
+    """A cached headline with its validation result."""
+    text_hash: str
+    text: str
+    fetched_at: str  # ISO format
+    is_valid: bool
+    catalyst_type: Optional[str]
+    regex_passed: bool
+    flash_passed: Optional[bool]
+    method: str  # "regex_only", "consensus", "tiebreaker"
+
+
+class HeadlineCache:
+    """
+    Persistent cache for headlines and their validation results.
+    
+    Headlines are stored by symbol with text hash for deduplication.
+    Cache persists to JSON file for survival across restarts.
+    TTL is 14 days - old headlines are pruned on load.
+    """
+    
+    def __init__(self, cache_path: Optional[Path] = None, ttl_days: int = 14):
+        self._cache_path = cache_path or Path(__file__).parent.parent.parent.parent / "data" / "headline_cache.json"
+        self._ttl = timedelta(days=ttl_days)
+        self._data: Dict[str, List[dict]] = {}
+        self._load()
+    
+    def _hash(self, text: str) -> str:
+        """Create short hash of headline text."""
+        return hashlib.md5(text.encode()).hexdigest()[:12]
+    
+    def _load(self):
+        """Load cache from disk, prune expired entries."""
+        if self._cache_path.exists():
+            try:
+                with open(self._cache_path, 'r') as f:
+                    self._data = json.load(f)
+                self._prune()
+                logger.info(f"[HeadlineCache] Loaded {sum(len(v) for v in self._data.values())} headlines")
+            except Exception as e:
+                logger.warning(f"[HeadlineCache] Load error: {e}")
+                self._data = {}
+        else:
+            self._data = {}
+    
+    def _save(self):
+        """Save cache to disk."""
+        try:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._cache_path, 'w') as f:
+                json.dump(self._data, f, indent=2)
+        except Exception as e:
+            logger.warning(f"[HeadlineCache] Save error: {e}")
+    
+    def _prune(self):
+        """Remove headlines older than TTL."""
+        now = datetime.now()
+        for symbol in list(self._data.keys()):
+            self._data[symbol] = [
+                h for h in self._data[symbol]
+                if now - datetime.fromisoformat(h["fetched_at"]) < self._ttl
+            ]
+            if not self._data[symbol]:
+                del self._data[symbol]
+    
+    def get_cached_headlines(self, symbol: str) -> List[CachedHeadline]:
+        """Get all cached headlines for a symbol."""
+        if symbol not in self._data:
+            return []
+        return [
+            CachedHeadline(
+                text_hash=h["text_hash"],
+                text=h["text"],
+                fetched_at=h["fetched_at"],
+                is_valid=h["is_valid"],
+                catalyst_type=h.get("catalyst_type"),
+                regex_passed=h.get("regex_passed", False),
+                flash_passed=h.get("flash_passed"),
+                method=h.get("method", "unknown"),
+            )
+            for h in self._data[symbol]
+        ]
+    
+    def get_new_headlines(self, symbol: str, fetched_headlines: List[str]) -> List[str]:
+        """Filter to only headlines not already in cache."""
+        cached_hashes = set(h["text_hash"] for h in self._data.get(symbol, []))
+        return [h for h in fetched_headlines if self._hash(h) not in cached_hashes]
+    
+    def has_valid_catalyst(self, symbol: str) -> Tuple[bool, Optional[str]]:
+        """Check if any cached headline is a valid catalyst."""
+        for h in self._data.get(symbol, []):
+            if h.get("is_valid"):
+                return True, h.get("catalyst_type")
+        return False, None
+    
+    def add(
+        self,
+        symbol: str,
+        headline: str,
+        is_valid: bool,
+        catalyst_type: Optional[str],
+        regex_passed: bool,
+        flash_passed: Optional[bool] = None,
+        method: str = "unknown",
+    ):
+        """Add a headline with its validation result."""
+        if symbol not in self._data:
+            self._data[symbol] = []
+        
+        text_hash = self._hash(headline)
+        
+        # Don't duplicate
+        if any(h["text_hash"] == text_hash for h in self._data[symbol]):
+            return
+        
+        self._data[symbol].append({
+            "text_hash": text_hash,
+            "text": headline[:200],  # Truncate for storage
+            "fetched_at": datetime.now().isoformat(),
+            "is_valid": is_valid,
+            "catalyst_type": catalyst_type,
+            "regex_passed": regex_passed,
+            "flash_passed": flash_passed,
+            "method": method,
+        })
+        self._save()
+    
+    def stats(self) -> dict:
+        """Return cache statistics."""
+        total = sum(len(v) for v in self._data.values())
+        valid = sum(1 for v in self._data.values() for h in v if h.get("is_valid"))
+        return {"symbols": len(self._data), "headlines": total, "valid": valid}
+
+
+# Singleton instance
+_headline_cache: Optional[HeadlineCache] = None
+
+
+def get_headline_cache() -> HeadlineCache:
+    """Get shared headline cache singleton."""
+    global _headline_cache
+    if _headline_cache is None:
+        _headline_cache = HeadlineCache()
+    return _headline_cache
+
+
 @dataclass
 class AIValidationResult:
     """Result from AI catalyst validation."""
@@ -586,6 +741,74 @@ Is this a valid Qullamaggie EP catalyst?"""
                 f.write(json.dumps(result.to_dict()) + "\n")
         except Exception as e:
             logger.error(f"[MultiModel] Failed to log comparison: {e}")
+    
+    def validate_sync(
+        self,
+        headline: str,
+        symbol: str,
+        regex_passed: bool,
+        regex_type: Optional[str] = None,
+    ) -> Tuple[bool, Optional[str], bool, Optional[bool], str]:
+        """
+        Synchronous dual validation: Regex + Flash-Lite → Pro tiebreaker if disagree.
+        
+        Args:
+            headline: News headline to validate
+            symbol: Stock symbol
+            regex_passed: Whether regex matched a valid catalyst
+            regex_type: Catalyst type from regex (if any)
+        
+        Returns:
+            Tuple of:
+            - is_valid: Final verdict (bool)
+            - catalyst_type: Type of catalyst (str or None)
+            - regex_passed: Echo back for caching (bool)
+            - flash_passed: What Flash-Lite said (bool or None if skipped)
+            - method: "consensus", "tiebreaker", or "regex_only"
+        """
+        # Step 1: Call Flash-Lite
+        if not self._can_call_model("flash_lite"):
+            # Rate limited - fall back to regex only
+            logger.warning(f"[MultiModel] {symbol}: Flash rate limited, using regex only")
+            return (regex_passed, regex_type, regex_passed, None, "regex_only")
+        
+        flash_result = self._validate_with_model("flash_lite", headline, symbol)
+        flash_passed = flash_result.is_valid
+        
+        # Step 2: Compare regex vs flash
+        if regex_passed == flash_passed:
+            # Agreement - use consensus result
+            method = "consensus"
+            final_valid = regex_passed
+            final_type = regex_type if regex_passed else flash_result.catalyst_type
+            logger.info(f"[AI vs Regex] {symbol}: Regex={'PASS' if regex_passed else 'FAIL'} Flash={'PASS' if flash_passed else 'FAIL'} → {method}")
+        else:
+            # Disagreement - need tiebreaker
+            if "pro" in self.models and self._can_call_model("pro"):
+                pro_result = self._validate_with_model("pro", headline, symbol)
+                final_valid = pro_result.is_valid
+                final_type = pro_result.catalyst_type if pro_result.is_valid else None
+                method = "tiebreaker"
+                logger.info(f"[AI vs Regex] {symbol}: Regex={'PASS' if regex_passed else 'FAIL'} Flash={'PASS' if flash_passed else 'FAIL'} Pro={'PASS' if final_valid else 'FAIL'} → {method}")
+            else:
+                # Can't call Pro - fall back to Flash (more conservative than regex)
+                final_valid = flash_passed
+                final_type = flash_result.catalyst_type if flash_passed else None
+                method = "flash_only"
+                logger.warning(f"[MultiModel] {symbol}: Pro rate limited, using Flash result")
+        
+        # Log for training
+        comparison = ComparisonResult(
+            symbol=symbol,
+            headline=headline,
+            timestamp=datetime.now(),
+            regex_type=regex_type,
+            regex_confidence=0.9 if regex_passed else 0.0,
+            model_results={"flash_lite": flash_result},
+        )
+        self._log_comparison(comparison)
+        
+        return (final_valid, final_type, regex_passed, flash_passed, method)
     
     def get_stats(self) -> dict:
         """Get rate limit and queue stats."""

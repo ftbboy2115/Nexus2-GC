@@ -29,6 +29,7 @@ from nexus2.domain.automation.ai_catalyst_validator import (
     get_ai_validator,
     get_catalyst_cache,
     get_multi_validator,
+    get_headline_cache,
 )
 
 
@@ -634,79 +635,107 @@ class WarriorScannerService:
                         print(f"[Catalyst Debug] {symbol}: FORMER RUNNER catalyst")
         
         # =====================================================================
-        # AI CATALYST FALLBACK (when regex fails)
-        # Uses shared cache to reduce AI calls across Warrior + NAC strategies
+        # SYNC DUAL CATALYST VALIDATION (HeadlineCache + Regex + Flash-Lite)
+        # 1. Check HeadlineCache for previously seen headlines
+        # 2. Filter to only NEW headlines not yet validated
+        # 3. Run sync dual validation: Regex vs Flash-Lite → Pro tiebreaker
+        # 4. Cache all results to avoid re-validating
         # =====================================================================
-        ai_result = None
-        catalyst_cache = get_catalyst_cache()
-        
-        if headlines and (s.use_ai_catalyst_fallback or s.debug_ai_comparison or s.enable_multi_model_comparison):
-            # Run AI validation if: (1) regex failed, (2) debug comparison mode, or (3) multi-model comparison
-            should_run_ai = (not has_catalyst and s.use_ai_catalyst_fallback) or s.debug_ai_comparison or s.enable_multi_model_comparison
+        if headlines and s.enable_multi_model_comparison:
+            headline_cache = get_headline_cache()
             
-            if should_run_ai:
-                # Check cache first to avoid duplicate AI calls
-                cached = catalyst_cache.get(symbol)
-                if cached:
-                    if verbose:
-                        print(f"[Catalyst Cache] {symbol}: HIT - {cached.catalyst_type}")
-                    if not has_catalyst and cached.is_valid:
-                        has_catalyst = True
-                        catalyst_type = f"cached_{cached.catalyst_type}"
-                        catalyst_desc = cached.description
-                        catalyst_confidence = 0.8
-                else:
-                    # Cache miss - call AI
+            # Check if we already have a valid catalyst from cached headlines
+            cached_valid, cached_type = headline_cache.has_valid_catalyst(symbol)
+            if cached_valid and not has_catalyst:
+                has_catalyst = True
+                catalyst_type = f"cached_{cached_type}"
+                catalyst_desc = f"Cached: {cached_type}"
+                catalyst_confidence = 0.85
+                if verbose:
+                    print(f"[Headline Cache] {symbol}: HIT - valid catalyst from cache ({cached_type})")
+            
+            # Filter to only NEW headlines we haven't seen before
+            new_headlines = headline_cache.get_new_headlines(symbol, headlines)
+            
+            if new_headlines and not has_catalyst:
+                # Need to validate new headlines
+                multi_validator = get_multi_validator()
+                
+                for headline in new_headlines[:3]:  # Limit to top 3 new headlines
                     try:
-                        ai_validator = get_ai_validator()
-                        ai_valid, ai_type, ai_headline = ai_validator.validate_headlines(headlines, symbol)
-                        ai_result = (ai_valid, ai_type, ai_headline)
+                        # Check regex first for this headline
+                        classifier = get_classifier()
+                        regex_valid, regex_type_h, regex_conf_h = classifier.classify_catalyst(headline)
                         
-                        # Cache the result for other strategies
-                        catalyst_cache.set(
+                        # Sync dual validation: Regex + Flash-Lite
+                        final_valid, final_type, _, flash_passed, method = multi_validator.validate_sync(
+                            headline=headline,
                             symbol=symbol,
-                            is_valid=ai_valid,
-                            catalyst_type=ai_type,
-                            description=ai_headline[:80] if ai_headline else f"AI: {ai_type}",
+                            regex_passed=regex_valid,
+                            regex_type=regex_type_h,
                         )
                         
-                        if verbose or s.debug_ai_comparison:
-                            regex_status = "PASS" if has_catalyst else "FAIL"
-                            ai_status = "PASS" if ai_valid else "FAIL"
-                            print(f"[AI vs Regex] {symbol}: Regex={regex_status} AI={ai_status} (AI type: {ai_type})")
+                        # Cache the result
+                        headline_cache.add(
+                            symbol=symbol,
+                            headline=headline,
+                            is_valid=final_valid,
+                            catalyst_type=final_type,
+                            regex_passed=regex_valid,
+                            flash_passed=flash_passed,
+                            method=method,
+                        )
                         
-                        # Use AI result as fallback if regex failed
-                        if not has_catalyst and ai_valid:
+                        # Use result if valid and we don't have a catalyst yet
+                        if final_valid and not has_catalyst:
                             has_catalyst = True
-                            catalyst_type = f"ai_{ai_type}"
-                            catalyst_desc = f"AI: {ai_headline}" if ai_headline else f"AI: {ai_type}"
-                            catalyst_confidence = 0.8  # AI-validated confidence
+                            catalyst_type = final_type
+                            catalyst_desc = f"{method}: {headline[:50]}"
+                            catalyst_confidence = 0.85
                             if verbose:
-                                print(f"[Catalyst Debug] {symbol}: AI FALLBACK catalyst - {ai_type}")
-                                
+                                print(f"[Catalyst Debug] {symbol}: {method.upper()} - {final_type}")
+                            break  # Found valid, no need to check more
+                            
                     except Exception as e:
                         if verbose:
-                            print(f"[Catalyst Debug] {symbol}: AI validation error - {e}")
+                            print(f"[Catalyst Debug] {symbol}: Validation error - {e}")
+                        # Cache the headline as invalid to avoid retrying
+                        headline_cache.add(
+                            symbol=symbol,
+                            headline=headline,
+                            is_valid=False,
+                            catalyst_type=None,
+                            regex_passed=False,
+                            flash_passed=None,
+                            method="error",
+                        )
+            elif new_headlines and verbose:
+                print(f"[Headline Cache] {symbol}: {len(new_headlines)} new headlines skipped (already have catalyst)")
         
-        # =====================================================================
-        # MULTI-MODEL COMPARISON (for training regex patterns)
-        # Queue headline for comparison across Flash-Lite (15 RPM) and Pro (5 RPM)
-        # Results are logged to data/catalyst_comparison.jsonl for analysis
-        # =====================================================================
-        if s.enable_multi_model_comparison and headlines:
-            try:
-                multi_validator = get_multi_validator()
-                # Queue best headline for comparison (non-blocking)
-                best_headline = headlines[0] if headlines else ""
-                multi_validator.queue_comparison(
-                    symbol=symbol,
-                    headline=best_headline,
-                    regex_type=catalyst_type if has_catalyst else None,
-                    regex_confidence=catalyst_confidence,
-                )
-            except Exception as e:
-                if verbose:
-                    print(f"[MultiModel] {symbol}: Queue error - {e}")
+        # Legacy single-model fallback (when multi-model is disabled)
+        elif headlines and s.use_ai_catalyst_fallback and not has_catalyst:
+            catalyst_cache = get_catalyst_cache()
+            cached = catalyst_cache.get(symbol)
+            if cached:
+                if not has_catalyst and cached.is_valid:
+                    has_catalyst = True
+                    catalyst_type = f"cached_{cached.catalyst_type}"
+                    catalyst_desc = cached.description
+                    catalyst_confidence = 0.8
+            else:
+                try:
+                    ai_validator = get_ai_validator()
+                    ai_valid, ai_type, ai_headline = ai_validator.validate_headlines(headlines, symbol)
+                    catalyst_cache.set(symbol, ai_valid, ai_type, ai_headline[:80] if ai_headline else f"AI: {ai_type}")
+                    if ai_valid:
+                        has_catalyst = True
+                        catalyst_type = f"ai_{ai_type}"
+                        catalyst_desc = f"AI: {ai_headline}" if ai_headline else f"AI: {ai_type}"
+                        catalyst_confidence = 0.8
+                except Exception as e:
+                    if verbose:
+                        print(f"[Catalyst Debug] {symbol}: AI fallback error - {e}")
+        
         
         if s.require_catalyst and not has_catalyst:
             tracker.record(
