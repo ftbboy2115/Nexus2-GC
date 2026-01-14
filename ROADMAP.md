@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-11
+Last updated: 2026-01-13
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -168,14 +168,21 @@ Last updated: 2026-01-11
   - [x] Unit tests in `test_position_state_machine.py`
   - [x] `warrior_db.py` uses PSM status values (Jan 13)
   - [x] **Full refactor**: removed `_pending_exits` dict, DB is single source of truth (Jan 13)
-- [ ] **Trade Event Log** — Audit trail for all position changes (stop moves, partials, breakeven adjustments)
-  - [ ] `trade_events` table with event_type, old_value, new_value, timestamp
-  - [ ] Persist stop updates to DB when monitor moves stop
-  - [ ] Event replay for full state recovery after restart
+- [x] **Trade Event Log** — Audit trail for all position changes (stop moves, partials, breakeven adjustments) (Jan 13)
+  - [x] `trade_events` table with event_type, old_value, new_value, timestamp
+  - [x] Persist stop updates to DB when monitor moves stop
+  - [x] Event replay for full state recovery after restart
+  - [x] `/trade-events/position/{id}` and `/trade-events/symbol/{symbol}` endpoints
 - [ ] **Scaling In** — Add to winners on first pullback or intraday consolidation break
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
 - [x] **Fix Startup Callback Wiring** — `object of type 'decimal.Decimal' has no len()` blocks auto-start (Jan 13)
+- [x] **Performance Dashboard** — `/warrior-performance` page with PSM status badges (Jan 13)
+  - [x] Summary stats (wins, losses, win rate, total P&L)
+  - [x] Active positions with PSM badges
+  - [x] Trade history table with symbol, date, status filters
+  - [x] Expandable rows with trade event timeline
+  - [ ] Schwab-style metrics: Total Proceeds, Cost Basis, Gain/Loss Ratio gauge
 - [/] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
   - [x] Create SchwabAdapter with OAuth 2.0 token management (Jan 13)
   - [x] Add `/schwab/auth-url`, `/schwab/callback`, `/schwab/status` endpoints
