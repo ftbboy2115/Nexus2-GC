@@ -194,6 +194,10 @@ Last updated: 2026-01-13
   - [ ] Seamless OAuth: Auto-refresh reminder (Discord/email alert before 7-day expiry)
   - [ ] Seamless OAuth: OAuth proxy via nginx HTTPS for direct VPS callback
   - [ ] Seamless OAuth: One-click weekly re-auth workflow
+- [ ] **Refactor warrior_routes.py** — Split 2000+ line file for maintainability
+  - [ ] Extract sim mode callbacks to `warrior_sim_routes.py`
+  - [ ] Extract broker callbacks to `warrior_broker_routes.py`
+  - [ ] Keep core endpoints (status, start, stop, config) in main file
 
 ---
 
