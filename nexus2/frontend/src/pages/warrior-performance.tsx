@@ -220,6 +220,7 @@ export default function WarriorPerformance() {
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<string>('all')
     const [symbolFilter, setSymbolFilter] = useState<string>('')
+    const [dateFilter, setDateFilter] = useState<string>('all')
     const [expandedTrade, setExpandedTrade] = useState<string | null>(null)
 
     const API_BASE = ''
@@ -254,11 +255,36 @@ export default function WarriorPerformance() {
         t.status !== 'closed' && t.status !== 'rejected'
     )
 
-    // Closed trades for history (with symbol filter)
-    const closedTrades = trades.filter(t =>
-        (t.status === 'closed' || t.status === 'rejected') &&
-        (!symbolFilter || t.symbol === symbolFilter)
-    )
+    // Date filter helper
+    const getDateCutoff = (filterType: string): Date | null => {
+        const now = new Date()
+        switch (filterType) {
+            case 'today':
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            case 'week':
+                const weekAgo = new Date(now)
+                weekAgo.setDate(weekAgo.getDate() - 7)
+                return weekAgo
+            case 'month':
+                const monthAgo = new Date(now)
+                monthAgo.setMonth(monthAgo.getMonth() - 1)
+                return monthAgo
+            default:
+                return null
+        }
+    }
+
+    // Closed trades for history (with symbol and date filters)
+    const closedTrades = trades.filter(t => {
+        const isClosedOrRejected = t.status === 'closed' || t.status === 'rejected'
+        const matchesSymbol = !symbolFilter || t.symbol === symbolFilter
+
+        // Date filter
+        const dateCutoff = getDateCutoff(dateFilter)
+        const matchesDate = !dateCutoff || (t.entry_time && new Date(t.entry_time) >= dateCutoff)
+
+        return isClosedOrRejected && matchesSymbol && matchesDate
+    })
 
     return (
         <>
@@ -408,6 +434,18 @@ export default function WarriorPerformance() {
                                         {uniqueSymbols.map(sym => (
                                             <option key={sym} value={sym}>{sym}</option>
                                         ))}
+                                    </select>
+                                    {/* Date Filter */}
+                                    <select
+                                        value={dateFilter}
+                                        onChange={(e) => setDateFilter(e.target.value)}
+                                        className={styles.selectInput}
+                                        style={{ minWidth: '100px' }}
+                                    >
+                                        <option value="all">All Time</option>
+                                        <option value="today">Today</option>
+                                        <option value="week">This Week</option>
+                                        <option value="month">This Month</option>
                                     </select>
                                     {/* Status Filter */}
                                     <select
