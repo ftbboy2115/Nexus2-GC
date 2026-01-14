@@ -608,6 +608,7 @@ class WarriorMonitor:
                     # Skip if pending exit (prevents re-adding position we're trying to close)
                     # BUT: If broker has this position with a DIFFERENT entry price, the old
                     # exit likely completed and a new position was entered. Clear stale pending_exit.
+                    # ALSO: If pending_exit is stale (>2 min) and broker still has shares, exit likely failed.
                     if self._is_pending_exit(symbol):
                         # Get current pending_exit trade's entry price from DB
                         from nexus2.db.warrior_db import get_warrior_trade_by_symbol
@@ -618,12 +619,34 @@ class WarriorMonitor:
                             db_entry = Decimal(str(pending_trade.get("entry_price", 0)))
                             # If entry prices differ by more than 1%, this is a NEW position
                             price_diff_pct = abs((broker_entry - db_entry) / db_entry * 100) if db_entry > 0 else 100
+                            
+                            # Check if pending_exit is stale (>2 minutes old)
+                            updated_at_str = pending_trade.get("updated_at")
+                            is_stale = False
+                            if updated_at_str:
+                                try:
+                                    if isinstance(updated_at_str, str):
+                                        updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                                    else:
+                                        updated_at = updated_at_str
+                                    stale_seconds = (now - updated_at.replace(tzinfo=None)).total_seconds()
+                                    is_stale = stale_seconds > 120  # 2 minutes
+                                except Exception:
+                                    pass
+                            
                             if price_diff_pct > 1.0:
                                 logger.info(
                                     f"[Warrior Sync] {symbol}: Clearing stale pending_exit "
                                     f"(DB entry=${db_entry:.2f}, broker=${broker_entry:.2f})"
                                 )
                                 self._clear_pending_exit(symbol, to_closed=True)
+                                # Don't continue - allow recovery below
+                            elif is_stale:
+                                logger.info(
+                                    f"[Warrior Sync] {symbol}: Clearing stale pending_exit "
+                                    f"(exit order timed out after {stale_seconds:.0f}s, broker still has shares)"
+                                )
+                                self._clear_pending_exit(symbol, to_closed=False)  # Revert to open
                                 # Don't continue - allow recovery below
                             else:
                                 logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
