@@ -2162,3 +2162,16 @@ async def get_trade_detail(trade_id: str):
     
     return {"trade": trade}
 
+
+# =============================================================================
+# INCLUDE SUB-ROUTERS
+# =============================================================================
+
+# Import and include sub-routers (extracted from this file)
+from .warrior_sim_routes import sim_router
+from .warrior_broker_routes import broker_router
+from .warrior_positions import positions_router
+
+router.include_router(sim_router)
+router.include_router(broker_router)
+router.include_router(positions_router)
