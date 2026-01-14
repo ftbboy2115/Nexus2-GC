@@ -1305,8 +1305,21 @@ _warrior_monitor: Optional[WarriorMonitor] = None
 
 
 def get_warrior_monitor() -> WarriorMonitor:
-    """Get singleton Warrior monitor."""
+    """Get singleton Warrior monitor.
+    
+    Loads persisted settings on first creation.
+    """
     global _warrior_monitor
     if _warrior_monitor is None:
         _warrior_monitor = WarriorMonitor()
+        
+        # Load persisted settings (including scaling)
+        try:
+            from nexus2.db.warrior_monitor_settings import load_monitor_settings, apply_monitor_settings
+            settings = load_monitor_settings()
+            if settings:
+                apply_monitor_settings(_warrior_monitor.settings, settings)
+        except Exception as e:
+            logger.warning(f"[Warrior Monitor] Failed to load settings: {e}")
+    
     return _warrior_monitor

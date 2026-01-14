@@ -526,6 +526,13 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
     if hasattr(request, 'move_stop_to_breakeven_after_scale') and request.move_stop_to_breakeven_after_scale is not None:
         engine.monitor.settings.move_stop_to_breakeven_after_scale = request.move_stop_to_breakeven_after_scale
     
+    # Persist settings to disk
+    try:
+        from nexus2.db.warrior_monitor_settings import save_monitor_settings, get_monitor_settings_dict
+        save_monitor_settings(get_monitor_settings_dict(engine.monitor.settings))
+    except Exception as e:
+        print(f"[Warrior] Failed to persist monitor settings: {e}")
+    
     return {"status": "updated", "settings": await get_warrior_monitor_settings()}
 
 

@@ -199,6 +199,8 @@ Last updated: 2026-01-13
   - [ ] Extract sim mode callbacks to `warrior_sim_routes.py`
   - [ ] Extract broker callbacks to `warrior_broker_routes.py`
   - [ ] Keep core endpoints (status, start, stop, config) in main file
+- [ ] **Refactor warrior.tsx** — Split 1500+ line file for maintainability
+- [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
 
 ---
 

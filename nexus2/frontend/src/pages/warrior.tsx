@@ -256,6 +256,16 @@ export default function Warrior() {
         return false
     })
 
+    // Monitor settings (including scaling)
+    const [monitorSettings, setMonitorSettings] = useState<{
+        enable_scaling?: boolean
+        max_scale_count?: number
+        scale_size_pct?: number
+        min_rvol_for_scale?: number
+        allow_scale_below_entry?: boolean
+        move_stop_to_breakeven_after_scale?: boolean
+    } | null>(null)
+
     // Update countdown every second when engine is running
     useEffect(() => {
         const isRunning = status?.state === 'running' || status?.state === 'premarket'
@@ -353,6 +363,11 @@ export default function Warrior() {
         const interval = setInterval(fetchStatus, 1000) // Fast refresh for day trading
         return () => clearInterval(interval)
     }, [fetchStatus])
+
+    // Fetch monitor settings on mount (not on interval - rarely changes)
+    useEffect(() => {
+        fetchMonitorSettings()
+    }, [])
 
     // Sorting helpers
     const sortData = <T,>(data: T[], sortConfig: { key: string, dir: 'asc' | 'desc' }): T[] => {
@@ -496,6 +511,40 @@ export default function Warrior() {
                 const data = await res.json()
                 addToLog(`⚙️ Config updated: ${field} = ${value}`)
                 await fetchStatus()
+            }
+        } catch (err) {
+            addToLog(`❌ Failed to update ${field}`)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // Fetch Monitor Settings (including scaling)
+    const fetchMonitorSettings = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/monitor/settings`)
+            if (res.ok) {
+                const data = await res.json()
+                setMonitorSettings(data)
+            }
+        } catch (err) {
+            console.error('Failed to fetch monitor settings:', err)
+        }
+    }
+
+    // Update Monitor Settings (scaling toggle)
+    const updateMonitorSettings = async (field: string, value: boolean | number) => {
+        setActionLoading(`monitor-${field}`)
+        try {
+            const res = await fetch(`${API_BASE}/warrior/monitor/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setMonitorSettings(data.settings)
+                addToLog(`⚙️ Scaling: ${field} = ${value}`)
             }
         } catch (err) {
             addToLog(`❌ Failed to update ${field}`)
@@ -699,6 +748,14 @@ export default function Warrior() {
                                         </span>
                                         <span className={status?.config.pmh_enabled ? styles.modeEnabled : styles.modeDisabled}>
                                             {status?.config.pmh_enabled ? '✅' : '❌'} PMH
+                                        </span>
+                                        <span
+                                            className={monitorSettings?.enable_scaling ? styles.modeEnabled : styles.modeDisabled}
+                                            onClick={() => updateMonitorSettings('enable_scaling', !monitorSettings?.enable_scaling)}
+                                            style={{ cursor: 'pointer' }}
+                                            title="Click to toggle scaling (add to winners on pullback)"
+                                        >
+                                            {actionLoading === 'monitor-enable_scaling' ? '...' : (monitorSettings?.enable_scaling ? '✅' : '❌')} Scale
                                         </span>
                                     </div>
 
