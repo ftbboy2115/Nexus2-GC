@@ -127,6 +127,11 @@ class TestWarriorScannerService:
         mock = Mock()
         mock.fmp = Mock()
         mock.fmp.get_etf_symbols.return_value = {"SPY", "QQQ", "IWM"}
+        # All potential scan sources should return empty lists, not Mock objects
+        # These are called on market_data directly, not on fmp
+        mock.get_premarket_gainers.return_value = []
+        mock.get_gainers.return_value = []
+        mock.get_actives.return_value = []
         return mock
     
     def test_chinese_stock_exclusion(self):
@@ -146,9 +151,6 @@ class TestWarriorScannerService:
     
     def test_empty_scan_result(self, mock_market_data):
         """Empty universe returns empty result."""
-        mock_market_data.get_gainers.return_value = []
-        mock_market_data.get_actives.return_value = []
-        
         service = WarriorScannerService(market_data=mock_market_data)
         result = service.scan()
         

@@ -218,20 +218,33 @@ class TestProfitTarget:
     
     @pytest.fixture
     def mock_trading_hours(self):
-        """Mock datetime to simulate trading hours (2:00 PM ET)."""
+        """Mock datetime to simulate trading hours (2:00 PM ET) with proper timedelta support."""
+        from datetime import datetime as real_datetime
         et = ZoneInfo("America/New_York")
-        mock_dt = datetime(2026, 1, 12, 14, 0, 0, tzinfo=et)  # 2:00 PM ET
+        mock_dt = real_datetime(2026, 1, 12, 14, 0, 0, tzinfo=et)  # 2:00 PM ET
+        mock_utc = real_datetime(2026, 1, 12, 19, 0, 0)  # 2:00 PM ET = 7:00 PM UTC
+        
         with patch("nexus2.domain.automation.warrior_monitor.datetime") as mock_datetime:
+            # Return mock time for both .now() and .utcnow()
             mock_datetime.now.return_value = mock_dt
-            mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
+            mock_datetime.utcnow.return_value = mock_utc
+            # Make datetime(...) calls work normally
+            mock_datetime.side_effect = lambda *args, **kw: real_datetime(*args, **kw)
+            # Also need to make timedelta work for seconds_since_entry calculation
+            mock_datetime.timedelta = timedelta
             yield mock_datetime
     
     def test_profit_target_triggers_partial(self, monitor, mock_trading_hours):
         """Hitting profit target triggers partial exit."""
+        from datetime import datetime as real_datetime
+        
         # Target is $150.30 (2:1 R)
         monitor._get_price = AsyncMock(return_value=Decimal("150.35"))
         
         position = list(monitor._positions.values())[0]
+        # Set entry_time as naive UTC to match datetime.utcnow() subtraction
+        position.entry_time = real_datetime(2026, 1, 12, 14, 30, 0)  # 9:30 AM ET = 2:30 PM UTC (naive)
+        
         signal = _run(monitor._evaluate_position(position))
         
         assert signal is not None
@@ -240,10 +253,14 @@ class TestProfitTarget:
     
     def test_partial_taken_no_repeat(self, monitor, mock_trading_hours):
         """Partial already taken does not trigger again."""
+        from datetime import datetime as real_datetime
+        
         monitor._get_price = AsyncMock(return_value=Decimal("150.50"))
         
         position = list(monitor._positions.values())[0]
         position.partial_taken = True
+        # Set entry_time as naive UTC to match datetime.utcnow() subtraction
+        position.entry_time = real_datetime(2026, 1, 12, 14, 30, 0)  # 9:30 AM ET = 2:30 PM UTC (naive)
         
         signal = _run(monitor._evaluate_position(position))
         
