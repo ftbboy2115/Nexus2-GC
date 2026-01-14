@@ -310,59 +310,199 @@ export default function WarriorPerformance() {
                     <div className={styles.loading}>Loading performance data...</div>
                 ) : (
                     <>
-                        {/* Summary Stats */}
-                        <div className={styles.card} style={{ marginBottom: '1.25rem' }}>
-                            <div className={styles.cardHeader}>
-                                <h2>📈 Performance Summary</h2>
-                            </div>
-                            <div className={styles.cardBody}>
-                                <div className={styles.statsGrid}>
-                                    <div className={styles.statBox}>
-                                        <div className={styles.statValue}>{summary?.total_trades || 0}</div>
-                                        <div className={styles.statLabel}>Total Trades</div>
+                        {/* Summary Stats - Schwab Style */}
+                        {(() => {
+                            // Calculate stats from filtered trades
+                            const filteredStats = closedTrades.reduce((acc, t) => {
+                                const pnl = parseFloat(t.realized_pnl || '0')
+                                const entryPrice = parseFloat(t.entry_price || '0')
+                                const exitPrice = parseFloat(t.exit_price || '0')
+                                const qty = t.quantity || 0
+
+                                acc.totalTrades++
+                                if (pnl > 0) {
+                                    acc.winners++
+                                    acc.totalGains += pnl
+                                } else if (pnl < 0) {
+                                    acc.losers++
+                                    acc.totalLosses += Math.abs(pnl)
+                                }
+                                acc.totalPnl += pnl
+                                acc.costBasis += entryPrice * qty
+                                acc.proceeds += exitPrice * qty
+                                return acc
+                            }, {
+                                totalTrades: 0,
+                                winners: 0,
+                                losers: 0,
+                                totalGains: 0,
+                                totalLosses: 0,
+                                totalPnl: 0,
+                                costBasis: 0,
+                                proceeds: 0
+                            })
+
+                            const winRate = filteredStats.totalTrades > 0
+                                ? (filteredStats.winners / filteredStats.totalTrades)
+                                : 0
+                            const gainLossRatio = (filteredStats.totalGains + filteredStats.totalLosses) > 0
+                                ? (filteredStats.totalGains / (filteredStats.totalGains + filteredStats.totalLosses)) * 100
+                                : 0
+                            const pnlPercent = filteredStats.costBasis > 0
+                                ? (filteredStats.totalPnl / filteredStats.costBasis) * 100
+                                : 0
+
+                            return (
+                                <div className={styles.card} style={{ marginBottom: '1.25rem' }}>
+                                    <div className={styles.cardHeader}>
+                                        <h2>📈 Performance Summary</h2>
+                                        <span style={{ color: '#888', fontSize: '0.8rem' }}>
+                                            {dateFilter === 'all' ? 'All Time' : dateFilter === 'today' ? 'Today' : dateFilter === 'week' ? 'This Week' : 'This Month'}
+                                            {symbolFilter && ` • ${symbolFilter}`}
+                                        </span>
                                     </div>
-                                    <div className={styles.statBox}>
-                                        <div className={`${styles.statValue} ${styles.pnlPositive}`}>
-                                            {summary?.winning_trades || 0}
+                                    <div className={styles.cardBody}>
+                                        {/* Top Row: Trade Counts */}
+                                        <div className={styles.statsGrid}>
+                                            <div className={styles.statBox}>
+                                                <div className={styles.statValue}>{filteredStats.totalTrades}</div>
+                                                <div className={styles.statLabel}>Total Trades</div>
+                                            </div>
+                                            <div className={styles.statBox}>
+                                                <div className={`${styles.statValue} ${styles.pnlPositive}`}>
+                                                    {filteredStats.winners}
+                                                </div>
+                                                <div className={styles.statLabel}>Winners</div>
+                                            </div>
+                                            <div className={styles.statBox}>
+                                                <div className={`${styles.statValue} ${styles.pnlNegative}`}>
+                                                    {filteredStats.losers}
+                                                </div>
+                                                <div className={styles.statLabel}>Losers</div>
+                                            </div>
+                                            <div className={styles.statBox}>
+                                                <div className={styles.statValue}>
+                                                    {(winRate * 100).toFixed(0)}%
+                                                </div>
+                                                <div className={styles.statLabel}>Win Rate</div>
+                                            </div>
                                         </div>
-                                        <div className={styles.statLabel}>Winners</div>
-                                    </div>
-                                    <div className={styles.statBox}>
-                                        <div className={`${styles.statValue} ${styles.pnlNegative}`}>
-                                            {summary?.losing_trades || 0}
-                                        </div>
-                                        <div className={styles.statLabel}>Losers</div>
-                                    </div>
-                                    <div className={styles.statBox}>
-                                        <div className={styles.statValue}>
-                                            {summary ? `${(summary.win_rate * 100).toFixed(0)}%` : '0%'}
-                                        </div>
-                                        <div className={styles.statLabel}>Win Rate</div>
-                                    </div>
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    marginTop: '1rem',
-                                    padding: '1rem',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    borderRadius: '8px'
-                                }}>
-                                    <div style={{ textAlign: 'center' }}>
+
+                                        {/* Middle Row: Schwab-Style Financial Summary */}
                                         <div style={{
-                                            fontSize: '2rem',
-                                            fontWeight: 700,
-                                            color: (summary?.total_pnl || 0) >= 0 ? '#28a745' : '#dc3545'
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(3, 1fr)',
+                                            gap: '1rem',
+                                            marginTop: '1rem',
+                                            padding: '1rem',
+                                            background: 'rgba(0,0,0,0.2)',
+                                            borderRadius: '8px'
                                         }}>
-                                            {formatPnL(summary?.total_pnl || 0)}
-                                        </div>
-                                        <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                                            Total P&L
+                                            {/* Left: Cost Basis & Proceeds */}
+                                            <div>
+                                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                                                    Reporting Period
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Cost Basis</span>
+                                                    <span style={{ color: '#e0e0e0', fontWeight: 500 }}>{formatCurrency(filteredStats.costBasis)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Proceeds</span>
+                                                    <span style={{ color: '#e0e0e0', fontWeight: 500 }}>{formatCurrency(filteredStats.proceeds)}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Center: Gains/Losses */}
+                                            <div>
+                                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                                                    Gain/Loss
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Total Gains</span>
+                                                    <span style={{ color: '#28a745', fontWeight: 500 }}>+{formatCurrency(filteredStats.totalGains)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Total Losses</span>
+                                                    <span style={{ color: '#dc3545', fontWeight: 500 }}>-{formatCurrency(filteredStats.totalLosses)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Net Gain</span>
+                                                    <span style={{
+                                                        color: filteredStats.totalPnl >= 0 ? '#28a745' : '#dc3545',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {formatPnL(filteredStats.totalPnl)}
+                                                        <span style={{ fontSize: '0.7rem', marginLeft: '4px', opacity: 0.8 }}>
+                                                            ({pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Gain/Loss Ratio Gauge */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                                                    Gain/Loss Ratio
+                                                </div>
+                                                {/* Gauge */}
+                                                <div style={{
+                                                    position: 'relative',
+                                                    width: '100px',
+                                                    height: '55px',
+                                                    overflow: 'hidden'
+                                                }}>
+                                                    {/* Background arc */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        width: '100px',
+                                                        height: '100px',
+                                                        borderRadius: '50%',
+                                                        background: `conic-gradient(
+                                                            #dc3545 0deg,
+                                                            #ffc107 90deg,
+                                                            #28a745 180deg
+                                                        )`,
+                                                        opacity: 0.3
+                                                    }} />
+                                                    {/* Filled arc based on ratio */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        width: '100px',
+                                                        height: '100px',
+                                                        borderRadius: '50%',
+                                                        background: `conic-gradient(
+                                                            ${gainLossRatio < 40 ? '#dc3545' : gainLossRatio < 60 ? '#ffc107' : '#28a745'} 0deg,
+                                                            ${gainLossRatio < 40 ? '#dc3545' : gainLossRatio < 60 ? '#ffc107' : '#28a745'} ${gainLossRatio * 1.8}deg,
+                                                            transparent ${gainLossRatio * 1.8}deg
+                                                        )`
+                                                    }} />
+                                                    {/* Center cutout */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '15px',
+                                                        left: '15px',
+                                                        width: '70px',
+                                                        height: '70px',
+                                                        borderRadius: '50%',
+                                                        background: '#1a1a2e'
+                                                    }} />
+                                                </div>
+                                                {/* Value */}
+                                                <div style={{
+                                                    fontSize: '1.25rem',
+                                                    fontWeight: 700,
+                                                    color: gainLossRatio < 40 ? '#dc3545' : gainLossRatio < 60 ? '#ffc107' : '#28a745',
+                                                    marginTop: '-10px'
+                                                }}>
+                                                    {gainLossRatio.toFixed(1)}%
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            )
+                        })()}
 
                         {/* Active Positions */}
                         {activePositions.length > 0 && (
