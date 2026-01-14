@@ -640,9 +640,9 @@ class WarriorScannerService:
         ai_result = None
         catalyst_cache = get_catalyst_cache()
         
-        if headlines and (s.use_ai_catalyst_fallback or s.debug_ai_comparison):
-            # Run AI validation if: (1) regex failed or (2) debug comparison mode
-            should_run_ai = (not has_catalyst and s.use_ai_catalyst_fallback) or s.debug_ai_comparison
+        if headlines and (s.use_ai_catalyst_fallback or s.debug_ai_comparison or s.enable_multi_model_comparison):
+            # Run AI validation if: (1) regex failed, (2) debug comparison mode, or (3) multi-model comparison
+            should_run_ai = (not has_catalyst and s.use_ai_catalyst_fallback) or s.debug_ai_comparison or s.enable_multi_model_comparison
             
             if should_run_ai:
                 # Check cache first to avoid duplicate AI calls
