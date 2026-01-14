@@ -194,20 +194,33 @@ def get_open_warrior_trades():
         return [t.to_dict() for t in trades]
 
 
-def get_warrior_trade_by_symbol(symbol: str):
-    """Get open/active trade for a symbol (if any)."""
+def get_warrior_trade_by_symbol(symbol: str, status: str = None):
+    """Get open/active trade for a symbol (if any).
+    
+    Args:
+        symbol: Stock symbol to look up
+        status: Optional specific status to filter (e.g., "pending_exit"). 
+                If None, returns any active trade.
+    """
     with get_warrior_session() as db:
-        # Check for active states (open, pending_fill, pending_exit, partial)
-        active_statuses = [
-            PositionStatus.OPEN.value,
-            PositionStatus.PENDING_FILL.value,
-            PositionStatus.PENDING_EXIT.value,
-            PositionStatus.PARTIAL.value,
-        ]
-        trade = db.query(WarriorTradeModel).filter(
-            WarriorTradeModel.symbol == symbol,
-            WarriorTradeModel.status.in_(active_statuses)
-        ).first()
+        if status:
+            # Filter by specific status
+            trade = db.query(WarriorTradeModel).filter(
+                WarriorTradeModel.symbol == symbol,
+                WarriorTradeModel.status == status
+            ).first()
+        else:
+            # Check for active states (open, pending_fill, pending_exit, partial)
+            active_statuses = [
+                PositionStatus.OPEN.value,
+                PositionStatus.PENDING_FILL.value,
+                PositionStatus.PENDING_EXIT.value,
+                PositionStatus.PARTIAL.value,
+            ]
+            trade = db.query(WarriorTradeModel).filter(
+                WarriorTradeModel.symbol == symbol,
+                WarriorTradeModel.status.in_(active_statuses)
+            ).first()
         return trade.to_dict() if trade else None
 
 

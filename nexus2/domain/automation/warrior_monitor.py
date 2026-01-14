@@ -598,9 +598,31 @@ class WarriorMonitor:
             for symbol, qty in broker_map.items():
                 if symbol not in monitored_symbols and qty > 0:
                     # Skip if pending exit (prevents re-adding position we're trying to close)
+                    # BUT: If broker has this position with a DIFFERENT entry price, the old
+                    # exit likely completed and a new position was entered. Clear stale pending_exit.
                     if self._is_pending_exit(symbol):
-                        logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
-                        continue
+                        # Get current pending_exit trade's entry price from DB
+                        from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+                        pending_trade = get_warrior_trade_by_symbol(symbol, status="pending_exit")
+                        broker_entry = Decimal(str(broker_pos.get("avg_price", 0) if isinstance(broker_pos, dict) else getattr(broker_pos, "avg_price", 0)))
+                        
+                        if pending_trade and broker_entry > 0:
+                            db_entry = Decimal(str(pending_trade.entry_price))
+                            # If entry prices differ by more than 1%, this is a NEW position
+                            price_diff_pct = abs((broker_entry - db_entry) / db_entry * 100) if db_entry > 0 else 100
+                            if price_diff_pct > 1.0:
+                                logger.info(
+                                    f"[Warrior Sync] {symbol}: Clearing stale pending_exit "
+                                    f"(DB entry=${db_entry:.2f}, broker=${broker_entry:.2f})"
+                                )
+                                self._clear_pending_exit(symbol, to_closed=True)
+                                # Don't continue - allow recovery below
+                            else:
+                                logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
+                                continue
+                        else:
+                            logger.debug(f"[Warrior Sync] {symbol}: Skipping recovery (pending exit)")
+                            continue
                     # Skip if recently exited (prevent race condition with pending sell orders)
                     if symbol in self._recently_exited:
                         exit_time = self._recently_exited[symbol]
