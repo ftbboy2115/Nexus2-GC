@@ -699,9 +699,25 @@ class WarriorMonitor:
         elif self._get_price:
             price = await self._get_price(position.symbol)
             
-            # If Alpaca fails, try FMP as backup source
+            # If Alpaca fails, try Schwab as first fallback (real-time bid/ask)
             if price is None or price == 0:
-                logger.info(f"[Warrior] {position.symbol}: Alpaca quote failed, trying FMP fallback...")
+                logger.info(f"[Warrior] {position.symbol}: Alpaca quote failed, trying Schwab fallback...")
+                try:
+                    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+                    schwab = get_schwab_adapter()
+                    if schwab.is_authenticated():
+                        schwab_quote = schwab.get_quote(position.symbol)
+                        if schwab_quote and schwab_quote.get("price") and schwab_quote["price"] > 0:
+                            price = float(schwab_quote["price"])
+                            logger.info(f"[Warrior] {position.symbol}: Schwab fallback successful, price=${price}")
+                    else:
+                        logger.debug(f"[Warrior] Schwab not authenticated, skipping fallback")
+                except Exception as e:
+                    logger.warning(f"[Warrior] {position.symbol}: Schwab fallback failed: {e}")
+            
+            # If still no price, try FMP as final fallback
+            if price is None or price == 0:
+                logger.info(f"[Warrior] {position.symbol}: Trying FMP fallback...")
                 try:
                     from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
                     fmp = get_fmp_adapter()
