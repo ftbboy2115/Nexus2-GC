@@ -354,6 +354,7 @@ class WarriorMonitor:
         entry_price: Decimal,
         shares: int,
         support_level: Optional[Decimal] = None,
+        trigger_type: str = "ORB",  # PMH_BREAK, ORB, or synced
     ) -> WarriorPosition:
         """
         Add a new position to monitor.
@@ -411,7 +412,7 @@ class WarriorMonitor:
             entry_price=entry_price,
             stop_price=current_stop,
             shares=shares,
-            trigger_type="ORB",  # Default, can be overridden by caller
+            trigger_type=trigger_type,
         )
         
         logger.info(

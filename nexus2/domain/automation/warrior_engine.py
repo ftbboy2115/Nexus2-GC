@@ -929,6 +929,7 @@ class WarriorEngine:
                     entry_price=actual_fill_price,  # Use ACTUAL fill price
                     shares=int(filled_qty) if filled_qty else shares,  # Use actual filled qty
                     support_level=support_level,
+                    trigger_type=trigger_type.value,  # PMH_BREAK, ORB
                 )
                 
                 # Log to Warrior DB for restart recovery
