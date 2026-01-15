@@ -132,9 +132,9 @@ class AutomationScheduler:
         # Real time check - MUST use Eastern Time (VPS may be on UTC)
         import pytz
         eastern = pytz.timezone('America/New_York')
-        now_et = datetime.now(eastern)
-        current_time = now_et.time()
-        weekday = now_et.weekday()
+        current_et = datetime.now(eastern)
+        current_time = current_et.time()
+        weekday = current_et.weekday()
         
         # Weekends
         if weekday >= 5:
@@ -396,9 +396,9 @@ class AutomationScheduler:
         # Get today's date
         import pytz
         eastern = pytz.timezone('America/New_York')
-        now_et = datetime.now(eastern)
-        today = now_et.strftime("%Y-%m-%d")
-        current_time = now_et.time()
+        current_et = datetime.now(eastern)
+        today = current_et.strftime("%Y-%m-%d")
+        current_time = current_et.time()
         
         # Skip if already shut down today
         if self._auto_shutdown_done_date == today:
@@ -409,8 +409,8 @@ class AutomationScheduler:
             return False
         
         # Time to shut down!
-        logger.info(f"[AutoShutdown] Triggering automatic shutdown at {now_et.strftime('%H:%M:%S ET')}")
-        print(f"🌙 [AutoShutdown] Stopping scheduler at {now_et.strftime('%H:%M:%S ET')}")
+        logger.info(f"[AutoShutdown] Triggering automatic shutdown at {current_et.strftime('%H:%M:%S ET')}")
+        print(f"\U0001f319 [AutoShutdown] Stopping scheduler at {current_et.strftime('%H:%M:%S ET')}")
         
         shutdown_success = True
         error_message = None
@@ -442,15 +442,15 @@ class AutomationScheduler:
             notifier = DiscordNotifier()
             
             if shutdown_success:
-                message = f"🌙 **NAC Scheduler Shutdown Complete**\n"
-                message += f"Time: {now_et.strftime('%I:%M %p ET')}\n"
+                message = f"\U0001f319 **NAC Scheduler Shutdown Complete**\n"
+                message += f"Time: {current_et.strftime('%I:%M %p ET')}\n"
                 message += f"Cycles run today: {self.cycles_run}\n"
                 message += f"EOD checks: {self.eod_checks_run}"
                 if error_message:
-                    message += f"\n⚠️ Warning: {error_message}"
+                    message += f"\n\u26a0\ufe0f Warning: {error_message}"
             else:
-                message = f"❌ **NAC Scheduler Shutdown FAILED**\n"
-                message += f"Time: {now_et.strftime('%I:%M %p ET')}\n"
+                message = f"\u274c **NAC Scheduler Shutdown FAILED**\n"
+                message += f"Time: {current_et.strftime('%I:%M %p ET')}\n"
                 message += f"Error: {error_message}"
             
             notifier.send_system_alert(message)
@@ -537,7 +537,7 @@ class AutomationScheduler:
         # Get Eastern Time for debugging
         import pytz
         eastern = pytz.timezone('America/New_York')
-        now_et = datetime.now(eastern)
+        current_et = datetime.now(eastern)
         
         return {
             "running": self._running,
@@ -556,7 +556,7 @@ class AutomationScheduler:
             "last_error": self.last_error,
             "last_signals_count": len(self.last_signals) if self.last_signals else 0,
             "last_signals_at": self.last_signals_at.isoformat() if self.last_signals_at else None,
-            "eastern_time": now_et.strftime("%Y-%m-%d %H:%M:%S ET"),
+            "eastern_time": current_et.strftime("%Y-%m-%d %H:%M:%S ET"),
         }
     
     def get_last_signals(self) -> list:

@@ -304,8 +304,8 @@ class WarriorScannerService:
         
         # Check if we're in pre-market (before 9:30 AM ET)
         et = pytz.timezone("US/Eastern")
-        now_et = datetime.now(et)
-        is_premarket = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+        current_et = datetime.now(et)
+        is_premarket = current_et.hour < 9 or (current_et.hour == 9 and current_et.minute < 30)
         
         # Step 1: Get gainers from appropriate endpoint
         # Pre-market uses pre_post_market/gainers for actual gapping stocks
@@ -519,12 +519,12 @@ class WarriorScannerService:
         if avg_volume > 0:
             # Calculate minutes since market open (9:30 AM ET)
             et_tz = pytz.timezone('America/New_York')
-            now_et = datetime.now(et_tz)
-            market_open_today = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            current_et = datetime.now(et_tz)
+            market_open_today = current_et.replace(hour=9, minute=30, second=0, microsecond=0)
             
-            if now_et > market_open_today:
+            if current_et > market_open_today:
                 # Regular market hours - project based on elapsed time
-                minutes_since_open = (now_et - market_open_today).total_seconds() / 60
+                minutes_since_open = (current_et - market_open_today).total_seconds() / 60
                 trading_minutes_per_day = 390  # 6.5 hours = 390 minutes
                 
                 # Project current volume to full-day pace
