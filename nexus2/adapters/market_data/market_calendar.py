@@ -113,8 +113,8 @@ class MarketCalendar:
                     reason = "early_close"
             
             if not is_open:
-                now_et = datetime.now(ET)
-                if now_et.weekday() >= 5:
+                current_et = datetime.now(ET)
+                if current_et.weekday() >= 5:
                     reason = "weekend"
                 else:
                     reason = "holiday_or_closed"
@@ -140,9 +140,9 @@ class MarketCalendar:
     
     def _fallback_check(self) -> MarketStatus:
         """Fallback market hours check if API fails."""
-        now_et = datetime.now(ET)
-        current_time = now_et.time()
-        weekday = now_et.weekday()
+        current_et = datetime.now(ET)
+        current_time = current_et.time()
+        weekday = current_et.weekday()
         
         # Weekends
         if weekday >= 5:
@@ -184,9 +184,9 @@ class MarketCalendar:
         
         # Check if next_open is today
         if status.next_open:
-            now_et = datetime.now(ET)
+            current_et = datetime.now(ET)
             next_open_et = status.next_open.astimezone(ET)
-            return now_et.date() == next_open_et.date()
+            return current_et.date() == next_open_et.date()
         
         return False
     
@@ -201,9 +201,9 @@ class MarketCalendar:
         
         Returns False on weekends/holidays.
         """
-        now_et = datetime.now(ET)
-        current_time = now_et.time()
-        weekday = now_et.weekday()
+        current_et = datetime.now(ET)
+        current_time = current_et.time()
+        weekday = current_et.weekday()
         
         # No trading on weekends
         if weekday >= 5:
@@ -227,10 +227,10 @@ class MarketCalendar:
             if status.next_open:
                 next_open_et = status.next_open.astimezone(ET)
                 # Pre-market: next_open is TODAY = trading day, in pre-market window
-                if next_open_et.date() == now_et.date():
+                if next_open_et.date() == current_et.date():
                     return True  # Pre-market of a trading day
                 # Post-market: next_open is TOMORROW = trading day just ended
-                if next_open_et.date() > now_et.date():
+                if next_open_et.date() > current_et.date():
                     return True  # Post-market of a trading day
             # If API says not a trading day (e.g., holiday), trust it
             return False
