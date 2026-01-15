@@ -1,0 +1,181 @@
+"""
+Centralized Time Utilities
+
+Single source of truth for all timezone-related operations.
+All code should use these functions instead of raw datetime calls.
+
+WHY THIS EXISTS:
+- VPS runs on UTC, local dev runs on ET
+- datetime.now() returns server's local time (inconsistent)
+- Trading logic requires Eastern Time
+- Scattered pytz calls led to 7+ timezone bug fixes
+
+USAGE:
+    from nexus2.utils.time_utils import now_et, format_et, utc_to_et
+    
+    # Get current time in ET
+    current = now_et()
+    
+    # Format for display
+    timestamp_str = format_et()  # "2026-01-15 06:30:00 ET"
+    
+    # Convert UTC datetime to ET
+    et_time = utc_to_et(some_utc_datetime)
+"""
+
+from datetime import datetime, time as dt_time
+from typing import Optional
+import pytz
+
+
+# Eastern timezone constant - THE source of truth
+EASTERN = pytz.timezone('America/New_York')
+UTC = pytz.UTC
+
+
+def now_et() -> datetime:
+    """
+    Get current time in Eastern timezone.
+    
+    Use this INSTEAD of datetime.now() everywhere.
+    """
+    return datetime.now(EASTERN)
+
+
+def now_utc() -> datetime:
+    """
+    Get current time in UTC (timezone-aware).
+    
+    Use this INSTEAD of datetime.utcnow() everywhere.
+    """
+    return datetime.now(UTC)
+
+
+def format_et(dt: Optional[datetime] = None, include_date: bool = True) -> str:
+    """
+    Format datetime as Eastern Time string.
+    
+    Args:
+        dt: Datetime to format (defaults to now)
+        include_date: If True, includes date. If False, time only.
+        
+    Returns:
+        "2026-01-15 06:30:00 ET" or "06:30:00 ET"
+    """
+    if dt is None:
+        dt = now_et()
+    elif dt.tzinfo is None:
+        # Naive datetime - assume it's already ET
+        dt = EASTERN.localize(dt)
+    elif dt.tzinfo != EASTERN:
+        # Convert to ET
+        dt = dt.astimezone(EASTERN)
+    
+    if include_date:
+        return dt.strftime("%Y-%m-%d %H:%M:%S ET")
+    else:
+        return dt.strftime("%H:%M:%S ET")
+
+
+def utc_to_et(dt: datetime) -> datetime:
+    """
+    Convert UTC datetime to Eastern Time.
+    
+    Handles both naive (assumes UTC) and aware datetimes.
+    """
+    if dt.tzinfo is None:
+        # Naive datetime - assume UTC
+        dt = UTC.localize(dt)
+    return dt.astimezone(EASTERN)
+
+
+def et_to_utc(dt: datetime) -> datetime:
+    """
+    Convert Eastern Time datetime to UTC.
+    
+    Handles both naive (assumes ET) and aware datetimes.
+    """
+    if dt.tzinfo is None:
+        # Naive datetime - assume ET
+        dt = EASTERN.localize(dt)
+    return dt.astimezone(UTC)
+
+
+def is_market_hours(dt: Optional[datetime] = None) -> bool:
+    """
+    Check if given time is during regular market hours (9:30 AM - 4:00 PM ET).
+    
+    Args:
+        dt: Datetime to check (defaults to now)
+        
+    Returns:
+        True if during regular market hours
+    """
+    if dt is None:
+        dt = now_et()
+    elif dt.tzinfo is None:
+        dt = EASTERN.localize(dt)
+    elif dt.tzinfo != EASTERN:
+        dt = dt.astimezone(EASTERN)
+    
+    market_open = dt_time(9, 30)
+    market_close = dt_time(16, 0)
+    current_time = dt.time()
+    
+    return market_open <= current_time < market_close
+
+
+def is_premarket(dt: Optional[datetime] = None) -> bool:
+    """
+    Check if given time is during pre-market hours (4:00 AM - 9:29 AM ET).
+    """
+    if dt is None:
+        dt = now_et()
+    elif dt.tzinfo is None:
+        dt = EASTERN.localize(dt)
+    elif dt.tzinfo != EASTERN:
+        dt = dt.astimezone(EASTERN)
+    
+    premarket_open = dt_time(4, 0)
+    market_open = dt_time(9, 30)
+    current_time = dt.time()
+    
+    return premarket_open <= current_time < market_open
+
+
+def is_afterhours(dt: Optional[datetime] = None) -> bool:
+    """
+    Check if given time is during after-hours (4:00 PM - 8:00 PM ET).
+    """
+    if dt is None:
+        dt = now_et()
+    elif dt.tzinfo is None:
+        dt = EASTERN.localize(dt)
+    elif dt.tzinfo != EASTERN:
+        dt = dt.astimezone(EASTERN)
+    
+    market_close = dt_time(16, 0)
+    afterhours_close = dt_time(20, 0)
+    current_time = dt.time()
+    
+    return market_close <= current_time < afterhours_close
+
+
+def is_extended_hours(dt: Optional[datetime] = None) -> bool:
+    """
+    Check if given time is during extended hours (4:00 AM - 8:00 PM ET).
+    
+    This is the full Warrior trading window.
+    """
+    if dt is None:
+        dt = now_et()
+    elif dt.tzinfo is None:
+        dt = EASTERN.localize(dt)
+    elif dt.tzinfo != EASTERN:
+        dt = dt.astimezone(EASTERN)
+    
+    extended_open = dt_time(4, 0)
+    extended_close = dt_time(20, 0)
+    current_time = dt.time()
+    
+    return extended_open <= current_time < extended_close

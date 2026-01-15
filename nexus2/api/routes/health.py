@@ -6,9 +6,9 @@ import os
 import psutil
 from datetime import datetime
 from fastapi import APIRouter
-import pytz
 
 from nexus2.api.schemas import HealthResponse
+from nexus2.utils.time_utils import now_et, format_et
 
 
 router = APIRouter(tags=["health"])
@@ -28,10 +28,6 @@ async def health_check():
     except Exception:
         mode = "unknown"
     
-    # Get Eastern Time (consistent timezone)
-    eastern = pytz.timezone('America/New_York')
-    now_et = datetime.now(eastern)
-    
     # Calculate uptime
     uptime_seconds = int((datetime.now() - _server_start_time).total_seconds())
     
@@ -44,10 +40,9 @@ async def health_check():
     
     return HealthResponse(
         status="healthy",
-        version="0.1.14",
+        version="0.1.15",
         mode=mode,
-        timestamp=now_et.strftime("%Y-%m-%d %H:%M:%S ET"),
+        timestamp=format_et(),  # Using centralized time utility
         uptime_seconds=uptime_seconds,
         memory_mb=memory_mb,
     )
-
