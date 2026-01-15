@@ -607,7 +607,13 @@ export default function WarriorPerformance() {
                                         {symbolFilter ? `No trades for ${symbolFilter}` : 'No trade history yet'}
                                     </div>
                                 ) : (
-                                    <div className={styles.positionsTable}>
+                                    <div
+                                        className={styles.positionsTable}
+                                        style={{
+                                            maxHeight: '400px',
+                                            overflowY: 'auto'
+                                        }}
+                                    >
                                         <table>
                                             <thead>
                                                 <tr>
