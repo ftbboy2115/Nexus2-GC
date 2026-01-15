@@ -99,6 +99,7 @@ class FMPAdapter:
         self._client = httpx.Client(timeout=self.config.timeout)
         self.rate_limiter = RateLimitTracker(self.config.rate_limit_per_minute)
         self._shutdown = False  # Flag for graceful shutdown
+        self._etf_cache: Optional[set] = None  # Session-level cache for ETF symbols
     
     def __del__(self):
         if hasattr(self, '_client'):
@@ -663,13 +664,18 @@ class FMPAdapter:
         """
         Get set of all ETF symbols for filtering.
         
-        Call once and cache the result for the session.
+        Cached for the session (one API call per adapter lifetime).
         """
+        # Return cached result if available
+        if self._etf_cache is not None:
+            return self._etf_cache
+        
         data = self._get("etf/list")
         if not data:
             return set()
         
-        return {item.get("symbol", "") for item in data if item.get("symbol")}
+        self._etf_cache = {item.get("symbol", "") for item in data if item.get("symbol")}
+        return self._etf_cache
     
     def is_etf(self, symbol: str, etf_set: set = None) -> bool:
         """
