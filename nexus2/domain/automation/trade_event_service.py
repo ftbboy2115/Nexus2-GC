@@ -112,12 +112,17 @@ class TradeEventService:
         try:
             # Get 200 days of SPY data (need 200 for 200 MA)
             bars = umd.fmp.get_daily_bars("SPY", limit=210)
-            if not bars or len(bars) < 20:
+            if not bars:
+                logger.warning("[TradeEvent] SPY MA: FMP returned no bars")
+                return {}
+            if len(bars) < 20:
+                logger.warning(f"[TradeEvent] SPY MA: Only got {len(bars)} bars (need 20+)")
                 return {}
             
             # Bars are typically newest-first, so reverse for chronological
             closes = [float(bar.get('close', bar.get('c', 0))) for bar in bars]
             if not closes or closes[0] == 0:
+                logger.warning("[TradeEvent] SPY MA: Invalid close prices in bars")
                 return {}
             
             # For FMP, bars are usually newest first, so closes[0] is current
@@ -155,7 +160,7 @@ class TradeEventService:
             return result
             
         except Exception as e:
-            logger.debug(f"[TradeEvent] SPY MA status failed: {e}")
+            logger.warning(f"[TradeEvent] SPY MA exception: {type(e).__name__}: {e}")
             return {}
     
     def _log_event(
