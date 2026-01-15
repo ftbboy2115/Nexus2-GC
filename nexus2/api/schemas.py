@@ -167,8 +167,9 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     mode: str  # "alpaca_paper", "alpaca_live", "sim"
-    timestamp: datetime
-    eastern_time: Optional[str] = None  # For timezone debugging
+    timestamp: str  # Always ET for consistency
+    uptime_seconds: Optional[int] = None
+    memory_mb: Optional[float] = None  # RSS memory usage
 
 
 # ============================================================================
