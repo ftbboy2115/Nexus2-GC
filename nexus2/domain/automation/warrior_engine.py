@@ -12,6 +12,7 @@ Separate from KK-style AutomationEngine - uses different entry logic.
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime, time as dt_time, timezone, timedelta
 from decimal import Decimal
@@ -239,15 +240,31 @@ class WarriorEngine:
                 import json
                 with open(self._pending_entries_file, "r") as f:
                     data = json.load(f)
+                loaded_count = 0
+                expired_count = 0
                 for symbol, ts in data.items():
                     entry_time = datetime.fromisoformat(ts)
+                    # Handle timezone-naive timestamps from old files
+                    if entry_time.tzinfo is None:
+                        from datetime import timezone
+                        entry_time = entry_time.replace(tzinfo=timezone.utc)
                     # Expire pending entries older than 10 minutes (order likely filled or cancelled)
                     if (now_utc() - entry_time).total_seconds() < 600:
                         self._pending_entries[symbol] = entry_time
-                if self._pending_entries:
-                    logger.info(f"[Warrior Engine] Loaded {len(self._pending_entries)} pending entries from disk")
+                        loaded_count += 1
+                    else:
+                        expired_count += 1
+                if loaded_count > 0:
+                    logger.info(f"[Warrior Engine] Loaded {loaded_count} pending entries from disk")
+                if expired_count > 0:
+                    logger.info(f"[Warrior Engine] Expired {expired_count} stale pending entries")
+        except json.JSONDecodeError as e:
+            logger.error(f"[Warrior Engine] Corrupt pending entries file - deleting: {e}")
+            print(f"⚠️ [Warrior Engine] Corrupt pending_entries.json - deleting and starting fresh")
+            self._pending_entries_file.unlink(missing_ok=True)
         except Exception as e:
-            logger.warning(f"[Warrior Engine] Failed to load pending entries: {e}")
+            logger.error(f"[Warrior Engine] Failed to load pending entries: {type(e).__name__}: {e}")
+            print(f"⚠️ [Warrior Engine] Error loading pending entries: {e}")
     
     def _save_pending_entries(self):
         """Save pending entries to disk."""

@@ -42,6 +42,11 @@ Last updated: 2026-01-13
   - GUI: Button in Quick Actions with confirmation modal
 - [x] **Project README** — Startup instructions (backend, frontend, env setup)
 - [ ] **User Guide / Wiki** — How to use the system, operational playbook
+- [ ] **MarketAux News Integration** — Secondary news source for catalyst detection
+  - FMP missed ROLR's Crypto.com partnership (Jan 14) that caused 279% surge
+  - MarketAux: 5000+ sources, 100 req/day free tier, built-in sentiment
+  - Fallback when FMP headline doesn't contain the actual catalyst
+  - Add `MARKETAUX_API_KEY` to config
 - [ ] **Market Conditions Tracking** — Dedicated `market_snapshots` table for correlation analysis
   - Periodic capture of SPY, QQQ, VIX, sector ETFs
   - Link to trade events for win/loss correlation
