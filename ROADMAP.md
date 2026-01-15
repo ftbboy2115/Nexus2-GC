@@ -110,6 +110,10 @@ Last updated: 2026-01-13
   - Show 🟢/🔴 badge near Refresh button for current connection state
   - Only log transitions: "❌ Failed to connect" → "✅ Connection restored"
   - Avoids log spam from repeated poll failures
+- [ ] **Trade History / Events Log Pagination** — Limit display to 10 rows with scroll, add date filter
+  - Show 10 rows by default, rest in scrollable container
+  - Add date picker filter for historical lookups
+  - Prevents needing to scroll past long event lists to see AI analysis
 
 ---
 
