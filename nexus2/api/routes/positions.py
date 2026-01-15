@@ -164,6 +164,22 @@ async def list_positions(
     )
 
 
+@router.get("/count")
+async def get_positions_count(
+    request: Request,
+    position_service: PositionService = Depends(get_position_service),
+):
+    """Get count of open positions (NAC strategy)."""
+    settings = get_settings()
+    
+    open_positions = position_service.get_open_positions(
+        broker_type=settings.broker_type,
+        account=settings.active_account,
+    )
+    
+    return {"count": len(open_positions), "strategy": "NAC"}
+
+
 class ClosedPositionsListResponse(BaseModel):
     """Response with closed positions list."""
     positions: List[ClosedPositionResponse]

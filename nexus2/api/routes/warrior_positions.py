@@ -61,6 +61,17 @@ async def get_warrior_positions():
     }
 
 
+@positions_router.get("/positions/count")
+async def get_warrior_positions_count():
+    """Get count of active Warrior positions."""
+    from .warrior_routes import get_engine
+    
+    engine = get_engine()
+    positions = engine.monitor.get_positions()
+    
+    return {"count": len(positions), "strategy": "Warrior"}
+
+
 @positions_router.get("/watchlist")
 async def get_warrior_watchlist():
     """Get current Warrior watchlist (candidates being watched for entry)."""
