@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 from uuid import uuid4
 import logging
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ class MockBroker:
             status=MockOrderStatus.FILLED,
             avg_fill_price=fill_price,
             filled_qty=quantity,
-            filled_at=datetime.utcnow(),
+            filled_at=now_utc(),
         )
         
         # Create stop order (pending)
@@ -262,8 +263,8 @@ class MockBroker:
             status=BrokerOrderStatus.FILLED,
             filled_quantity=quantity,
             avg_fill_price=Decimal(str(fill_price)),
-            submitted_at=datetime.utcnow(),
-            filled_at=datetime.utcnow(),
+            submitted_at=now_utc(),
+            filled_at=now_utc(),
         )
     
     def cancel_order(self, order_id: str) -> bool:
@@ -400,7 +401,7 @@ class MockBroker:
                     order.status = MockOrderStatus.FILLED
                     order.avg_fill_price = price  # Fill at current (could be slippage)
                     order.filled_qty = order.qty
-                    order.filled_at = datetime.utcnow()
+                    order.filled_at = now_utc()
                     
                     # Close position
                     if symbol in self._positions:

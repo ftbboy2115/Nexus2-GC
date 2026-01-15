@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from nexus2.db import WatchlistRepository
 from nexus2.db.database import get_session
+from nexus2.utils.time_utils import now_utc
 
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
@@ -124,7 +125,7 @@ async def add_candidate(
         "rs_percentile": request.rs_percentile,
         "adr_percent": request.adr_percent,
         "status": "new",
-        "scanned_at": datetime.utcnow(),
+        "scanned_at": now_utc(),
     }
     
     candidate = repo.upsert(candidate_data)

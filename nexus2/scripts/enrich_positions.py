@@ -38,6 +38,7 @@ from decimal import Decimal
 from typing import Dict, Optional
 
 from nexus2.db import SessionLocal, PositionRepository
+from nexus2.utils.time_utils import now_et
 
 
 def get_alpaca_order_history(days: int = 30) -> Dict[str, dict]:
@@ -59,7 +60,7 @@ def get_alpaca_order_history(days: int = 30) -> Dict[str, dict]:
     broker = AlpacaBroker(broker_config)
     
     # Get orders from the last N days
-    after_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    after_date = (now_et() - timedelta(days=days)).strftime("%Y-%m-%d")
     
     try:
         # Get all orders using the broker's _request method

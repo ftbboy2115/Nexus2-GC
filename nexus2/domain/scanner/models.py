@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID
+from nexus2.utils.time_utils import now_et
 
 
 # =============================================================================
@@ -181,13 +182,13 @@ class Watchlist:
         """Add a stock to this watchlist."""
         entry = WatchlistEntry(
             symbol=symbol,
-            added_at=datetime.now(),
+            added_at=now_et(),
             added_reason=reason,
             notes=notes,
             priority=priority
         )
         self.stocks.append(entry)
-        self.updated_at = datetime.now()
+        self.updated_at = now_et()
         return entry
     
     def remove(self, symbol: str) -> bool:
@@ -195,7 +196,7 @@ class Watchlist:
         for i, entry in enumerate(self.stocks):
             if entry.symbol == symbol:
                 self.stocks.pop(i)
-                self.updated_at = datetime.now()
+                self.updated_at = now_et()
                 return True
         return False
     

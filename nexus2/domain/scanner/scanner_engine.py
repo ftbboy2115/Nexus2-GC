@@ -23,6 +23,7 @@ from nexus2.settings.scanner_settings import (
     DisqualifierSettings,
     QualityScoringSettings,
 )
+from nexus2.utils.time_utils import now_et
 
 
 class MarketDataProvider(Protocol):
@@ -115,7 +116,7 @@ class ScannerEngine:
             quality_score=quality_score,
             tier_recommendation=tier,
             patterns_detected=[],  # Set by PatternDetector
-            scanned_at=datetime.now(),
+            scanned_at=now_et(),
         )
     
     def calculate_quality_score(

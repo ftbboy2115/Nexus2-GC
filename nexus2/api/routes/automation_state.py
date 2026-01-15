@@ -9,6 +9,7 @@ import threading
 from typing import Optional, TYPE_CHECKING
 
 from fastapi import HTTPException
+from nexus2.utils.time_utils import now_utc
 
 if TYPE_CHECKING:
     from nexus2.domain.automation.engine import AutomationEngine
@@ -163,7 +164,7 @@ def add_recent_exit(symbol: str, setup_type: str = "unknown", entry_price: float
         _recent_exits = [e for e in _recent_exits if e["symbol"] != symbol]
         _recent_exits.append({
             "symbol": symbol,
-            "closed_at": datetime.utcnow(),
+            "closed_at": now_utc(),
             "setup_type": setup_type,
             "entry_price": entry_price,  # For re-entry cooldown check
         })
@@ -178,7 +179,7 @@ def get_recent_exit_symbols() -> list[str]:
     """
     from datetime import datetime, timedelta
     with _recent_exits_lock:
-        cutoff = datetime.utcnow() - timedelta(days=RECENT_EXITS_MAX_DAYS)
+        cutoff = now_utc() - timedelta(days=RECENT_EXITS_MAX_DAYS)
         valid_exits = [e for e in _recent_exits if e["closed_at"] > cutoff]
         return [e["symbol"] for e in valid_exits]
 
@@ -216,7 +217,7 @@ def can_reenter(symbol: str, current_price: float) -> tuple[bool, str]:
     # Query DB for most recently closed position of this symbol (today)
     try:
         with get_session() as db:
-            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = now_utc().replace(hour=0, minute=0, second=0, microsecond=0)
             closed_position = db.query(PositionModel).filter(
                 PositionModel.symbol == symbol,
                 PositionModel.status == 'closed',
@@ -233,7 +234,7 @@ def can_reenter(symbol: str, current_price: float) -> tuple[bool, str]:
         return (True, f"DB query failed: {e}")
     
     # Check 1: Time cooldown (30 min)
-    now = datetime.utcnow()
+    now = now_utc()
     cooldown_end = closed_at + timedelta(minutes=REENTRY_COOLDOWN_MINUTES)
     if now < cooldown_end:
         minutes_left = int((cooldown_end - now).total_seconds() / 60)

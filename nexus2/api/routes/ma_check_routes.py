@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from nexus2.api.routes.automation_models import MACheckRequest
 from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ async def run_ma_check(
                 "shares": shares,
                 "exit_price": str(current_price),
                 "reason": reason,
-                "exited_at": datetime.utcnow(),
+                "exited_at": now_utc(),
             })
             
             # Update position
@@ -195,7 +196,7 @@ async def run_ma_check(
                 "status": "closed" if new_remaining <= 0 else "open",
             }
             if new_remaining <= 0:
-                update_data["closed_at"] = datetime.utcnow()
+                update_data["closed_at"] = now_utc()
             position_repo.update(position_id, update_data)
             
             logger.info(f"[MACheck] Exited {position.symbol}: {shares} shares")

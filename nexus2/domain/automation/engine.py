@@ -14,6 +14,7 @@ from typing import Optional, List, Callable
 from dataclasses import dataclass, field
 
 from .signals import Signal, SignalGenerator
+from nexus2.utils.time_utils import now_utc, now_et
 
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class AutomationEngine:
         except Exception as e:
             logger.warning(f"Market calendar unavailable, using fallback: {e}")
             # Fallback to basic time check
-            now = datetime.now()
+            now = now_et()
             current_time = now.time()
             weekday = now.weekday()
             
@@ -144,7 +145,7 @@ class AutomationEngine:
             logger.warning("Starting automation in LIVE mode!")
         
         self.state = EngineState.RUNNING
-        self.stats.started_at = datetime.utcnow()
+        self.stats.started_at = now_utc()
         self._running = True
         
         logger.info(f"Automation engine started (SIM={self.config.sim_only})")
@@ -233,7 +234,7 @@ class AutomationEngine:
             )
             
             self.stats.scans_run += 1
-            self.stats.last_scan_at = datetime.utcnow()
+            self.stats.last_scan_at = now_utc()
             
             # Handle UnifiedScanResult object vs plain list
             # The scanner callback may return UnifiedScanResult (has .signals) or a list

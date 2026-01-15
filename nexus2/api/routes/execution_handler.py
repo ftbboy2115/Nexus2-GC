@@ -18,6 +18,7 @@ from nexus2.domain.automation.automation_logger import (
     log_position_sizing, log_cycle_summary,
 )
 from nexus2.api.routes.settings import get_settings
+from nexus2.utils.time_utils import now_utc, now_et
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def create_execute_callback(
         from nexus2.db.database import get_session
         from nexus2.domain.automation.services import create_unified_scanner_callback
         
-        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Starting execute_callback...")
+        print(f"🤖 [{now_et().strftime('%H:%M:%S')}] [AutoExec] Starting execute_callback...")
         
         # =============================
         # DYNAMIC SETTINGS RELOAD
@@ -134,7 +135,7 @@ def create_execute_callback(
                 "htf_frequency": htf_frequency,
                 "sim_mode": sim_mode,
                 "scanner_version": git_hash,
-                "captured_at": datetime.now().isoformat(),
+                "captured_at": now_et().isoformat(),
             })
         
         # Run scan to get signals (with timing)
@@ -142,15 +143,15 @@ def create_execute_callback(
         scan_start = time.time()
         signals = await engine.run_scan_cycle()
         scan_duration = time.time() - scan_start
-        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Scan returned {len(signals) if signals else 0} signals (took {scan_duration:.1f}s)")
+        print(f"🤖 [{now_et().strftime('%H:%M:%S')}] [AutoExec] Scan returned {len(signals) if signals else 0} signals (took {scan_duration:.1f}s)")
         
         # Store signals in scheduler for UI display (even in auto_execute mode)
         scheduler.last_signals = signals if signals else []
-        scheduler.last_signals_at = datetime.now()
+        scheduler.last_signals_at = now_et()
         
         # Log summary of all signals received for diagnostics
         if signals:
-            print(f"📋 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Signal Summary:")
+            print(f"📋 [{now_et().strftime('%H:%M:%S')}] [AutoExec] Signal Summary:")
             for i, sig in enumerate(signals[:10], 1):
                 setup_name = sig.setup_type.value if hasattr(sig.setup_type, 'value') else str(sig.setup_type)
                 print(f"   {i}. {sig.symbol:6} | Score: {sig.quality_score} | Type: {setup_name:8} | Mode: {sig.scanner_mode} | Tier: {sig.tier}")
@@ -352,7 +353,7 @@ def create_execute_callback(
                         "initial_stop": str(stop_price),
                         "current_stop": str(stop_price),
                         "realized_pnl": "0",
-                        "opened_at": datetime.utcnow(),
+                        "opened_at": now_utc(),
                         "source": "nac",
                         "quality_score": signal.quality_score,
                         "tier": signal.tier,
@@ -418,7 +419,7 @@ def create_execute_callback(
             skipped_symbols=[s["symbol"] for s in skipped],
         )
         
-        print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
+        print(f"🤖 [{now_et().strftime('%H:%M:%S')}] [AutoExec] Cycle complete: {len(executed)} executed, {len(skipped)} skipped, {len(errors)} errors")
         
         return {
             "status": "executed" if executed else "no_trades",

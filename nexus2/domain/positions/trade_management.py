@@ -20,6 +20,7 @@ from nexus2.domain.positions.trade_models import (
     ExitSignal,
 )
 from nexus2.settings.risk_settings import PartialExitSettings
+from nexus2.utils.time_utils import now_et
 
 
 class NotificationService(Protocol):
@@ -134,7 +135,7 @@ class TradeManagementService:
             shares=shares,
             exit_price=exit_price,
             exit_date=date.today(),
-            exit_time=datetime.now(),
+            exit_time=now_et(),
             reason=reason,
             pnl=pnl,
             pnl_percent=pnl_pct,
@@ -145,7 +146,7 @@ class TradeManagementService:
         trade.remaining_shares -= shares
         trade.realized_pnl += pnl
         trade.status = TradeStatus.PARTIAL_EXIT
-        trade.updated_at = datetime.now()
+        trade.updated_at = now_et()
         
         # Auto move to breakeven if enabled
         if self.partial_settings.move_to_breakeven_after:
@@ -295,7 +296,7 @@ class TradeManagementService:
         trade.final_exit_date = date.today()
         trade.final_exit_reason = reason
         trade.status = TradeStatus.CLOSED
-        trade.updated_at = datetime.now()
+        trade.updated_at = now_et()
         
         # Notify
         if self.notifications:

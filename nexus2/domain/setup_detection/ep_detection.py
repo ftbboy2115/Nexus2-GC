@@ -18,6 +18,7 @@ from nexus2.domain.setup_detection.ep_models import (
     CatalystType,
     OpeningRange,
 )
+from nexus2.utils.time_utils import now_et
 
 
 @dataclass
@@ -186,7 +187,7 @@ class EPDetectionService:
             high=high,
             low=low,
             timeframe_minutes=tf,
-            established_at=datetime.now(),
+            established_at=now_et(),
         )
         candidate.status = EPCandidateStatus.ACTIVE
         
@@ -284,7 +285,7 @@ class EPDetectionService:
             List of EP candidates meeting criteria
         """
         candidates = []
-        today = datetime.now().date()
+        today = now_et().date()
         
         for symbol in symbols:
             try:

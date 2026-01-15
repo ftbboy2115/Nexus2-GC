@@ -20,6 +20,7 @@ from datetime import datetime, date, time, timezone
 from decimal import Decimal
 from typing import Optional, List, Callable
 from enum import Enum
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class MAExitSignal:
     
     def __post_init__(self):
         if self.generated_at is None:
-            self.generated_at = datetime.utcnow()
+            self.generated_at = now_utc()
 
 
 @dataclass
@@ -185,7 +186,7 @@ class MACheckJob:
                 positions_checked=0,
                 exit_signals=[],
                 errors=["Outside timing window (3:45-4:00 PM ET)"],
-                check_time=datetime.utcnow(),
+                check_time=now_utc(),
                 is_within_timing_window=within_window,
             )
         
@@ -201,7 +202,7 @@ class MACheckJob:
                 positions_checked=0,
                 exit_signals=[],
                 errors=["No get_positions callback configured"],
-                check_time=datetime.utcnow(),
+                check_time=now_utc(),
                 is_within_timing_window=within_window,
             )
         
@@ -213,7 +214,7 @@ class MACheckJob:
                 positions_checked=0,
                 exit_signals=[],
                 errors=[f"Failed to get positions: {e}"],
-                check_time=datetime.utcnow(),
+                check_time=now_utc(),
                 is_within_timing_window=within_window,
             )
         
@@ -223,7 +224,7 @@ class MACheckJob:
                 positions_checked=0,
                 exit_signals=[],
                 errors=[],
-                check_time=datetime.utcnow(),
+                check_time=now_utc(),
                 is_within_timing_window=within_window,
             )
         
@@ -254,7 +255,7 @@ class MACheckJob:
                 logger.error(f"[MACheck] Error checking {symbol}: {e}")
                 errors.append(f"{symbol}: {e}")
         
-        self.last_check = datetime.utcnow()
+        self.last_check = now_utc()
         self.total_checks += 1
         
         logger.info(
@@ -266,7 +267,7 @@ class MACheckJob:
             positions_checked=positions_checked,
             exit_signals=exit_signals,
             errors=errors,
-            check_time=datetime.utcnow(),
+            check_time=now_utc(),
             is_within_timing_window=within_window,
         )
     

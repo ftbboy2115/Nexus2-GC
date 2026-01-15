@@ -13,6 +13,7 @@ import httpx
 import pytz
 
 from nexus2 import config as app_config
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class MarketCalendar:
     def _is_cache_valid(self) -> bool:
         if not self._cache or not self._cache_time:
             return False
-        elapsed = (datetime.now() - self._cache_time).total_seconds()
+        elapsed = (now_et() - self._cache_time).total_seconds()
         return elapsed < self._cache_ttl_seconds
     
     def get_market_status(self, force_refresh: bool = False) -> MarketStatus:
@@ -128,7 +129,7 @@ class MarketCalendar:
             
             # Update cache
             self._cache = status
-            self._cache_time = datetime.now()
+            self._cache_time = now_et()
             
             return status
             

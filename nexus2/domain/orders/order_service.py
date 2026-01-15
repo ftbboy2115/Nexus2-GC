@@ -23,6 +23,7 @@ from nexus2.domain.orders.exceptions import (
     ATRConstraintError,
     OrderNotFoundError,
 )
+from nexus2.utils.time_utils import now_et
 
 
 class OrderService:
@@ -75,7 +76,7 @@ class OrderService:
             parent_order_id=request.parent_order_id,
             notes=request.notes,
             status=OrderStatus.DRAFT,
-            created_at=datetime.now(),
+            created_at=now_et(),
         )
         
         # Validate ATR constraint for BUY orders with stop (skip for adds)
@@ -109,7 +110,7 @@ class OrderService:
         """
         order = self._get_order(order_id)
         transition(order, OrderStatus.PENDING)
-        order.submitted_at = datetime.now()
+        order.submitted_at = now_et()
         return order
     
     def cancel_order(self, order_id: UUID) -> Order:
@@ -130,7 +131,7 @@ class OrderService:
         """
         order = self._get_order(order_id)
         transition(order, OrderStatus.CANCELLED)
-        order.cancelled_at = datetime.now()
+        order.cancelled_at = now_et()
         return order
     
     def record_fill(
@@ -165,7 +166,7 @@ class OrderService:
         fill = Fill(
             quantity=quantity,
             price=price,
-            timestamp=timestamp or datetime.now(),
+            timestamp=timestamp or now_et(),
             fee=fee,
         )
         

@@ -17,6 +17,7 @@ import websockets
 
 # Import centralized config
 from nexus2 import config as app_config
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -264,7 +265,7 @@ class AlpacaStreamingClient:
                 symbol=symbol,
                 price=price,
                 size=size,
-                timestamp=datetime.utcnow(),
+                timestamp=now_utc(),
             )
             self._on_trade(trade)
     
@@ -290,7 +291,7 @@ class AlpacaStreamingClient:
                 ask_price=ask,
                 bid_size=int(msg.get("bs", 0)),
                 ask_size=int(msg.get("as", 0)),
-                timestamp=datetime.utcnow(),
+                timestamp=now_utc(),
             )
             self._on_quote(quote)
     

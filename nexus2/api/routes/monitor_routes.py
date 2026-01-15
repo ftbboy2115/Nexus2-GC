@@ -13,6 +13,7 @@ from nexus2.api.routes.automation_state import get_engine, get_monitor
 from nexus2.api.routes.automation_models import MonitorStartRequest
 from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ async def start_monitor(
                 "shares": signal.shares_to_exit,
                 "exit_price": str(signal.exit_price),
                 "reason": signal.reason.value,
-                "exited_at": datetime.utcnow(),
+                "exited_at": now_utc(),
             })
             
             # Update position
@@ -101,7 +102,7 @@ async def start_monitor(
                 }
                 if new_remaining <= 0:
                     updates["status"] = "closed"
-                    updates["closed_at"] = datetime.utcnow()
+                    updates["closed_at"] = now_utc()
                     updates["realized_pnl"] = str(signal.pnl_estimate)
                 
                 position_repo.update(signal.position_id, updates)

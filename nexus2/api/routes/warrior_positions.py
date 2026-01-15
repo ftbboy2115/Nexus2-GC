@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from nexus2.utils.time_utils import now_utc
 
 
 # =============================================================================
@@ -170,7 +171,7 @@ async def manual_exit_position(request: ManualExitRequest):
     for pos_id, pos in list(engine.monitor._positions.items()):
         if pos.symbol == symbol:
             engine.monitor.remove_position(pos_id)
-            engine.monitor._recently_exited[symbol] = datetime.datetime.utcnow()
+            engine.monitor._recently_exited[symbol] = datetime.now_utc()
             engine.monitor._save_recently_exited()
             break
     

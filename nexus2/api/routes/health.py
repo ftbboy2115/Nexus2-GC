@@ -14,7 +14,7 @@ from nexus2.utils.time_utils import now_et, format_et
 router = APIRouter(tags=["health"])
 
 # Track server start time for uptime calculation
-_server_start_time = datetime.now()
+_server_start_time = now_et()
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -29,7 +29,7 @@ async def health_check():
         mode = "unknown"
     
     # Calculate uptime
-    uptime_seconds = int((datetime.now() - _server_start_time).total_seconds())
+    uptime_seconds = int((now_et() - _server_start_time).total_seconds())
     
     # Get memory usage (RSS in MB)
     try:

@@ -30,6 +30,7 @@ from nexus2.domain.automation.warrior_monitor import (
     WarriorMonitorSettings,
     WarriorPosition,
 )
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -241,7 +242,7 @@ class WarriorEngine:
                 for symbol, ts in data.items():
                     entry_time = datetime.fromisoformat(ts)
                     # Expire pending entries older than 10 minutes (order likely filled or cancelled)
-                    if (datetime.utcnow() - entry_time).total_seconds() < 600:
+                    if (now_utc() - entry_time).total_seconds() < 600:
                         self._pending_entries[symbol] = entry_time
                 if self._pending_entries:
                     logger.info(f"[Warrior Engine] Loaded {len(self._pending_entries)} pending entries from disk")
@@ -309,7 +310,7 @@ class WarriorEngine:
         if self.state != WarriorEngineState.STOPPED:
             return {"status": "already_running"}
         
-        self.stats.started_at = datetime.utcnow()
+        self.stats.started_at = now_utc()
         
         # Determine initial state
         if self.is_premarket():
@@ -400,7 +401,7 @@ class WarriorEngine:
                         continue
                 
                 # Record when this scan started
-                self._last_scan_started = datetime.utcnow()
+                self._last_scan_started = now_utc()
                 
                 # Run scan
                 await self._run_scan()
@@ -465,7 +466,7 @@ class WarriorEngine:
         
         # Store scan result for UI visibility
         self._last_scan_result = {
-            "scan_time": datetime.utcnow().isoformat(),
+            "scan_time": now_utc().isoformat(),
             "processed_count": result.processed_count,
             "candidates": [
                 {
@@ -673,7 +674,7 @@ class WarriorEngine:
         # This prevents immediately buying back after exit (e.g., after spread exit or stop)
         if symbol in self.monitor._recently_exited:
             exit_time = self.monitor._recently_exited[symbol]
-            seconds_ago = (datetime.utcnow() - exit_time).total_seconds()
+            seconds_ago = (now_utc() - exit_time).total_seconds()
             cooldown = self.monitor._recovery_cooldown_seconds
             if seconds_ago < cooldown:
                 logger.info(
@@ -839,7 +840,7 @@ class WarriorEngine:
             logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
         
         # Mark pending entry BEFORE submitting order (prevents duplicate entries on restart)
-        self._pending_entries[symbol] = datetime.utcnow()
+        self._pending_entries[symbol] = now_utc()
         self._save_pending_entries()
         logger.info(f"[Warrior Entry] {symbol}: Marked pending entry")
         

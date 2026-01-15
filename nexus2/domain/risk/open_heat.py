@@ -18,6 +18,7 @@ from nexus2.domain.risk.models import (
     PositionSize,
 )
 from nexus2.settings.risk_settings import RiskSettings
+from nexus2.utils.time_utils import now_et
 
 
 class Position(Protocol):
@@ -86,7 +87,7 @@ class OpenHeatService:
             total_heat_pct=total_heat_pct,
             positions=position_risks,
             status=status,
-            updated_at=datetime.now(),
+            updated_at=now_et(),
         )
     
     def get_heat_status(self, heat_pct: Decimal) -> HeatStatus:

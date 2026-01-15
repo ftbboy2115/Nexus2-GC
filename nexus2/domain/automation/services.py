@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from nexus2.domain.automation.signals import Signal, SignalGenerator
 from nexus2.domain.automation.engine import AutomationEngine
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -311,7 +312,7 @@ async def create_order_callback(app_state):
                     "initial_stop": str(stop_price),
                     "current_stop": str(stop_price),
                     "realized_pnl": "0",
-                    "opened_at": datetime.utcnow(),
+                    "opened_at": now_utc(),
                 })
                 
                 # Log entry event for Trade Management Log

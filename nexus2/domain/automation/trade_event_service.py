@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Any
 
 from nexus2.db.database import get_session
 from nexus2.db.models import TradeEventModel
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ class TradeEventService:
             except Exception as e:
                 logger.debug(f"[TradeEvent] SPY MA calculation failed: {e}")
             
-            context["market_snapshot_time"] = datetime.utcnow().isoformat()
+            context["market_snapshot_time"] = now_utc().isoformat()
             
             return context
         except Exception as e:
@@ -190,7 +191,7 @@ class TradeEventService:
                     new_value=new_value,
                     reason=reason,
                     metadata_json=json.dumps(metadata) if metadata else None,
-                    created_at=datetime.utcnow(),
+                    created_at=now_utc(),
                 )
                 db.add(event)
                 db.commit()

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from nexus2.db.database import get_session
 from nexus2.db.models import TradeEventModel
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +341,7 @@ class TradeAnalysisService:
                 what_went_well=result.get("what_went_well", []),
                 lessons_learned=result.get("lessons_learned", []),
                 market_conditions=result.get("market_conditions_impact", ""),
-                analyzed_at=datetime.utcnow(),
+                analyzed_at=now_utc(),
                 event_count=len(events),
             )
             

@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 from enum import Enum
+from nexus2.utils.time_utils import now_utc
 
 
 class SetupType(Enum):
@@ -41,7 +42,7 @@ class Signal:
     
     def __post_init__(self):
         if self.generated_at is None:
-            self.generated_at = datetime.utcnow()
+            self.generated_at = now_utc()
     
     @property
     def stop_distance(self) -> Decimal:

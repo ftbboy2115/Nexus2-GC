@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List
 from dataclasses import dataclass
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class CatalystCache:
             return None
         
         cached = self._cache[symbol]
-        if datetime.now() - cached.cached_at > self._ttl:
+        if now_et() - cached.cached_at > self._ttl:
             # Expired
             del self._cache[symbol]
             return None
@@ -61,7 +62,7 @@ class CatalystCache:
             is_valid=is_valid,
             catalyst_type=catalyst_type,
             description=description,
-            cached_at=datetime.now(),
+            cached_at=now_et(),
         )
     
     def clear(self):
@@ -154,7 +155,7 @@ class HeadlineCache:
     
     def _prune(self):
         """Remove headlines older than TTL."""
-        now = datetime.now()
+        now = now_et()
         for symbol in list(self._data.keys()):
             self._data[symbol] = [
                 h for h in self._data[symbol]
@@ -216,7 +217,7 @@ class HeadlineCache:
         self._data[symbol].append({
             "text_hash": text_hash,
             "text": headline[:200],  # Truncate for storage
-            "fetched_at": datetime.now().isoformat(),
+            "fetched_at": now_et().isoformat(),
             "is_valid": is_valid,
             "catalyst_type": catalyst_type,
             "regex_passed": regex_passed,
@@ -559,7 +560,7 @@ class MultiModelValidator:
         if not config:
             return False
         
-        now = datetime.now()
+        now = now_et()
         minute_ago = now - timedelta(minutes=1)
         
         # Remove old entries
@@ -572,7 +573,7 @@ class MultiModelValidator:
     
     def _record_call(self, model_name: str):
         """Record a call for rate limiting."""
-        self._call_counts[model_name].append(datetime.now())
+        self._call_counts[model_name].append(now_et())
     
     def _validate_with_model(
         self,
@@ -717,7 +718,7 @@ Is this a valid Qullamaggie EP catalyst?"""
                 comparison = ComparisonResult(
                     symbol=symbol,
                     headline=headline,
-                    timestamp=datetime.now(),
+                    timestamp=now_et(),
                     regex_type=regex_type,
                     regex_confidence=regex_conf,
                     model_results=model_results,
@@ -801,7 +802,7 @@ Is this a valid Qullamaggie EP catalyst?"""
         comparison = ComparisonResult(
             symbol=symbol,
             headline=headline,
-            timestamp=datetime.now(),
+            timestamp=now_et(),
             regex_type=regex_type,
             regex_confidence=0.9 if regex_passed else 0.0,
             model_results={"flash_lite": flash_result},
@@ -812,7 +813,7 @@ Is this a valid Qullamaggie EP catalyst?"""
     
     def get_stats(self) -> dict:
         """Get rate limit and queue stats."""
-        now = datetime.now()
+        now = now_et()
         minute_ago = now - timedelta(minutes=1)
         
         return {

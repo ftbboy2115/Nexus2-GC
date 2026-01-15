@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class RSService:
                 self._last_refresh = datetime.fromisoformat(cache_data["last_refresh"])
                 
                 # Check if cache is still valid
-                if datetime.now() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
+                if now_et() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
                     print("[RS] Cache file expired, will refresh")
                     return False
             else:
@@ -262,7 +263,7 @@ class RSService:
                 percentile=percentile,
             )
         
-        self._last_refresh = datetime.now()
+        self._last_refresh = now_et()
         
         # Save to file cache for persistence across restarts
         self._save_cache()
@@ -280,7 +281,7 @@ class RSService:
                 self.refresh_universe()
             except Exception as e:
                 logger.warning(f"[RS] Universe refresh failed: {e}")
-        elif datetime.now() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
+        elif now_et() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):
             # Cache expired
             try:
                 self.refresh_universe()

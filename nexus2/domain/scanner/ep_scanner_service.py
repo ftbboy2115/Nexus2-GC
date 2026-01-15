@@ -25,6 +25,7 @@ from nexus2.domain.automation.rejection_tracker import (
     get_rejection_tracker,
     RejectionReason,
 )
+from nexus2.utils.time_utils import now_et
 
 
 @dataclass
@@ -104,7 +105,7 @@ class EPScannerService:
                 candidates=[],
                 processed_count=0,
                 filtered_count=0,
-                scan_time=datetime.now(),
+                scan_time=now_et(),
             )
         
         # Pre-filter by minimum change % and price
@@ -126,7 +127,7 @@ class EPScannerService:
                 candidates=[],
                 processed_count=0,
                 filtered_count=filtered_count,
-                scan_time=datetime.now(),
+                scan_time=now_et(),
             )
         
         # Step 2: Evaluate EP criteria
@@ -162,7 +163,7 @@ class EPScannerService:
             candidates=ep_candidates,
             processed_count=processed,
             filtered_count=filtered_count,
-            scan_time=datetime.now(),
+            scan_time=now_et(),
         )
     
     def _evaluate_symbol(
@@ -286,7 +287,7 @@ class EPScannerService:
         # Create candidate with verified catalyst
         candidate = self.ep_service.create_candidate(
             symbol=symbol,
-            catalyst_date=datetime.now().date(),
+            catalyst_date=now_et().date(),
             catalyst_type=catalyst_type,
             catalyst_description=catalyst_desc,
             prev_close=yesterday_close,

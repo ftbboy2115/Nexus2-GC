@@ -16,6 +16,7 @@ from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
 
 import logging
+from nexus2.utils.time_utils import now_utc
 logger = logging.getLogger(__name__)
 
 # Persistent file logging for scan history
@@ -534,7 +535,7 @@ async def scan_and_execute(
                             "limit_price": trade["entry_price"],
                             "avg_fill_price": str(broker_order.avg_fill_price) if broker_order.avg_fill_price else trade["entry_price"],
                             "filled_quantity": broker_order.filled_quantity,
-                            "created_at": datetime.utcnow(),
+                            "created_at": now_utc(),
                         })
                         
                         fill_status = broker_order.status.value
@@ -554,7 +555,7 @@ async def scan_and_execute(
                         "limit_price": trade["entry_price"],
                         "avg_fill_price": trade["entry_price"],
                         "filled_quantity": trade["shares"],
-                        "created_at": datetime.utcnow(),
+                        "created_at": now_utc(),
                     })
                     fill_status = "filled"
                 
@@ -575,7 +576,7 @@ async def scan_and_execute(
                     "initial_stop": trade["stop_price"],
                     "current_stop": trade["stop_price"],
                     "realized_pnl": "0",
-                    "opened_at": datetime.utcnow(),
+                    "opened_at": now_utc(),
                     "source": "nac",  # Track that this is an automated trade
                 })
                 

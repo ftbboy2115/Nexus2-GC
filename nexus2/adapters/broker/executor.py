@@ -20,6 +20,7 @@ from nexus2.adapters.broker.protocol import (
     BrokerOrderStatus,
     BrokerProtocol,
 )
+from nexus2.utils.time_utils import now_et
 
 
 class ExecutorError(Exception):
@@ -148,7 +149,7 @@ class OrderExecutor:
                 # Skip orders we can't sync
                 continue
         
-        self._last_sync = datetime.now()
+        self._last_sync = now_et()
         return updated
     
     def _sync_order_fills(self, order: Order, broker_order: BrokerOrder) -> bool:

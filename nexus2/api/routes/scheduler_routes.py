@@ -29,6 +29,7 @@ from nexus2.api.routes.automation_helpers import (
 from nexus2.api.routes.execution_handler import create_execute_callback as _create_execute_callback_factory
 from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository
+from nexus2.utils.time_utils import now_utc, now_et
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ async def start_scheduler(
                             position_repo.update(p.id, {
                                 "status": "closed",
                                 "remaining_shares": 0,
-                                "closed_at": datetime.utcnow(),
+                                "closed_at": now_utc(),
                                 "realized_pnl": str(total_pnl),
                             })
                             # Add to recent exits for potential re-entry
@@ -297,13 +298,13 @@ async def start_scheduler(
                                 updates = {
                                     "remaining_shares": max(0, remaining),
                                     "exit_price": exit_price_str,
-                                    "exit_date": datetime.utcnow(),
+                                    "exit_date": now_utc(),
                                     "realized_pnl": str(total_pnl),
                                 }
                                 # If fully closed, update status
                                 if remaining <= 0:
                                     updates["status"] = "closed"
-                                    updates["closed_at"] = datetime.utcnow()
+                                    updates["closed_at"] = now_utc()
                                 position_repo.update(pos.id, updates)
                                 logger.info(f"[Monitor] Position updated: {signal.symbol} remaining={remaining}")
                                 break
@@ -918,7 +919,7 @@ async def test_discord():
         
         # Send test notification
         notifier.send_system_alert(
-            message=f"🧪 **VPS Test Notification**\n\nTimestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S ET')}\nVersion: v0.1.0",
+            message=f"🧪 **VPS Test Notification**\n\nTimestamp: {now_et().strftime('%Y-%m-%d %H:%M:%S ET')}\nVersion: v0.1.0",
             level="success",
         )
         

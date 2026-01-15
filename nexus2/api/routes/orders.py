@@ -25,6 +25,7 @@ from nexus2.domain.orders import (
 )
 from nexus2.adapters.broker import OrderExecutor
 from nexus2.db import OrderRepository
+from nexus2.utils.time_utils import now_utc
 
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -214,7 +215,7 @@ async def cancel_order(
         # Update database
         order_repo.update(str(order_id), {
             "status": "cancelled",
-            "cancelled_at": datetime.utcnow(),
+            "cancelled_at": now_utc(),
         })
         
         return _order_to_response(order)
@@ -223,7 +224,7 @@ async def cancel_order(
         # Order not in memory but exists in DB - just update DB directly
         order_repo.update(str(order_id), {
             "status": "cancelled",
-            "cancelled_at": datetime.utcnow(),
+            "cancelled_at": now_utc(),
         })
         
         # Return updated order from DB

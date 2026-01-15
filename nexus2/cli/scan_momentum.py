@@ -28,6 +28,7 @@ from nexus2.settings.scanner_settings import (
     DisqualifierSettings,
     QualityScoringSettings,
 )
+from nexus2.utils.time_utils import now_et
 
 
 def print_header():
@@ -36,7 +37,7 @@ def print_header():
     print("  NEXUS 2 - Momentum Scanner")
     print("  KK-Style Stock Selection")
     print("=" * 70)
-    print(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  {now_et().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70 + "\n")
 
 

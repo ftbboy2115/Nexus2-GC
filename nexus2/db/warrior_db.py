@@ -14,6 +14,7 @@ from contextlib import contextmanager
 
 # PSM integration
 from nexus2.domain.positions.position_state_machine import PositionStatus
+from nexus2.utils.time_utils import now_utc
 
 # Database path
 DB_DIR = Path(__file__).parent.parent.parent / "data"
@@ -152,7 +153,7 @@ def log_warrior_entry(
             status=PositionStatus.OPEN.value,
             entry_price=str(entry_price),
             quantity=quantity,
-            entry_time=datetime.utcnow(),
+            entry_time=now_utc(),
             trigger_type=trigger_type,
             stop_price=str(stop_price),
             target_price=str(target_price),
@@ -181,7 +182,7 @@ def log_warrior_exit(
             # Full exit
             trade.status = PositionStatus.CLOSED.value
             trade.exit_price = str(exit_price)
-            trade.exit_time = datetime.utcnow()
+            trade.exit_time = now_utc()
             trade.exit_reason = exit_reason
             
             # Calculate P&L
@@ -260,7 +261,7 @@ def update_warrior_status(trade_id: str, new_status: str):
         if trade:
             old_status = trade.status
             trade.status = new_status
-            trade.updated_at = datetime.utcnow()
+            trade.updated_at = now_utc()
             db.commit()
             print(f"[Warrior DB] {trade.symbol}: {old_status} → {new_status}")
             return True
@@ -279,7 +280,7 @@ def set_entry_order_id(trade_id: str, order_id: str):
         trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
         if trade:
             trade.entry_order_id = order_id
-            trade.updated_at = datetime.utcnow()
+            trade.updated_at = now_utc()
             db.commit()
             return True
         return False
@@ -297,7 +298,7 @@ def set_exit_order_id(trade_id: str, order_id: str):
         trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
         if trade:
             trade.exit_order_id = order_id
-            trade.updated_at = datetime.utcnow()
+            trade.updated_at = now_utc()
             db.commit()
             return True
         return False
@@ -344,7 +345,7 @@ def set_scaling_status(trade_id: str) -> bool:
         # Valid transition - set SCALING
         old_status = trade.status
         trade.status = PositionStatus.SCALING.value
-        trade.updated_at = datetime.utcnow()
+        trade.updated_at = now_utc()
         db.commit()
         print(f"[Warrior DB] {trade.symbol}: {old_status} → scaling (add order pending)")
         return True
@@ -378,7 +379,7 @@ def complete_scaling(trade_id: str, new_quantity: int, new_avg_price: float = No
         if new_avg_price:
             trade.entry_price = str(new_avg_price)
         
-        trade.updated_at = datetime.utcnow()
+        trade.updated_at = now_utc()
         db.commit()
         print(f"[Warrior DB] {trade.symbol}: scaling → open (qty: {old_qty} → {new_quantity})")
         return True
@@ -401,7 +402,7 @@ def revert_scaling(trade_id: str) -> bool:
         
         if trade.status == PositionStatus.SCALING.value:
             trade.status = PositionStatus.OPEN.value
-            trade.updated_at = datetime.utcnow()
+            trade.updated_at = now_utc()
             db.commit()
             print(f"[Warrior DB] {trade.symbol}: scaling → open (scale order failed)")
             return True
@@ -460,7 +461,7 @@ def close_orphaned_trades(active_symbols: set):
                 print(f"[Warrior DB] Closing orphan: {trade.symbol} (not on broker)")
                 trade.status = PositionStatus.CLOSED.value
                 trade.exit_reason = "orphan_cleanup"
-                trade.exit_time = datetime.utcnow()
+                trade.exit_time = now_utc()
                 closed.append(trade.symbol)
         
         db.commit()

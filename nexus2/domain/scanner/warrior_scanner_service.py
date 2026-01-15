@@ -31,6 +31,7 @@ from nexus2.domain.automation.ai_catalyst_validator import (
     get_multi_validator,
     get_headline_cache,
 )
+from nexus2.utils.time_utils import now_et
 
 
 # =============================================================================
@@ -340,7 +341,7 @@ class WarriorScannerService:
                 candidates=[],
                 processed_count=0,
                 filtered_count=0,
-                scan_time=datetime.now(),
+                scan_time=now_et(),
             )
         
         # Pre-filter by price and gap (Pillars 4 & 5)
@@ -370,7 +371,7 @@ class WarriorScannerService:
                 candidates=[],
                 processed_count=0,
                 filtered_count=filtered_count,
-                scan_time=datetime.now(),
+                scan_time=now_et(),
             )
         
         # Step 2: Evaluate each symbol against all 5 Pillars
@@ -431,7 +432,7 @@ class WarriorScannerService:
             candidates=candidates,
             processed_count=processed,
             filtered_count=filtered_count,
-            scan_time=datetime.now(),
+            scan_time=now_et(),
             avg_rvol=avg_rvol,
             avg_gap=avg_gap,
         )
@@ -864,7 +865,7 @@ class WarriorScannerService:
             avg_volume=avg_volume,
             dollar_volume=dollar_vol,
             atr=atr,
-            scanned_at=datetime.now(),
+            scanned_at=now_et(),
         )
         
         if verbose:

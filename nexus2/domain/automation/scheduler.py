@@ -9,6 +9,7 @@ import asyncio
 import logging
 from datetime import datetime, time as dt_time, timedelta
 from typing import Optional, Callable, Awaitable
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class AutomationScheduler:
             return calendar.is_market_open()
         except Exception:
             # Fallback to basic time check
-            now = datetime.now()
+            now = now_et()
             current_time = now.time()
             weekday = now.weekday()
             
@@ -194,7 +195,7 @@ class AutomationScheduler:
         """Main scheduling loop with smart pre-market wait."""
         while self._running:
             try:
-                now = datetime.now()
+                now = now_et()
                 
                 # Check if market hours (uses sim clock if sim_mode)
                 if self.is_market_hours:
@@ -237,7 +238,7 @@ class AutomationScheduler:
                         # Short real wait (5 seconds) for rapid testing
                         interval_seconds = 5
                         
-                    self.next_run = datetime.now() + timedelta(seconds=interval_seconds)
+                    self.next_run = now_et() + timedelta(seconds=interval_seconds)
                     await asyncio.sleep(interval_seconds)
                     
                 else:
@@ -337,7 +338,7 @@ class AutomationScheduler:
     
     def _reset_eod_flag_if_new_day(self):
         """Reset EOD check flag if it's a new day."""
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = now_et().strftime("%Y-%m-%d")
         if self._eod_check_done_date != today:
             self._eod_check_done_date = None
     
@@ -356,9 +357,9 @@ class AutomationScheduler:
                 clock = get_simulation_clock()
                 today = clock.get_trading_day()
             except Exception:
-                today = datetime.now().strftime("%Y-%m-%d")
+                today = now_et().strftime("%Y-%m-%d")
         else:
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = now_et().strftime("%Y-%m-%d")
         
         if self._eod_check_done_date == today:
             # Already ran EOD check today
@@ -372,7 +373,7 @@ class AutomationScheduler:
             result = await self._eod_callback()
             self._eod_check_done_date = today
             self.eod_checks_run += 1
-            self.last_eod_run = datetime.now()
+            self.last_eod_run = now_et()
             logger.info(f"{mode_indicator} MA check result: {result}")
         except Exception as e:
             logger.error(f"{mode_indicator} MA check error: {e}")
@@ -462,7 +463,7 @@ class AutomationScheduler:
     
     async def _run_cycle(self):
         """Run one scan/execute cycle."""
-        self.last_run = datetime.now()
+        self.last_run = now_et()
         self.cycles_run += 1
         
         logger.info(f"Running cycle #{self.cycles_run}")
@@ -484,7 +485,7 @@ class AutomationScheduler:
                     else:
                         self.last_signals = result if isinstance(result, list) else []
                         self.last_scan_result = None
-                    self.last_signals_at = datetime.now()
+                    self.last_signals_at = now_et()
                     
                     # Send Discord notification for new signals
                     self._send_discord_notification(self.last_signals)
@@ -546,7 +547,7 @@ class AutomationScheduler:
             "is_eod_window": self.is_eod_window,
             "eod_check_time": str(self.eod_check_time),
             "market_close_time": str(self.market_close),
-            "eod_check_done_today": self._eod_check_done_date == datetime.now().strftime("%Y-%m-%d"),
+            "eod_check_done_today": self._eod_check_done_date == now_et().strftime("%Y-%m-%d"),
             "cycles_run": self.cycles_run,
             "eod_checks_run": self.eod_checks_run,
             "last_run": self.last_run.isoformat() if self.last_run else None,

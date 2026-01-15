@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 from typing import Optional
 
 from nexus2.domain.automation.trade_event_service import trade_event_service
+from nexus2.utils.time_utils import now_utc
 
 
 router = APIRouter(prefix="/trade-events", tags=["trade-events"])
@@ -109,7 +110,7 @@ async def analyze_day_trades(
         except ValueError:
             return {"success": False, "error": "Invalid date format. Use YYYY-MM-DD"}
     else:
-        target_date = datetime.utcnow().date()
+        target_date = now_utc().date()
     
     # Get all closed trades
     all_closed = get_warrior_trades_by_status("closed")

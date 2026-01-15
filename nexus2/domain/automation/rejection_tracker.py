@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 import threading
+from nexus2.utils.time_utils import now_et
 
 # Maximum rejections to keep in the log file
 MAX_REJECTIONS = 500
@@ -117,7 +118,7 @@ class RejectionTracker:
             self.rejections = self.rejections[-MAX_REJECTIONS:]
         
         data = {
-            "updated_at": datetime.now().isoformat(),
+            "updated_at": now_et().isoformat(),
             "count": len(self.rejections),
             "rejections": [asdict(r) for r in self.rejections],
         }
@@ -141,7 +142,7 @@ class RejectionTracker:
     ):
         """Record a rejection."""
         rejection = Rejection(
-            timestamp=datetime.now().isoformat(),
+            timestamp=now_et().isoformat(),
             symbol=symbol,
             scanner=scanner,
             reason=reason.value,

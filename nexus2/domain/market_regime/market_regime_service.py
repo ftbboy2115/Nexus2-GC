@@ -10,6 +10,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Callable, List, Optional, Protocol
+from nexus2.utils.time_utils import now_et
 
 
 class MarketRegime(Enum):
@@ -141,7 +142,7 @@ class MarketRegimeService:
             nasdaq_vs_20ma=nasdaq_vs_20ma,
             ma_10_vs_20=ma_relationship,
             trading_recommendation=action.message,
-            updated_at=datetime.now(),
+            updated_at=now_et(),
         )
     
     def get_recommended_action(self, regime: MarketRegime) -> RegimeAction:

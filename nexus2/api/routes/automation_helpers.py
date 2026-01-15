@@ -15,6 +15,7 @@ import pytz
 
 from nexus2.db.database import get_session
 from nexus2.db.repository import PositionRepository, PositionExitRepository, SchedulerSettingsRepository
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ async def auto_start_checker(
                                         "shares": signal.shares_to_exit,
                                         "exit_price": str(signal.exit_price),
                                         "reason": signal.reason.value,
-                                        "exited_at": datetime.utcnow(),
+                                        "exited_at": now_utc(),
                                     })
                                     
                                     position = position_repo.get_by_id(signal.position_id)
@@ -151,7 +152,7 @@ async def auto_start_checker(
                                         updates = {"remaining_shares": new_remaining}
                                         if new_remaining <= 0:
                                             updates["status"] = "closed"
-                                            updates["closed_at"] = datetime.utcnow()
+                                            updates["closed_at"] = now_utc()
                                             updates["realized_pnl"] = str(signal.pnl_estimate)
                                         position_repo.update(signal.position_id, updates)
                                     
@@ -468,7 +469,7 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                     "shares": shares,
                     "exit_price": str(current_price),
                     "reason": reason,
-                    "exited_at": datetime.utcnow(),
+                    "exited_at": now_utc(),
                 })
                 
                 # Update position
@@ -478,7 +479,7 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                     "status": "closed" if new_remaining <= 0 else "open",
                 }
                 if new_remaining <= 0:
-                    update_data["closed_at"] = datetime.utcnow()
+                    update_data["closed_at"] = now_utc()
                 position_repo.update(position_id, update_data)
                 
                 logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
@@ -635,7 +636,7 @@ def create_execute_callback(engine, broker, get_app_fn):
                             "initial_stop": str(signal.stop_price),
                             "current_stop": str(signal.stop_price),
                             "realized_pnl": "0",
-                            "opened_at": datetime.utcnow(),
+                            "opened_at": now_utc(),
                             "broker_type": nac_broker,
                             "account": nac_account,
                         })

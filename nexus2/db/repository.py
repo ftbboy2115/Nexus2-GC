@@ -9,6 +9,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from nexus2.db.models import OrderModel, FillModel, PositionModel, SettingsModel
+from nexus2.utils.time_utils import now_utc
 
 
 class OrderRepository:
@@ -133,7 +134,7 @@ class PositionRepository:
             "status": "closed",
             "remaining_shares": 0,
             "realized_pnl": realized_pnl,
-            "closed_at": datetime.utcnow(),
+            "closed_at": now_utc(),
         })
     
     def get_by_source(self, source: Optional[str] = None, status: Optional[str] = None, limit: int = 1000) -> List[PositionModel]:

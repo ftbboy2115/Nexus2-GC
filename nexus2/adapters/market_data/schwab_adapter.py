@@ -23,6 +23,7 @@ from urllib.parse import urlencode, unquote
 import httpx
 
 from nexus2 import config as app_config
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class SchwabAdapter:
         """Check if we have valid tokens."""
         if not self._access_token:
             return False
-        if self._token_expiry and datetime.now() >= self._token_expiry:
+        if self._token_expiry and now_et() >= self._token_expiry:
             # Token expired, try to refresh
             return self._refresh_access_token()
         return True
@@ -146,7 +147,7 @@ class SchwabAdapter:
             self._access_token = data["access_token"]
             self._refresh_token = data.get("refresh_token")
             expires_in = data.get("expires_in", 1800)  # Default 30 min
-            self._token_expiry = datetime.now() + timedelta(seconds=expires_in - 60)  # Buffer
+            self._token_expiry = now_et() + timedelta(seconds=expires_in - 60)  # Buffer
             
             self._save_tokens()
             logger.info("[Schwab] Successfully authenticated!")
@@ -189,7 +190,7 @@ class SchwabAdapter:
             if "refresh_token" in data:
                 self._refresh_token = data["refresh_token"]
             expires_in = data.get("expires_in", 1800)
-            self._token_expiry = datetime.now() + timedelta(seconds=expires_in - 60)
+            self._token_expiry = now_et() + timedelta(seconds=expires_in - 60)
             
             self._save_tokens()
             logger.info("[Schwab] Token refreshed successfully")

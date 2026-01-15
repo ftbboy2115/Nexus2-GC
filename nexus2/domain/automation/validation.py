@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional, List
 import logging
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class ValidationResult:
     
     def __post_init__(self):
         if self.validated_at is None:
-            self.validated_at = datetime.utcnow()
+            self.validated_at = now_utc()
 
 
 class PreTradeValidator:

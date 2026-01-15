@@ -36,6 +36,7 @@ from nexus2.domain.scanner.htf_scanner_service import (
     HTFStatus,
     get_htf_scanner_service,
 )
+from nexus2.utils.time_utils import now_utc, now_et
 
 
 router = APIRouter(prefix="/scanner", tags=["scanner"])
@@ -116,7 +117,7 @@ async def run_scanner(request: ScannerRunRequest):
         _last_results = ScannerResultsResponse(
             results=mock_results[:request.limit],
             total=len(mock_results[:request.limit]),
-            scanned_at=datetime.now(),
+            scanned_at=now_et(),
         )
         return _last_results
     
@@ -145,7 +146,7 @@ async def run_scanner(request: ScannerRunRequest):
         _last_results = ScannerResultsResponse(
             results=scan_results,
             total=len(scan_results),
-            scanned_at=datetime.now(),
+            scanned_at=now_et(),
         )
         
         # Persist to watchlist (optional - keep existing behavior)
@@ -172,7 +173,7 @@ async def run_scanner(request: ScannerRunRequest):
                             "rs_percentile": r.rs_percentile,
                             "adr_percent": r.adr_percent,
                             "status": "new",
-                            "scanned_at": datetime.utcnow(),
+                            "scanned_at": now_utc(),
                         }
                         repo.upsert(candidate_data)
                         persisted_count += 1

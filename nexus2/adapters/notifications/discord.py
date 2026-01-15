@@ -12,6 +12,7 @@ from typing import Optional
 import httpx
 
 from nexus2 import config as app_config
+from nexus2.utils.time_utils import now_utc
 
 
 class DiscordError(Exception):
@@ -100,7 +101,7 @@ class DiscordNotifier:
             "title": title,
             "description": description,
             "color": self.COLORS.get(color, self.COLORS["blue"]),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now_utc().isoformat(),
         }
         
         if fields:

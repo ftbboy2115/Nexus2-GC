@@ -16,6 +16,7 @@ from nexus2.domain.positions.trade_models import (
     ManagedTrade,
     TradeStatus,
 )
+from nexus2.utils.time_utils import now_et
 
 
 class PositionError(Exception):
@@ -59,7 +60,7 @@ class PositionService:
                     symbol=p.symbol,
                     setup_type=p.setup_type or "manual",
                     entry_date=p.opened_at.date() if p.opened_at else date.today(),
-                    entry_time=p.opened_at or datetime.now(),
+                    entry_time=p.opened_at or now_et(),
                     entry_price=Decimal(p.entry_price),
                     shares=p.shares,
                     initial_stop=Decimal(p.initial_stop) if p.initial_stop else Decimal("0"),
@@ -149,7 +150,7 @@ class PositionService:
             symbol=order.symbol,
             setup_type=setup_type,
             entry_date=date.today(),
-            entry_time=order.filled_at or datetime.now(),
+            entry_time=order.filled_at or now_et(),
             entry_price=order.avg_fill_price or Decimal("0"),
             shares=order.filled_quantity,
             initial_stop=stop,
@@ -209,7 +210,7 @@ class PositionService:
         trade.entry_price = (old_value + new_value) / new_shares
         trade.shares = new_shares
         trade.remaining_shares += order.filled_quantity
-        trade.updated_at = datetime.now()
+        trade.updated_at = now_et()
         
         return trade
     
@@ -302,7 +303,7 @@ class PositionService:
         
         trade.current_stop = new_stop
         trade.stop_type = stop_type
-        trade.updated_at = datetime.now()
+        trade.updated_at = now_et()
         
         return trade
     

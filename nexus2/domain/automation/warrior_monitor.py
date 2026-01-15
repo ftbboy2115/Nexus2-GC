@@ -18,6 +18,7 @@ from typing import Optional, List, Callable, Dict
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from nexus2.utils.time_utils import now_utc, now_et
 
 
 logger = logging.getLogger(__name__)
@@ -222,7 +223,7 @@ class WarriorMonitor:
                 import json
                 with open(self._recently_exited_file, "r") as f:
                     data = json.load(f)
-                now = datetime.utcnow()
+                now = now_utc()
                 # Only load entries less than 1 hour old (stale entries are useless)
                 for symbol, ts_str in data.items():
                     exit_time = datetime.fromisoformat(ts_str)
@@ -393,7 +394,7 @@ class WarriorMonitor:
             symbol=symbol,
             entry_price=entry_price,
             shares=shares,
-            entry_time=datetime.utcnow(),
+            entry_time=now_utc(),
             mental_stop=mental_stop,
             technical_stop=technical_stop,
             current_stop=current_stop,
@@ -490,7 +491,7 @@ class WarriorMonitor:
     
     async def _check_all_positions(self):
         """Check all positions for exit conditions."""
-        self.last_check = datetime.utcnow()
+        self.last_check = now_utc()
         self.checks_run += 1
         
         # Periodic sync with broker (every N checks)
@@ -593,7 +594,7 @@ class WarriorMonitor:
             # Check for broker positions not in monitor (orphaned at broker)
             # Auto-recover these by adding them back to monitor
             monitored_symbols = {p.symbol for p in self._positions.values()}
-            now = datetime.utcnow()
+            now = now_utc()
             
             # Clean up old entries from recently exited
             expired = [s for s, t in self._recently_exited.items() 
@@ -743,7 +744,7 @@ class WarriorMonitor:
                             symbol=symbol,
                             entry_price=entry_price,
                             shares=qty,
-                            entry_time=datetime.utcnow(),
+                            entry_time=now_utc(),
                             current_stop=stop_price,
                             profit_target=target_price,
                             mental_stop=stop_price,
@@ -936,7 +937,7 @@ class WarriorMonitor:
         # =====================================================================
         if s.enable_spread_exit:
             # Only check spread after grace period (avoid exit on volatile open)
-            seconds_since_entry = (datetime.utcnow() - position.entry_time).total_seconds()
+            seconds_since_entry = (now_utc() - position.entry_time).total_seconds()
             if seconds_since_entry >= s.spread_grace_period_seconds:
                 # Get bid/ask spread from quote callback if available
                 if self._get_quote_with_spread:
@@ -1172,7 +1173,7 @@ class WarriorMonitor:
         # SAFETY: Skip scaling if we recently attempted (60-second cooldown to prevent spam)
         if position.last_scale_attempt:
             cooldown_seconds = 60
-            elapsed = (datetime.now() - position.last_scale_attempt).total_seconds()
+            elapsed = (now_et() - position.last_scale_attempt).total_seconds()
             if elapsed < cooldown_seconds:
                 logger.debug(f"[Warrior Scale] {symbol}: Skipping - cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
                 return None
@@ -1247,7 +1248,7 @@ class WarriorMonitor:
             )
             
             # Mark attempt timestamp (for cooldown on retry)
-            position.last_scale_attempt = datetime.now()
+            position.last_scale_attempt = now_et()
             
             order_result = await self._submit_scale_order(
                 symbol=symbol,
@@ -1392,7 +1393,7 @@ class WarriorMonitor:
         # The position will remain on Alpaca and need manual close.
         if signal.reason != WarriorExitReason.PARTIAL_EXIT:
             # Track as recently exited to prevent auto-recovery race
-            self._recently_exited[signal.symbol] = datetime.utcnow()
+            self._recently_exited[signal.symbol] = now_utc()
             self._save_recently_exited()  # Persist to disk for restart survival
             
             # 2-Strike Rule: only count if order was successful
@@ -1414,7 +1415,7 @@ class WarriorMonitor:
     
     def _add_realized_pnl(self, pnl: Decimal):
         """Add to realized P&L, resetting if new day."""
-        today = datetime.utcnow().date()
+        today = now_utc().date()
         if self._pnl_date != today:
             self.realized_pnl_today = Decimal("0")
             self._pnl_date = today
@@ -1423,7 +1424,7 @@ class WarriorMonitor:
     def reset_daily_pnl(self):
         """Manually reset daily P&L tracking."""
         self.realized_pnl_today = Decimal("0")
-        self._pnl_date = datetime.utcnow().date()
+        self._pnl_date = now_utc().date()
     
     def get_status(self) -> dict:
         """Get monitor status."""

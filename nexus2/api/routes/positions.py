@@ -24,6 +24,7 @@ from nexus2.domain.positions import (
 )
 from nexus2.db import PositionRepository
 from nexus2.api.routes.settings import get_settings
+from nexus2.utils.time_utils import now_utc
 
 
 router = APIRouter(prefix="/positions", tags=["positions"])
@@ -303,7 +304,7 @@ async def sync_positions(
         if symbol not in local_symbols:
             try:
                 # Use actual fill date from Alpaca, fallback to now if not found
-                opened_at = entry_dates.get(symbol, datetime.utcnow())
+                opened_at = entry_dates.get(symbol, now_utc())
                 
                 position_repo.create({
                     "id": str(uuid4()),

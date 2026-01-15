@@ -6,6 +6,7 @@ Usage: python -m nexus2.tests.validate_system
 """
 
 import sys
+from nexus2.utils.time_utils import now_et
 sys.path.insert(0, ".")
 
 import asyncio
@@ -148,7 +149,7 @@ def check_analytics():
 def check_market_hours():
     """Check market status."""
     print("\n=== 7. Market Hours Check ===")
-    now = datetime.now()
+    now = now_et()
     weekday = now.weekday()
     hour = now.hour
     minute = now.minute

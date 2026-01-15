@@ -11,6 +11,7 @@ from typing import List, Optional
 from enum import Enum
 
 from nexus2.adapters.market_data import UnifiedMarketData
+from nexus2.utils.time_utils import now_et
 
 
 class BreakoutStatus(Enum):
@@ -158,7 +159,7 @@ class BreakoutScannerService:
         return BreakoutScanResult(
             candidates=results,
             processed_count=processed,
-            scan_time=datetime.now(),
+            scan_time=now_et(),
         )
     
     def _evaluate_symbol(self, symbol: str, verbose: bool = False) -> Optional[BreakoutCandidate]:

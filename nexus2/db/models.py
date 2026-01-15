@@ -11,6 +11,7 @@ from sqlalchemy.types import DECIMAL
 from sqlalchemy.orm import relationship
 
 from nexus2.db.database import Base
+from nexus2.utils.time_utils import now_utc
 
 
 class OrderModel(Base):
@@ -202,7 +203,7 @@ class PositionModel(Base):
             "exit_date": self.exit_date.isoformat() if self.exit_date else None,
             "scanner_version": self.scanner_version,
             "tag": self.tag,
-            "days_held": (datetime.utcnow() - self.opened_at).days if self.opened_at else 0,
+            "days_held": (now_utc() - self.opened_at).days if self.opened_at else 0,
         }
 
 

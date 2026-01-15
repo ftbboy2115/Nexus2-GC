@@ -16,6 +16,7 @@ from nexus2.adapters.broker.protocol import (
     BrokerFill,
     BrokerPosition,
 )
+from nexus2.utils.time_utils import now_et
 
 
 class PaperBrokerError(Exception):
@@ -88,7 +89,7 @@ class PaperBroker:
         In instant mode, fills immediately.
         """
         broker_id = self._generate_broker_id()
-        now = datetime.now()
+        now = now_et()
         
         # Determine fill price
         if order_type == "market":
@@ -295,5 +296,5 @@ class PaperBroker:
         fill_price = order.limit_price or Decimal("100.00")
         fill_price = self._apply_slippage(fill_price, order.side)
         
-        self._fill_order(order, fill_qty, fill_price, datetime.now())
+        self._fill_order(order, fill_qty, fill_price, now_et())
         return order
