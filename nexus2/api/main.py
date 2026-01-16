@@ -192,9 +192,12 @@ async def lifespan(app: FastAPI):
                 mock_request.app = app
                 
                 # Start in background task to not block startup
+                # Delay 60s to let Warrior scan complete first and avoid FMP rate limit overlap
                 import asyncio
                 async def resume_scheduler():
                     try:
+                        print("[Startup] NAC scheduler resume delayed 60s (FMP rate limit protection)")
+                        await asyncio.sleep(60)
                         result = await start_scheduler(mock_request, engine=get_engine())
                         print(f"[Startup] NAC scheduler auto-resumed: {result.get('message', 'OK')}")
                     except Exception as e:
