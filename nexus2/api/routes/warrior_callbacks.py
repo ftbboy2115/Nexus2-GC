@@ -299,6 +299,11 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
             return None
         
         try:
+            # Cancel pending BUY orders first (prevents wash trade when scale order pending)
+            cancelled_buys = alpaca.cancel_open_orders(symbol, side="buy")
+            if cancelled_buys > 0:
+                print(f"[Warrior] Cancelled {cancelled_buys} pending buy order(s) for {symbol} (wash trade prevention)")
+            
             # Cancel pending sell orders
             cancelled = alpaca.cancel_open_orders(symbol, side="sell")
             if cancelled > 0:
