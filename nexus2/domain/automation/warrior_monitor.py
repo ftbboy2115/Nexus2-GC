@@ -1004,20 +1004,30 @@ class WarriorMonitor:
         # =====================================================================
         if current_price <= position.current_stop:
             pnl = (current_price - position.entry_price) * position.shares
+            
+            # Determine which stop type was hit based on what current_stop was set to
+            # If position has a technical_stop and that's what we're using, report it correctly
+            if position.technical_stop and position.current_stop == position.technical_stop:
+                exit_reason = WarriorExitReason.TECHNICAL_STOP
+                stop_type = "technical (candle low)"
+            else:
+                exit_reason = WarriorExitReason.MENTAL_STOP
+                stop_type = "mental (15c)"
+            
             logger.warning(
                 f"[Warrior] {position.symbol}: STOP HIT at ${current_price} "
-                f"(stop was ${position.current_stop})"
+                f"(stop was ${position.current_stop}, type={stop_type})"
             )
             return WarriorExitSignal(
                 position_id=position.position_id,
                 symbol=position.symbol,
-                reason=WarriorExitReason.MENTAL_STOP,
+                reason=exit_reason,
                 exit_price=current_price,
                 shares_to_exit=position.shares,
                 pnl_estimate=pnl,
                 stop_price=position.current_stop,
                 r_multiple=r_multiple,
-                trigger_description=f"Price ${current_price} <= stop ${position.current_stop}",
+                trigger_description=f"Price ${current_price} <= {stop_type} stop ${position.current_stop}",
             )
         
         # =====================================================================
