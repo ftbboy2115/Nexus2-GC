@@ -47,12 +47,14 @@ export default function SchedulerCard({
         onIntervalChange(newInterval)
         if (scheduler?.running) {
             try {
-                await fetch(`${API_BASE}/automation/scheduler/interval`, {
+                const res = await fetch(`${API_BASE}/automation/scheduler/interval`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ interval_minutes: newInterval }),
                 })
-                onRefreshStatus()
+                if (res.ok) {
+                    await onRefreshStatus()
+                }
             } catch (err) {
                 console.error('Failed to update interval:', err)
             }
