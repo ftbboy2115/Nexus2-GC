@@ -711,7 +711,7 @@ class WarriorMonitor:
                         
                         if self._get_intraday_candles:
                             try:
-                                candles = await self._get_intraday_candles(symbol, "5min", limit=50)
+                                candles = await self._get_intraday_candles(symbol, "1min", limit=50)
                                 if candles and len(candles) >= 5:
                                     from nexus2.domain.indicators import get_stop_calculator
                                     stop_calc = get_stop_calculator()

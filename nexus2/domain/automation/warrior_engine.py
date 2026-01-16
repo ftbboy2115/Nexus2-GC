@@ -721,7 +721,7 @@ class WarriorEngine:
                             vwap = None
                             if self._get_intraday_bars:
                                 try:
-                                    candles = await self._get_intraday_bars(symbol, "5min", limit=30)
+                                    candles = await self._get_intraday_bars(symbol, "1min", limit=30)
                                     if candles and len(candles) >= 5:
                                         from nexus2.domain.indicators import get_technical_service
                                         tech = get_technical_service()
@@ -857,7 +857,7 @@ class WarriorEngine:
         # Only applies to re-entries (entry_attempt_count > 0), not first entry
         if watched.entry_attempt_count > 0 and self._get_intraday_bars:
             try:
-                candles = await self._get_intraday_bars(symbol, "5min", limit=30)
+                candles = await self._get_intraday_bars(symbol, "1min", limit=30)
                 if candles and len(candles) >= 10:
                     from nexus2.domain.indicators import get_technical_service
                     tech = get_technical_service()
@@ -955,7 +955,7 @@ class WarriorEngine:
         # Entry should be above VWAP and near 9 EMA support
         if self._get_intraday_bars:
             try:
-                candles = await self._get_intraday_bars(symbol, "5min", limit=50)
+                candles = await self._get_intraday_bars(symbol, "1min", limit=50)
                 if candles and len(candles) >= 10:
                     from nexus2.domain.indicators import get_technical_service
                     tech = get_technical_service()
@@ -1012,7 +1012,7 @@ class WarriorEngine:
         
         if self._get_intraday_bars:
             try:
-                candles = await self._get_intraday_bars(symbol, "5min", limit=50)
+                candles = await self._get_intraday_bars(symbol, "1min", limit=50)
                 if candles and len(candles) >= 5:
                     from nexus2.domain.indicators import get_stop_calculator
                     stop_calc = get_stop_calculator()
