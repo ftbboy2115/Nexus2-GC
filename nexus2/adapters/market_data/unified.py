@@ -56,14 +56,48 @@ class UnifiedMarketData:
         
         FMP quotes are often stale during pre-market (show yesterday's close).
         Alpaca provides accurate real-time pre-market prices.
-        """
-        # Alpaca first - has real-time extended hours data
-        quote = self.alpaca.get_quote(symbol)
-        if quote and quote.price > 0:
-            return quote
         
-        # Fallback to FMP
-        return self.fmp.get_quote(symbol)
+        Cross-validation: If Alpaca and FMP prices differ by >20%, prefer FMP
+        to avoid acting on stale/corrupt Alpaca data.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Get quotes from both sources
+        alpaca_quote = self.alpaca.get_quote(symbol)
+        fmp_quote = self.fmp.get_quote(symbol)
+        
+        # If only one source has data, use it
+        if not alpaca_quote or alpaca_quote.price <= 0:
+            return fmp_quote
+        if not fmp_quote or fmp_quote.price <= 0:
+            return alpaca_quote
+        
+        # Cross-validation: check price divergence
+        alpaca_price = float(alpaca_quote.price)
+        fmp_price = float(fmp_quote.price)
+        
+        if fmp_price > 0:
+            divergence_pct = abs(alpaca_price - fmp_price) / fmp_price * 100
+            
+            if divergence_pct > 20:
+                # Major divergence - Alpaca is likely stale/corrupt
+                logger.warning(
+                    f"[Quote] {symbol}: Price divergence! "
+                    f"Alpaca=${alpaca_price:.2f} vs FMP=${fmp_price:.2f} "
+                    f"({divergence_pct:.1f}% diff) - using FMP"
+                )
+                return fmp_quote
+            elif divergence_pct > 5:
+                # Minor divergence - log but use Alpaca (real-time)
+                logger.debug(
+                    f"[Quote] {symbol}: Minor divergence "
+                    f"Alpaca=${alpaca_price:.2f} vs FMP=${fmp_price:.2f} "
+                    f"({divergence_pct:.1f}% diff)"
+                )
+        
+        # Default: Alpaca for real-time extended hours data
+        return alpaca_quote
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
         """Get quotes for multiple symbols via FMP."""
