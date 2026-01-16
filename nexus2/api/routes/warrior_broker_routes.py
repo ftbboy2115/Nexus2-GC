@@ -324,7 +324,7 @@ async def wire_warrior_callbacks(broker) -> dict:
     await monitor._sync_with_broker()
     
     # Sync SCALING positions - reconcile in-flight scale orders
-    from nexus2.db.warrior_db import check_scaling_positions, complete_scaling, revert_scaling
+    from nexus2.db.warrior_db import check_scaling_positions, complete_scaling, revert_scaling, close_orphaned_trades
     scaling_positions = check_scaling_positions()
     if scaling_positions:
         print(f"[Warrior] Syncing {len(scaling_positions)} SCALING positions...")
@@ -346,6 +346,13 @@ async def wire_warrior_callbacks(broker) -> dict:
                 # Position no longer at broker - revert to OPEN
                 print(f"[Warrior] {symbol}: Position not at broker, reverting to OPEN")
                 revert_scaling(pos["id"])
+    
+    # Close orphaned trades - positions marked 'open' in DB but not at broker
+    broker_positions = broker.get_positions()
+    active_symbols = set(broker_positions.keys())
+    orphaned = close_orphaned_trades(active_symbols)
+    if orphaned:
+        print(f"[Warrior] Closed {len(orphaned)} orphaned trades: {orphaned}")
     
     return {
         "status": "enabled",
