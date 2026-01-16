@@ -655,11 +655,15 @@ class WarriorMonitor:
                             is_stale = False
                             if updated_at_str:
                                 try:
+                                    from datetime import timezone
                                     if isinstance(updated_at_str, str):
                                         updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
                                     else:
                                         updated_at = updated_at_str
-                                    stale_seconds = (now - updated_at.replace(tzinfo=None)).total_seconds()
+                                    # Ensure updated_at is timezone-aware (assume UTC if naive)
+                                    if updated_at.tzinfo is None:
+                                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                                    stale_seconds = (now - updated_at).total_seconds()
                                     is_stale = stale_seconds > 120  # 2 minutes
                                 except Exception:
                                     pass

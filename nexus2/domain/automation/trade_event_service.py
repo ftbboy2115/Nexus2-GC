@@ -121,8 +121,9 @@ class TradeEventService:
                 return {}
             
             # Bars are typically newest-first, so reverse for chronological
-            closes = [float(bar.get('close', bar.get('c', 0))) for bar in bars]
-            if not closes or closes[0] == 0:
+            # FMP returns OHLCV objects with .close attribute (not dicts)
+            closes = [float(bar.close) for bar in bars if hasattr(bar, 'close') and bar.close]
+            if not closes:
                 logger.warning("[TradeEvent] SPY MA: Invalid close prices in bars")
                 return {}
             
