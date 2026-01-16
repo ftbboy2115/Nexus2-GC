@@ -304,8 +304,8 @@ def create_execute_callback(
                 
                 # KK methodology: stop = LOD (Low of Day so far)
                 # Get today's low from FMP quote
-                from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
-                fmp = FMPAdapter()
+                from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                fmp = get_fmp_adapter()
                 quote = fmp.get_quote(signal.symbol)
                 
                 if quote and quote.day_low and quote.day_low > 0:

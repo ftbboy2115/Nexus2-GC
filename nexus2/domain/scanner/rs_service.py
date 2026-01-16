@@ -85,9 +85,9 @@ class RSService:
     def fmp(self):
         """Lazy load FMP adapter if not injected."""
         if self._fmp is None:
-            from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
-            self._fmp = FMPAdapter()
-            print("[RS] Created new FMP adapter (not shared)")
+            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+            self._fmp = get_fmp_adapter()
+            print("[RS] Using singleton FMP adapter")
         return self._fmp
     
     def _save_cache(self) -> None:
