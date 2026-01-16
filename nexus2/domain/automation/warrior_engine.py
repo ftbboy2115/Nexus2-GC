@@ -55,6 +55,8 @@ class EntryTriggerType(Enum):
     PMH_BREAK = "pmh_break"  # Pre-Market High breakout
     BULL_FLAG = "bull_flag"  # First green after pullback
     VWAP_RECLAIM = "vwap_reclaim"  # Reclaim VWAP with volume
+    DIP_FOR_LEVEL = "dip_for_level"  # Dip + level break (Ross: TNMG $3.93 → $4.00)
+    PULLBACK = "pullback"  # General pullback entry (first candle new high)
 
 
 @dataclass
@@ -101,6 +103,14 @@ class WarriorEngineConfig:
     
     # Debug
     debug_catalyst: bool = True  # Temp: debug catalyst detection
+    
+    # DIP-FOR-LEVEL entry pattern (Phase 2 expansion)
+    # Ross methodology: candle-based detection, not fixed % thresholds
+    dip_for_level_enabled: bool = True  # Enable dip-for-level entries
+    pullback_enabled: bool = True  # Enable general pullback entries
+    level_proximity_cents: int = 10  # How close to level to trigger (default 10c)
+    level_granularity: str = "quarter"  # "quarter" ($0.25), "half" ($0.50), "whole" ($1.00)
+    require_macd_positive: bool = True  # Ross-confirmed: MACD must be positive for entry
 
 
 @dataclass
@@ -130,6 +140,11 @@ class WatchedCandidate:
     entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
     added_at: datetime = field(default_factory=datetime.utcnow)
+    
+    # Level tracking for DIP_FOR_LEVEL pattern (Phase 2 expansion)
+    recent_high: Optional[Decimal] = None  # Intraday high for pullback detection
+    dip_from_high_pct: float = 0.0  # Current pullback depth %
+    target_level: Optional[Decimal] = None  # Nearest psychological level
 
 
 # =============================================================================
@@ -542,6 +557,46 @@ class WarriorEngine:
     # ENTRY WATCHING
     # =========================================================================
     
+    def _get_key_levels(self, price: Decimal) -> list:
+        """
+        Returns key psychological price levels near the given price.
+        
+        Ross Cameron uses $0.50 and $1.00 levels explicitly for entries and targets,
+        but $0.25 levels are also valid entry points based on Level 2 / order book.
+        
+        Args:
+            price: Current price to calculate levels around
+            
+        Returns:
+            List of nearby psychological levels sorted by proximity
+        """
+        price_float = float(price)
+        levels = []
+        
+        granularity = self.config.level_granularity
+        
+        if granularity in ("quarter", "all"):
+            # $0.25 increments (secondary levels)
+            level_25 = Decimal(str(int(price_float * 4) / 4))
+            levels.extend([level_25, level_25 + Decimal("0.25"), level_25 + Decimal("0.50")])
+        
+        if granularity in ("half", "quarter", "all"):
+            # $0.50 increments (primary levels - Ross confirmed)
+            level_50 = Decimal(str(int(price_float * 2) / 2))
+            levels.extend([level_50, level_50 + Decimal("0.50")])
+        
+        # $1.00 increments (strongest levels - always included)
+        level_100 = Decimal(str(int(price_float)))
+        levels.extend([level_100, level_100 + Decimal("1.00")])
+        
+        # Remove duplicates, sort by proximity to current price
+        unique_levels = sorted(set(levels))
+        
+        # Filter to levels within $0.60 of current price (reasonable entry range)
+        nearby = [l for l in unique_levels if abs(l - price) < Decimal("0.60")]
+        
+        return nearby
+    
     async def _watch_loop(self):
         """Background loop for watching entry triggers."""
         last_date = None  # Track current trading day for midnight reset
@@ -593,6 +648,10 @@ class WarriorEngine:
                 
                 current_price = Decimal(str(current_price))
                 
+                # Track intraday high for pullback detection
+                if watched.recent_high is None or current_price > watched.recent_high:
+                    watched.recent_high = current_price
+                
                 # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
                 # This enables "curl back up" pattern detection for re-entries
                 if current_price < watched.pmh:
@@ -602,7 +661,35 @@ class WarriorEngine:
                             f"(${current_price:.2f} < ${watched.pmh:.2f}) - ready for re-entry"
                         )
                     watched.last_below_pmh = True
-                    continue  # Skip entry check when below PMH
+                    
+                    # Track pullback depth for dip-for-level detection
+                    if watched.recent_high:
+                        watched.dip_from_high_pct = float(
+                            (watched.recent_high - current_price) / watched.recent_high * 100
+                        )
+                    
+                    # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
+                    # Example: TNMG at $3.93, target $4.00 level
+                    if self.config.dip_for_level_enabled and not watched.entry_triggered:
+                        levels = self._get_key_levels(current_price)
+                        levels_above = [l for l in levels if l > current_price]
+                        if levels_above:
+                            nearest_level = min(levels_above)
+                            distance_cents = int((nearest_level - current_price) * 100)
+                            
+                            if distance_cents <= self.config.level_proximity_cents:
+                                watched.target_level = nearest_level
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL pattern "
+                                    f"(${current_price:.2f} near ${nearest_level}, "
+                                    f"dip {watched.dip_from_high_pct:.1f}%)"
+                                )
+                                await self._enter_position(
+                                    watched,
+                                    current_price,
+                                    EntryTriggerType.DIP_FOR_LEVEL
+                                )
+                    continue  # Skip PMH/ORB checks when below PMH
                 
                 # Price is above PMH - check if this is a fresh breakout after pullback
                 if watched.entry_triggered and watched.last_below_pmh:
