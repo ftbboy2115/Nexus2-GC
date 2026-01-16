@@ -112,14 +112,21 @@ def create_get_quote():
 
 
 def create_get_quotes_batch():
-    """Create a batch quotes callback."""
+    """Create a batch quotes callback using cross-validated UnifiedMarketData."""
+    from nexus2.adapters.market_data.unified import UnifiedMarketData
+    umd = UnifiedMarketData()
+    
     async def get_quotes_batch(symbols: list):
-        """Get quotes for multiple symbols in ONE API call."""
+        """Get quotes for multiple symbols with cross-validation."""
         try:
-            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-            alpaca = AlpacaAdapter()
-            quotes = alpaca.get_quotes_batch(symbols)
-            return {sym: float(q.price) for sym, q in quotes.items() if q}
+            # Use individual cross-validated quotes for each symbol
+            # This ensures each price is validated against FMP
+            prices = {}
+            for symbol in symbols:
+                quote = umd.get_quote(symbol)
+                if quote and quote.price > 0:
+                    prices[symbol] = float(quote.price)
+            return prices
         except Exception as e:
             print(f"[Warrior] Batch quote failed: {e}")
             return {}
