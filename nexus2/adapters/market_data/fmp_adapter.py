@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 
 import httpx
+import threading
 
 from nexus2.adapters.market_data.protocol import (
     MarketDataProvider,
@@ -39,6 +40,7 @@ class RateLimitTracker:
     def __init__(self, limit_per_minute: int = 300):
         self.limit_per_minute = limit_per_minute
         self._calls: List[datetime] = []
+        self._lock = threading.Lock()  # Thread-safe access to rate limiter
     
     def _prune_old_calls(self):
         """Remove calls older than 60 seconds."""
@@ -75,6 +77,17 @@ class RateLimitTracker:
             "remaining": self.remaining,
             "usage_percent": round(self.usage_percent, 1),
         }
+    
+    def mark_exhausted(self):
+        """Mark rate limit as exhausted (e.g., when we get a 429 from FMP).
+        
+        This syncs our local counter with FMP's server-side state, which can
+        be ahead of ours after a server restart.
+        """
+        now = datetime.now(timezone.utc)
+        # Fill the calls list to capacity to reflect that we're at the limit
+        self._calls = [now] * self.limit_per_minute
+        print(f"[FMP] Rate limiter synced to exhausted state (429 received)")
 
 
 class FMPAdapter:
@@ -114,41 +127,65 @@ class FMPAdapter:
         import time
         
         try:
-            # Throttle: wait if approaching limit (< 10 remaining)
-            while self.rate_limiter.remaining < 10 and not self._shutdown:
-                wait_time = 5  # Total wait 5 seconds
-                print(f"[FMP] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
-                # Use short intervals so we can respond to shutdown quickly
-                for _ in range(10):  # 10 x 0.5s = 5s total
-                    if self._shutdown:
-                        print("[FMP] Shutdown detected, aborting request")
-                        return None
-                    time.sleep(0.5)
+            # Acquire lock to prevent race conditions - only one thread can check+call at a time
+            with self.rate_limiter._lock:
+                # Throttle: wait if approaching limit (< 10 remaining)
+                while self.rate_limiter.remaining < 10 and not self._shutdown:
+                    wait_time = 5  # Total wait 5 seconds
+                    print(f"[FMP] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
+                    # Release lock while waiting so other threads don't block
+                    self.rate_limiter._lock.release()
+                    try:
+                        for _ in range(10):  # 10 x 0.5s = 5s total
+                            if self._shutdown:
+                                print("[FMP] Shutdown detected, aborting request")
+                                return None
+                            time.sleep(0.5)
+                    finally:
+                        self.rate_limiter._lock.acquire()
+                
+                # Hard stop if at limit
+                if self.rate_limiter.remaining <= 0 and not self._shutdown:
+                    print(f"[FMP] Rate limit reached! Waiting 60s...")
+                    self.rate_limiter._lock.release()
+                    try:
+                        for _ in range(120):  # 120 x 0.5s = 60s total
+                            if self._shutdown:
+                                print("[FMP] Shutdown detected, aborting request")
+                                return None
+                            time.sleep(0.5)
+                    finally:
+                        self.rate_limiter._lock.acquire()
+                
+                if self._shutdown:
+                    return None
+                
+                url = f"{self.config.base_url}/{endpoint}"
+                params = params or {}
+                params["apikey"] = self.config.api_key
+                
+                # Record call BEFORE making it (under lock)
+                self.rate_limiter.record_call()
             
-            # Hard stop if at limit
-            if self.rate_limiter.remaining <= 0 and not self._shutdown:
-                print(f"[FMP] Rate limit reached! Waiting 60s...")
-                # Use short intervals for interruptibility
-                for _ in range(120):  # 120 x 0.5s = 60s total
-                    if self._shutdown:
-                        print("[FMP] Shutdown detected, aborting request")
-                        return None
-                    time.sleep(0.5)
-            
-            if self._shutdown:
-                return None
-            
-            url = f"{self.config.base_url}/{endpoint}"
-            params = params or {}
-            params["apikey"] = self.config.api_key
-            
-            self.rate_limiter.record_call()
+            # Make the HTTP call OUTSIDE the lock (I/O bound, don't block others)
             response = self._client.get(url, params=params)
             response.raise_for_status()
             return response.json()
         except KeyboardInterrupt:
             print("[FMP] Keyboard interrupt received, aborting")
             self._shutdown = True
+            return None
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                # 429 Too Many Requests - sync our counter with FMP's state
+                self.rate_limiter.mark_exhausted()
+                print(f"[FMP] 429 received, waiting 60s before retry...")
+                # Wait for rate limit to reset
+                for _ in range(120):  # 120 x 0.5s = 60s
+                    if self._shutdown:
+                        return None
+                    time.sleep(0.5)
+            print(f"[FMP] Request error: {e}")
             return None
         except Exception as e:
             print(f"[FMP] Request error: {e}")
