@@ -717,7 +717,7 @@ class WarriorEngine:
                             # Get levels including VWAP
                             levels = self._get_key_levels(current_price)
                             
-                            # Fetch VWAP from technical service and add to levels
+                            # Fetch VWAP from technical service
                             vwap = None
                             if self._get_intraday_bars:
                                 try:
@@ -736,30 +736,44 @@ class WarriorEngine:
                                 except Exception as e:
                                     logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
                             
-                            # Find levels above current price (entry targets)
-                            levels_above = [l for l in levels if l > current_price]
-                            if levels_above:
-                                nearest_level = min(levels_above)
-                                distance_cents = int((nearest_level - current_price) * 100)
-                                
-                                # Trigger if near level (10c) or at VWAP (15c buffer)
-                                vwap_proximity = 15 if vwap and nearest_level == vwap else self.config.level_proximity_cents
-                                
-                                if distance_cents <= vwap_proximity:
-                                    watched.target_level = nearest_level
-                                    watched.entry_triggered = False  # Reset to allow re-entry
-                                    watched.entry_attempt_count += 1
-                                    level_type = "VWAP" if vwap and nearest_level == vwap else f"${nearest_level}"
-                                    logger.info(
-                                        f"[Warrior Entry] {symbol}: PULLBACK pattern "
-                                        f"(HOD=${watched.recent_high:.2f}, dip {pullback_pct:.1f}%, "
-                                        f"target {level_type})"
-                                    )
-                                    await self._enter_position(
-                                        watched,
-                                        current_price,
-                                        EntryTriggerType.PULLBACK
-                                    )
+                            # Check for entry near levels OR at VWAP support
+                            should_enter = False
+                            entry_reason = None
+                            
+                            # Pattern 1: VWAP BOUNCE - price sitting at/near VWAP support
+                            # Ross: "VWAP bounce on stock meeting 5 pillars"
+                            if vwap and current_price >= vwap:
+                                distance_above_vwap = int((current_price - vwap) * 100)
+                                if distance_above_vwap <= 15:  # Within 15c above VWAP
+                                    should_enter = True
+                                    entry_reason = f"VWAP bounce (${vwap:.2f})"
+                            
+                            # Pattern 2: Near round-number level above
+                            if not should_enter:
+                                levels_above = [l for l in levels if l > current_price]
+                                if levels_above:
+                                    nearest_level = min(levels_above)
+                                    distance_cents = int((nearest_level - current_price) * 100)
+                                    vwap_proximity = 15 if vwap and nearest_level == vwap else self.config.level_proximity_cents
+                                    
+                                    if distance_cents <= vwap_proximity:
+                                        should_enter = True
+                                        entry_reason = f"${nearest_level}" if nearest_level != vwap else "VWAP"
+                                        watched.target_level = nearest_level
+                            
+                            if should_enter:
+                                watched.entry_triggered = False  # Reset to allow re-entry
+                                watched.entry_attempt_count += 1
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: PULLBACK pattern "
+                                    f"(HOD=${watched.recent_high:.2f}, dip {pullback_pct:.1f}%, "
+                                    f"target {entry_reason})"
+                                )
+                                await self._enter_position(
+                                    watched,
+                                    current_price,
+                                    EntryTriggerType.PULLBACK
+                                )
                     continue  # Already entered this breakout
                 
                 # ORB trigger at 9:30
