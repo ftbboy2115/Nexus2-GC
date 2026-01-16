@@ -703,6 +703,37 @@ class WarriorEngine:
                     )
                 
                 if watched.entry_triggered:
+                    # PULLBACK PATTERN (above PMH): Ross's "break through high after dip"
+                    # When price has run above PMH, then pulls back from HOD
+                    # Re-entry on "first candle to make new high" after pullback
+                    if self.config.pullback_enabled and watched.recent_high:
+                        pullback_pct = float(
+                            (watched.recent_high - current_price) / watched.recent_high * 100
+                        )
+                        watched.dip_from_high_pct = pullback_pct
+                        
+                        # Trigger if 2-5% pullback from HOD and near a level
+                        if 2.0 <= pullback_pct <= 10.0:
+                            levels = self._get_key_levels(current_price)
+                            levels_above = [l for l in levels if l > current_price]
+                            if levels_above:
+                                nearest_level = min(levels_above)
+                                distance_cents = int((nearest_level - current_price) * 100)
+                                
+                                if distance_cents <= self.config.level_proximity_cents:
+                                    watched.target_level = nearest_level
+                                    watched.entry_triggered = False  # Reset to allow re-entry
+                                    watched.entry_attempt_count += 1
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: PULLBACK pattern "
+                                        f"(HOD=${watched.recent_high:.2f}, dip {pullback_pct:.1f}%, "
+                                        f"target ${nearest_level})"
+                                    )
+                                    await self._enter_position(
+                                        watched,
+                                        current_price,
+                                        EntryTriggerType.PULLBACK
+                                    )
                     continue  # Already entered this breakout
                 
                 # ORB trigger at 9:30
