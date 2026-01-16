@@ -279,6 +279,25 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
         reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
         symbol = signal.symbol
         
+        # DEFENSIVE GUARD: Check actual broker position to prevent short attempts
+        # This handles race conditions where scale orders haven't filled yet
+        try:
+            broker_positions = alpaca.get_positions()
+            if symbol in broker_positions:
+                broker_qty = broker_positions[symbol].quantity
+                if broker_qty < shares:
+                    print(f"[Warrior] {symbol}: Adjusting exit from {shares} to {broker_qty} shares (broker qty)")
+                    shares = broker_qty
+            else:
+                print(f"[Warrior] {symbol}: No broker position found - skipping exit")
+                return None
+        except Exception as e:
+            print(f"[Warrior] {symbol}: Broker position check failed: {e}, using signal qty")
+        
+        if shares <= 0:
+            print(f"[Warrior] {symbol}: No shares to exit after broker check")
+            return None
+        
         try:
             # Cancel pending sell orders
             cancelled = alpaca.cancel_open_orders(symbol, side="sell")
