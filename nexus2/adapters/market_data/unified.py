@@ -52,51 +52,115 @@ class UnifiedMarketData:
     
     def get_quote(self, symbol: str) -> Optional[Quote]:
         """
-        Get quote, using Alpaca first for real-time extended hours data.
+        Get quote with 3-source cross-validation.
         
-        FMP quotes are often stale during pre-market (show yesterday's close).
-        Alpaca provides accurate real-time pre-market prices.
+        Priority:
+        1. If all sources agree (within 10%), use Alpaca (real-time)
+        2. If Alpaca and FMP diverge >20%, use Schwab as tie-breaker
+        3. If Schwab not available, prefer Schwab > FMP > Alpaca based on availability
         
-        Cross-validation: If Alpaca and FMP prices differ by >20%, prefer FMP
-        to avoid acting on stale/corrupt Alpaca data.
+        This prevents acting on stale/corrupt data from any single source.
         """
         import logging
+        from decimal import Decimal
         logger = logging.getLogger(__name__)
         
-        # Get quotes from both sources
+        # Collect quotes from all available sources
         alpaca_quote = self.alpaca.get_quote(symbol)
         fmp_quote = self.fmp.get_quote(symbol)
         
-        # If only one source has data, use it
-        if not alpaca_quote or alpaca_quote.price <= 0:
-            return fmp_quote
-        if not fmp_quote or fmp_quote.price <= 0:
-            return alpaca_quote
+        # Try Schwab (real-time pre-market bid/ask)
+        schwab_price = None
+        try:
+            from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+            schwab = get_schwab_adapter()
+            if schwab.is_authenticated():
+                schwab_data = schwab.get_quote(symbol)
+                if schwab_data and schwab_data.get("price") and schwab_data["price"] > 0:
+                    schwab_price = float(schwab_data["price"])
+        except Exception as e:
+            logger.debug(f"[Quote] {symbol}: Schwab lookup failed: {e}")
         
-        # Cross-validation: check price divergence
-        alpaca_price = float(alpaca_quote.price)
-        fmp_price = float(fmp_quote.price)
+        # Extract prices
+        alpaca_price = float(alpaca_quote.price) if alpaca_quote and alpaca_quote.price > 0 else None
+        fmp_price = float(fmp_quote.price) if fmp_quote and fmp_quote.price > 0 else None
         
-        if fmp_price > 0:
-            divergence_pct = abs(alpaca_price - fmp_price) / fmp_price * 100
-            
-            if divergence_pct > 20:
-                # Major divergence - Alpaca is likely stale/corrupt
-                logger.warning(
-                    f"[Quote] {symbol}: Price divergence! "
-                    f"Alpaca=${alpaca_price:.2f} vs FMP=${fmp_price:.2f} "
-                    f"({divergence_pct:.1f}% diff) - using FMP"
+        # Build price list for comparison
+        prices = {}
+        if alpaca_price: prices["Alpaca"] = alpaca_price
+        if fmp_price: prices["FMP"] = fmp_price
+        if schwab_price: prices["Schwab"] = schwab_price
+        
+        if not prices:
+            logger.warning(f"[Quote] {symbol}: No valid quotes from any source!")
+            return None
+        
+        # If only one source, use it
+        if len(prices) == 1:
+            source, price = list(prices.items())[0]
+            logger.debug(f"[Quote] {symbol}: Only {source} available (${price:.2f})")
+            if source == "Alpaca": return alpaca_quote
+            if source == "FMP": return fmp_quote
+            # Schwab returns dict, not Quote - convert it
+            if source == "Schwab":
+                return Quote(
+                    symbol=symbol,
+                    price=Decimal(str(schwab_price)),
+                    change=Decimal("0"),
+                    change_percent=Decimal("0"),
+                    volume=0,
+                    timestamp=None,
                 )
+        
+        # Calculate max divergence between any two sources
+        price_list = list(prices.values())
+        min_price = min(price_list)
+        max_price = max(price_list)
+        divergence_pct = ((max_price - min_price) / min_price * 100) if min_price > 0 else 0
+        
+        # If all sources agree (within 20%), use Alpaca for real-time
+        if divergence_pct <= 20:
+            if alpaca_price:
+                logger.debug(f"[Quote] {symbol}: Sources agree ({divergence_pct:.1f}% spread) - using Alpaca")
+                return alpaca_quote
+            elif schwab_price:
+                return Quote(symbol=symbol, price=Decimal(str(schwab_price)), change=Decimal("0"), change_percent=Decimal("0"), volume=0, timestamp=None)
+            else:
                 return fmp_quote
-            elif divergence_pct > 5:
-                # Minor divergence - log but use Alpaca (real-time)
-                logger.debug(
-                    f"[Quote] {symbol}: Minor divergence "
-                    f"Alpaca=${alpaca_price:.2f} vs FMP=${fmp_price:.2f} "
-                    f"({divergence_pct:.1f}% diff)"
-                )
         
-        # Default: Alpaca for real-time extended hours data
+        # Major divergence - need to pick the best source
+        logger.warning(
+            f"[Quote] {symbol}: DIVERGENCE! "
+            f"Alpaca=${alpaca_price or 'N/A'}, FMP=${fmp_price or 'N/A'}, Schwab=${schwab_price or 'N/A'} "
+            f"({divergence_pct:.1f}% spread)"
+        )
+        
+        # Priority: Schwab (real-time pre-market) > median > FMP > Alpaca
+        if schwab_price:
+            logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) as trusted source")
+            return Quote(
+                symbol=symbol,
+                price=Decimal(str(schwab_price)),
+                change=Decimal("0"),
+                change_percent=Decimal("0"),
+                volume=0,
+                timestamp=None,
+            )
+        
+        # No Schwab - use median of available prices
+        if len(prices) >= 2:
+            sorted_prices = sorted(price_list)
+            median_price = sorted_prices[len(sorted_prices) // 2]
+            # Find which source has the median price
+            for source, price in prices.items():
+                if price == median_price:
+                    logger.info(f"[Quote] {symbol}: Using {source} (${price:.2f}) as median")
+                    if source == "Alpaca": return alpaca_quote
+                    if source == "FMP": return fmp_quote
+        
+        # Fallback to FMP (usually more reliable than corrupt Alpaca)
+        if fmp_price:
+            return fmp_quote
         return alpaca_quote
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
