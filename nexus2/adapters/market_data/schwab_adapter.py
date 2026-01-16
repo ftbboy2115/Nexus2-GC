@@ -62,6 +62,7 @@ class SchwabAdapter:
     
     def _load_tokens(self):
         """Load tokens from disk."""
+        from zoneinfo import ZoneInfo
         try:
             if self._token_file.exists():
                 data = json.loads(self._token_file.read_text())
@@ -70,6 +71,9 @@ class SchwabAdapter:
                 expiry = data.get("expiry")
                 if expiry:
                     self._token_expiry = datetime.fromisoformat(expiry)
+                    # Ensure timezone-aware for comparison with now_et()
+                    if self._token_expiry.tzinfo is None:
+                        self._token_expiry = self._token_expiry.replace(tzinfo=ZoneInfo("America/New_York"))
                 logger.info("[Schwab] Loaded tokens from disk")
         except Exception as e:
             logger.warning(f"[Schwab] Failed to load tokens: {e}")
