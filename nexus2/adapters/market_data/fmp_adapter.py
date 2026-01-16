@@ -161,13 +161,16 @@ class FMPAdapter:
     def get_quote(self, symbol: str) -> Optional[Quote]:
         """Get real-time quote for a symbol.
         
-        During pre-market hours, falls back to aftermarket quote endpoint
-        which returns actual pre-market prices.
+        During pre-market/after-hours, uses aftermarket quote endpoint
+        which returns actual extended hours prices. During regular market
+        hours, skips premarket endpoint to save API calls.
         """
-        # Try aftermarket quote first for pre-market data
-        pm_quote = self.get_premarket_quote(symbol)
-        if pm_quote:
-            return pm_quote
+        # Only try premarket endpoint during extended hours (saves ~50% API calls)
+        from nexus2.utils.time_utils import is_market_hours
+        if not is_market_hours():
+            pm_quote = self.get_premarket_quote(symbol)
+            if pm_quote:
+                return pm_quote
         
         # Fall back to regular quote
         data = self._get(f"quote/{symbol}")
