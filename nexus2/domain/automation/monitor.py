@@ -301,10 +301,11 @@ class PositionMonitor:
             if opened_at:
                 if isinstance(opened_at, str):
                     opened_at = datetime.fromisoformat(opened_at.replace('Z', '+00:00'))
-                if opened_at.tzinfo:
-                    days_held = (datetime.now(opened_at.tzinfo).date() - opened_at.date()).days
-                else:
-                    days_held = (now_et().date() - opened_at.date()).days
+                # Make timezone-aware if naive (assume ET)
+                if opened_at.tzinfo is None:
+                    from zoneinfo import ZoneInfo
+                    opened_at = opened_at.replace(tzinfo=ZoneInfo("America/New_York"))
+                days_held = (now_et().date() - opened_at.date()).days
             
             # Only trail after Day 0
             if days_held >= 1 and current_stop < entry_price:
@@ -352,7 +353,11 @@ class PositionMonitor:
             # Calculate days held
             if isinstance(opened_at, str):
                 opened_at = datetime.fromisoformat(opened_at.replace('Z', '+00:00'))
-            days_held = (datetime.now(opened_at.tzinfo) - opened_at).days if opened_at.tzinfo else (now_et() - opened_at).days
+            # Make timezone-aware if naive (assume ET)
+            if opened_at.tzinfo is None:
+                from zoneinfo import ZoneInfo
+                opened_at = opened_at.replace(tzinfo=ZoneInfo("America/New_York"))
+            days_held = (now_et().date() - opened_at.date()).days
             
             # Check: Days >= threshold AND in profit
             if days_held >= self.partial_exit_days and current_price > entry_price:
