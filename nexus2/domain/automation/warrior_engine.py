@@ -127,6 +127,8 @@ class WatchedCandidate:
     orb_low: Optional[Decimal] = None  # Opening range low
     orb_established: bool = False
     entry_triggered: bool = False
+    entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
+    last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
     added_at: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -583,15 +585,37 @@ class WarriorEngine:
             return
         
         for symbol, watched in list(self._watchlist.items()):
-            if watched.entry_triggered:
-                continue  # Already entered
-            
             try:
                 current_price = await self._get_quote(symbol)
                 if not current_price:
                     continue
                 
                 current_price = Decimal(str(current_price))
+                
+                # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
+                # This enables "curl back up" pattern detection for re-entries
+                if current_price < watched.pmh:
+                    if watched.entry_triggered and not watched.last_below_pmh:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: Price below PMH "
+                            f"(${current_price:.2f} < ${watched.pmh:.2f}) - ready for re-entry"
+                        )
+                    watched.last_below_pmh = True
+                    continue  # Skip entry check when below PMH
+                
+                # Price is above PMH - check if this is a fresh breakout after pullback
+                if watched.entry_triggered and watched.last_below_pmh:
+                    # This is a RE-ENTRY attempt after price curled back up (Ross pattern)
+                    watched.last_below_pmh = False
+                    watched.entry_triggered = False  # Reset to allow new entry attempt
+                    watched.entry_attempt_count += 1
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Fresh breakout after pullback "
+                        f"(re-entry attempt #{watched.entry_attempt_count})"
+                    )
+                
+                if watched.entry_triggered:
+                    continue  # Already entered this breakout
                 
                 # ORB trigger at 9:30
                 if self.config.orb_enabled and not watched.orb_established:
@@ -668,6 +692,37 @@ class WarriorEngine:
             )
             watched.entry_triggered = True  # Mark to prevent retries
             return
+        
+        # ROSS RE-ENTRY MACD GATE: Block re-entry when MACD is negative
+        # Per Ross Cameron: "Because MACD was negative, it was taking too much risk"
+        # Only applies to re-entries (entry_attempt_count > 0), not first entry
+        if watched.entry_attempt_count > 0 and self._get_intraday_bars:
+            try:
+                candles = await self._get_intraday_bars(symbol, "5min", limit=30)
+                if candles and len(candles) >= 10:
+                    from nexus2.domain.indicators import get_technical_service
+                    tech = get_technical_service()
+                    candle_dicts = [
+                        {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                        for c in candles
+                    ]
+                    snapshot = tech.get_snapshot(symbol, candle_dicts, entry_price)
+                    
+                    if not snapshot.is_macd_bullish:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: MACD GATE - blocking re-entry "
+                            f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'}, "
+                            f"crossover={snapshot.macd_crossover}) - Ross rule: no re-entry when MACD negative"
+                        )
+                        watched.entry_triggered = True  # Block this attempt
+                        return
+                    else:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: MACD OK for re-entry "
+                            f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'})"
+                        )
+            except Exception as e:
+                logger.debug(f"[Warrior Entry] {symbol}: MACD check failed: {e} - proceeding without gate")
         
         # Check if we already hold this symbol (prevents double-buying after restart)
         if self._get_positions:
