@@ -129,8 +129,9 @@ class FMPAdapter:
         try:
             # Acquire lock to prevent race conditions - only one thread can check+call at a time
             with self.rate_limiter._lock:
-                # Throttle: wait if approaching limit (< 10 remaining)
-                while self.rate_limiter.remaining < 10 and not self._shutdown:
+                # Throttle: wait if approaching limit (< 50 remaining)
+                # Use 50 instead of 10 to prevent startup burst from hitting limit
+                while self.rate_limiter.remaining < 50 and not self._shutdown:
                     wait_time = 5  # Total wait 5 seconds
                     print(f"[FMP] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
                     # Release lock while waiting so other threads don't block
