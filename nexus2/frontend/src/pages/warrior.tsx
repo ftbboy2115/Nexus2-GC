@@ -1619,59 +1619,61 @@ export default function Warrior() {
                                         <p style={{ color: '#888', fontStyle: 'italic' }}>No closed trades yet</p>
                                     ) : (
                                         <>
-                                            <table className={styles.positionsTable} style={{ fontSize: '0.85rem' }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th>Symbol</th>
-                                                        <th>Entry $</th>
-                                                        <th>Exit $</th>
-                                                        <th>P&L</th>
-                                                        <th>Entered</th>
-                                                        <th>Closed</th>
-                                                        <th>Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {[...tradeHistory]
-                                                        .sort((a, b) => new Date(b.exit_time || 0).getTime() - new Date(a.exit_time || 0).getTime())
-                                                        .map((trade: any) => (
-                                                            <tr key={trade.id}>
-                                                                <td><strong>{trade.symbol}</strong></td>
-                                                                <td>${parseFloat(trade.entry_price || 0).toFixed(2)}</td>
-                                                                <td>${parseFloat(trade.exit_price || 0).toFixed(2)}</td>
-                                                                <td style={{
-                                                                    color: parseFloat(trade.realized_pnl || 0) >= 0 ? '#22c55e' : '#ef4444'
-                                                                }}>
-                                                                    ${parseFloat(trade.realized_pnl || 0).toFixed(2)}
-                                                                </td>
-                                                                <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#888' }}>
-                                                                    {trade.entry_time ? new Date(trade.entry_time).toLocaleDateString() : '--'}
-                                                                </td>
-                                                                <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                                                                    {trade.exit_time ? new Date(trade.exit_time).toLocaleDateString() : '--'}
-                                                                </td>
-                                                                <td>
-                                                                    <button
-                                                                        onClick={() => analyzeTradeWithAI(trade.id)}
-                                                                        disabled={analyzingTrade === trade.id}
-                                                                        style={{
-                                                                            padding: '4px 8px',
-                                                                            fontSize: '0.75rem',
-                                                                            backgroundColor: '#3b82f6',
-                                                                            color: 'white',
-                                                                            border: 'none',
-                                                                            borderRadius: '4px',
-                                                                            cursor: 'pointer',
-                                                                            opacity: analyzingTrade === trade.id ? 0.5 : 1,
-                                                                        }}
-                                                                    >
-                                                                        {analyzingTrade === trade.id ? '⏳...' : '🤖 Analyze'}
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                </tbody>
-                                            </table>
+                                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                                <table className={styles.positionsTable} style={{ fontSize: '0.85rem' }}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Symbol</th>
+                                                            <th>Entry $</th>
+                                                            <th>Exit $</th>
+                                                            <th>P&L</th>
+                                                            <th>Entered</th>
+                                                            <th>Closed</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {[...tradeHistory]
+                                                            .sort((a, b) => new Date(b.exit_time || 0).getTime() - new Date(a.exit_time || 0).getTime())
+                                                            .map((trade: any) => (
+                                                                <tr key={trade.id}>
+                                                                    <td><strong>{trade.symbol}</strong></td>
+                                                                    <td>${parseFloat(trade.entry_price || 0).toFixed(2)}</td>
+                                                                    <td>${parseFloat(trade.exit_price || 0).toFixed(2)}</td>
+                                                                    <td style={{
+                                                                        color: parseFloat(trade.realized_pnl || 0) >= 0 ? '#22c55e' : '#ef4444'
+                                                                    }}>
+                                                                        ${parseFloat(trade.realized_pnl || 0).toFixed(2)}
+                                                                    </td>
+                                                                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#888' }}>
+                                                                        {trade.entry_time ? new Date(trade.entry_time).toLocaleDateString() : '--'}
+                                                                    </td>
+                                                                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                                                                        {trade.exit_time ? new Date(trade.exit_time).toLocaleDateString() : '--'}
+                                                                    </td>
+                                                                    <td>
+                                                                        <button
+                                                                            onClick={() => analyzeTradeWithAI(trade.id)}
+                                                                            disabled={analyzingTrade === trade.id}
+                                                                            style={{
+                                                                                padding: '4px 8px',
+                                                                                fontSize: '0.75rem',
+                                                                                backgroundColor: '#3b82f6',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                borderRadius: '4px',
+                                                                                cursor: 'pointer',
+                                                                                opacity: analyzingTrade === trade.id ? 0.5 : 1,
+                                                                            }}
+                                                                        >
+                                                                            {analyzingTrade === trade.id ? '⏳...' : '🤖 Analyze'}
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
 
                                             {/* AI Analysis Result */}
                                             {tradeAnalysis && (
