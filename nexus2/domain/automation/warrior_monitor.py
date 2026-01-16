@@ -70,8 +70,9 @@ class WarriorExitSignal:
 @dataclass
 class WarriorMonitorSettings:
     """Settings for Warrior position monitoring."""
-    # Mental Stop (primary stop)
-    mental_stop_cents: Decimal = Decimal("15")  # Default 15 cents (10-20 range)
+    # Mental Stop (fallback only - Ross uses low of entry candle)
+    mental_stop_cents: Decimal = Decimal("15")  # Fallback if no candle data
+    use_candle_low_stop: bool = True  # Ross's actual method: low of entry candle
     use_technical_stop: bool = True  # Also use support levels
     technical_stop_buffer_cents: Decimal = Decimal("5")  # 2-5 cents below support
     
@@ -102,7 +103,7 @@ class WarriorMonitorSettings:
     spread_grace_period_seconds: int = 60  # Wait 60s after entry before checking spread
     
     # Scaling In (Ross Cameron Methodology)
-    enable_scaling: bool = False  # Off by default (advanced feature)
+    enable_scaling: bool = True  # Ross adds on strength - enabled by default
     max_scale_count: int = 2  # Starter position + 1-2 adds
     scale_size_pct: int = 50  # Add 50% of original size
     min_rvol_for_scale: float = 2.0  # Volume confirmation (2x relative volume)
@@ -364,19 +365,21 @@ class WarriorMonitor:
         """
         s = self.settings
         
-        # Mental stop: Entry - N cents
+        # Mental stop: Entry - N cents (FALLBACK only - used when no candle data)
         mental_stop = entry_price - s.mental_stop_cents / 100
         
-        # Technical stop: Support - buffer (if provided)
+        # Technical stop: Support/ORB low - buffer (Ross's actual method: low of entry candle)
         technical_stop = None
         if support_level and s.use_technical_stop:
             technical_stop = support_level - s.technical_stop_buffer_cents / 100
         
-        # Current stop: Use tighter of mental vs technical
-        if technical_stop and technical_stop > mental_stop:
-            current_stop = technical_stop  # Technical is tighter
+        # Current stop: Use CANDLE LOW (technical) as PRIMARY, mental only as FALLBACK
+        # Ross's rule: "Max loss per trade = Low of entry candle"
+        # NOT "tighter of two" - that causes too many stop-outs
+        if technical_stop and s.use_candle_low_stop:
+            current_stop = technical_stop  # Ross's actual method
         else:
-            current_stop = mental_stop
+            current_stop = mental_stop  # Fallback when no candle data
         
         # Risk per share
         risk_per_share = entry_price - current_stop
