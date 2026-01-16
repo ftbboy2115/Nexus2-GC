@@ -212,10 +212,11 @@ Last updated: 2026-01-13
   - [x] Trade history table with symbol, date, status filters
   - [x] Expandable rows with trade event timeline
   - [x] Schwab-style metrics: Total Proceeds, Cost Basis, Gain/Loss Ratio gauge (Jan 13)
-- [/] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
+- [x] **Schwab API for Quotes** — Use Schwab Market Data API for bid/ask fallback when Alpaca fails
   - [x] Create SchwabAdapter with OAuth 2.0 token management (Jan 13)
   - [x] Add `/schwab/auth-url`, `/schwab/callback`, `/schwab/status` endpoints
   - [x] Harden Monitor Price Checks: Schwab fallback for exit/stop price checks (Jan 13)
+  - [x] 3-Source Quote Verification: Alpaca + FMP + Schwab cross-validation (Jan 16)
   - [ ] Seamless OAuth: Auto-refresh reminder (Discord/email alert before 7-day expiry)
   - [ ] Seamless OAuth: OAuth proxy via nginx HTTPS for direct VPS callback
   - [ ] Seamless OAuth: One-click weekly re-auth workflow
@@ -251,6 +252,18 @@ Last updated: 2026-01-13
 ---
 
 ## ✅ Completed (Recent)
+
+### Jan 16, 2026 — Timezone Compliance & Quote Verification
+- [x] **3-Source Quote Verification** — Alpaca + FMP + Schwab cross-validation
+  - Detects >20% price divergence, uses Schwab as trusted source
+  - Prevents phantom trades from stale/corrupt Alpaca pre-market quotes
+  - Batch quote callback now uses UnifiedMarketData with validation
+- [x] **Timezone Compliance Sweep** — 6 fixes across codebase
+  - `warrior_monitor.py`: Schwab fallback comparison
+  - `trade_event_service.py`: SPY MA OHLCV attribute access
+  - `schwab_adapter.py`: Token expiry timezone-aware when loaded
+  - `monitor.py`: NAC opened_at timezone-aware for days_held calc
+- [x] **Schwab Token Refresh** — Fixed expired token detection during pre-market
 
 ### Jan 8, 2026 — v0.1.1 through v0.1.13
 - [x] **v0.1.13** — EOD timezone fix + observability improvements
