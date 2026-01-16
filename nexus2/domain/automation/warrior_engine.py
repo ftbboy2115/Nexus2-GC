@@ -186,10 +186,11 @@ class WarriorEngine:
         self._pending_entries_file = Path(__file__).parent.parent.parent.parent / "data" / "pending_entries.json"
         self._load_pending_entries()
         
-        # 2-Strike Rule: track daily stop-out failures per symbol
-        # After max_fails stops, block further entries for the day
+        # Per-symbol fail tracking: block entries after too many stops
+        # NOTE: Ross's actual rule is 3 CONSECUTIVE daily losses (not per-symbol)
+        # Set high (10) to keep mechanism in place without being restrictive
         self._symbol_fails: Dict[str, int] = {}  # symbol -> stop count
-        self._max_fails_per_symbol: int = 2  # Ross methodology: 2 fails = done
+        self._max_fails_per_symbol: int = 10  # Relaxed - can lower if needed
         
         # Tasks
         self._scan_task: Optional[asyncio.Task] = None
@@ -683,11 +684,11 @@ class WarriorEngine:
             watched.entry_triggered = True  # Mark to prevent retries
             return
         
-        # 2-Strike Rule: block entry if symbol has hit max failures today
+        # Per-symbol fail limit: block entry if symbol has hit max failures today
         symbol_fails = self._symbol_fails.get(symbol, 0)
         if symbol_fails >= self._max_fails_per_symbol:
             logger.info(
-                f"[Warrior Entry] {symbol}: 2-strike rule - {symbol_fails} stops today, "
+                f"[Warrior Entry] {symbol}: Max fails hit - {symbol_fails} stops today, "
                 f"skipping (max={self._max_fails_per_symbol})"
             )
             watched.entry_triggered = True  # Mark to prevent retries
