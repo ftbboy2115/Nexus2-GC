@@ -712,22 +712,48 @@ class WarriorEngine:
                         )
                         watched.dip_from_high_pct = pullback_pct
                         
-                        # Trigger if 2-5% pullback from HOD and near a level
+                        # Trigger if 2-10% pullback from HOD and near a level (or VWAP)
                         if 2.0 <= pullback_pct <= 10.0:
+                            # Get levels including VWAP
                             levels = self._get_key_levels(current_price)
+                            
+                            # Fetch VWAP from technical service and add to levels
+                            vwap = None
+                            if self._get_intraday_bars:
+                                try:
+                                    candles = await self._get_intraday_bars(symbol, "5min", limit=30)
+                                    if candles and len(candles) >= 5:
+                                        from nexus2.domain.indicators import get_technical_service
+                                        tech = get_technical_service()
+                                        candle_dicts = [
+                                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                                            for c in candles
+                                        ]
+                                        snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                                        if snapshot.vwap:
+                                            vwap = snapshot.vwap
+                                            levels.append(vwap)
+                                except Exception as e:
+                                    logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
+                            
+                            # Find levels above current price (entry targets)
                             levels_above = [l for l in levels if l > current_price]
                             if levels_above:
                                 nearest_level = min(levels_above)
                                 distance_cents = int((nearest_level - current_price) * 100)
                                 
-                                if distance_cents <= self.config.level_proximity_cents:
+                                # Trigger if near level (10c) or at VWAP (15c buffer)
+                                vwap_proximity = 15 if vwap and nearest_level == vwap else self.config.level_proximity_cents
+                                
+                                if distance_cents <= vwap_proximity:
                                     watched.target_level = nearest_level
                                     watched.entry_triggered = False  # Reset to allow re-entry
                                     watched.entry_attempt_count += 1
+                                    level_type = "VWAP" if vwap and nearest_level == vwap else f"${nearest_level}"
                                     logger.info(
                                         f"[Warrior Entry] {symbol}: PULLBACK pattern "
                                         f"(HOD=${watched.recent_high:.2f}, dip {pullback_pct:.1f}%, "
-                                        f"target ${nearest_level})"
+                                        f"target {level_type})"
                                     )
                                     await self._enter_position(
                                         watched,
