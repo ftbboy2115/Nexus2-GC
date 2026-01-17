@@ -75,6 +75,7 @@ interface WatchedCandidate {
     orb_high: number | null
     orb_established: boolean
     entry_triggered: boolean
+    indicators?: Record<string, { status: string; tooltip: string }>
 }
 
 interface WarriorCandidate {
@@ -1445,7 +1446,7 @@ export default function Warrior() {
                                                 <thead>
                                                     <tr>
                                                         <SortHeader label="Symbol" sortKey="symbol" sortConfig={watchlistSort} onSort={() => toggleSort('symbol', watchlistSort, setWatchlistSort)} />
-                                                        <SortHeader label="Gap%" sortKey="gap_percent" sortConfig={watchlistSort} onSort={() => toggleSort('gap_percent', watchlistSort, setWatchlistSort)} />
+                                                        <th title="Quality indicators: Gap, RVol, Entry">Quality</th>
                                                         <SortHeader label="RVOL" sortKey="rvol" sortConfig={watchlistSort} onSort={() => toggleSort('rvol', watchlistSort, setWatchlistSort)} />
                                                         <SortHeader label="PMH" sortKey="pmh" sortConfig={watchlistSort} onSort={() => toggleSort('pmh', watchlistSort, setWatchlistSort)} />
                                                         <th>ORB High</th>
@@ -1464,7 +1465,13 @@ export default function Warrior() {
                                                                     {w.symbol}
                                                                 </span>
                                                             </td>
-                                                            <td className={w.gap_percent >= 10 ? styles.pnlPositive : ''}>{w.gap_percent.toFixed(1)}%</td>
+                                                            <td>
+                                                                <div className={styles.indicatorRow}>
+                                                                    <span className={`${styles.indicatorDot} ${w.gap_percent >= 15 ? styles.dotGreen : w.gap_percent >= 10 ? styles.dotYellow : styles.dotRed}`} title={`Gap: +${w.gap_percent.toFixed(1)}%`}>●</span>
+                                                                    <span className={`${styles.indicatorDot} ${w.rvol >= 3 ? styles.dotGreen : w.rvol >= 2 ? styles.dotYellow : styles.dotRed}`} title={`RVol: ${w.rvol.toFixed(1)}x`}>●</span>
+                                                                    <span className={`${styles.indicatorDot} ${w.entry_triggered ? styles.dotGreen : w.orb_established ? styles.dotYellow : styles.dotRed}`} title={w.entry_triggered ? 'Entered' : w.orb_established ? 'Watching' : 'Setup'}>●</span>
+                                                                </div>
+                                                            </td>
                                                             <td>{w.rvol.toFixed(1)}x</td>
                                                             <td>${w.pmh.toFixed(2)}</td>
                                                             <td>{w.orb_high ? `$${w.orb_high.toFixed(2)}` : '-'}</td>

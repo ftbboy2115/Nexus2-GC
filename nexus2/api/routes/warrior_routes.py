@@ -103,6 +103,8 @@ class WarriorCandidateResponse(BaseModel):
     is_ideal_float: bool
     is_ideal_rvol: bool
     is_ideal_gap: bool
+    # Quality indicators for traffic light display
+    indicators: Optional[dict] = None  # {"float": {"status": "green", "tooltip": "Float: 8.2M"}, ...}
 
 
 class WarriorScanResponse(BaseModel):
@@ -391,11 +393,28 @@ async def run_warrior_scan():
     4. Price $1.50 - $20
     5. Gap > 4%
     """
+    from nexus2.domain.automation.indicator_service import get_indicator_service
+    
     scanner = get_warrior_scanner_service()
     result = scanner.scan(verbose=False)
+    indicator_service = get_indicator_service()
     
-    candidates = [
-        WarriorCandidateResponse(
+    candidates = []
+    for c in result.candidates:
+        # Compute quality indicators for each candidate
+        indicators = indicator_service.compute_watchlist_indicators(
+            float_shares=c.float_shares,
+            rvol=float(c.relative_volume),
+            gap_percent=float(c.gap_percent),
+            catalyst_type=c.catalyst_type,
+            catalyst_desc=c.catalyst_description,
+            current_price=float(c.price),
+            vwap=None,  # TODO: Get VWAP from monitor if available
+            entry_status="pending" if c.quality_score >= 80 else "not_ready",
+            entry_price=float(c.pmh) if hasattr(c, 'pmh') and c.pmh else None,
+        )
+        
+        candidates.append(WarriorCandidateResponse(
             symbol=c.symbol,
             name=c.name,
             price=float(c.price),
@@ -408,9 +427,8 @@ async def run_warrior_scan():
             is_ideal_float=c.is_ideal_float,
             is_ideal_rvol=c.is_ideal_rvol,
             is_ideal_gap=c.is_ideal_gap,
-        )
-        for c in result.candidates
-    ]
+            indicators=indicators.to_dict(),
+        ))
     
     return WarriorScanResponse(
         candidates=candidates,

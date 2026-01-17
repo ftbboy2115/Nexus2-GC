@@ -779,6 +779,35 @@
     color: #22c55e;
 }
 
+/* Quality Indicator Dots */
+.indicatorRow {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.indicatorDot {
+    font-size: 10px;
+    cursor: help;
+    line-height: 1;
+}
+
+.dotGreen {
+    color: #22c55e;
+}
+
+.dotYellow {
+    color: #eab308;
+}
+
+.dotRed {
+    color: #ef4444;
+}
+
+.dotGray {
+    color: #6b7280;
+}
+
 /* Mobile Optimizations (< 600px) */
 @media (max-width: 600px) {
     .container {
