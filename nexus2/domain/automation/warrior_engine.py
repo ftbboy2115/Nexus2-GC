@@ -1166,7 +1166,7 @@ class WarriorEngine:
                 
                 # Log to Warrior DB for restart recovery
                 try:
-                    from nexus2.db.warrior_db import log_warrior_entry
+                    from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
                     mental_stop_cents = Decimal(str(self.monitor.settings.mental_stop_cents))
                     profit_target_r = Decimal(str(self.monitor.settings.profit_target_r))
                     target = actual_fill_price + (mental_stop_cents / 100 * profit_target_r)
@@ -1180,6 +1180,9 @@ class WarriorEngine:
                         trigger_type=trigger_type.value,
                         support_level=float(support_level),
                     )
+                    # Store broker order ID for sync recovery after restart
+                    set_entry_order_id(order_id, order_id)
+                    logger.debug(f"[Warrior Entry] {symbol}: Linked position {order_id[:8]}... to broker order")
                 except Exception as e:
                     logger.warning(f"[Warrior Entry] DB log failed: {e}")
                 

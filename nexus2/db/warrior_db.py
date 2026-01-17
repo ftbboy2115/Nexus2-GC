@@ -304,6 +304,26 @@ def set_exit_order_id(trade_id: str, order_id: str):
         return False
 
 
+def get_warrior_trade_by_order_id(order_id: str):
+    """
+    Find a trade by its broker entry order ID (for sync recovery).
+    
+    Used during startup sync to recover existing position_id instead of
+    creating a new one.
+    
+    Args:
+        order_id: Alpaca broker order ID
+    
+    Returns:
+        Trade dict if found, None otherwise
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(
+            entry_order_id=order_id
+        ).first()
+        return trade.to_dict() if trade else None
+
+
 # =============================================================================
 # SCALING STATUS HELPERS (PSM INTEGRATION)
 # =============================================================================

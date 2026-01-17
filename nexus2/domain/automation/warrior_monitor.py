@@ -746,8 +746,29 @@ class WarriorMonitor:
                         profit_target_r = Decimal(str(self.settings.profit_target_r))
                         target_price = entry_price + (self.settings.mental_stop_cents / 100 * profit_target_r)
                         
+                        # Try to recover existing trade (preserves original position_id and trigger_type)
+                        existing_trade = None
+                        recovered_position_id = None
+                        recovered_trigger_type = "synced"  # Default for truly external positions
+                        
+                        try:
+                            from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+                            existing_trade = get_warrior_trade_by_symbol(symbol)
+                            if existing_trade:
+                                recovered_position_id = existing_trade["id"]
+                                recovered_trigger_type = existing_trade.get("trigger_type", "recovered")
+                                logger.info(
+                                    f"[Warrior Sync] {symbol}: Recovering existing position {recovered_position_id[:8]}... "
+                                    f"(trigger: {recovered_trigger_type})"
+                                )
+                        except Exception as lookup_err:
+                            logger.debug(f"[Warrior Sync] {symbol}: Lookup failed: {lookup_err}")
+                        
+                        # Use recovered ID or create new for external positions
+                        position_id = recovered_position_id or str(uuid4())
+                        
                         position = WarriorPosition(
-                            position_id=str(uuid4()),
+                            position_id=position_id,
                             symbol=symbol,
                             entry_price=entry_price,
                             shares=qty,
@@ -759,38 +780,40 @@ class WarriorMonitor:
                         )
                         self._positions[position.position_id] = position
                         
-                        # Persist to warrior_db for Trade History
-                        try:
-                            from nexus2.db.warrior_db import log_warrior_entry
-                            log_warrior_entry(
-                                trade_id=position.position_id,
-                                symbol=symbol,
-                                entry_price=float(entry_price),
-                                quantity=qty,
-                                stop_price=float(stop_price),
-                                target_price=float(target_price),
-                                trigger_type="synced",
-                                support_level=float(stop_price),
-                            )
-                        except Exception as db_err:
-                            logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")
-                        
-                        # Log entry event for AI trade analysis
-                        try:
-                            trade_event_service.log_warrior_entry(
-                                position_id=position.position_id,
-                                symbol=symbol,
-                                entry_price=entry_price,
-                                stop_price=stop_price,
-                                shares=qty,
-                                trigger_type="synced",
-                            )
-                        except Exception as event_err:
-                            logger.warning(f"[Warrior Sync] {symbol}: Event log failed: {event_err}")
+                        # Only log new entry if we didn't recover an existing one
+                        if not existing_trade:
+                            # Persist to warrior_db for Trade History (new external position)
+                            try:
+                                from nexus2.db.warrior_db import log_warrior_entry
+                                log_warrior_entry(
+                                    trade_id=position.position_id,
+                                    symbol=symbol,
+                                    entry_price=float(entry_price),
+                                    quantity=qty,
+                                    stop_price=float(stop_price),
+                                    target_price=float(target_price),
+                                    trigger_type="external",
+                                    support_level=float(stop_price),
+                                )
+                            except Exception as db_err:
+                                logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")
+                            
+                            # Log entry event for AI trade analysis (new external position)
+                            try:
+                                trade_event_service.log_warrior_entry(
+                                    position_id=position.position_id,
+                                    symbol=symbol,
+                                    entry_price=entry_price,
+                                    stop_price=stop_price,
+                                    shares=qty,
+                                    trigger_type="external",
+                                )
+                            except Exception as event_err:
+                                logger.warning(f"[Warrior Sync] {symbol}: Event log failed: {event_err}")
                         
                         logger.info(
-                            f"[Warrior Sync] {symbol}: Auto-recovered ({qty} shares @ ${entry_price:.2f}, "
-                            f"stop=${stop_price:.2f} via {stop_method})"
+                            f"[Warrior Sync] {symbol}: {'Recovered' if existing_trade else 'Auto-synced'} "
+                            f"({qty} shares @ ${entry_price:.2f}, stop=${stop_price:.2f} via {stop_method})"
                         )
                     else:
                         logger.warning(
