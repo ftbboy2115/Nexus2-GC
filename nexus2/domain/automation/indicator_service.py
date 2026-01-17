@@ -10,10 +10,56 @@ Based on Ross Cameron's methodology from "7 Candlestick Patterns" video.
 
 from dataclasses import dataclass, asdict
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Candle Aggregation Utility
+# =============================================================================
+
+def aggregate_candles_to_timeframe(
+    candles_1min: List[Dict],
+    target_minutes: int = 5,
+) -> List[Dict]:
+    """
+    Aggregate 1-minute candles to a larger timeframe.
+    
+    Args:
+        candles_1min: List of 1-min candle dicts with open, high, low, close, volume
+        target_minutes: Target timeframe (e.g., 5 for 5-minute candles)
+        
+    Returns:
+        List of aggregated candles
+    """
+    if not candles_1min or len(candles_1min) < target_minutes:
+        return candles_1min  # Return original if not enough data
+    
+    aggregated = []
+    
+    for i in range(0, len(candles_1min), target_minutes):
+        chunk = candles_1min[i:i + target_minutes]
+        if not chunk:
+            continue
+            
+        # Aggregate OHLCV
+        agg_candle = {
+            "open": chunk[0].get("open", chunk[0].get("Open", 0)),
+            "high": max(c.get("high", c.get("High", 0)) for c in chunk),
+            "low": min(c.get("low", c.get("Low", 0)) for c in chunk),
+            "close": chunk[-1].get("close", chunk[-1].get("Close", 0)),
+            "volume": sum(c.get("volume", c.get("Volume", 0)) for c in chunk),
+        }
+        
+        # Preserve timestamp if available
+        if "timestamp" in chunk[0]:
+            agg_candle["timestamp"] = chunk[0]["timestamp"]
+        
+        aggregated.append(agg_candle)
+    
+    return aggregated
 
 
 # =============================================================================
@@ -294,6 +340,50 @@ class IndicatorService:
             volume=vol_ind,
             stop=stop_ind,
             target=target_ind,
+        )
+    
+    def compute_health_from_snapshot(
+        self,
+        current_price: float,
+        entry_price: float,
+        stop_price: float,
+        target_price: float,
+        tech_snapshot,  # TechnicalSnapshot from technical_service
+        volume_ratio: Optional[float] = None,
+        ema200: Optional[float] = None,  # 200 EMA from daily chart (separate)
+    ) -> PositionHealth:
+        """
+        Compute position health from a TechnicalSnapshot.
+        
+        Convenience wrapper that extracts values from TechnicalSnapshot
+        and calls compute_position_health().
+        
+        Args:
+            current_price: Current stock price
+            entry_price: Entry price of position
+            stop_price: Stop loss price
+            target_price: Target price
+            tech_snapshot: TechnicalSnapshot from TechnicalService.get_snapshot()
+            volume_ratio: Current volume / average volume ratio
+            ema200: 200 EMA from daily chart (not in intraday snapshot)
+        """
+        # Extract values from TechnicalSnapshot
+        vwap = float(tech_snapshot.vwap) if tech_snapshot.vwap else None
+        ema9 = float(tech_snapshot.ema_9) if tech_snapshot.ema_9 else None
+        ema20 = float(tech_snapshot.ema_20) if tech_snapshot.ema_20 else None
+        macd_value = tech_snapshot.macd_histogram  # Use histogram for red/green light
+        
+        return self.compute_position_health(
+            current_price=current_price,
+            entry_price=entry_price,
+            stop_price=stop_price,
+            target_price=target_price,
+            vwap=vwap,
+            ema9=ema9,
+            ema20=ema20,
+            ema200=ema200,
+            macd_value=macd_value,
+            volume_ratio=volume_ratio,
         )
 
 

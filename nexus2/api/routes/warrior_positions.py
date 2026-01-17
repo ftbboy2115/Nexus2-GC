@@ -62,6 +62,95 @@ async def get_warrior_positions():
     }
 
 
+@positions_router.get("/positions/health")
+async def get_positions_health():
+    """
+    Get health indicators for all open positions.
+    
+    Fetches 1-min candles, aggregates to 5-min, and computes:
+    - MACD, 9/20 EMA, VWAP from intraday technicals
+    - Stop distance and target progress from position data
+    
+    Returns traffic light indicators (green/yellow/red) for each position.
+    """
+    from .warrior_routes import get_engine
+    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
+    from nexus2.domain.indicators import get_technical_service
+    from nexus2.domain.automation.indicator_service import (
+        get_indicator_service,
+        aggregate_candles_to_timeframe,
+    )
+    
+    engine = get_engine()
+    positions = engine.monitor.get_positions()
+    
+    if not positions:
+        return {"count": 0, "positions": []}
+    
+    fmp = FMPAdapter()
+    tech_service = get_technical_service()
+    indicator_service = get_indicator_service()
+    
+    result = []
+    for p in positions:
+        try:
+            # Fetch 1-min candles (enough for MACD calculation: 26 bars minimum)
+            candles_1min = fmp.get_intraday_bars(p.symbol, timeframe="1min")
+            
+            if not candles_1min or len(candles_1min) < 30:
+                # Not enough data for technicals
+                health = indicator_service.compute_position_health(
+                    current_price=float(p.high_since_entry),  # Use latest known
+                    entry_price=float(p.entry_price),
+                    stop_price=float(p.current_stop),
+                    target_price=float(p.profit_target),
+                )
+            else:
+                # Aggregate to 5-min for smoother EMA/MACD
+                candles_5min = aggregate_candles_to_timeframe(
+                    [{"open": float(c.open), "high": float(c.high), 
+                      "low": float(c.low), "close": float(c.close), 
+                      "volume": c.volume} for c in candles_1min],
+                    target_minutes=5,
+                )
+                
+                # Get current price from latest candle
+                current_price = float(candles_1min[-1].close)
+                
+                # Compute technicals from 5-min candles
+                tech_snapshot = tech_service.get_snapshot(
+                    symbol=p.symbol,
+                    candles=candles_5min,
+                    current_price=current_price,
+                )
+                
+                # Compute health from technicals
+                health = indicator_service.compute_health_from_snapshot(
+                    current_price=current_price,
+                    entry_price=float(p.entry_price),
+                    stop_price=float(p.current_stop),
+                    target_price=float(p.profit_target),
+                    tech_snapshot=tech_snapshot,
+                )
+            
+            result.append({
+                "position_id": p.position_id,
+                "symbol": p.symbol,
+                "health": health.to_dict(),
+            })
+            
+        except Exception as e:
+            # Log but don't fail entire request
+            result.append({
+                "position_id": p.position_id,
+                "symbol": p.symbol,
+                "health": None,
+                "error": str(e),
+            })
+    
+    return {"count": len(result), "positions": result}
+
+
 @positions_router.get("/positions/count")
 async def get_warrior_positions_count():
     """Get count of active Warrior positions."""
