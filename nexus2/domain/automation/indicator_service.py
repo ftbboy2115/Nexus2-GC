@@ -277,15 +277,26 @@ class IndicatorService:
         else:
             ema20_ind = IndicatorValue("20 EMA", "red", ema20, f"20 EMA: ${ema20:.2f} ✗")
         
-        # 200 EMA (ceiling/floor - above = green, near = yellow, below = red)
-        if ema200 is None:
+        # 200 EMA - Ross's "Room to Run" methodology
+        # Measures distance to 200 EMA as a ceiling indicator:
+        # - Already above OR >20% room = Green (plenty of upside)
+        # - 10-20% room = Yellow (getting close to ceiling)
+        # - <10% room = Red (imminent resistance)
+        if ema200 is None or ema200 <= 0:
             ema200_ind = IndicatorValue("200 EMA", "gray", 0, "200 EMA: N/A")
-        elif current_price > ema200 * 1.02:
-            ema200_ind = IndicatorValue("200 EMA", "green", ema200, f"200 EMA: ${ema200:.2f} ✓")
-        elif current_price >= ema200 * 0.98:
-            ema200_ind = IndicatorValue("200 EMA", "yellow", ema200, f"200 EMA: ${ema200:.2f} (near)")
+        elif current_price > ema200:
+            # Already above the 200 EMA - green (broken through ceiling)
+            room_pct = ((current_price - ema200) / ema200) * 100
+            ema200_ind = IndicatorValue("200 EMA", "green", room_pct, f"200 EMA: ${ema200:.2f} (above +{room_pct:.0f}%)")
         else:
-            ema200_ind = IndicatorValue("200 EMA", "red", ema200, f"200 EMA: ${ema200:.2f} (ceiling)")
+            # Below 200 EMA - calculate room to run
+            room_pct = ((ema200 - current_price) / current_price) * 100
+            if room_pct > 20:
+                ema200_ind = IndicatorValue("200 EMA", "green", room_pct, f"200 EMA: ${ema200:.2f} ({room_pct:.0f}% room)")
+            elif room_pct >= 10:
+                ema200_ind = IndicatorValue("200 EMA", "yellow", room_pct, f"200 EMA: ${ema200:.2f} ({room_pct:.0f}% room)")
+            else:
+                ema200_ind = IndicatorValue("200 EMA", "red", room_pct, f"200 EMA: ${ema200:.2f} ({room_pct:.0f}% ceiling!)")
         
         # VWAP
         if vwap is None:
