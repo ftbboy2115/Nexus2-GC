@@ -308,7 +308,10 @@ class IndicatorService:
             vol_ind = IndicatorValue("Volume", "red", volume_ratio, f"Vol: {volume_ratio:.1f}x")
         
         # Stop distance (> 5% safe = green, 2-5% close = yellow, < 2% near = red)
-        stop_distance_pct = ((current_price - stop_price) / current_price) * 100
+        if current_price and current_price > 0:
+            stop_distance_pct = ((current_price - stop_price) / current_price) * 100
+        else:
+            stop_distance_pct = 0  # Default to 0% if no current price
         if stop_distance_pct > 5.0:
             stop_ind = IndicatorValue("Stop", "green", stop_distance_pct, f"Stop: ${stop_price:.2f} ({stop_distance_pct:+.1f}%)")
         elif stop_distance_pct > 2.0:
