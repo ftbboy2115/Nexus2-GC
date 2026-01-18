@@ -113,6 +113,24 @@ interface WarriorPosition {
     entry_time: string | null
 }
 
+interface PositionHealthIndicator {
+    name: string
+    status: 'green' | 'yellow' | 'red' | 'gray'
+    value: number
+    tooltip: string
+}
+
+interface PositionHealth {
+    macd: PositionHealthIndicator
+    ema9: PositionHealthIndicator
+    ema20: PositionHealthIndicator
+    ema200: PositionHealthIndicator
+    vwap: PositionHealthIndicator
+    volume: PositionHealthIndicator
+    stop: PositionHealthIndicator
+    target: PositionHealthIndicator
+}
+
 interface SimStatus {
     sim_enabled: boolean
     message?: string
@@ -224,6 +242,7 @@ export default function Warrior() {
     const [status, setStatus] = useState<WarriorStatus | null>(null)
     const [scanResult, setScanResult] = useState<ScanResult | null>(null)
     const [positions, setPositions] = useState<WarriorPosition[]>([])
+    const [positionHealth, setPositionHealth] = useState<Record<string, PositionHealth>>({})
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -351,6 +370,23 @@ export default function Warrior() {
                 setPositions(data.positions || [])
             }
             if (simRes.ok) setSimStatus(await simRes.json())
+
+            // Fetch position health indicators (separate call for real-time data)
+            try {
+                const healthRes = await fetch(`${API_BASE}/warrior/positions/health`)
+                if (healthRes.ok) {
+                    const healthData = await healthRes.json()
+                    const healthMap: Record<string, PositionHealth> = {}
+                    for (const p of healthData.positions || []) {
+                        if (p.health) {
+                            healthMap[p.position_id] = p.health
+                        }
+                    }
+                    setPositionHealth(healthMap)
+                }
+            } catch (err) {
+                console.error('Error fetching position health:', err)
+            }
             if (brokerRes.ok) setBrokerStatus(await brokerRes.json())
 
             // Fetch recent Warrior trade events
@@ -1507,6 +1543,7 @@ export default function Warrior() {
                                                 <th>Stop</th>
                                                 <th>Target</th>
                                                 <th>High</th>
+                                                <th>Health</th>
                                                 <th>Partial?</th>
                                                 <th>Time</th>
                                             </tr>
@@ -1528,6 +1565,29 @@ export default function Warrior() {
                                                     <td className={styles.stopPrice}>${p.current_stop.toFixed(2)}</td>
                                                     <td className={styles.targetPrice}>${p.profit_target.toFixed(2)}</td>
                                                     <td>${p.high_since_entry.toFixed(2)}</td>
+                                                    <td>
+                                                        {positionHealth[p.position_id] ? (
+                                                            <div className={styles.indicatorRow} style={{ gap: '2px' }}>
+                                                                {(['macd', 'ema9', 'ema20', 'ema200', 'vwap', 'volume', 'stop', 'target'] as const).map((key) => {
+                                                                    const ind = positionHealth[p.position_id]?.[key]
+                                                                    if (!ind) return null
+                                                                    const dotClass = ind.status === 'green' ? styles.dotGreen
+                                                                        : ind.status === 'yellow' ? styles.dotYellow
+                                                                            : ind.status === 'red' ? styles.dotRed
+                                                                                : styles.dotGray
+                                                                    return (
+                                                                        <span
+                                                                            key={key}
+                                                                            className={`${styles.indicatorDot} ${dotClass}`}
+                                                                            title={ind.tooltip}
+                                                                        >●</span>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{ color: '#666' }}>...</span>
+                                                        )}
+                                                    </td>
                                                     <td>{p.partial_taken ? '✅' : '-'}</td>
                                                     <td>{formatTime(p.entry_time)}</td>
                                                 </tr>
