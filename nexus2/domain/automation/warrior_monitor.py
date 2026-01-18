@@ -914,7 +914,26 @@ class WarriorMonitor:
                 except Exception as e:
                     logger.warning(f"[Warrior] {position.symbol}: FMP fallback failed: {e}")
             
-            # If still no valid price after fallback
+            # FINAL FALLBACK: Alpaca position current_price
+            # This ensures after-hours exits can trigger even when quote APIs fail
+            if price is None or price == 0:
+                logger.info(f"[Warrior] {position.symbol}: Trying Alpaca position fallback...")
+                try:
+                    if self._get_broker_positions:
+                        alpaca_positions = await self._get_broker_positions()
+                        if alpaca_positions:
+                            for pos in alpaca_positions:
+                                pos_symbol = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", None)
+                                if pos_symbol == position.symbol:
+                                    pos_price = pos.get("current_price") if isinstance(pos, dict) else getattr(pos, "current_price", None)
+                                    if pos_price and float(pos_price) > 0:
+                                        price = float(pos_price)
+                                        logger.info(f"[Warrior] {position.symbol}: Alpaca position fallback successful, price=${price}")
+                                    break
+                except Exception as e:
+                    logger.warning(f"[Warrior] {position.symbol}: Alpaca position fallback failed: {e}")
+            
+            # If still no valid price after ALL fallbacks
             if price is None or price == 0:
                 logger.warning(
                     f"[Warrior] {position.symbol}: All quote sources failed (price={price})! "
