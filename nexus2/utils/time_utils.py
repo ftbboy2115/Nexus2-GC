@@ -101,6 +101,26 @@ def et_to_utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
+def format_iso_utc(dt: Optional[datetime]) -> Optional[str]:
+    """
+    Format datetime as ISO 8601 string with Z suffix for API/JSON responses.
+    
+    This format is compatible with JavaScript's Date() constructor.
+    
+    Args:
+        dt: Datetime to format (any timezone)
+        
+    Returns:
+        "2026-01-15T06:30:00Z" or None if dt is None
+    """
+    if dt is None:
+        return None
+    # Convert to UTC if timezone-aware
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(UTC)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def is_market_hours(dt: Optional[datetime] = None) -> bool:
     """
     Check if given time is during regular market hours (9:30 AM - 4:00 PM ET).
