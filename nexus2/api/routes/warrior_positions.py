@@ -98,9 +98,25 @@ async def get_positions_health():
             candles_1min = fmp.get_intraday_bars(p.symbol, timeframe="1min")
             
             if not candles_1min or len(candles_1min) < 30:
-                # Not enough data for technicals
+                # Not enough intraday data - use fallback price sources
+                # Priority: high_since_entry -> quote API -> entry_price
+                current_price = float(p.high_since_entry) if p.high_since_entry else 0
+                
+                if current_price <= 0:
+                    # Try to get a quote from FMP
+                    try:
+                        quote = fmp.get_quote(p.symbol)
+                        if quote and quote.get("price"):
+                            current_price = float(quote["price"])
+                    except Exception:
+                        pass
+                
+                if current_price <= 0:
+                    # Ultimate fallback: use entry price (better than 0)
+                    current_price = float(p.entry_price)
+                
                 health = indicator_service.compute_position_health(
-                    current_price=float(p.high_since_entry),  # Use latest known
+                    current_price=current_price,
                     entry_price=float(p.entry_price),
                     stop_price=float(p.current_stop),
                     target_price=float(p.profit_target),
