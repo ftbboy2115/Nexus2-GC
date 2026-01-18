@@ -11,6 +11,17 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from nexus2.utils.time_utils import now_utc
+from datetime import datetime, timezone
+
+
+def _format_iso_utc(dt: datetime | None) -> str | None:
+    """Format datetime as ISO string with Z suffix for JavaScript compatibility."""
+    if dt is None:
+        return None
+    # Convert to UTC if timezone-aware, then format with Z suffix
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # =============================================================================
@@ -55,7 +66,7 @@ async def get_warrior_positions():
                 "profit_target": float(p.profit_target),
                 "partial_taken": p.partial_taken,
                 "high_since_entry": float(p.high_since_entry),
-                "entry_time": p.entry_time.isoformat() if p.entry_time else None,
+                "entry_time": _format_iso_utc(p.entry_time),
             }
             for p in positions
         ],
