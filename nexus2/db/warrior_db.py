@@ -71,6 +71,9 @@ class WarriorTradeModel(WarriorBase):
     entry_order_id = Column(String(36), nullable=True)  # Alpaca order ID for entry
     exit_order_id = Column(String(36), nullable=True)   # Alpaca order ID for exit
     
+    # Intraday tracking (for restart recovery)
+    high_since_entry = Column(String(20), default="0")  # Track highest price
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -95,6 +98,7 @@ class WarriorTradeModel(WarriorBase):
             "remaining_quantity": self.remaining_quantity,
             "entry_order_id": self.entry_order_id,
             "exit_order_id": self.exit_order_id,
+            "high_since_entry": self.high_since_entry,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -127,6 +131,11 @@ def init_warrior_db():
             conn.commit()
         except Exception:
             pass  # Column already exists
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN high_since_entry TEXT DEFAULT '0'"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -144,8 +153,12 @@ def log_warrior_entry(
     target_price: float,
     trigger_type: str = "pmh_break",
     support_level: float = None,
+    high_since_entry: float = None,
 ):
     """Log a new Warrior trade entry."""
+    # Default high_since_entry to entry_price if not provided
+    high = high_since_entry if high_since_entry is not None else entry_price
+    
     with get_warrior_session() as db:
         trade = WarriorTradeModel(
             id=trade_id,
@@ -159,6 +172,7 @@ def log_warrior_entry(
             target_price=str(target_price),
             support_level=str(support_level) if support_level else None,
             remaining_quantity=quantity,
+            high_since_entry=str(high),
         )
         db.add(trade)
         db.commit()
@@ -322,6 +336,29 @@ def get_warrior_trade_by_order_id(order_id: str):
             entry_order_id=order_id
         ).first()
         return trade.to_dict() if trade else None
+
+
+def update_high_since_entry(trade_id: str, new_high: float) -> bool:
+    """
+    Update the high_since_entry field for a trade.
+    
+    Called during monitoring when price makes a new high.
+    
+    Args:
+        trade_id: The trade ID to update
+        new_high: New high price since entry
+    
+    Returns:
+        True if updated successfully
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if trade:
+            trade.high_since_entry = str(new_high)
+            trade.updated_at = now_utc()
+            db.commit()
+            return True
+        return False
 
 
 # =============================================================================

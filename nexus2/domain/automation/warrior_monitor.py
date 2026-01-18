@@ -767,16 +767,43 @@ class WarriorMonitor:
                         # Use recovered ID or create new for external positions
                         position_id = recovered_position_id or str(uuid4())
                         
+                        # Use DB values if we recovered an existing trade
+                        if existing_trade:
+                            # Prefer DB values for accurate recovery
+                            recovered_entry_price = Decimal(str(existing_trade.get("entry_price", entry_price)))
+                            recovered_high = Decimal(str(existing_trade.get("high_since_entry", entry_price) or entry_price))
+                            # Parse entry_time from DB (ISO string)
+                            entry_time_str = existing_trade.get("entry_time")
+                            if entry_time_str:
+                                try:
+                                    from datetime import datetime, timezone
+                                    if isinstance(entry_time_str, str):
+                                        recovered_entry_time = datetime.fromisoformat(entry_time_str.replace("Z", "+00:00"))
+                                    else:
+                                        recovered_entry_time = entry_time_str
+                                except Exception:
+                                    recovered_entry_time = now_utc()
+                            else:
+                                recovered_entry_time = now_utc()
+                        else:
+                            # New external position - use Alpaca values
+                            recovered_entry_price = entry_price
+                            recovered_high = entry_price
+                            recovered_entry_time = now_utc()
+                        
                         position = WarriorPosition(
                             position_id=position_id,
                             symbol=symbol,
-                            entry_price=entry_price,
+                            entry_price=recovered_entry_price,
                             shares=qty,
-                            entry_time=now_utc(),
+                            entry_time=recovered_entry_time,
                             current_stop=stop_price,
                             profit_target=target_price,
                             mental_stop=stop_price,
                             technical_stop=None,
+                            high_since_entry=recovered_high,
+                            risk_per_share=recovered_entry_price - stop_price,
+                            original_shares=qty,
                         )
                         self._positions[position.position_id] = position
                         
@@ -904,6 +931,12 @@ class WarriorMonitor:
         # Update high since entry
         if current_price > position.high_since_entry:
             position.high_since_entry = current_price
+            # Persist new high to database for recovery
+            try:
+                from nexus2.db.warrior_db import update_high_since_entry
+                update_high_since_entry(position.position_id, float(current_price))
+            except Exception as e:
+                logger.debug(f"[Warrior] {position.symbol}: Failed to persist high: {e}")
         
         # Calculate current R
         if position.risk_per_share > 0:
