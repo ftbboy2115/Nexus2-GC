@@ -54,11 +54,11 @@
 
 ## Broker Selection Criteria
 
-| Criteria | Alpaca | Lightspeed |
-|----------|--------|------------|
-| Ease of integration | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| Commission cost | Free | Tiered |
-| Execution speed | Good | Excellent |
-| Minimum balance | None | $25K+ |
-| Paper trading | ✅ | ✅ (certification) |
-| Market data included | Basic | None |
+| Criteria            | Alpaca        | Lightspeed |
+|---------------------|---------------|------------|
+| Ease of integration | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     |
+| Commission cost     | Free          | Tiered     |
+| Execution speed     | Good          | Excellent  |
+| Minimum balance     | None          | $25K+      |
+| Paper trading       | ✅            | ✅ (certification) |
+| Market data included| Basic         | None       |

@@ -9,6 +9,14 @@ import {
     PositionHealth,
     useWarriorData,
     useWarriorActions,
+    formatCurrency,
+    formatPnL,
+    formatFloat,
+    formatTime,
+    sortData,
+    toggleSort,
+    SortHeader,
+    SortConfig,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -155,43 +163,6 @@ export default function Warrior() {
     useEffect(() => {
         fetchTradeHistory()
     }, [])
-
-
-    // Sorting helpers
-    const sortData = <T,>(data: T[], sortConfig: { key: string, dir: 'asc' | 'desc' }): T[] => {
-        return [...data].sort((a, b) => {
-            const aVal = (a as Record<string, unknown>)[sortConfig.key]
-            const bVal = (b as Record<string, unknown>)[sortConfig.key]
-            if (aVal == null) return 1
-            if (bVal == null) return -1
-            if (aVal < bVal) return sortConfig.dir === 'asc' ? -1 : 1
-            if (aVal > bVal) return sortConfig.dir === 'asc' ? 1 : -1
-            return 0
-        })
-    }
-
-    const toggleSort = (
-        key: string,
-        current: { key: string, dir: 'asc' | 'desc' },
-        setter: React.Dispatch<React.SetStateAction<{ key: string, dir: 'asc' | 'desc' }>>
-    ) => {
-        if (current.key === key) {
-            setter({ key, dir: current.dir === 'asc' ? 'desc' : 'asc' })
-        } else {
-            setter({ key, dir: 'desc' })
-        }
-    }
-
-    const SortHeader = ({ label, sortKey, sortConfig, onSort }: {
-        label: string,
-        sortKey: string,
-        sortConfig: { key: string, dir: 'asc' | 'desc' },
-        onSort: () => void
-    }) => (
-        <th onClick={onSort} style={{ cursor: 'pointer', userSelect: 'none' }}>
-            {label} {sortConfig.key === sortKey ? (sortConfig.dir === 'asc' ? '▲' : '▼') : ''}
-        </th>
-    )
 
     // Fetch test cases on mount
     useEffect(() => {
@@ -341,38 +312,6 @@ export default function Warrior() {
         } finally {
             setActionLoading(null)
         }
-    }
-
-    // ========================================================================
-    // Formatting Helpers
-    // ========================================================================
-
-    const formatCurrency = (value: number) =>
-        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
-
-    const formatPnL = (value: number) => {
-        const formatted = formatCurrency(Math.abs(value))
-        if (value > 0) return `+${formatted}`
-        if (value < 0) return `-${formatted}`
-        return formatted
-    }
-
-    const formatFloat = (shares: number | null) => {
-        if (!shares) return '-'
-        if (shares >= 1_000_000) return `${(shares / 1_000_000).toFixed(1)}M`
-        if (shares >= 1_000) return `${(shares / 1_000).toFixed(0)}K`
-        return shares.toString()
-    }
-
-    const formatTime = (iso: string | null) => {
-        if (!iso) return '-'
-        // Ensure ISO string is treated as UTC (append Z if missing)
-        const utcIso = iso.endsWith('Z') ? iso : iso + 'Z'
-        return new Date(utcIso).toLocaleTimeString('en-US', {
-            timeZone: 'America/New_York',
-            hour: '2-digit',
-            minute: '2-digit'
-        }) + ' ET'
     }
 
     // ========================================================================
