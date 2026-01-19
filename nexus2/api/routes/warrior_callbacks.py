@@ -139,6 +139,9 @@ def create_get_quote_with_spread():
     # Schwab quote cache (10-second TTL to stay under 120 calls/min limit)
     _schwab_quote_cache: dict = {}
     _schwab_cache_ttl = 10
+    # Log throttle: only log Schwab fallback once per minute per symbol
+    _schwab_log_throttle: dict = {}
+    _schwab_log_interval = 60
     
     async def get_quote_with_spread(symbol: str):
         """Get quote with bid/ask spread for spread exit trigger.
@@ -188,7 +191,11 @@ def create_get_quote_with_spread():
                             ask = schwab_quote["ask"]
                             price = schwab_quote.get("price", price)
                             _schwab_quote_cache[cache_key] = (now, {"bid": bid, "ask": ask, "price": price})
-                            print(f"[Warrior] Schwab fallback for {symbol}: bid=${bid:.2f}, ask=${ask:.2f}")
+                            # Throttled log: only once per minute per symbol
+                            last_log = _schwab_log_throttle.get(symbol, 0)
+                            if now - last_log >= _schwab_log_interval:
+                                print(f"[Warrior] Schwab fallback for {symbol}: bid=${bid:.2f}, ask=${ask:.2f}")
+                                _schwab_log_throttle[symbol] = now
                 except Exception as e:
                     print(f"[Warrior] Schwab fallback failed for {symbol}: {e}")
         
