@@ -777,6 +777,17 @@ class WarriorMonitor:
                             # Prefer DB values for accurate recovery
                             recovered_entry_price = Decimal(str(existing_trade.get("entry_price", entry_price)))
                             recovered_high = Decimal(str(existing_trade.get("high_since_entry", entry_price) or entry_price))
+                            
+                            # CRITICAL: Restore original stop and target from DB
+                            # This preserves Ross's methodology (entry candle low stop)
+                            db_stop = existing_trade.get("stop_price")
+                            db_target = existing_trade.get("target_price")
+                            if db_stop:
+                                stop_price = Decimal(str(db_stop))
+                                stop_method = "db_restored"
+                            if db_target:
+                                target_price = Decimal(str(db_target))
+                            
                             # Parse entry_time from DB (ISO string)
                             entry_time_str = existing_trade.get("entry_time")
                             if entry_time_str:
@@ -793,11 +804,34 @@ class WarriorMonitor:
                                     recovered_entry_time = now_utc()
                             else:
                                 recovered_entry_time = now_utc()
+                            
+                            # Check if partial was already taken
+                            partial_already_taken = existing_trade.get("partial_taken", False)
                         else:
                             # New external position - use Alpaca values
                             recovered_entry_price = entry_price
                             recovered_high = entry_price
                             recovered_entry_time = now_utc()
+                            partial_already_taken = False
+                        
+                        # TARGET SANITY CHECK: If target is already below current price,
+                        # mark partial as taken to prevent false profit-target exits
+                        # (This handles the case where price has run past the original target)
+                        current_price_for_check = None
+                        if self._get_price:
+                            try:
+                                current_price_for_check = await self._get_price(symbol)
+                            except Exception:
+                                pass
+                        
+                        if current_price_for_check and target_price:
+                            if Decimal(str(current_price_for_check)) > target_price:
+                                if not partial_already_taken:
+                                    logger.warning(
+                                        f"[Warrior Sync] {symbol}: Target sanity check - price ${current_price_for_check:.2f} "
+                                        f"> target ${target_price:.2f}, marking partial as taken"
+                                    )
+                                    partial_already_taken = True
                         
                         position = WarriorPosition(
                             position_id=position_id,
@@ -812,6 +846,7 @@ class WarriorMonitor:
                             high_since_entry=recovered_high,
                             risk_per_share=recovered_entry_price - stop_price,
                             original_shares=qty,
+                            partial_taken=partial_already_taken,  # Preserve or set based on sanity check
                         )
                         self._positions[position.position_id] = position
                         
