@@ -247,10 +247,12 @@ Last updated: 2026-01-19
   - [x] `warrior_sim_routes.py` (465 lines) - Simulation mode
   - [x] `warrior_callbacks.py` (418 lines) - Shared callback factories
   - [x] `warrior_positions.py` (303 lines) - Position health endpoints
-- [ ] **Refactor warrior_monitor.py** — Split 1,680+ line file for maintainability
-  - [ ] Extract `_sync_with_broker()` to `warrior_sync.py` (~400 lines)
-  - [ ] Extract scaling logic to `warrior_scale.py` (~350 lines)
-  - [ ] Keep core monitoring loop and exit evaluation in main file (~800 lines)
+- [x] **Refactor warrior_monitor.py** — COMPLETE: Split into 5 focused modules (fb02318)
+  - [x] `warrior_types.py` (126 lines) - Enums & dataclasses
+  - [x] `warrior_sync.py` (464 lines) - Broker sync & recovery
+  - [x] `warrior_scale.py` (222 lines) - Ross Cameron scaling logic
+  - [x] `warrior_exit.py` (598 lines) - Exit evaluation & handling
+  - [x] `warrior_monitor.py` (562 lines) - Core orchestration (67% reduction)
 - [x] **Refactor warrior.tsx** — DONE (see Technical Debt section above)
 - [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
 
