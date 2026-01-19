@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-18
+Last updated: 2026-01-19
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -104,6 +104,11 @@ Last updated: 2026-01-18
     - Preserves original trigger_type through restarts
     - See [order_id_linkage_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/order_id_linkage_plan.md)
   - Root cause: Multiple data sources (in-memory monitor vs warrior_db vs broker)
+- [x] **Recovery Integrity Guards** — Ensure stop/target preserved through restarts (Jan 19)
+  - DB-authoritative restoration of stop_price/target_price in `_sync_with_broker()`
+  - Target sanity check prevents false partial-exit if price > target
+  - Timezone-aware entry_time using `now_utc()`
+  - 25 new unit tests covering recovery scenarios
 
 ---
 
@@ -268,6 +273,21 @@ Last updated: 2026-01-18
 ---
 
 ## ✅ Completed (Recent)
+
+### Jan 19, 2026 — Recovery Integrity & Test Suite
+- [x] **Recovery Integrity Guards v2.20.2** — DB-authoritative restoration after restart
+  - Stop/target restored from warrior_db, not recalculated from current price
+  - Target sanity check marks partial as taken if price already exceeded target
+  - Prevents the RIOT -0.3R spike from Jan 17
+- [x] **Market Hour Blocking** — Block orders/scaling outside extended hours (4 AM - 8 PM ET)
+  - Added `is_extended_hours_active()` checks to monitor, scale, scan, watch loops
+  - Bypass in sim_mode for MockMarket testing
+  - Clear logging: "Outside extended hours - skipping"
+- [x] **Test Suite Completion** — 512 passed, 4 skipped, 0 warnings
+  - Fixed 10+ pre-existing test failures (timezone, patch paths, asyncio teardown)
+  - Added 25 new unit tests for recovery integrity and market hour blocking
+  - Suppressed Pydantic ArbitraryTypeWarning from httpx mocking
+  - E2E test now uses BASE_URL env var for VPS testing
 
 ### Jan 16, 2026 — Timezone Compliance & Quote Verification
 - [x] **3-Source Quote Verification** — Alpaca + FMP + Schwab cross-validation
