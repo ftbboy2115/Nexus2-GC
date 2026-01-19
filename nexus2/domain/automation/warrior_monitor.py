@@ -484,7 +484,10 @@ class WarriorMonitor:
                     from nexus2.adapters.market_data.market_calendar import get_market_calendar
                     calendar = get_market_calendar(paper=True)
                     if not calendar.is_extended_hours_active():
-                        logger.debug("[Warrior Monitor] Outside extended hours (4 AM - 8 PM) - skipping position check")
+                        status = calendar.get_market_status()
+                        reason = status.reason or "off_hours"
+                        next_open = status.next_open.strftime('%Y-%m-%d %H:%M ET') if status.next_open else 'unknown'
+                        logger.info(f"[Warrior Monitor] Market closed ({reason}) - next open: {next_open}")
                         await asyncio.sleep(60)  # Check again in 1 minute
                         continue
                 
@@ -1368,6 +1371,16 @@ class WarriorMonitor:
             logger.warning(f"[Warrior Scale] {position.symbol}: No scale order callback configured")
             return False
         
+        # Early market check - block scaling on holidays/weekends
+        if not self.sim_mode:
+            from nexus2.adapters.market_data.market_calendar import get_market_calendar
+            calendar = get_market_calendar(paper=True)
+            status = calendar.get_market_status()
+            if not status.is_open:
+                reason = status.reason or "market_closed"
+                logger.info(f"[Warrior Scale] {position.symbol}: Skipping scale - market closed ({reason})")
+                return False
+        
         symbol = position.symbol
         add_shares = scale_signal["add_shares"]
         price = Decimal(str(scale_signal["price"]))
@@ -1399,7 +1412,15 @@ class WarriorMonitor:
             )
             
             if order_result is None:
-                logger.warning(f"[Warrior Scale] {symbol}: Scale order returned None")
+                # Check if market is closed (holiday/weekend)
+                from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                cal = get_market_calendar(paper=True)
+                market_status = cal.get_market_status()
+                if not market_status.is_open:
+                    reason = market_status.reason or "market_closed"
+                    logger.warning(f"[Warrior Scale] {symbol}: Scale order rejected - market closed ({reason})")
+                else:
+                    logger.warning(f"[Warrior Scale] {symbol}: Scale order returned None (unknown reason)")
                 # Revert to OPEN since order couldn't be submitted
                 revert_scaling(position.position_id)
                 return False
