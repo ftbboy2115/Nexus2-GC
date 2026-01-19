@@ -8,6 +8,7 @@ import {
     ScanResult,
     PositionHealth,
     useWarriorData,
+    useWarriorActions,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -33,8 +34,22 @@ export default function Warrior() {
         refetch,
     } = useWarriorData()
 
-    // Action loading state (local - not in hook)
-    const [actionLoading, setActionLoading] = useState<string | null>(null)
+    // Action handlers from custom hook
+    const {
+        actionLoading,
+        setActionLoading,
+        startEngine,
+        stopEngine,
+        pauseEngine,
+        resumeEngine,
+        enableSim,
+        resetSim,
+        disableSim,
+        enableBroker,
+        toggleAutoEnable,
+        updateConfig,
+        handleAction,
+    } = useWarriorActions({ addToLog, refetch, status })
 
     // Mock Market state
     const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
@@ -230,95 +245,6 @@ export default function Warrior() {
             addToLog('❌ Failed to analyze trade')
         } finally {
             setAnalyzingTrade(null)
-        }
-    }
-
-    const handleAction = async (
-        actionId: string,
-        endpoint: string,
-        method: 'GET' | 'POST' | 'PUT' = 'POST',
-        body?: object
-    ) => {
-        setActionLoading(actionId)
-        try {
-            const res = await fetch(`${API_BASE}${endpoint}`, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: body ? JSON.stringify(body) : undefined,
-            })
-            if (res.ok) {
-                const data = await res.json()
-                addToLog(`✅ ${actionId}: ${data.status || 'Success'}`)
-                await refetch()
-                return data
-            } else {
-                const err = await res.json()
-                addToLog(`❌ ${actionId}: ${err.detail || 'Failed'}`)
-            }
-        } catch (err) {
-            console.error(`Error with ${actionId}:`, err)
-            addToLog(`❌ ${actionId}: Network error`)
-        } finally {
-            setActionLoading(null)
-        }
-    }
-
-    // Engine Controls
-    const startEngine = () => handleAction('Start Engine', '/warrior/start')
-    const stopEngine = () => handleAction('Stop Engine', '/warrior/stop')
-    const pauseEngine = () => handleAction('Pause Engine', '/warrior/pause')
-    const resumeEngine = () => handleAction('Resume Engine', '/warrior/resume')
-
-    // Simulation Controls
-    const enableSim = () => handleAction('Enable Sim', '/warrior/sim/enable')
-    const resetSim = () => handleAction('Reset Sim', '/warrior/sim/reset')
-    const disableSim = () => handleAction('Disable Sim', '/warrior/sim/disable')
-
-    // Broker Controls (Alpaca Paper)
-    const enableBroker = () => handleAction('Enable Broker', '/warrior/broker/enable')
-
-    // Auto-enable toggle
-    const toggleAutoEnable = async () => {
-        setActionLoading('autoEnable')
-        try {
-            const newValue = !status?.auto_enable
-            const res = await fetch(`${API_BASE}/warrior/auto-enable`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: newValue }),
-            })
-            if (res.ok) {
-                const data = await res.json()
-                addToLog(`⚙️ Auto-enable ${newValue ? 'enabled' : 'disabled'}: takes effect on next restart`)
-                await refetch()
-            } else {
-                addToLog('❌ Failed to toggle auto-enable')
-            }
-        } catch (err) {
-            addToLog('❌ Failed to toggle auto-enable')
-        } finally {
-            setActionLoading(null)
-        }
-    }
-
-    // Config Updates
-    const updateConfig = async (field: string, value: number | boolean) => {
-        setActionLoading(`config-${field}`)
-        try {
-            const res = await fetch(`${API_BASE}/warrior/config`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [field]: value }),
-            })
-            if (res.ok) {
-                const data = await res.json()
-                addToLog(`⚙️ Config updated: ${field} = ${value}`)
-                await refetch()
-            }
-        } catch (err) {
-            addToLog(`❌ Failed to update ${field}`)
-        } finally {
-            setActionLoading(null)
         }
     }
 
