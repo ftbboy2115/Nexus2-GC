@@ -32,7 +32,7 @@ class RSData:
     perf_3m: float  # 3-month % change (63 days)
     perf_6m: float  # 6-month % change (126 days) - KK methodology
     percentile: int  # 0-100 percentile ranking
-    calculated_at: datetime = field(default_factory=datetime.now)
+    calculated_at: datetime = field(default_factory=now_et)
 
 
 class RSService:
@@ -130,7 +130,13 @@ class RSService:
             
             # Parse last_refresh
             if cache_data.get("last_refresh"):
-                self._last_refresh = datetime.fromisoformat(cache_data["last_refresh"])
+                # Parse with timezone - handle both aware and naive cached datetimes
+                cached_dt = datetime.fromisoformat(cache_data["last_refresh"])
+                if cached_dt.tzinfo is None:
+                    # Legacy naive datetime - assume ET
+                    from zoneinfo import ZoneInfo
+                    cached_dt = cached_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+                self._last_refresh = cached_dt
                 
                 # Check if cache is still valid
                 if now_et() - self._last_refresh > timedelta(hours=self.CACHE_HOURS):

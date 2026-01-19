@@ -193,7 +193,6 @@ async def lifespan(app: FastAPI):
                 
                 # Start in background task to not block startup
                 # Delay 60s to let Warrior scan complete first and avoid FMP rate limit overlap
-                import asyncio
                 async def resume_scheduler():
                     try:
                         print("[Startup] NAC scheduler resume delayed 60s (FMP rate limit protection)")

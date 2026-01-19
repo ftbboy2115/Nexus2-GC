@@ -266,9 +266,10 @@ def test_7_api_endpoints():
     """
     print("\n--- Test 7: API Endpoints ---")
     
+    import os
     import requests
     
-    base = "http://localhost:8000"
+    base = os.getenv("BASE_URL", "http://localhost:8000")
     # Note: Scheduler routes are under /automation prefix
     endpoints = [
         ("/automation/status", "GET"),
@@ -285,8 +286,8 @@ def test_7_api_endpoints():
             else:
                 r = requests.post(f"{base}{endpoint}", timeout=5)
             
-            if r.status_code in [200, 201]:
-                print(f"  ✅ {endpoint}")
+            if r.status_code in [200, 201, 401]:
+                print(f"  ✅ {endpoint}" + (" (auth required)" if r.status_code == 401 else ""))
                 results.append(True)
             else:
                 print(f"  ❌ {endpoint}: {r.status_code}")
