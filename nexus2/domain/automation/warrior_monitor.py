@@ -853,6 +853,39 @@ class WarriorMonitor:
                         )
                         self._positions[position.position_id] = position
                         
+                        # =============================================================
+                        # CRITICAL: Check if position is below stop at recovery time
+                        # This handles the edge case where:
+                        # - EOD exit failed (e.g., illiquidity, server down)
+                        # - Position held over weekend below stop
+                        # - Must exit ASAP to limit losses
+                        # =============================================================
+                        if current_price_for_check and stop_price:
+                            if Decimal(str(current_price_for_check)) <= stop_price:
+                                logger.warning(
+                                    f"[Warrior Sync] {symbol}: RECOVERED BELOW STOP - "
+                                    f"price=${current_price_for_check:.2f} <= stop=${stop_price:.2f}, "
+                                    f"triggering immediate exit"
+                                )
+                                # Generate exit signal
+                                pnl = (Decimal(str(current_price_for_check)) - recovered_entry_price) * qty
+                                r_multiple = float(pnl / (position.risk_per_share * qty)) if position.risk_per_share > 0 else 0
+                                exit_signal = WarriorExitSignal(
+                                    position_id=position.position_id,
+                                    symbol=symbol,
+                                    reason=WarriorExitReason.MENTAL_STOP,
+                                    exit_price=Decimal(str(current_price_for_check)),
+                                    shares_to_exit=qty,
+                                    pnl_estimate=pnl,
+                                    stop_price=stop_price,
+                                    r_multiple=r_multiple,
+                                    trigger_description=f"Recovered below stop (${current_price_for_check:.2f} <= ${stop_price:.2f})",
+                                )
+                                # Execute exit immediately
+                                await self._handle_exit(exit_signal)
+                                # Skip normal recovery logging since we're exiting
+                                continue
+                        
                         # Only log new entry if we didn't recover an existing one
                         if not existing_trade:
                             # Persist to warrior_db for Trade History (new external position)

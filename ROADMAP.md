@@ -96,7 +96,7 @@ Last updated: 2026-01-19
   - EP scanner integrated; `/automation/scheduler/rejections` endpoint added
 - [ ] **Warrior/Broker Sync Audit** — Multiple edge cases discovered (Jan 16)
   - [x] Ghost positions in DB (EVTV) — Fixed: `close_orphaned_trades` now called on startup
-  - [ ] Position below stop on sync skipped but not exited (RIOT $19.06 < $19.07)
+  - [x] Position below stop on sync — Fixed: immediate exit on recovery (Jan 19)
   - [ ] Frontend shows stale positions (cache issue) — needs hard refresh
   - [ ] P&L discrepancy between UI (-$2.70) vs Alpaca (-$25.02)
   - [x] **Order ID Linkage Fix** — Root cause of data loss (Jan 17)
