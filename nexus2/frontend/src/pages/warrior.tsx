@@ -17,6 +17,7 @@ import {
     toggleSort,
     SortHeader,
     SortConfig,
+    EventLogCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -1340,23 +1341,7 @@ export default function Warrior() {
                         </div>
 
                         {/* Event Log */}
-                        <div className={styles.eventLogCard}>
-                            <div className={styles.cardHeader}>
-                                <h2>📜 Event Log</h2>
-                                <button onClick={() => setEventLog([])} className={styles.clearBtn}>
-                                    Clear
-                                </button>
-                            </div>
-                            <div className={styles.eventLog}>
-                                {eventLog.length === 0 ? (
-                                    <p className={styles.emptyLog}>No events yet</p>
-                                ) : (
-                                    eventLog.map((log, i) => (
-                                        <div key={i} className={styles.logEntry}>{log}</div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                        <EventLogCard eventLog={eventLog} onClear={() => setEventLog([])} />
                     </>
                 )
                 }
