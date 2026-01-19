@@ -4,15 +4,10 @@ import Link from 'next/link'
 import styles from '@/styles/Warrior.module.css'
 import {
     CollapsibleCard,
-    WarriorStatus,
-    WatchedCandidate,
     WarriorCandidate,
     ScanResult,
-    WarriorPosition,
-    PositionHealthIndicator,
     PositionHealth,
-    SimStatus,
-    BrokerStatus,
+    useWarriorData,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -21,27 +16,30 @@ import {
 
 
 export default function Warrior() {
-    // Core state
-    const [status, setStatus] = useState<WarriorStatus | null>(null)
-    const [scanResult, setScanResult] = useState<ScanResult | null>(null)
-    const [positions, setPositions] = useState<WarriorPosition[]>([])
-    const [positionHealth, setPositionHealth] = useState<Record<string, PositionHealth>>({})
-    const [loading, setLoading] = useState(true)
+    // Core data from custom hook
+    const {
+        status,
+        positions,
+        positionHealth,
+        scanResult,
+        setScanResult,
+        loading,
+        simStatus,
+        brokerStatus,
+        tradeEvents,
+        addToLog,
+        eventLog,
+        setEventLog,
+        refetch,
+    } = useWarriorData()
+
+    // Action loading state (local - not in hook)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
-
-    // Simulation state
-    const [simStatus, setSimStatus] = useState<SimStatus | null>(null)
-
-    // Broker status (for live P&L)
-    const [brokerStatus, setBrokerStatus] = useState<BrokerStatus | null>(null)
 
     // Mock Market state
     const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
     const [selectedTestCase, setSelectedTestCase] = useState<string>('')
     const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
-
-    // Event log
-    const [eventLog, setEventLog] = useState<string[]>([])
 
     // Sorting state for tables
     const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
@@ -50,8 +48,7 @@ export default function Warrior() {
     // Countdown timer state
     const [countdown, setCountdown] = useState<string>('')
 
-    // Trade events log
-    const [tradeEvents, setTradeEvents] = useState<any[]>([])
+    // Trade events visibility
     const [showTradeEvents, setShowTradeEvents] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('warrior_showTradeEvents') === 'true'
@@ -126,75 +123,13 @@ export default function Warrior() {
         return () => clearInterval(interval)
     }, [status?.state, status?.stats?.next_scan, status?.market_hours])
 
-    // Use relative URLs - Next.js rewrites proxy to backend
-    const API_BASE = ''
-
     // Open TradingView chart in new tab
     const openChart = (symbol: string) => {
         window.open(`https://www.tradingview.com/chart/?symbol=${symbol}`, '_blank')
     }
 
-    // ========================================================================
-    // Data Fetching
-    // ========================================================================
-
-    const fetchStatus = useCallback(async () => {
-        try {
-            const [statusRes, positionsRes, simRes, brokerRes] = await Promise.all([
-                fetch(`${API_BASE}/warrior/status`),
-                fetch(`${API_BASE}/warrior/positions`),
-                fetch(`${API_BASE}/warrior/sim/status`),
-                fetch(`${API_BASE}/warrior/broker/status`),
-            ])
-
-            if (statusRes.ok) setStatus(await statusRes.json())
-            if (positionsRes.ok) {
-                const data = await positionsRes.json()
-                setPositions(data.positions || [])
-            }
-            if (simRes.ok) setSimStatus(await simRes.json())
-
-            // Fetch position health indicators (separate call for real-time data)
-            try {
-                const healthRes = await fetch(`${API_BASE}/warrior/positions/health`)
-                if (healthRes.ok) {
-                    const healthData = await healthRes.json()
-                    const healthMap: Record<string, PositionHealth> = {}
-                    for (const p of healthData.positions || []) {
-                        if (p.health) {
-                            healthMap[p.position_id] = p.health
-                        }
-                    }
-                    setPositionHealth(healthMap)
-                }
-            } catch (err) {
-                console.error('Error fetching position health:', err)
-            }
-            if (brokerRes.ok) setBrokerStatus(await brokerRes.json())
-
-            // Fetch recent Warrior trade events
-            try {
-                const eventsRes = await fetch(`${API_BASE}/trade-events/recent?strategy=WARRIOR&limit=20`)
-                if (eventsRes.ok) {
-                    const eventsData = await eventsRes.json()
-                    setTradeEvents(eventsData.events || [])
-                }
-            } catch (err) {
-                console.error('Error fetching Warrior trade events:', err)
-            }
-        } catch (err) {
-            console.error('Error fetching Warrior status:', err)
-            addToLog('❌ Failed to connect to backend')
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    useEffect(() => {
-        fetchStatus()
-        const interval = setInterval(fetchStatus, 1000) // Fast refresh for day trading
-        return () => clearInterval(interval)
-    }, [fetchStatus])
+    // Use relative URLs - Next.js rewrites proxy to backend
+    const API_BASE = ''
 
     // Fetch monitor settings on mount (not on interval - rarely changes)
     useEffect(() => {
@@ -298,11 +233,6 @@ export default function Warrior() {
         }
     }
 
-    const addToLog = (message: string) => {
-        const timestamp = new Date().toLocaleTimeString()
-        setEventLog(prev => [`${timestamp} - ${message}`, ...prev.slice(0, 49)])
-    }
-
     const handleAction = async (
         actionId: string,
         endpoint: string,
@@ -319,7 +249,7 @@ export default function Warrior() {
             if (res.ok) {
                 const data = await res.json()
                 addToLog(`✅ ${actionId}: ${data.status || 'Success'}`)
-                await fetchStatus()
+                await refetch()
                 return data
             } else {
                 const err = await res.json()
@@ -360,7 +290,7 @@ export default function Warrior() {
             if (res.ok) {
                 const data = await res.json()
                 addToLog(`⚙️ Auto-enable ${newValue ? 'enabled' : 'disabled'}: takes effect on next restart`)
-                await fetchStatus()
+                await refetch()
             } else {
                 addToLog('❌ Failed to toggle auto-enable')
             }
@@ -383,7 +313,7 @@ export default function Warrior() {
             if (res.ok) {
                 const data = await res.json()
                 addToLog(`⚙️ Config updated: ${field} = ${value}`)
-                await fetchStatus()
+                await refetch()
             }
         } catch (err) {
             addToLog(`❌ Failed to update ${field}`)
@@ -460,7 +390,7 @@ export default function Warrior() {
                     price: price
                 })
                 addToLog(`📦 Loaded test case: ${data.symbol} @ $${price?.toFixed(2) || 'N/A'}`)
-                await fetchStatus()
+                await refetch()
             }
         } catch (err) {
             addToLog('❌ Failed to load test case')
@@ -550,7 +480,7 @@ export default function Warrior() {
                         <span className={`${styles.badge} ${status?.trading_window ? styles.badgeGreen : styles.badgeGray}`}>
                             {status?.trading_window ? '🟢 Trading Window' : '⚫ Outside Window'}
                         </span>
-                        <button onClick={fetchStatus} className={styles.refreshBtn}>
+                        <button onClick={refetch} className={styles.refreshBtn}>
                             🔄 Refresh
                         </button>
                     </div>
