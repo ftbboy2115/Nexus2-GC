@@ -542,8 +542,9 @@ class WarriorMonitor:
                     if should_check_scale and not self.sim_mode:
                         from nexus2.adapters.market_data.market_calendar import get_market_calendar
                         calendar = get_market_calendar(paper=True)
-                        if not calendar.is_extended_hours_active():
-                            should_check_scale = False  # Don't even check during holidays
+                        status = calendar.get_market_status()
+                        if not status.is_open:
+                            should_check_scale = False  # Don't check during holidays/weekends
                     
                     if should_check_scale:
                         scale_signal = await self._check_scale_opportunity(
