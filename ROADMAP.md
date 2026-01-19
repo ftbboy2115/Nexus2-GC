@@ -288,6 +288,8 @@ Last updated: 2026-01-19
   - Added 25 new unit tests for recovery integrity and market hour blocking
   - Suppressed Pydantic ArbitraryTypeWarning from httpx mocking
   - E2E test now uses BASE_URL env var for VPS testing
+  - Added WarriorBase initialization to conftest.py (fixes warrior_trades schema warning)
+  - Verified VPS `warrior.db` has all columns via inline migration (not an open item)
 
 ### Jan 16, 2026 — Timezone Compliance & Quote Verification
 - [x] **3-Source Quote Verification** — Alpaca + FMP + Schwab cross-validation
