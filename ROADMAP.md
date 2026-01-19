@@ -254,10 +254,10 @@ Last updated: 2026-01-19
   - [x] `warrior_monitor_exit.py` (598 lines) - Exit evaluation & handling
   - [x] `warrior_monitor.py` (562 lines) - Core orchestration (67% reduction)
 - [x] **Refactor warrior.tsx** — DONE (see Technical Debt section above)
-- [ ] **Refactor warrior_engine.py** — Split 1,334-line file for maintainability
-  - [ ] Extract `warrior_engine_types.py` (~110 lines) - Enums & dataclasses
-  - [ ] Extract `warrior_entry.py` (~550 lines) - Entry logic & triggers
-  - [ ] Keep core orchestration in `warrior_engine.py` (~650 lines)
+- [x] **Refactor warrior_engine.py** — COMPLETE: Split into 3 focused modules
+  - [x] `warrior_engine_types.py` (130 lines) - Enums & dataclasses
+  - [x] `warrior_engine_entry.py` (580 lines) - Entry triggers & execution
+  - [x] `warrior_engine.py` (694 lines) - Core orchestration (48% reduction)
 - [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
 
 ---
