@@ -222,12 +222,17 @@ class WarriorMonitor:
         try:
             if self._recently_exited_file.exists():
                 import json
+                from datetime import timezone
                 with open(self._recently_exited_file, "r") as f:
                     data = json.load(f)
                 now = now_utc()
                 # Only load entries less than 1 hour old (stale entries are useless)
                 for symbol, ts_str in data.items():
-                    exit_time = datetime.fromisoformat(ts_str)
+                    # Handle both 'Z' suffix and naive datetimes
+                    exit_time = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                    # Ensure timezone-aware (assume UTC if naive)
+                    if exit_time.tzinfo is None:
+                        exit_time = exit_time.replace(tzinfo=timezone.utc)
                     if (now - exit_time).total_seconds() < 3600:  # 1 hour max
                         self._recently_exited[symbol] = exit_time
                 if self._recently_exited:
@@ -781,6 +786,9 @@ class WarriorMonitor:
                                         recovered_entry_time = datetime.fromisoformat(entry_time_str.replace("Z", "+00:00"))
                                     else:
                                         recovered_entry_time = entry_time_str
+                                    # Ensure timezone-aware (assume UTC if naive)
+                                    if recovered_entry_time.tzinfo is None:
+                                        recovered_entry_time = recovered_entry_time.replace(tzinfo=timezone.utc)
                                 except Exception:
                                     recovered_entry_time = now_utc()
                             else:
@@ -1019,7 +1027,12 @@ class WarriorMonitor:
         # =====================================================================
         if s.enable_spread_exit:
             # Only check spread after grace period (avoid exit on volatile open)
-            seconds_since_entry = (now_utc() - position.entry_time).total_seconds()
+            # Safety: Ensure entry_time is timezone-aware before subtraction
+            entry_time = position.entry_time
+            if entry_time.tzinfo is None:
+                from datetime import timezone
+                entry_time = entry_time.replace(tzinfo=timezone.utc)
+            seconds_since_entry = (now_utc() - entry_time).total_seconds()
             if seconds_since_entry >= s.spread_grace_period_seconds:
                 # Get bid/ask spread from quote callback if available
                 if self._get_quote_with_spread:
