@@ -19,6 +19,7 @@ import {
     SortConfig,
     EventLogCard,
     MockMarketCard,
+    ExitRulesCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -645,48 +646,8 @@ export default function Warrior() {
                                 actionLoading={actionLoading}
                             />
 
-                            {/* Monitor Settings Card */}
-                            <CollapsibleCard
-                                id="exitrules"
-                                title="🛡️ Exit Rules"
-                                badge={
-                                    <span className={`${styles.badge} ${status?.monitor.running ? styles.badgeGreen : styles.badgeGray}`}>
-                                        {status?.monitor.running ? 'Active' : 'Inactive'}
-                                    </span>
-                                }
-                            >
-                                <div className={styles.cardBody}>
-                                    <div className={styles.rulesList}>
-                                        <div className={styles.ruleItem}>
-                                            <span className={styles.ruleLabel}>Mental Stop</span>
-                                            <span className={styles.ruleValue}>{status?.monitor.settings.mental_stop_cents || 15}¢</span>
-                                        </div>
-                                        <div className={styles.ruleItem}>
-                                            <span className={styles.ruleLabel}>Profit Target</span>
-                                            <span className={styles.ruleValue}>{status?.monitor.settings.profit_target_r || 2}:1 R</span>
-                                        </div>
-                                        <div className={styles.ruleItem}>
-                                            <span className={styles.ruleLabel}>Partial Exit</span>
-                                            <span className={styles.ruleValue}>{(status?.monitor.settings.partial_exit_fraction || 0.5) * 100}%</span>
-                                        </div>
-                                        <div className={styles.ruleItem}>
-                                            <span className={styles.ruleLabel}>Candle-Under-Candle</span>
-                                            <span className={styles.ruleValue}>{status?.monitor.settings.candle_under_candle ? '✅' : '❌'}</span>
-                                        </div>
-                                        <div className={styles.ruleItem}>
-                                            <span className={styles.ruleLabel}>Topping Tail</span>
-                                            <span className={styles.ruleValue}>{status?.monitor.settings.topping_tail ? '✅' : '❌'}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Monitor Stats */}
-                                    <div className={styles.monitorStats}>
-                                        <span>Checks: {status?.monitor.checks_run || 0}</span>
-                                        <span>Exits: {status?.monitor.exits_triggered || 0}</span>
-                                        <span>Partials: {status?.monitor.partials_triggered || 0}</span>
-                                    </div>
-                                </div>
-                            </CollapsibleCard>
+                            {/* Exit Rules Card */}
+                            <ExitRulesCard monitor={status?.monitor} />
 
                             {/* Settings Card */}
                             <CollapsibleCard
