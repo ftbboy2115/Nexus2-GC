@@ -241,10 +241,16 @@ Last updated: 2026-01-19
   - [ ] Seamless OAuth: Auto-refresh reminder (Discord/email alert before 7-day expiry)
   - [ ] Seamless OAuth: OAuth proxy via nginx HTTPS for direct VPS callback
   - [ ] Seamless OAuth: One-click weekly re-auth workflow
-- [ ] **Refactor warrior_routes.py** — Split 2000+ line file for maintainability
-  - [ ] Extract sim mode callbacks to `warrior_sim_routes.py`
-  - [ ] Extract broker callbacks to `warrior_broker_routes.py`
-  - [ ] Keep core endpoints (status, start, stop, config) in main file
+- [x] **Refactor warrior_routes.py** — COMPLETE: Split into 5 files (~460 lines each)
+  - [x] `warrior_routes.py` (568 lines) - Core endpoints
+  - [x] `warrior_broker_routes.py` (559 lines) - Live broker callbacks
+  - [x] `warrior_sim_routes.py` (465 lines) - Simulation mode
+  - [x] `warrior_callbacks.py` (418 lines) - Shared callback factories
+  - [x] `warrior_positions.py` (303 lines) - Position health endpoints
+- [ ] **Refactor warrior_monitor.py** — Split 1,680+ line file for maintainability
+  - [ ] Extract `_sync_with_broker()` to `warrior_sync.py` (~400 lines)
+  - [ ] Extract scaling logic to `warrior_scale.py` (~350 lines)
+  - [ ] Keep core monitoring loop and exit evaluation in main file (~800 lines)
 - [x] **Refactor warrior.tsx** — DONE (see Technical Debt section above)
 - [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
 
