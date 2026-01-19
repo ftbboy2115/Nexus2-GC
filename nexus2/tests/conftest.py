@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session
 
 from nexus2.db import Base, engine, SessionLocal, init_db
 
+# Import Warrior database for test initialization
+from nexus2.db.warrior_db import WarriorBase, warrior_engine
+
 
 # =============================================================================
 # PYTEST CONFIGURATION
@@ -33,12 +36,19 @@ def pytest_configure(config):
 @pytest.fixture(scope="function", autouse=True)
 def reset_database():
     """Reset database before each test function."""
-    # Drop all tables and recreate
+    # Drop all tables and recreate (main DB)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    
+    # Also reset Warrior database tables
+    WarriorBase.metadata.drop_all(bind=warrior_engine)
+    WarriorBase.metadata.create_all(bind=warrior_engine)
+    
     yield
+    
     # Cleanup after test
     Base.metadata.drop_all(bind=engine)
+    WarriorBase.metadata.drop_all(bind=warrior_engine)
 
 
 @pytest.fixture(scope="function")
