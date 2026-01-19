@@ -21,6 +21,7 @@ import {
     MockMarketCard,
     ExitRulesCard,
     SettingsCard,
+    ScannerCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -655,89 +656,12 @@ export default function Warrior() {
 
                             {/* Note: Main Open Positions table with Health/Current/P&L is below in the positions section */}
                             {/* Scanner Card */}
-                            <CollapsibleCard
-                                id="scanner"
-                                title="🔍 Scanner"
-                                badge={
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); runScan(); }}
-                                        className={styles.btnSmall}
-                                        disabled={actionLoading === 'scan'}
-                                    >
-                                        {actionLoading === 'scan' ? '...' : 'Run Scan'}
-                                    </button>
-                                }
-                            >
-                                <div className={styles.cardBody}>
-                                    {scanResult ? (
-                                        <>
-                                            <div className={styles.scanStats}>
-                                                <span>Processed: {scanResult.processed_count}</span>
-                                                <span>Passed: {scanResult.candidates.length}</span>
-                                                <span>Avg RVOL: {scanResult.avg_rvol.toFixed(1)}x</span>
-                                                <span>Avg Gap: {scanResult.avg_gap.toFixed(1)}%</span>
-                                            </div>
-
-                                            {scanResult.candidates.length > 0 ? (
-                                                <div className={styles.candidateTable}>
-                                                    <table>
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Symbol</th>
-                                                                <th>Price</th>
-                                                                <th>Gap%</th>
-                                                                <th>RVOL</th>
-                                                                <th>Float</th>
-                                                                <th>Catalyst</th>
-                                                                <th>Score</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {scanResult.candidates.slice(0, 10).map((c) => (
-                                                                <tr key={c.symbol}>
-                                                                    <td className={styles.symbol}>
-                                                                        <span
-                                                                            className={styles.clickableSymbol}
-                                                                            onClick={() => openChart(c.symbol)}
-                                                                            title="Open TradingView chart"
-                                                                        >
-                                                                            {c.symbol}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td>${c.price.toFixed(2)}</td>
-                                                                    <td className={c.is_ideal_gap ? styles.ideal : ''}>
-                                                                        {c.gap_percent.toFixed(1)}%
-                                                                    </td>
-                                                                    <td className={c.is_ideal_rvol ? styles.ideal : ''}>
-                                                                        {c.relative_volume.toFixed(1)}x
-                                                                    </td>
-                                                                    <td className={c.is_ideal_float ? styles.ideal : ''}>
-                                                                        {formatFloat(c.float_shares)}
-                                                                    </td>
-                                                                    <td title={c.catalyst_description}>
-                                                                        {c.catalyst_type === 'earnings' ? '📊' :
-                                                                            c.catalyst_type === 'news' ? '📰' :
-                                                                                c.catalyst_type === 'former_runner' ? '🏃' : '-'}
-                                                                    </td>
-                                                                    <td className={styles.score}>
-                                                                        <span className={`${styles.scoreBar} ${styles[`score${Math.min(10, Math.max(0, c.quality_score))}`]}`}>
-                                                                            {c.quality_score}/10
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            ) : (
-                                                <p className={styles.emptyMessage}>No candidates found</p>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <p className={styles.emptyMessage}>Click "Run Scan" to find candidates</p>
-                                    )}
-                                </div>
-                            </CollapsibleCard>
+                            <ScannerCard
+                                scanResult={scanResult}
+                                runScan={runScan}
+                                openChart={openChart}
+                                actionLoading={actionLoading}
+                            />
 
                             {/* Last Engine Scan Card */}
                             <CollapsibleCard
