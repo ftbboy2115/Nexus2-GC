@@ -537,7 +537,15 @@ class WarriorMonitor:
                     await self._handle_exit(signal)
                 else:
                     # No exit signal - check for scaling opportunity
-                    if current_price and self.settings.enable_scaling:
+                    # Skip scaling entirely during closed markets (reduces log spam)
+                    should_check_scale = current_price and self.settings.enable_scaling
+                    if should_check_scale and not self.sim_mode:
+                        from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                        calendar = get_market_calendar(paper=True)
+                        if not calendar.is_extended_hours_active():
+                            should_check_scale = False  # Don't even check during holidays
+                    
+                    if should_check_scale:
                         scale_signal = await self._check_scale_opportunity(
                             position, Decimal(str(current_price))
                         )
