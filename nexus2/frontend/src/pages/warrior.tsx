@@ -23,6 +23,7 @@ import {
     SettingsCard,
     ScannerCard,
     EngineCard,
+    WatchlistCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -673,61 +674,13 @@ export default function Warrior() {
                             />
 
                             {/* Watchlist Card */}
-                            <CollapsibleCard
-                                id="watchlist"
-                                title="👁️ Watchlist"
-                                badge={<span className={styles.countBadge}>{status?.watchlist_count || 0}</span>}
-                            >
-                                <div className={styles.cardBody}>
-                                    {status?.watchlist && status.watchlist.length > 0 ? (
-                                        <div className={styles.watchlistTable}>
-                                            <table>
-                                                <thead>
-                                                    <tr>
-                                                        <SortHeader label="Symbol" sortKey="symbol" sortConfig={watchlistSort} onSort={() => toggleSort('symbol', watchlistSort, setWatchlistSort)} />
-                                                        <th title="Quality indicators: Gap, RVol, Entry">Quality</th>
-                                                        <SortHeader label="RVOL" sortKey="rvol" sortConfig={watchlistSort} onSort={() => toggleSort('rvol', watchlistSort, setWatchlistSort)} />
-                                                        <SortHeader label="PMH" sortKey="pmh" sortConfig={watchlistSort} onSort={() => toggleSort('pmh', watchlistSort, setWatchlistSort)} />
-                                                        <th>ORB High</th>
-                                                        <th>Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {sortData(status.watchlist, watchlistSort).map((w) => (
-                                                        <tr key={w.symbol} className={w.entry_triggered ? styles.triggered : ''}>
-                                                            <td className={styles.symbol}>
-                                                                <span
-                                                                    className={styles.clickableSymbol}
-                                                                    onClick={() => openChart(w.symbol)}
-                                                                    title="Open TradingView chart"
-                                                                >
-                                                                    {w.symbol}
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                <div className={styles.indicatorRow}>
-                                                                    <span className={`${styles.indicatorDot} ${w.gap_percent >= 15 ? styles.dotGreen : w.gap_percent >= 10 ? styles.dotYellow : styles.dotRed}`} title={`Gap: +${w.gap_percent.toFixed(1)}%`}>●</span>
-                                                                    <span className={`${styles.indicatorDot} ${w.rvol >= 3 ? styles.dotGreen : w.rvol >= 2 ? styles.dotYellow : styles.dotRed}`} title={`RVol: ${w.rvol.toFixed(1)}x`}>●</span>
-                                                                    <span className={`${styles.indicatorDot} ${w.entry_triggered ? styles.dotGreen : w.orb_established ? styles.dotYellow : styles.dotRed}`} title={w.entry_triggered ? 'Entered' : w.orb_established ? 'Watching' : 'Setup'}>●</span>
-                                                                </div>
-                                                            </td>
-                                                            <td>{w.rvol.toFixed(1)}x</td>
-                                                            <td>${w.pmh.toFixed(2)}</td>
-                                                            <td>{w.orb_high ? `$${w.orb_high.toFixed(2)}` : '-'}</td>
-                                                            <td>
-                                                                {w.entry_triggered ? '✅ Entered' :
-                                                                    w.orb_established ? '⏳ Watching' : '📊 Setup'}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : (
-                                        <p className={styles.emptyMessage}>No symbols being watched</p>
-                                    )}
-                                </div>
-                            </CollapsibleCard>
+                            <WatchlistCard
+                                watchlist={status?.watchlist}
+                                watchlistCount={status?.watchlist_count || 0}
+                                watchlistSort={watchlistSort}
+                                setWatchlistSort={setWatchlistSort}
+                                openChart={openChart}
+                            />
                         </div>
 
                         {/* Positions Table */}

@@ -1,0 +1,12 @@
+{
+    "json.validate": true,
+    "json.schemas": [
+        {
+            "fileMatch": [
+                "**/knowledge/**/metadata.json",
+                "**/brain/**/metadata.json"
+            ],
+            "schema": false
+        }
+    ]
+}
