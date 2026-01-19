@@ -446,9 +446,9 @@ class WarriorMonitor:
         - Positions closed manually at broker
         - Shares differ between monitor and broker
         
-        Delegated to warrior_sync module for maintainability.
+        Delegated to warrior_monitor_sync module for maintainability.
         """
-        from nexus2.domain.automation.warrior_sync import sync_with_broker
+        from nexus2.domain.automation.warrior_monitor_sync import sync_with_broker
         await sync_with_broker(self)
     
     # =========================================================================
@@ -469,9 +469,9 @@ class WarriorMonitor:
         3. Topping tail rejection
         4. Profit target reached
         
-        Delegated to warrior_exit module for maintainability.
+        Delegated to warrior_monitor_exit module for maintainability.
         """
-        from nexus2.domain.automation.warrior_exit import evaluate_position
+        from nexus2.domain.automation.warrior_monitor_exit import evaluate_position
         return await evaluate_position(self, position, prefetched_price)
     
     async def _check_scale_opportunity(
@@ -482,9 +482,9 @@ class WarriorMonitor:
         """
         Check if position qualifies for scaling in (Ross Cameron methodology).
         
-        Delegated to warrior_scale module for maintainability.
+        Delegated to warrior_monitor_scale module for maintainability.
         """
-        from nexus2.domain.automation.warrior_scale import check_scale_opportunity
+        from nexus2.domain.automation.warrior_monitor_scale import check_scale_opportunity
         return await check_scale_opportunity(self, position, current_price)
     
     async def _execute_scale_in(
@@ -495,18 +495,18 @@ class WarriorMonitor:
         """
         Execute a scale-in order (Ross Cameron methodology).
         
-        Delegated to warrior_scale module for maintainability.
+        Delegated to warrior_monitor_scale module for maintainability.
         """
-        from nexus2.domain.automation.warrior_scale import execute_scale_in
+        from nexus2.domain.automation.warrior_monitor_scale import execute_scale_in
         return await execute_scale_in(self, position, scale_signal)
     
     async def _handle_exit(self, signal: WarriorExitSignal):
         """
         Handle an exit signal.
         
-        Delegated to warrior_exit module for maintainability.
+        Delegated to warrior_monitor_exit module for maintainability.
         """
-        from nexus2.domain.automation.warrior_exit import handle_exit
+        from nexus2.domain.automation.warrior_monitor_exit import handle_exit
         await handle_exit(self, signal)
     
     # =========================================================================
