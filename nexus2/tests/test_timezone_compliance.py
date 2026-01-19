@@ -38,6 +38,7 @@ def test_no_direct_datetime_now():
         '_test.py',
         'venv',
         '.venv',
+        'scripts',  # Utility scripts (not trading-critical) - no slash for cross-platform
     ]
     
     nexus2_path = Path(__file__).parent.parent.parent / 'nexus2'

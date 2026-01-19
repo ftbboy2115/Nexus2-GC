@@ -33,15 +33,16 @@ class TestCatalystCache:
     def test_cache_expiration(self):
         """Test cache entries expire after TTL."""
         from nexus2.domain.automation.ai_catalyst_validator import CatalystCache, CachedCatalyst
+        from nexus2.utils.time_utils import now_et
         
         cache = CatalystCache(ttl_minutes=1)  # 1 minute TTL
         
-        # Manually insert an expired entry
+        # Manually insert an expired entry (use timezone-aware datetime)
         cache._cache["EXPIRED"] = CachedCatalyst(
             is_valid=True,
             catalyst_type="earnings",
             description="Old news",
-            cached_at=datetime.now() - timedelta(minutes=10),  # 10 mins ago (expired)
+            cached_at=now_et() - timedelta(minutes=10),  # 10 mins ago (expired)
         )
         
         result = cache.get("EXPIRED")
@@ -50,15 +51,16 @@ class TestCatalystCache:
     def test_cache_fresh(self):
         """Test fresh cache entries are returned."""
         from nexus2.domain.automation.ai_catalyst_validator import CatalystCache, CachedCatalyst
+        from nexus2.utils.time_utils import now_et
         
         cache = CatalystCache(ttl_minutes=5)
         
-        # Insert a fresh entry
+        # Insert a fresh entry (use timezone-aware datetime)
         cache._cache["FRESH"] = CachedCatalyst(
             is_valid=True,
             catalyst_type="fda",
             description="FDA approval",
-            cached_at=datetime.now() - timedelta(minutes=2),  # 2 mins ago (fresh)
+            cached_at=now_et() - timedelta(minutes=2),  # 2 mins ago (fresh)
         )
         
         result = cache.get("FRESH")

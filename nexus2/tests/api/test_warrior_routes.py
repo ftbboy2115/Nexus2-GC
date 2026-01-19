@@ -135,7 +135,7 @@ class TestWarriorSimulationEndpoints:
     
     def test_sim_status_not_enabled(self, test_client):
         """GET /warrior/sim/status should handle not enabled."""
-        with patch("nexus2.api.routes.warrior_routes.get_warrior_sim_broker", return_value=None):
+        with patch("nexus2.api.routes.warrior_sim_routes.get_warrior_sim_broker", return_value=None):
             response = test_client.get("/warrior/sim/status")
             assert response.status_code == 200
             data = response.json()
@@ -145,8 +145,8 @@ class TestWarriorSimulationEndpoints:
     def test_sim_enable_creates_broker(self, test_client, mock_engine):
         """POST /warrior/sim/enable should create MockBroker."""
         with patch("nexus2.api.routes.warrior_routes.get_engine", return_value=mock_engine), \
-             patch("nexus2.api.routes.warrior_routes.set_warrior_sim_broker") as mock_set, \
-             patch("nexus2.api.routes.warrior_routes.get_warrior_sim_broker", return_value=None):
+             patch("nexus2.api.routes.warrior_sim_routes.set_warrior_sim_broker") as mock_set, \
+             patch("nexus2.api.routes.warrior_sim_routes.get_warrior_sim_broker", return_value=None):
             
             response = test_client.post("/warrior/sim/enable", json={"initial_cash": 25000.0})
             assert response.status_code == 200
@@ -154,7 +154,7 @@ class TestWarriorSimulationEndpoints:
     
     def test_sim_order_requires_enabled(self, test_client):
         """POST /warrior/sim/order should require sim enabled."""
-        with patch("nexus2.api.routes.warrior_routes.get_warrior_sim_broker", return_value=None):
+        with patch("nexus2.api.routes.warrior_sim_routes.get_warrior_sim_broker", return_value=None):
             response = test_client.post(
                 "/warrior/sim/order",
                 json={"symbol": "TEST", "shares": 100, "stop_price": 10.0}
@@ -181,7 +181,7 @@ class TestWarriorSimOrderSubmission:
         mock_broker.get_account = MagicMock(return_value={"cash": 24000, "pnl": 0})
         mock_broker.get_positions = MagicMock(return_value={})
         
-        with patch("nexus2.api.routes.warrior_routes.get_warrior_sim_broker", return_value=mock_broker), \
+        with patch("nexus2.api.routes.warrior_sim_routes.get_warrior_sim_broker", return_value=mock_broker), \
              patch("nexus2.domain.automation.trade_event_service.trade_event_service") as mock_svc:
             mock_svc.log_warrior_entry = MagicMock(return_value="event-123")
             
@@ -200,7 +200,7 @@ class TestWarriorSimPriceUpdate:
     
     def test_sim_price_requires_enabled(self, test_client):
         """POST /warrior/sim/price/{symbol} should require sim enabled."""
-        with patch("nexus2.api.routes.warrior_routes.get_warrior_sim_broker", return_value=None):
+        with patch("nexus2.api.routes.warrior_sim_routes.get_warrior_sim_broker", return_value=None):
             response = test_client.post("/warrior/sim/price/TEST?price=15.50")
             # Should fail gracefully
             assert response.status_code in [400, 404]
