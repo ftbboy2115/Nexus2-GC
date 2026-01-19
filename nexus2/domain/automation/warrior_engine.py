@@ -431,7 +431,10 @@ class WarriorEngine:
                     from nexus2.adapters.market_data.market_calendar import get_market_calendar
                     calendar = get_market_calendar(paper=True)
                     if not calendar.is_extended_hours_active():
-                        logger.debug("[Warrior Scan] Outside extended hours (4 AM - 8 PM) - skipping scan")
+                        status = calendar.get_market_status()
+                        reason = status.reason or "off_hours"
+                        next_open = status.next_open.strftime('%Y-%m-%d %H:%M ET') if status.next_open else 'unknown'
+                        logger.info(f"[Warrior Scan] Market closed ({reason}) - next open: {next_open}")
                         await asyncio.sleep(60)  # Check again in 1 minute
                         continue
                 
@@ -618,9 +621,17 @@ class WarriorEngine:
                         logger.info(f"[Warrior Watch] New day - cleared stale watchlist: {stale_symbols}")
                 last_date = current_date
                 
-                # NOTE: No time restriction - trades qualified setups ANY time
-                # Pre-market and after-hours moves can be explosive on small-caps
-                # (no halts outside regular hours)
+                # Skip on non-market days (weekends, holidays) and outside extended hours
+                # BUT: bypass in sim_only mode for Mock Market testing anytime
+                if not self.config.sim_only:
+                    from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                    calendar = get_market_calendar(paper=True)
+                    if not calendar.is_extended_hours_active():
+                        status = calendar.get_market_status()
+                        reason = status.reason or "off_hours"
+                        logger.debug(f"[Warrior Watch] Market closed ({reason}) - skipping entry checks")
+                        await asyncio.sleep(60)  # Check again in 1 minute
+                        continue
                 
                 # Check each watched candidate
                 await self._check_entry_triggers()
