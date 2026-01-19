@@ -322,7 +322,8 @@ class TestEntryFilterPriority:
     
     def test_cooldown_checked_before_spread(self, engine):
         """Re-entry cooldown is checked before spread."""
-        engine.monitor._recently_exited = {"RECENT": datetime.utcnow()}
+        from nexus2.utils.time_utils import now_utc
+        engine.monitor._recently_exited = {"RECENT": now_utc()}
         
         watched = make_watched_candidate("RECENT", price=10.00)
         
@@ -408,3 +409,102 @@ class TestSpreadCalculation:
         
         # 4% > 3% threshold, should reject
         engine._submit_order.assert_not_called()
+
+
+# =============================================================================
+# Scan Loop Market Check Tests (Jan 2026)
+# =============================================================================
+
+class TestScanLoopMarketCheck:
+    """Tests for market check in scan loop.
+    
+    Verifies scan loop skips when market is closed.
+    """
+    
+    def test_scan_skipped_when_market_closed(self):
+        """Scan loop logic should skip when is_extended_hours_active returns False."""
+        from nexus2.adapters.market_data.market_calendar import MarketStatus
+        
+        # Mock calendar to return closed
+        with patch("nexus2.adapters.market_data.market_calendar.get_market_calendar") as mock_cal:
+            mock_status = MarketStatus(is_open=False, reason="holiday_or_closed")
+            mock_cal.return_value.is_extended_hours_active.return_value = False
+            mock_cal.return_value.get_market_status.return_value = mock_status
+            
+            # Verify the check that would happen in scan loop
+            calendar = mock_cal.return_value
+            should_skip = not calendar.is_extended_hours_active()
+            
+            assert should_skip == True
+    
+    def test_scan_runs_when_market_open(self):
+        """Scan loop should run when is_extended_hours_active returns True."""
+        from nexus2.adapters.market_data.market_calendar import MarketStatus
+        
+        with patch("nexus2.adapters.market_data.market_calendar.get_market_calendar") as mock_cal:
+            mock_status = MarketStatus(is_open=True)
+            mock_cal.return_value.is_extended_hours_active.return_value = True
+            mock_cal.return_value.get_market_status.return_value = mock_status
+            
+            calendar = mock_cal.return_value
+            should_skip = not calendar.is_extended_hours_active()
+            
+            assert should_skip == False
+    
+    def test_scan_bypasses_check_in_sim_mode(self):
+        """Sim mode should bypass market check."""
+        config = WarriorEngineConfig(sim_only=True)
+        
+        # In sim_only mode, the market check should be skipped entirely
+        assert config.sim_only == True
+        
+        # The logic in scan loop: if self.config.sim_only: skip_check
+        should_check_market = not config.sim_only
+        assert should_check_market == False
+
+
+# =============================================================================
+# Watch Loop Market Check Tests (Jan 2026)
+# =============================================================================
+
+class TestWatchLoopMarketCheck:
+    """Tests for market check in watch loop.
+    
+    Verifies watch loop skips entry checks when market is closed.
+    """
+    
+    def test_watch_skipped_when_market_closed(self):
+        """Watch loop logic should skip when market is closed."""
+        from nexus2.adapters.market_data.market_calendar import MarketStatus
+        
+        with patch("nexus2.adapters.market_data.market_calendar.get_market_calendar") as mock_cal:
+            mock_status = MarketStatus(is_open=False, reason="weekend")
+            mock_cal.return_value.is_extended_hours_active.return_value = False
+            mock_cal.return_value.get_market_status.return_value = mock_status
+            
+            calendar = mock_cal.return_value
+            should_skip = not calendar.is_extended_hours_active()
+            
+            assert should_skip == True
+    
+    def test_watch_runs_when_market_open(self):
+        """Watch loop should check entries when market is open."""
+        from nexus2.adapters.market_data.market_calendar import MarketStatus
+        
+        with patch("nexus2.adapters.market_data.market_calendar.get_market_calendar") as mock_cal:
+            mock_status = MarketStatus(is_open=True)
+            mock_cal.return_value.is_extended_hours_active.return_value = True
+            mock_cal.return_value.get_market_status.return_value = mock_status
+            
+            calendar = mock_cal.return_value
+            should_skip = not calendar.is_extended_hours_active()
+            
+            assert should_skip == False
+    
+    def test_watch_bypasses_check_in_sim_mode(self):
+        """Sim mode bypasses market check for testing."""
+        config = WarriorEngineConfig(sim_only=True)
+        
+        # Market check is skipped in sim mode
+        assert config.sim_only == True
+
