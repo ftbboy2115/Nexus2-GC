@@ -27,6 +27,7 @@ import {
     OpenPositionsCard,
     TradeEventsCard,
     TradeHistoryCard,
+    EngineControlCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -368,139 +369,22 @@ export default function Warrior() {
                         {/* Main Grid */}
                         <div className={styles.grid}>
                             {/* Engine Control Card */}
-                            <CollapsibleCard
-                                id="engine"
-                                title="🎛️ Engine Control"
-                                badge={
-                                    <span className={`${styles.stateBadge} ${styles[`state${status?.state}`]}`}>
-                                        {status?.state?.toUpperCase() || 'UNKNOWN'}
-                                    </span>
-                                }
-                            >
-                                <div className={styles.cardBody}>
-                                    {/* Stats */}
-                                    <div className={styles.statsGrid}>
-                                        <div className={styles.statBox}>
-                                            <div className={styles.statValue}>{status?.stats.scans_run || 0}</div>
-                                            <div className={styles.statLabel}>Scans</div>
-                                        </div>
-                                        <div className={styles.statBox}>
-                                            <div className={styles.statValue}>{status?.stats.candidates_found || 0}</div>
-                                            <div className={styles.statLabel}>Candidates</div>
-                                        </div>
-                                        <div className={styles.statBox}>
-                                            <div className={styles.statValue}>{status?.stats.entries_triggered || 0}</div>
-                                            <div className={styles.statLabel}>Entries</div>
-                                        </div>
-                                        <div className={styles.statBox}>
-                                            <div className={`${styles.statValue} ${((brokerStatus?.broker_enabled ? brokerStatus?.total_daily_pnl : status?.stats.daily_pnl) || 0) >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
-                                                {formatPnL((brokerStatus?.broker_enabled ? brokerStatus?.total_daily_pnl : status?.stats.daily_pnl) || 0)}
-                                                {brokerStatus?.broker_enabled && brokerStatus?.daily_pnl_percent !== undefined && (
-                                                    <span style={{ fontSize: '0.7em', marginLeft: '4px', opacity: 0.8 }}>
-                                                        ({brokerStatus.daily_pnl_percent > 0 ? '+' : ''}{brokerStatus.daily_pnl_percent.toFixed(1)}%)
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className={styles.statLabel}>
-                                                Daily P&L
-                                                {brokerStatus?.broker_enabled && brokerStatus?.peak_exposure && brokerStatus.peak_exposure > 0 && (
-                                                    <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
-                                                        {' '}on ${(brokerStatus.peak_exposure / 1000).toFixed(1)}K
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Config Display */}
-                                    <div className={styles.configRow}>
-                                        <span>Risk/Trade: {formatCurrency(status?.config.risk_per_trade || 100)}</span>
-                                        <span>Max Positions: {status?.config.max_positions || 3}</span>
-                                        <span>Daily Loss Limit: {formatCurrency(status?.config.max_daily_loss || 300)}</span>
-                                    </div>
-
-                                    {/* Entry Modes */}
-                                    <div className={styles.entryModes}>
-                                        <span className={status?.config.orb_enabled ? styles.modeEnabled : styles.modeDisabled}>
-                                            {status?.config.orb_enabled ? '✅' : '❌'} ORB
-                                        </span>
-                                        <span className={status?.config.pmh_enabled ? styles.modeEnabled : styles.modeDisabled}>
-                                            {status?.config.pmh_enabled ? '✅' : '❌'} PMH
-                                        </span>
-                                        <span
-                                            className={monitorSettings?.enable_scaling ? styles.modeEnabled : styles.modeDisabled}
-                                            onClick={() => updateMonitorSettings('enable_scaling', !monitorSettings?.enable_scaling)}
-                                            style={{ cursor: 'pointer' }}
-                                            title="Click to toggle scaling (add to winners on pullback)"
-                                        >
-                                            {actionLoading === 'monitor-enable_scaling' ? '...' : (monitorSettings?.enable_scaling ? '✅' : '❌')} Scale
-                                        </span>
-                                    </div>
-
-                                    {/* Countdown to next scan */}
-                                    {isRunning && countdown && (
-                                        <div style={{
-                                            padding: '8px 12px',
-                                            background: 'rgba(59, 130, 246, 0.15)',
-                                            borderRadius: '6px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            marginTop: '8px'
-                                        }}>
-                                            <span style={{ color: '#9ca3af' }}>⏱️ Next Scan:</span>
-                                            <span style={{ color: '#60a5fa', fontFamily: 'monospace', fontWeight: 600 }}>{countdown}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className={styles.cardActions}>
-                                    {!isRunning && !isPaused && (
-                                        <button
-                                            onClick={startEngine}
-                                            className={styles.btnPrimary}
-                                            disabled={actionLoading !== null}
-                                        >
-                                            {actionLoading === 'Start Engine' ? '...' : '▶️ Start'}
-                                        </button>
-                                    )}
-                                    {isRunning && (
-                                        <>
-                                            <button
-                                                onClick={pauseEngine}
-                                                className={styles.btnSecondary}
-                                                disabled={actionLoading !== null}
-                                            >
-                                                ⏸️ Pause
-                                            </button>
-                                            <button
-                                                onClick={stopEngine}
-                                                className={styles.btnDanger}
-                                                disabled={actionLoading !== null}
-                                            >
-                                                ⏹️ Stop
-                                            </button>
-                                        </>
-                                    )}
-                                    {isPaused && (
-                                        <>
-                                            <button
-                                                onClick={resumeEngine}
-                                                className={styles.btnPrimary}
-                                                disabled={actionLoading !== null}
-                                            >
-                                                ▶️ Resume
-                                            </button>
-                                            <button
-                                                onClick={stopEngine}
-                                                className={styles.btnDanger}
-                                                disabled={actionLoading !== null}
-                                            >
-                                                ⏹️ Stop
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </CollapsibleCard>
+                            <EngineControlCard
+                                state={status?.state}
+                                stats={status?.stats || {}}
+                                config={status?.config || {}}
+                                brokerStatus={brokerStatus}
+                                monitorSettings={monitorSettings}
+                                countdown={countdown}
+                                isRunning={isRunning}
+                                isPaused={isPaused}
+                                actionLoading={actionLoading}
+                                startEngine={startEngine}
+                                stopEngine={stopEngine}
+                                pauseEngine={pauseEngine}
+                                resumeEngine={resumeEngine}
+                                updateMonitorSettings={updateMonitorSettings}
+                            />
 
                             {/* Simulation Mode Card */}
                             <CollapsibleCard
