@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-13
+Last updated: 2026-01-18
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -65,12 +65,11 @@ Last updated: 2026-01-13
   - Phase 1: SchedulerCard, EngineCard, MonitorCard, ApiUsageCard
   - Phase 2: QuickActionsCard, SignalsCard
   - Phase 3: PositionsCard
-- [ ] **Refactor `warrior.tsx`** — Currently 1,460 lines, extract to components
-  - WarriorControlsCard (start/stop, settings)
-  - WarriorPositionsCard (positions table)
-  - WarriorWatchlistCard (candidates table)
-  - WarriorSimulatorCard (mock market)
-  - WarriorStatsCard (P&L summary)
+- [x] **Refactor `warrior.tsx`** — Reduced from 1845 to ~481 lines (74% reduction, Jan 18)
+  - Extracted 12 card components to `components/warrior/`
+  - Created `useWarriorData` and `useWarriorActions` hooks
+  - Added `formatters.ts` and `types.ts` utilities
+  - See [modular_dashboard_pattern.md](file:///C:/Users/ftbbo/.gemini/antigravity/knowledge/nexus2_core_systems/artifacts/implementation/modular_dashboard_pattern.md)
 
 ---
 
@@ -241,7 +240,7 @@ Last updated: 2026-01-13
   - [ ] Extract sim mode callbacks to `warrior_sim_routes.py`
   - [ ] Extract broker callbacks to `warrior_broker_routes.py`
   - [ ] Keep core endpoints (status, start, stop, config) in main file
-- [ ] **Refactor warrior.tsx** — Split 1500+ line file for maintainability
+- [x] **Refactor warrior.tsx** — DONE (see Technical Debt section above)
 - [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
 
 ---
