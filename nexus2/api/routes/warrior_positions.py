@@ -37,11 +37,23 @@ class ManualExitRequest(BaseModel):
 
 @positions_router.get("/positions")
 async def get_warrior_positions():
-    """Get positions being monitored by Warrior engine."""
+    """Get positions being monitored by Warrior engine with current prices."""
     from .warrior_routes import get_engine
     
     engine = get_engine()
     positions = engine.monitor.get_positions()
+    
+    # Get current prices from Alpaca broker
+    current_prices = {}
+    try:
+        broker = engine.broker
+        if broker:
+            alpaca_positions = broker.get_positions()
+            for symbol, pos in alpaca_positions.items():
+                if pos.current_price:
+                    current_prices[symbol] = float(pos.current_price)
+    except Exception:
+        pass  # Continue without current prices if broker unavailable
     
     return {
         "count": len(positions),
@@ -56,6 +68,7 @@ async def get_warrior_positions():
                 "partial_taken": p.partial_taken,
                 "high_since_entry": float(p.high_since_entry),
                 "entry_time": format_iso_utc(p.entry_time),
+                "current_price": current_prices.get(p.symbol),
             }
             for p in positions
         ],

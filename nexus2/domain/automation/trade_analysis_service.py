@@ -88,6 +88,9 @@ VALID ENTRY TRIGGERS (Nexus Implementation):
 - VWAP_BOUNCE: Dip to VWAP with reclaim (Break of VWAP pattern)
 - DIP_FOR_LEVEL: Pullback to support then bounce (micro pullback concept)
 - PULLBACK: 10-25% retracement from HOD (bull flag/micro pullback)
+- synced: Position recovered from broker after restart - still a VALID entry if it was originally triggered by scanner
+
+NOTE: If metadata contains "stop_price", a stop WAS set. The bot uses EMA-based mental stops.
 
 VALID EXIT TRIGGERS:
 - candle_under_candle: Inverse of candle over candle - VALID bearish signal

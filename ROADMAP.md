@@ -95,6 +95,16 @@ Last updated: 2026-01-13
 - [x] **Rejection logging — COMPLETE (v0.1.1)** — File-based logging with API endpoint
   - `rejection_tracker.py` - thread-safe, persists last 500 rejections
   - EP scanner integrated; `/automation/scheduler/rejections` endpoint added
+- [ ] **Warrior/Broker Sync Audit** — Multiple edge cases discovered (Jan 16)
+  - [x] Ghost positions in DB (EVTV) — Fixed: `close_orphaned_trades` now called on startup
+  - [ ] Position below stop on sync skipped but not exited (RIOT $19.06 < $19.07)
+  - [ ] Frontend shows stale positions (cache issue) — needs hard refresh
+  - [ ] P&L discrepancy between UI (-$2.70) vs Alpaca (-$25.02)
+  - [x] **Order ID Linkage Fix** — Root cause of data loss (Jan 17)
+    - Sync now recovers existing position_id from warrior_db
+    - Preserves original trigger_type through restarts
+    - See [order_id_linkage_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/order_id_linkage_plan.md)
+  - Root cause: Multiple data sources (in-memory monitor vs warrior_db vs broker)
 
 ---
 
@@ -117,7 +127,14 @@ Last updated: 2026-01-13
   - Avoids log spam from repeated poll failures
 - [x] **Trade History / Events Log Pagination** — Scrollable container (400px max-height) for Trade History table (Jan 14)
   - Fixed-height scrollable container shows all trades without long page scroll
+- [ ] **Quality Indicator Lights** — Traffic light indicators for Warrior Watchlist & Positions cards (Jan 17)
+  - Watchlist: 6 indicators (Float, RVol, Gap, Catalyst, VWAP, Entry) with tooltips
+  - Positions: 8 health indicators (MACD, 9/20/200 EMA, VWAP, Volume, Stop, Target)
+  - Based on Ross Cameron's methodology from "7 Candlestick Patterns" video
+  - See [implementation_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/implementation_plan.md)
   - Prevents needing to scroll past long event lists to see AI analysis
+- [ ] **Smart Scheduler Interval Change** — When interval is reduced, run scan immediately if time_remaining > new_interval
+- [ ] **GUI Interval Validation Fix** — Frontend rejects 5-minute interval but backend accepts [5, 10, 15, 30]
 
 ---
 

@@ -111,6 +111,7 @@ interface WarriorPosition {
     partial_taken: boolean
     high_since_entry: number
     entry_time: string | null
+    current_price?: number  // For Current/P&L display
 }
 
 interface PositionHealthIndicator {
@@ -1266,62 +1267,7 @@ export default function Warrior() {
                                 </div>
                             </CollapsibleCard>
 
-                            {/* Positions Card */}
-                            <CollapsibleCard
-                                id="positions"
-                                title="📊 Positions"
-                                badge={positions.length > 0 ? (
-                                    <span className={styles.badge}>{positions.length}</span>
-                                ) : undefined}
-                            >
-                                <div className={styles.cardBody}>
-                                    {positions.length === 0 ? (
-                                        <div className={styles.noData}>No open positions</div>
-                                    ) : (
-                                        <div className={styles.candidateTable}>
-                                            <table>
-                                                <thead>
-                                                    <tr>
-                                                        <th>Symbol</th>
-                                                        <th>Shares</th>
-                                                        <th>Entry</th>
-                                                        <th>Stop</th>
-                                                        <th>Target</th>
-                                                        <th>Partial</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {positions.map((pos) => (
-                                                        <tr key={pos.position_id}>
-                                                            <td className={styles.symbolCell}>
-                                                                <span
-                                                                    className={styles.clickableSymbol}
-                                                                    onClick={() => openChart(pos.symbol)}
-                                                                    title="Open TradingView chart"
-                                                                >
-                                                                    {pos.symbol}
-                                                                </span>
-                                                            </td>
-                                                            <td>{pos.shares}</td>
-                                                            <td>${pos.entry_price.toFixed(2)}</td>
-                                                            <td className={styles.stopCell}>
-                                                                ${pos.current_stop.toFixed(2)}
-                                                            </td>
-                                                            <td className={styles.targetCell}>
-                                                                ${pos.profit_target.toFixed(2)}
-                                                            </td>
-                                                            <td>
-                                                                {pos.partial_taken ? '✅' : '—'}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
-                            </CollapsibleCard>
-
+                            {/* Note: Main Open Positions table with Health/Current/P&L is below in the positions section */}
                             {/* Scanner Card */}
                             <CollapsibleCard
                                 id="scanner"
@@ -1542,6 +1488,8 @@ export default function Warrior() {
                                                 <th>Entry</th>
                                                 <th>Stop</th>
                                                 <th>Target</th>
+                                                <th>Current</th>
+                                                <th>P&L</th>
                                                 <th>High</th>
                                                 <th>Health</th>
                                                 <th>Partial?</th>
@@ -1564,6 +1512,10 @@ export default function Warrior() {
                                                     <td>${p.entry_price.toFixed(2)}</td>
                                                     <td className={styles.stopPrice}>${p.current_stop.toFixed(2)}</td>
                                                     <td className={styles.targetPrice}>${p.profit_target.toFixed(2)}</td>
+                                                    <td>{p.current_price ? `$${p.current_price.toFixed(2)}` : '-'}</td>
+                                                    <td style={{ color: p.current_price ? ((p.current_price - p.entry_price) >= 0 ? '#22c55e' : '#ef4444') : '#888' }}>
+                                                        {p.current_price ? `${(p.current_price - p.entry_price) >= 0 ? '+' : ''}$${((p.current_price - p.entry_price) * p.shares).toFixed(2)}` : '-'}
+                                                    </td>
                                                     <td>${p.high_since_entry.toFixed(2)}</td>
                                                     <td>
                                                         {positionHealth[p.position_id] ? (
