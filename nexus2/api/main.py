@@ -175,36 +175,50 @@ async def lifespan(app: FastAPI):
     print("[Startup] Auto-start checker running")
     
     # Auto-resume NAC scheduler if it was running before restart
+    # NOTE: NAC only runs during regular market hours (9:30 AM - 4:00 PM ET)
     from nexus2.db.database import get_session
     from nexus2.db import SchedulerSettingsRepository
+    from nexus2.adapters.market_data.market_calendar import get_market_calendar
+    
     try:
-        with get_session() as db:
-            settings = SchedulerSettingsRepository(db).get()
-            if settings and settings.scheduler_running == "true":
-                print("[Startup] NAC scheduler was running before restart - auto-resuming...")
-                # Import and trigger scheduler start
-                from nexus2.api.routes.scheduler_routes import start_scheduler
-                from nexus2.api.routes.automation_state import get_engine
-                
-                # Create a mock request with app state
-                from unittest.mock import MagicMock
-                mock_request = MagicMock()
-                mock_request.app = app
-                
-                # Start in background task to not block startup
-                # Delay 60s to let Warrior scan complete first and avoid FMP rate limit overlap
-                async def resume_scheduler():
-                    try:
-                        print("[Startup] NAC scheduler resume delayed 60s (FMP rate limit protection)")
-                        await asyncio.sleep(60)
-                        result = await start_scheduler(mock_request, engine=get_engine())
-                        print(f"[Startup] NAC scheduler auto-resumed: {result.get('message', 'OK')}")
-                    except Exception as e:
-                        print(f"[Startup] NAC scheduler auto-resume failed: {e}")
-                
-                asyncio.create_task(resume_scheduler())
-            else:
-                print("[Startup] NAC scheduler was not running - skipping auto-resume")
+        # Check if market is actually open (NAC doesn't trade extended hours)
+        calendar = get_market_calendar()
+        market_status = calendar.get_market_status()
+        
+        if not market_status.is_open:
+            print(f"[Startup] NAC scheduler not resuming - market is closed (reason: {market_status.reason})")
+        else:
+            with get_session() as db:
+                settings = SchedulerSettingsRepository(db).get()
+                if settings and settings.scheduler_running == "true":
+                    print("[Startup] NAC scheduler was running before restart - auto-resuming...")
+                    # Import and trigger scheduler start
+                    from nexus2.api.routes.scheduler_routes import start_scheduler
+                    from nexus2.api.routes.automation_state import get_engine
+                    
+                    # Create a mock request with app state
+                    from unittest.mock import MagicMock
+                    mock_request = MagicMock()
+                    mock_request.app = app
+                    
+                    # Start in background task to not block startup
+                    # Delay 60s to let Warrior scan complete first and avoid FMP rate limit overlap
+                    async def resume_scheduler():
+                        try:
+                            print("[Startup] NAC scheduler resume delayed 60s (FMP rate limit protection)")
+                            await asyncio.sleep(60)
+                            # Re-check market is still open after delay
+                            if not calendar.get_market_status().is_open:
+                                print("[Startup] NAC scheduler resume cancelled - market closed during delay")
+                                return
+                            result = await start_scheduler(mock_request, engine=get_engine())
+                            print(f"[Startup] NAC scheduler auto-resumed: {result.get('message', 'OK')}")
+                        except Exception as e:
+                            print(f"[Startup] NAC scheduler auto-resume failed: {e}")
+                    
+                    asyncio.create_task(resume_scheduler())
+                else:
+                    print("[Startup] NAC scheduler was not running - skipping auto-resume")
     except Exception as e:
         print(f"[Startup] NAC auto-resume check failed: {e}")
     
