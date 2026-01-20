@@ -14,6 +14,8 @@ interface WatchlistItem {
     orb_high?: number | null
     entry_triggered?: boolean
     orb_established?: boolean
+    catalyst_type?: string
+    catalyst_description?: string
 }
 
 interface WatchlistCardProps {
@@ -44,6 +46,7 @@ export function WatchlistCard({
                             <thead>
                                 <tr>
                                     <SortHeader label="Symbol" sortKey="symbol" sortConfig={watchlistSort} onSort={() => toggleSort('symbol', watchlistSort, setWatchlistSort)} />
+                                    <th>Catalyst</th>
                                     <th title="Quality indicators: Gap, RVol, Entry">Quality</th>
                                     <SortHeader label="RVOL" sortKey="rvol" sortConfig={watchlistSort} onSort={() => toggleSort('rvol', watchlistSort, setWatchlistSort)} />
                                     <SortHeader label="PMH" sortKey="pmh" sortConfig={watchlistSort} onSort={() => toggleSort('pmh', watchlistSort, setWatchlistSort)} />
@@ -62,6 +65,14 @@ export function WatchlistCard({
                                             >
                                                 {w.symbol}
                                             </span>
+                                        </td>
+                                        <td title={w.catalyst_description || ''}>
+                                            {w.catalyst_type === 'earnings' ? '📊' :
+                                                w.catalyst_type === 'fda' ? '💊' :
+                                                    w.catalyst_type === 'contract' ? '📝' :
+                                                        w.catalyst_type === 'acquisition' ? '🤝' :
+                                                            w.catalyst_type === 'news' ? '📰' :
+                                                                w.catalyst_type === 'former_runner' ? '🏃' : '-'}
                                         </td>
                                         <td>
                                             <div className={styles.indicatorRow}>
