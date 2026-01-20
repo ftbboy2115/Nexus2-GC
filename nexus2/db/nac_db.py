@@ -331,6 +331,13 @@ def get_nac_trade_by_order_id(order_id: str):
         return trade.to_dict() if trade else None
 
 
+def get_nac_trade_by_id(trade_id: str):
+    """Get trade by ID (any status, including closed)."""
+    with get_nac_session() as db:
+        trade = db.query(NACTradeModel).filter_by(id=trade_id).first()
+        return trade.to_dict() if trade else None
+
+
 def get_open_nac_trades() -> list:
     """Get all open/active NAC trades for restart recovery."""
     with get_nac_session() as db:
