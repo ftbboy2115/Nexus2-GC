@@ -95,7 +95,7 @@ class WarriorMonitorSettings:
     scale_size_pct: int = 50  # Add 50% of original size
     min_rvol_for_scale: float = 2.0  # Volume confirmation (2x relative volume)
     allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
-    move_stop_to_breakeven_after_scale: bool = True  # Move stop to breakeven after add
+    move_stop_to_breakeven_after_scale: bool = False  # Keep technical stop after scale (Ross Cameron)
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
