@@ -40,8 +40,10 @@
 ### Scanner Signal Indicators
 | Indicator | Meaning |
 |-----------|---------|
-| 🔥 Red flame | Breaking news just hit |
-| 🔥 Orange flame | News from earlier today |
+| 🔥 Red flame | News 0-2 hours old (breaking) |
+| 🔥 Orange flame | News 2-12 hours old |
+| 🔥 Yellow flame | News 12-24 hours old |
+| No indicator | News >24 hours old |
 | ⬆️ Green arrow | Moving up the scanner |
 | ⬇️ Red arrow | Falling on the scanner |
 
