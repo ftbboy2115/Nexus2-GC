@@ -42,6 +42,7 @@ VALID_TRANSITIONS: Dict[PositionStatus, Set[PositionStatus]] = {
         PositionStatus.OPEN,      # Add fills or is rejected
     },
     PositionStatus.PARTIAL: {
+        PositionStatus.SCALING,      # Add on strength after partial (Ross Cameron)
         PositionStatus.PENDING_EXIT, # Exit remaining shares
         PositionStatus.CLOSED,       # Remaining shares exited
     },
