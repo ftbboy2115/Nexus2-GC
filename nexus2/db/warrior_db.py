@@ -52,6 +52,7 @@ class WarriorTradeModel(WarriorBase):
     
     # Stop/Target
     stop_price = Column(String(20), nullable=False)
+    stop_method = Column(String(20), nullable=True)  # vwap, candle_low, fallback_15c, etc.
     target_price = Column(String(20), nullable=True)
     support_level = Column(String(20), nullable=True)
     
@@ -88,6 +89,7 @@ class WarriorTradeModel(WarriorBase):
             "entry_time": self.entry_time.isoformat() if self.entry_time else None,
             "trigger_type": self.trigger_type,
             "stop_price": self.stop_price,
+            "stop_method": self.stop_method,
             "target_price": self.target_price,
             "support_level": self.support_level,
             "exit_price": self.exit_price,
@@ -136,6 +138,11 @@ def init_warrior_db():
             conn.commit()
         except Exception:
             pass  # Column already exists
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN stop_method TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -154,6 +161,7 @@ def log_warrior_entry(
     trigger_type: str = "pmh_break",
     support_level: float = None,
     high_since_entry: float = None,
+    stop_method: str = None,
 ):
     """Log a new Warrior trade entry."""
     # Default high_since_entry to entry_price if not provided
@@ -169,6 +177,7 @@ def log_warrior_entry(
             entry_time=now_utc(),
             trigger_type=trigger_type,
             stop_price=str(stop_price),
+            stop_method=stop_method,
             target_price=str(target_price),
             support_level=str(support_level) if support_level else None,
             remaining_quantity=quantity,

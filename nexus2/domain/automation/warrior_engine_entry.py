@@ -638,6 +638,7 @@ async def enter_position(
                     target_price=float(target),
                     trigger_type=trigger_type.value,
                     support_level=float(support_level),
+                    stop_method=stop_method,
                 )
                 # Store broker order ID for sync recovery after restart
                 set_entry_order_id(order_id, order_id)

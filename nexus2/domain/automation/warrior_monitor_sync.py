@@ -274,9 +274,10 @@ async def _recover_position(
         # CRITICAL: Restore original stop and target from DB
         db_stop = existing_trade.get("stop_price")
         db_target = existing_trade.get("target_price")
+        db_stop_method = existing_trade.get("stop_method")  # Restore stored method
         if db_stop:
             stop_price = Decimal(str(db_stop))
-            stop_method = "db_restored"
+            stop_method = db_stop_method or "db_restored"  # Use stored method or fallback
         if db_target:
             target_price = Decimal(str(db_target))
         
@@ -316,6 +317,11 @@ async def _recover_position(
                 )
                 partial_already_taken = True
     
+    # Set technical_stop if method indicates technical calculation (not fallback)
+    is_technical = stop_method and stop_method not in ['fallback_15c']
+    technical_stop_value = stop_price if is_technical else None
+    mental_stop_value = entry_price - monitor.settings.mental_stop_cents / 100
+    
     position = WarriorPosition(
         position_id=position_id,
         symbol=symbol,
@@ -324,8 +330,8 @@ async def _recover_position(
         entry_time=recovered_entry_time,
         current_stop=stop_price,
         profit_target=target_price,
-        mental_stop=stop_price,
-        technical_stop=None,
+        mental_stop=mental_stop_value,
+        technical_stop=technical_stop_value,
         high_since_entry=recovered_high,
         risk_per_share=recovered_entry_price - stop_price,
         original_shares=qty,
@@ -349,7 +355,7 @@ async def _recover_position(
             exit_signal = WarriorExitSignal(
                 position_id=position.position_id,
                 symbol=symbol,
-                reason=WarriorExitReason.MENTAL_STOP,
+                reason=WarriorExitReason.TECHNICAL_STOP if is_technical else WarriorExitReason.MENTAL_STOP,
                 exit_price=current_price,
                 shares_to_exit=qty,
                 pnl_estimate=pnl,
@@ -374,6 +380,7 @@ async def _recover_position(
                 target_price=float(target_price),
                 trigger_type="external",
                 support_level=float(stop_price),
+                stop_method=stop_method,
             )
         except Exception as db_err:
             logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")
