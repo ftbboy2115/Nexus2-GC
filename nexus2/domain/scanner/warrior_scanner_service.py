@@ -168,11 +168,11 @@ class WarriorCandidate:
     relative_volume: Decimal  # Pillar 2
     catalyst_type: str  # Pillar 3: "earnings", "news", "former_runner", "none"
     catalyst_description: str
-    catalyst_date: Optional[datetime] = None  # For freshness scoring (Ross's flame colors)
     price: Decimal  # Pillar 4
     gap_percent: Decimal  # Pillar 5
     
     # Quality indicators
+    catalyst_date: Optional[datetime] = None  # For freshness scoring (Ross's flame colors)
     is_ideal_float: bool = False  # < 20M shares
     is_ideal_rvol: bool = False  # > 3x
     is_ideal_gap: bool = False  # > 5%
