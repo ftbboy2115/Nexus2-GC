@@ -61,6 +61,58 @@ REPAIRS = {
 }
 
 
+def create_missing_positions():
+    """Create DB records for positions that exist in Alpaca but not in DB."""
+    from uuid import uuid4
+    
+    db = SessionLocal()
+    
+    try:
+        created = 0
+        for symbol, data in REPAIRS.items():
+            # Check if position already exists (any status, any setup_type)
+            existing = db.query(PositionModel).filter(
+                PositionModel.symbol == symbol,
+                PositionModel.status == "open"
+            ).first()
+            
+            if existing:
+                print(f"⚠️ {symbol}: Position already exists (id={existing.id[:8]}..., setup_type={existing.setup_type})")
+                continue
+            
+            # Create new position record
+            position = PositionModel(
+                id=str(uuid4()),
+                symbol=symbol,
+                setup_type=data["setup_type"],
+                entry_price=data["entry_price"],
+                shares=data["shares"],
+                remaining_shares=data.get("remaining_shares", data["shares"]),
+                initial_stop=data["initial_stop"],
+                current_stop=data["initial_stop"],
+                opened_at=data["opened_at"],
+                source=data["source"],
+                status="open",
+                realized_pnl="0",
+                broker_type="alpaca_paper",  # Assuming paper trading
+                account="A",
+            )
+            db.add(position)
+            
+            print(f"✅ {symbol}: CREATED - setup_type={data['setup_type']}, entry=${data['entry_price']}, stop=${data['initial_stop']}")
+            created += 1
+        
+        db.commit()
+        print(f"\n✅ Created {created} missing positions")
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error: {e}")
+        raise
+    finally:
+        db.close()
+
+
 def repair_positions():
     """Update external positions with correct NAC metadata."""
     db = SessionLocal()
@@ -126,10 +178,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Repair NAC external positions")
     parser.add_argument("--dry-run", action="store_true", help="Show current state without making changes")
+    parser.add_argument("--create", action="store_true", help="Create missing position records (not update existing)")
     args = parser.parse_args()
     
     if args.dry_run:
         show_current_state()
+    elif args.create:
+        print("🔧 Creating missing NAC position records from Alpaca order history...\n")
+        create_missing_positions()
     else:
         print("🔧 Repairing external positions with NAC metadata from Alpaca...\n")
         repair_positions()
+
