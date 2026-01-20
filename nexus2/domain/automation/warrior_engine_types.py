@@ -46,13 +46,14 @@ class EntryTriggerType(Enum):
 @dataclass
 class WarriorEngineConfig:
     """Configuration for Warrior automation engine."""
-    # Trading Window (Ross focuses on first 2 hours)
-    market_open: dt_time = field(default_factory=lambda: dt_time(9, 30))
-    trading_window_end: dt_time = field(default_factory=lambda: dt_time(11, 30))
-    market_close: dt_time = field(default_factory=lambda: dt_time(16, 0))
+    # Trading Window - Extended hours for Warrior (4 AM - 7:30 PM ET)
+    # Ross trades 7 AM - 10 AM, but we allow full extended window
+    market_open: dt_time = field(default_factory=lambda: dt_time(4, 0))  # Pre-market start
+    trading_window_end: dt_time = field(default_factory=lambda: dt_time(19, 30))  # Last entry at 7:30 PM
+    market_close: dt_time = field(default_factory=lambda: dt_time(20, 0))  # Extended hours end
     
-    # Pre-market scan
-    premarket_scan_time: dt_time = field(default_factory=lambda: dt_time(9, 15))
+    # Pre-market scan (Ross starts watching at 7 AM)
+    premarket_scan_time: dt_time = field(default_factory=lambda: dt_time(7, 0))
     
     # ORB Settings
     orb_timeframe_minutes: int = 1  # 1-minute ORB
