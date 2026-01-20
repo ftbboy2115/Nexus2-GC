@@ -39,11 +39,12 @@ class ManualExitRequest(BaseModel):
 async def get_warrior_positions():
     """Get positions being monitored by Warrior engine with current prices."""
     from .warrior_routes import get_engine
+    from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
     
     engine = get_engine()
     positions = engine.monitor.get_positions()
     
-    # Get current prices from Alpaca broker
+    # Get current prices - first try broker positions, then fetch quotes
     current_prices = {}
     try:
         broker = engine.broker
@@ -54,6 +55,17 @@ async def get_warrior_positions():
                     current_prices[symbol] = float(pos.current_price)
     except Exception:
         pass  # Continue without current prices if broker unavailable
+    
+    # Fetch quotes for any positions missing current_price
+    alpaca = AlpacaAdapter()
+    for p in positions:
+        if p.symbol not in current_prices:
+            try:
+                quote = alpaca.get_quote(p.symbol)
+                if quote and quote.price > 0:
+                    current_prices[p.symbol] = float(quote.price)
+            except Exception:
+                pass  # Continue without this quote
     
     return {
         "count": len(positions),
