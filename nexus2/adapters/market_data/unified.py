@@ -443,6 +443,80 @@ class UnifiedMarketData:
         """
         return self.fmp.get_premarket_gainers(min_change_pct=min_change_pct)
     
+    def get_alpaca_movers(self, top: int = 50, min_change_pct: float = 4.0) -> List[Dict]:
+        """
+        Get top movers from Alpaca's screener API.
+        
+        Alpaca's screener updates faster than FMP in pre-market, making it
+        a valuable secondary source for detecting early movers.
+        
+        Note: Filters out warrants (symbols ending in W) as they're not
+        tradable for momentum strategies.
+        
+        Args:
+            top: Number of top gainers to fetch
+            min_change_pct: Minimum change % to include
+            
+        Returns:
+            List of movers with symbol, name, price, change, change_percent
+        """
+        import os
+        import requests
+        import logging
+        from decimal import Decimal
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            key = os.environ.get('APCA_API_KEY_ID')
+            secret = os.environ.get('APCA_API_SECRET_KEY')
+            
+            if not key or not secret:
+                logger.debug("[Alpaca Movers] API keys not configured")
+                return []
+            
+            headers = {'APCA-API-KEY-ID': key, 'APCA-API-SECRET-KEY': secret}
+            resp = requests.get(
+                f'https://data.alpaca.markets/v1beta1/screener/stocks/movers?top={top}',
+                headers=headers,
+                timeout=10,
+            )
+            
+            if resp.status_code != 200:
+                logger.warning(f"[Alpaca Movers] API returned {resp.status_code}")
+                return []
+            
+            data = resp.json()
+            gainers = data.get('gainers', [])
+            
+            movers = []
+            for item in gainers:
+                symbol = item.get('symbol', '')
+                pct = item.get('percent_change', 0)
+                
+                # Filter out warrants (not tradable for momentum)
+                if symbol.endswith('W'):
+                    continue
+                
+                # Filter by minimum change
+                if pct < min_change_pct:
+                    continue
+                
+                movers.append({
+                    "symbol": symbol,
+                    "name": "",  # Alpaca doesn't provide name
+                    "price": Decimal(str(item.get('price', 0))),
+                    "change": Decimal("0"),  # Not provided
+                    "change_percent": Decimal(str(pct)),
+                })
+            
+            logger.info(f"[Alpaca Movers] Found {len(movers)} stocks with >{min_change_pct}% change")
+            return movers
+            
+        except Exception as e:
+            logger.warning(f"[Alpaca Movers] Error: {e}")
+            return []
+    
     def get_trend_leaders(self, limit: int = 100) -> List[str]:
         """
         Get trend leaders - stocks with strong momentum for HTF scanning.

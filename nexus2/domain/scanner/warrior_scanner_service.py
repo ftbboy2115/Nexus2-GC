@@ -320,21 +320,37 @@ class WarriorScannerService:
         
         actives = self.market_data.get_actives()
         
-        # Combine and dedupe
+        # Get Alpaca movers as secondary source (faster pre-market updates)
+        alpaca_movers = self.market_data.get_alpaca_movers(
+            top=50,
+            min_change_pct=float(self.settings.min_gap)
+        )
+        scan_logger.info(f"ALPACA MOVERS | Found: {len(alpaca_movers)} stocks")
+        
+        # Combine and dedupe (prefer FMP data when available for name field)
         seen = set()
         all_movers = []
         
+        # FMP gainers first (has name)
         for g in gainers:
             sym = g["symbol"]
             if sym not in seen:
                 seen.add(sym)
                 all_movers.append(g)
         
+        # FMP actives second (has name)
         for a in actives:
             sym = a["symbol"]
             if sym not in seen:
                 seen.add(sym)
                 all_movers.append(a)
+        
+        # Alpaca movers third (fills gaps, may lack name)
+        for m in alpaca_movers:
+            sym = m["symbol"]
+            if sym not in seen:
+                seen.add(sym)
+                all_movers.append(m)
         
         if not all_movers:
             return WarriorScanResult(
