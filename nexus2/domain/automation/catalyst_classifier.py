@@ -57,7 +57,7 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "acquisition": re.compile(
-                r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement)\b",
+                r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement|takes?\s+control|major\s+investor|activist\s+investor|significant\s+stake|controlling\s+(interest|stake)|board\s+seats?|proxy\s+(fight|battle|contest)|new\s+ownership|change\s+of\s+control)\b",
                 re.IGNORECASE,
             ),
         }
