@@ -172,7 +172,7 @@
 ### Stock-Level Disqualifiers
 | Avoid | Reason | Source |
 |-------|--------|--------|
-| **Chinese stocks** | Unreliable float data, pump/dump risk, no US audit | Nov 2, Nov 5, Nov 20, Nov 23 |
+| **Chinese stocks** | Unreliable float, pump/dump risk. **ICEBREAKER EXCEPTION**: Score ≥10 = pass with 50% size (Jan 20 TWWG) | Nov 2, Nov 5, Jan 20 |
 | **REITs** | Repeated losses on sector | Nov 12, Nov 13 |
 | **Penny stocks (<$1)** | Churning, commissions eat gains | Nov 13 |
 | **Float >20M** | Not enough squeeze potential | Multiple |

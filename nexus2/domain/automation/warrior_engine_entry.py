@@ -574,6 +574,15 @@ async def enter_position(
         max_by_value = int(engine.config.max_value_per_trade / entry_price)
         shares = min(shares, max_by_value)
     
+    # ICEBREAKER: 50% size for high-score Chinese stocks
+    # (Ross Cameron, Jan 20 TWWG: "breaking the ice with smaller positions")
+    if getattr(watched.candidate, 'is_icebreaker', False):
+        original_shares = shares
+        shares = max(1, int(shares * 0.5))  # 50% reduction
+        logger.info(
+            f"[Warrior Entry] {symbol}: ICEBREAKER 50% size ({original_shares} -> {shares} shares)"
+        )
+    
     if shares < 1:
         logger.info(f"[Warrior Entry] {symbol}: Position too small")
         return

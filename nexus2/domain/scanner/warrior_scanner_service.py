@@ -105,6 +105,9 @@ class WarriorScanSettings:
     # Additional Filters
     min_dollar_volume: Decimal = Decimal("500000")  # $500K minimum turnover
     exclude_chinese_stocks: bool = True  # Ross avoids HKD, TOP, MEGL, etc.
+    # Icebreaker Exception: Ross trades Chinese with reduced size when score is exceptional (Jan 20 TWWG)
+    chinese_icebreaker_enabled: bool = True  # Allow high-score Chinese stocks
+    chinese_icebreaker_min_score: int = 10  # Score threshold to pass (high bar)
     require_catalyst: bool = True  # Require news/earnings
     include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
     use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
@@ -182,6 +185,9 @@ class WarriorCandidate:
     # Ross Cameron: "If it's easy to borrow with no news, it's probably going to just drop right back down"
     hard_to_borrow: bool = False  # HTB = squeezable, shorts can't pile in
     easy_to_borrow: bool = True  # ETB = default assumption if no data
+    
+    # Icebreaker flag (Chinese stock with high score)
+    is_icebreaker: bool = False  # Flag for reduced position sizing
     
     # Technical context
     session_high: Decimal = Decimal("0")
@@ -540,20 +546,28 @@ class WarriorScannerService:
         
         # =========================================================================
         # CHINESE STOCK CHECK (Country-based)
+        # With Icebreaker Exception: High-score Chinese stocks can pass with 50% size
+        # (Ross Cameron, Jan 20 TWWG: "breaking the ice with smaller positions")
         # =========================================================================
+        is_chinese = False
+        country = None
         if s.exclude_chinese_stocks:
             country = self._get_country(symbol)
             if self._is_likely_chinese(name, country=country):
-                tracker.record(
-                    symbol=symbol,
-                    scanner="warrior",
-                    reason=RejectionReason.COUNTRY_EXCLUDED,
-                    details=f"Chinese/HK stock excluded (country={country})",
-                )
-                scan_logger.info(f"FAIL | {symbol} | Reason: chinese_stock | Country: {country}")
-                if verbose:
-                    print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
-                return None
+                is_chinese = True
+                # If icebreaker not enabled, reject immediately
+                if not s.chinese_icebreaker_enabled:
+                    tracker.record(
+                        symbol=symbol,
+                        scanner="warrior",
+                        reason=RejectionReason.COUNTRY_EXCLUDED,
+                        details=f"Chinese/HK stock excluded (country={country})",
+                    )
+                    scan_logger.info(f"FAIL | {symbol} | Reason: chinese_stock | Country: {country}")
+                    if verbose:
+                        print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
+                    return None
+                # Otherwise, continue evaluation - will check score after candidate built
         
         # =========================================================================
         # PILLAR 1: Float (< 100M, ideal < 20M)
@@ -961,6 +975,33 @@ class WarriorScannerService:
             atr=atr,
             scanned_at=now_et(),
         )
+        
+        # =========================================================================
+        # ICEBREAKER DECISION: Chinese stocks with high score pass with 50% size
+        # =========================================================================
+        if is_chinese:
+            score = candidate.quality_score
+            if score >= s.chinese_icebreaker_min_score:
+                # High score - allow as icebreaker with reduced size
+                candidate.is_icebreaker = True
+                scan_logger.info(
+                    f"ICEBREAKER | {symbol} | Score: {score} >= {s.chinese_icebreaker_min_score} | "
+                    f"Chinese stock PASSES with 50% size"
+                )
+                if verbose:
+                    print(f"🧊 {symbol}: ICEBREAKER - Chinese stock passes (score={score}, 50% size)")
+            else:
+                # Low score - reject
+                tracker.record(
+                    symbol=symbol,
+                    scanner="warrior",
+                    reason=RejectionReason.COUNTRY_EXCLUDED,
+                    details=f"Chinese stock, score {score} < {s.chinese_icebreaker_min_score} threshold",
+                )
+                scan_logger.info(f"FAIL | {symbol} | Reason: chinese_low_score | Score: {score} < {s.chinese_icebreaker_min_score}")
+                if verbose:
+                    print(f"{symbol}: Rejected - Chinese stock, score {score} too low")
+                return None
         
         # Calculate freshness bonus for logging
         freshness_note = ""
