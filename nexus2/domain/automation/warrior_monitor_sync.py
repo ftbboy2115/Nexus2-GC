@@ -178,25 +178,27 @@ async def _calculate_stop_price(
     symbol: str,
     entry_price: Decimal,
 ) -> tuple[Optional[Decimal], str]:
-    """Calculate stop price using technical analysis or fallback."""
+    """Calculate stop price using entry candle low (Ross Cameron's method) or fallback."""
     stop_price = None
     stop_method = "fallback_15c"
     
     if monitor._get_intraday_candles:
         try:
-            candles = await monitor._get_intraday_candles(symbol, "1min", limit=50)
-            if candles and len(candles) >= 5:
-                from nexus2.domain.indicators import get_stop_calculator
-                stop_calc = get_stop_calculator()
-                stop_price, stop_method = stop_calc.get_best_stop(
-                    [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles],
-                    entry_price,
-                    symbol,
+            candles = await monitor._get_intraday_candles(symbol, "1min", limit=5)
+            if candles and len(candles) >= 1:
+                # Ross method: Use low of the entry candle with 2¢ buffer
+                entry_candle = candles[-1]  # Most recent candle
+                entry_candle_low = Decimal(str(entry_candle.low))
+                stop_price = entry_candle_low - Decimal("0.02")
+                stop_method = "candle_low"
+                logger.debug(
+                    f"[Warrior Sync] {symbol}: Stop ${stop_price:.2f} via candle_low "
+                    f"(candle low=${entry_candle_low:.2f} - 2¢)"
                 )
         except Exception as e:
-            logger.debug(f"[Warrior Sync] {symbol}: Technical stop calc failed: {e}")
+            logger.debug(f"[Warrior Sync] {symbol}: Entry candle stop calc failed: {e}")
     
-    # Fallback to 15¢ stop if technical calc failed
+    # Fallback to 15¢ stop if candle calc failed
     if stop_price is None:
         stop_price = entry_price - monitor.settings.mental_stop_cents / 100
         stop_method = "fallback_15c"

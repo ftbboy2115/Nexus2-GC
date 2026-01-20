@@ -460,29 +460,30 @@ async def enter_position(
     engine.stats.entries_triggered += 1
     
     # Calculate position size
-    # Use technical stop (swing low, VWAP, or EMA) per Ross Cameron methodology
-    # Falls back to 15 cents if technical data unavailable
+    # Use entry candle low (Ross Cameron's actual method) per ROSS_RULES_EXTRACTION.md
+    # "Max loss per trade = Low of entry candle"
+    # Falls back to 15 cents if candle data unavailable
     mental_stop = None
     stop_method = "fallback_15c"
     
     if engine._get_intraday_bars:
         try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
-            if candles and len(candles) >= 5:
-                from nexus2.domain.indicators import get_stop_calculator
-                stop_calc = get_stop_calculator()
-                candle_dicts = [
-                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                    for c in candles
-                ]
-                mental_stop, stop_method = stop_calc.get_best_stop(
-                    candle_dicts, entry_price, symbol
-                )
+            candles = await engine._get_intraday_bars(symbol, "1min", limit=5)
+            if candles and len(candles) >= 1:
+                # Ross method: Use low of the current/entry candle with 2¢ buffer
+                entry_candle = candles[-1]  # Most recent candle (entry candle)
+                entry_candle_low = Decimal(str(entry_candle.low))
+                
+                # Add 2¢ buffer below the low
+                mental_stop = entry_candle_low - Decimal("0.02")
+                stop_method = "candle_low"
+                
                 logger.info(
-                    f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method}"
+                    f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method} "
+                    f"(candle low=${entry_candle_low:.2f} - 2¢)"
                 )
         except Exception as e:
-            logger.debug(f"[Warrior Entry] {symbol}: Technical stop calc failed: {e}")
+            logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
     
     if mental_stop is None:
         mental_stop = entry_price - engine.monitor.settings.mental_stop_cents / 100
