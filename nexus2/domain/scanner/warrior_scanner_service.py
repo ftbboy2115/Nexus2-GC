@@ -962,9 +962,34 @@ class WarriorScannerService:
             scanned_at=now_et(),
         )
         
+        # Calculate freshness bonus for logging
+        freshness_note = ""
+        if candidate.catalyst_date:
+            from datetime import timezone as tz
+            try:
+                now = datetime.now(tz.utc)
+                cat_date = candidate.catalyst_date
+                if cat_date.tzinfo is None:
+                    cat_date = cat_date.replace(tzinfo=tz.utc)
+                hours_old = (now - cat_date).total_seconds() / 3600
+                if hours_old <= 2:
+                    freshness_note = " 🔴+3"  # Red flame
+                elif hours_old <= 12:
+                    freshness_note = " 🟠+2"  # Orange flame
+                elif hours_old <= 24:
+                    freshness_note = " 🟡+1"  # Yellow flame
+            except Exception:
+                pass
+        
         if verbose:
             htb_note = " [HTB]" if hard_to_borrow else ""
-            print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score}){htb_note}")
+            print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score}{freshness_note}){htb_note}")
+        
+        # Log to scan file with freshness info
+        scan_logger.info(
+            f"PASS | {symbol} | Score: {candidate.quality_score}{freshness_note} | "
+            f"Catalyst: {catalyst_type} | Float: {float_shares or 'N/A'} | RVOL: {rvol:.1f}x"
+        )
         
         return candidate
     
