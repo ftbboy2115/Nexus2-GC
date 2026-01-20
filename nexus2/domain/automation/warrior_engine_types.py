@@ -34,6 +34,7 @@ class EntryTriggerType(Enum):
     PMH_BREAK = "pmh_break"  # Pre-Market High breakout
     BULL_FLAG = "bull_flag"  # First green after pullback
     VWAP_RECLAIM = "vwap_reclaim"  # Reclaim VWAP with volume
+    VWAP_BREAK = "vwap_break"  # Break above VWAP after consolidation below (Ross: Jan 20 2026)
     DIP_FOR_LEVEL = "dip_for_level"  # Dip + level break (Ross: TNMG $3.93 → $4.00)
     PULLBACK = "pullback"  # General pullback entry (first candle new high)
 
@@ -62,6 +63,9 @@ class WarriorEngineConfig:
     # PMH Breakout
     pmh_enabled: bool = True
     pmh_buffer_cents: Decimal = Decimal("5")  # Buy 5 cents above PMH
+    
+    # VWAP Break - Ross Cameron (Jan 20 2026): "I took this trade for the break through VWAP"
+    vwap_break_enabled: bool = True
     
     # Scanner
     scanner_interval_minutes: int = 5
@@ -124,9 +128,11 @@ class WatchedCandidate:
     entry_triggered: bool = False
     entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
+    last_below_vwap: bool = False  # True if price was below VWAP (for VWAP break detection)
     added_at: datetime = field(default_factory=datetime.utcnow)
     
     # Level tracking for DIP_FOR_LEVEL pattern (Phase 2 expansion)
     recent_high: Optional[Decimal] = None  # Intraday high for pullback detection
     dip_from_high_pct: float = 0.0  # Current pullback depth %
     target_level: Optional[Decimal] = None  # Nearest psychological level
+

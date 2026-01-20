@@ -131,12 +131,10 @@ Last updated: 2026-01-19
   - Avoids log spam from repeated poll failures
 - [x] **Trade History / Events Log Pagination** — Scrollable container (400px max-height) for Trade History table (Jan 14)
   - Fixed-height scrollable container shows all trades without long page scroll
-- [ ] **Quality Indicator Lights** — Traffic light indicators for Warrior Watchlist & Positions cards (Jan 17)
-  - Watchlist: 6 indicators (Float, RVol, Gap, Catalyst, VWAP, Entry) with tooltips
-  - Positions: 8 health indicators (MACD, 9/20/200 EMA, VWAP, Volume, Stop, Target)
-  - Based on Ross Cameron's methodology from "7 Candlestick Patterns" video
-  - See [implementation_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/implementation_plan.md)
-  - Prevents needing to scroll past long event lists to see AI analysis
+- [x] **Quality Indicator Lights** — COMPLETE: Traffic light indicators for Warrior Watchlist & Positions (Jan 19)
+  - Watchlist: 3 indicators (Gap, RVol, Entry) in `WatchlistCard.tsx`
+  - Positions: 8 health indicators (MACD, 9/20/200 EMA, VWAP, Volume, Stop, Target) in `OpenPositionsCard.tsx`
+  - Auto-refresh every second via `useWarriorData.ts`
 - [ ] **Smart Scheduler Interval Change** — When interval is reduced, run scan immediately if time_remaining > new_interval
 - [ ] **GUI Interval Validation Fix** — Frontend rejects 5-minute interval but backend accepts [5, 10, 15, 30]
 
@@ -258,7 +256,7 @@ Last updated: 2026-01-19
   - [x] `warrior_engine_types.py` (130 lines) - Enums & dataclasses
   - [x] `warrior_engine_entry.py` (580 lines) - Entry triggers & execution
   - [x] `warrior_engine.py` (694 lines) - Core orchestration (48% reduction)
-- [ ] **Configure Gemini MCP** — Set up Gemini API key for AI-assisted UI generation
+- [x] **Configure Gemini MCP** — DONE: Updated to google.genai package, set user env var
 
 ---
 

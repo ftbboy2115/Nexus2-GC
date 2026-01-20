@@ -196,11 +196,15 @@ def create_template(url: str, transcript: str, publish_date: str, video_title: s
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python extract_transcript.py <youtube_url>")
-        print("Example: python extract_transcript.py https://www.youtube.com/watch?v=lneGXw0sxzo")
-        sys.exit(1)
-    
-    url = sys.argv[1]
+        # Prompt for URL interactively
+        print("YouTube Transcript Extractor for Warrior Trading Videos")
+        print("-" * 50)
+        url = input("Enter YouTube URL: ").strip()
+        if not url:
+            print("No URL provided. Exiting.")
+            sys.exit(1)
+    else:
+        url = sys.argv[1]
     
     print(f"Extracting transcript from: {url}")
     

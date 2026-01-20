@@ -212,6 +212,52 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         current_price,
                         EntryTriggerType.ORB
                     )
+            
+            # VWAP BREAK - Ross Cameron (Jan 20 2026): "I took this trade for the break through VWAP"
+            # Pattern: Stock pulls back below VWAP, consolidates, then breaks back above
+            # This is distinct from VWAP_RECLAIM (which is reclaiming after losing VWAP)
+            if engine.config.vwap_break_enabled and not watched.entry_triggered:
+                # Get current VWAP
+                vwap = None
+                if engine._get_intraday_bars:
+                    try:
+                        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+                        if candles and len(candles) >= 5:
+                            from nexus2.domain.indicators import get_technical_service
+                            tech = get_technical_service()
+                            candle_dicts = [
+                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                                for c in candles
+                            ]
+                            snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                            if snapshot.vwap:
+                                vwap = Decimal(str(snapshot.vwap))
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
+                
+                if vwap:
+                    # Track when price is below VWAP (setup for break)
+                    if current_price < vwap:
+                        if not watched.last_below_vwap:
+                            logger.debug(f"[Warrior Entry] {symbol}: Below VWAP ${vwap:.2f} - ready for break")
+                        watched.last_below_vwap = True
+                    
+                    # VWAP BREAK: Price crosses above VWAP after being below
+                    elif current_price >= vwap and watched.last_below_vwap:
+                        # Require price to be at least 5c above VWAP for confirmation
+                        buffer_above_vwap = Decimal("0.05")
+                        if current_price >= vwap + buffer_above_vwap:
+                            logger.info(
+                                f"[Warrior Entry] {symbol}: VWAP BREAK at ${current_price:.2f} "
+                                f"(VWAP=${vwap:.2f})"
+                            )
+                            watched.last_below_vwap = False  # Reset for next break
+                            await enter_position(
+                                engine,
+                                watched,
+                                current_price,
+                                EntryTriggerType.VWAP_BREAK
+                            )
                     
         except Exception as e:
             logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")

@@ -83,6 +83,7 @@
 | **Micro Pullback** | Small dip within uptrend, immediate reversal | [ ] <2% pullback from local high |
 | **Red-to-Green** | Stock drops below previous close, reverses back | [ ] Detect R2G reversal |
 | **Break of Resistance** | Clear trend line or level break | [ ] Breakout detection |
+| **VWAP Break** | Stock consolidates below VWAP, then breaks above with momentum (Jan 20 2026: "I took this trade for the break through VWAP") | [x] Implemented |
 | **MACD Gating** | Only enter when MACD positive | [ ] MACD > 0 |
 
 ### Entry Timing
