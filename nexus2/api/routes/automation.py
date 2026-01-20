@@ -728,7 +728,7 @@ async def get_broker_positions(request: Request):
             
             # Update engine stats for confirmed fills
             if fills_confirmed > 0:
-                from nexus2.domain.automation.engine import get_automation_engine
+                from nexus2.api.routes.automation_state import get_engine as get_automation_engine
                 engine = get_automation_engine()
                 if engine:
                     engine.stats.orders_filled += fills_confirmed

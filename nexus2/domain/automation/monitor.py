@@ -410,10 +410,34 @@ class PositionMonitor:
         """Handle an exit signal."""
         logger.info(f"Exit signal: {signal.symbol} - {signal.reason.value} - {signal.shares_to_exit} shares")
         
+        # PSM: Set to PENDING_EXIT before executing
+        try:
+            from nexus2.db.nac_db import set_pending_exit, set_exit_order_id, confirm_exit
+            set_pending_exit(signal.position_id)
+        except Exception as psm_err:
+            logger.debug(f"[NAC PSM] set_pending_exit failed (may not be in nac_db): {psm_err}")
+        
         if self._execute_exit:
             try:
-                await self._execute_exit(signal)
+                exit_result = await self._execute_exit(signal)
                 self.exits_triggered += 1
+                
+                # PSM: Store exit order ID and confirm exit
+                try:
+                    if exit_result and hasattr(exit_result, 'broker_order_id'):
+                        set_exit_order_id(signal.position_id, str(exit_result.broker_order_id))
+                    
+                    # Determine if partial or full exit
+                    is_partial = signal.reason == ExitReason.PARTIAL_EXIT
+                    from nexus2.db.nac_db import confirm_exit as nac_confirm_exit
+                    nac_confirm_exit(
+                        trade_id=signal.position_id,
+                        exit_price=float(signal.exit_price),
+                        exit_reason=signal.reason.value,
+                        quantity_exited=signal.shares_to_exit if is_partial else None,
+                    )
+                except Exception as psm_confirm_err:
+                    logger.debug(f"[NAC PSM] confirm_exit skipped: {psm_confirm_err}")
                 
                 # Log trade event
                 if signal.reason == ExitReason.PARTIAL_EXIT:
@@ -474,6 +498,14 @@ class PositionMonitor:
             except Exception as e:
                 logger.error(f"Exit execution failed: {e}")
                 self.last_error = str(e)
+                
+                # PSM: Revert PENDING_EXIT on failure
+                try:
+                    from nexus2.db.nac_db import revert_pending_exit
+                    revert_pending_exit(signal.position_id)
+                except Exception:
+                    pass
+                
                 # Clear from pending on failure too (allow retry next cycle)
                 self._pending_exits.discard(signal.position_id)
         else:

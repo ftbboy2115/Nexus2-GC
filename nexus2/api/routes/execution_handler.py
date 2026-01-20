@@ -374,6 +374,24 @@ def create_execute_callback(
                         logger.info(f"[NAC DB] ✅ Position CREATED: {signal.symbol} id={position.id}")
                         print(f"✅ [NAC DB] Position saved: {signal.symbol} id={position.id}")
                         
+                        # Also log to NAC-specific DB for PSM tracking
+                        try:
+                            from nexus2.db.nac_db import log_nac_entry, set_entry_order_id
+                            log_nac_entry(
+                                trade_id=position.id,
+                                symbol=signal.symbol,
+                                entry_price=float(result.avg_fill_price or result.limit_price or signal.entry_price),
+                                quantity=shares,
+                                stop_price=float(stop_price),
+                                setup_type=signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type),
+                            )
+                            # Store broker order ID for reconciliation
+                            if result.broker_order_id:
+                                set_entry_order_id(position.id, str(result.broker_order_id))
+                        except Exception as nac_db_error:
+                            logger.warning(f"[NAC DB] Secondary nac_db log failed: {nac_db_error}")
+                            # Non-fatal - primary DB already has the record
+                        
                         # Update engine stats - only count filled orders
                         engine.stats.orders_submitted += 1
                         if is_filled:

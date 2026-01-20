@@ -54,7 +54,24 @@ class TradeEventService:
     WARRIOR_FULL_EXIT = "FULL_EXIT"
     
     def __init__(self):
-        pass
+        # TML (Trade Management Log) file path for NAC forensics
+        from pathlib import Path
+        self._nac_log_path = Path(__file__).parent.parent.parent.parent / "data" / "nac_trade.log"
+        self._nac_log_path.parent.mkdir(exist_ok=True)
+    
+    def _log_to_file(self, strategy: str, symbol: str, event_type: str, details: str, order_id: str = None):
+        """Append event to persistent TML file for forensics (NAC only)."""
+        if strategy != "NAC":
+            return  # Only log NAC events to file
+        try:
+            from nexus2.utils.time_utils import now_et
+            timestamp = now_et().strftime("%Y-%m-%d %H:%M:%S")
+            order_info = f" | order={order_id[:8]}..." if order_id else ""
+            line = f"{timestamp} | {event_type:15} | {symbol:6} | {details}{order_info}\n"
+            with open(self._nac_log_path, "a") as f:
+                f.write(line)
+        except Exception as e:
+            logger.debug(f"[TML] File log failed: {e}")
     
     def _get_market_context(self) -> Dict[str, Any]:
         """
@@ -226,6 +243,14 @@ class TradeEventService:
         # Add market context
         metadata.update(self._get_market_context())
         
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="NAC",
+            symbol=symbol,
+            event_type=self.NAC_ENTRY,
+            details=f"{shares} @ ${entry_price} | stop=${stop_price}",
+        )
+        
         return self._log_event(
             strategy="NAC",
             position_id=position_id,
@@ -281,6 +306,14 @@ class TradeEventService:
         days_held: int = 0,
     ) -> Optional[int]:
         """Log NAC partial exit (Day 3-5 rule)."""
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="NAC",
+            symbol=symbol,
+            event_type=self.NAC_PARTIAL_EXIT,
+            details=f"{shares_sold} @ ${exit_price} | P&L=${pnl} | Day {days_held}",
+        )
+        
         return self._log_event(
             strategy="NAC",
             position_id=position_id,
@@ -322,6 +355,14 @@ class TradeEventService:
         }
         # Add market context
         metadata.update(self._get_market_context())
+        
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="NAC",
+            symbol=symbol,
+            event_type=event_type,
+            details=f"@ ${exit_price} | P&L=${pnl} | reason={exit_type}",
+        )
         
         return self._log_event(
             strategy="NAC",
