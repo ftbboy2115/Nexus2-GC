@@ -515,31 +515,52 @@ class WarriorScannerService:
         # PILLAR 2: Relative Volume (> 2x, ideal 3-5x)
         # Time-adjusted projection: normalize for time of day since volume
         # accumulates throughout the session. Projects current volume to full-day pace.
+        # 
+        # Trading windows:
+        # - Pre-market: 4:00 AM - 9:30 AM ET (5.5 hours = 330 minutes)
+        # - Regular:    9:30 AM - 4:00 PM ET (6.5 hours = 390 minutes)
+        # - Total:      12 hours = 720 minutes of potential volume
         # =========================================================================
         if avg_volume > 0:
-            # Calculate minutes since market open (9:30 AM ET)
             et_tz = pytz.timezone('America/New_York')
             current_et = datetime.now(et_tz)
             market_open_today = current_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            premarket_start_today = current_et.replace(hour=4, minute=0, second=0, microsecond=0)
+            
+            # Total trading minutes in a day (pre-market + regular hours)
+            trading_minutes_per_day = 390  # 6.5 hours = 390 minutes (regular session only for avg)
             
             if current_et > market_open_today:
-                # Regular market hours - project based on elapsed time
+                # Regular market hours - project based on elapsed time since open
                 minutes_since_open = (current_et - market_open_today).total_seconds() / 60
-                trading_minutes_per_day = 390  # 6.5 hours = 390 minutes
                 
                 # Project current volume to full-day pace
-                # Early in day: volume × (390 / 5) = big multiplier
-                # Late in day: volume × (390 / 380) = ~1x
                 time_factor = trading_minutes_per_day / max(minutes_since_open, 1)
-                
-                # Cap the multiplier to avoid extreme projections in first few minutes
-                time_factor = min(time_factor, 20.0)  # Max 20x projection
+                time_factor = min(time_factor, 20.0)  # Cap at 20x projection
                 
                 projected_volume = Decimal(session_volume) * Decimal(str(time_factor))
                 rvol = projected_volume / Decimal(avg_volume)
             else:
-                # Pre-market - use raw volume (no projection)
-                rvol = Decimal(session_volume) / Decimal(avg_volume)
+                # Pre-market (4:00 AM - 9:30 AM) - project based on elapsed pre-market time
+                # Ross trades 7AM-10AM, so pre-market RVOL projection is critical
+                minutes_since_premarket = max((current_et - premarket_start_today).total_seconds() / 60, 1)
+                premarket_minutes = 330  # 5.5 hours = 330 minutes
+                
+                # Project pre-market volume to what it would be at open (9:30 AM)
+                # Then compare to regular-hours average volume
+                # This gives us "on pace to have Xx volume by open"
+                premarket_factor = premarket_minutes / minutes_since_premarket
+                premarket_factor = min(premarket_factor, 50.0)  # Cap at 50x for very early scans
+                
+                projected_premarket_volume = Decimal(session_volume) * Decimal(str(premarket_factor))
+                
+                # Pre-market volume is typically 10% of daily - multiply by 10x to normalize to daily equivalent
+                # Based on analysis of Ross's trades (all ended 20x-4000x EOD RVOL)
+                # This ensures stocks with strong pre-market activity pass the RVOL check early
+                daily_equivalent_factor = 10.0  # Pre-market typically ~10% of daily volume
+                projected_daily = projected_premarket_volume * Decimal(str(daily_equivalent_factor))
+                
+                rvol = projected_daily / Decimal(avg_volume)
         else:
             rvol = Decimal("0")
         
