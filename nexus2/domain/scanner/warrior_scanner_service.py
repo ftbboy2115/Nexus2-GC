@@ -360,6 +360,33 @@ class WarriorScannerService:
                 scan_time=now_et(),
             )
         
+        # Recalculate gap with live prices (FMP screener data can be stale)
+        # Use Alpaca real-time price vs FMP previousClose for accurate gap
+        for mover in all_movers:
+            symbol = mover["symbol"]
+            try:
+                # Get live price from Alpaca (real-time)
+                alpaca_quote = self.market_data.alpaca.get_quote(symbol)
+                if alpaca_quote and alpaca_quote.price > 0:
+                    live_price = float(alpaca_quote.price)
+                    # Get previousClose from FMP quote (reliable)
+                    fmp_data = self.market_data.fmp._get(f"quote/{symbol}")
+                    if fmp_data and len(fmp_data) > 0:
+                        prev_close = float(fmp_data[0].get("previousClose", 0))
+                        if prev_close > 0:
+                            # Recalculate gap
+                            old_gap = float(mover["change_percent"])
+                            new_gap = ((live_price - prev_close) / prev_close) * 100
+                            if abs(new_gap - old_gap) > 10:  # Log significant differences
+                                scan_logger.info(
+                                    f"GAP RECALC | {symbol}: {old_gap:.1f}% -> {new_gap:.1f}% "
+                                    f"(live=${live_price:.2f}, prev=${prev_close:.2f})"
+                                )
+                            mover["change_percent"] = Decimal(str(new_gap))
+                            mover["price"] = Decimal(str(live_price))
+            except Exception as e:
+                scan_logger.debug(f"GAP RECALC | {symbol}: Error - {e}")
+        
         # Pre-filter by price and gap (Pillars 4 & 5)
         filtered_movers = [
             g for g in all_movers
