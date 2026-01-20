@@ -114,10 +114,15 @@ class MarketCalendar:
             
             if not is_open:
                 current_et = datetime.now(ET)
+                current_time = current_et.time()
                 if current_et.weekday() >= 5:
                     reason = "weekend"
+                elif current_time >= time(16, 0):
+                    reason = "post_market"  # After normal close
+                elif current_time < time(9, 30):
+                    reason = "pre_market"  # Before normal open
                 else:
-                    reason = "holiday_or_closed"
+                    reason = "holiday"  # During market hours but closed = holiday
             
             status = MarketStatus(
                 is_open=is_open,
@@ -233,16 +238,13 @@ class MarketCalendar:
                 # On holidays, next_open is tomorrow but there was no trading today
                 if next_open_et.date() > current_et.date():
                     # Check if we're actually in post-market (after 4 PM)
-                    # and verify today was a trading day by checking next_close
                     if current_time >= time(16, 0):  # After regular close
-                        # If next_close exists and is in the future, we're in post-market
-                        # If market was closed all day (holiday), next_close is also in future
-                        # The key: on holidays, the "reason" will be "holiday_or_closed"
-                        if status.reason != "holiday_or_closed":
+                        # Use the new reason field to distinguish post-market from holiday
+                        if status.reason == "post_market":
                             return True  # Post-market of a trading day
-                        else:
+                        elif status.reason == "holiday":
                             # Holiday - no post-market because there was no market
-                            logger.info(f"[MarketCalendar] Holiday detected - no extended hours")
+                            logger.debug(f"[MarketCalendar] Holiday detected - no extended hours")
                             return False
             # If API says not a trading day (e.g., holiday), trust it
             return False
