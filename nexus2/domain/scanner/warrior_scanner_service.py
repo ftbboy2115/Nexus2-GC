@@ -168,6 +168,7 @@ class WarriorCandidate:
     relative_volume: Decimal  # Pillar 2
     catalyst_type: str  # Pillar 3: "earnings", "news", "former_runner", "none"
     catalyst_description: str
+    catalyst_date: Optional[datetime] = None  # For freshness scoring (Ross's flame colors)
     price: Decimal  # Pillar 4
     gap_percent: Decimal  # Pillar 5
     
@@ -235,6 +236,27 @@ class WarriorCandidate:
         elif self.catalyst_type == "news":
             score += 1  # Good: news
         
+        # Catalyst freshness bonus (3 points max) - Ross's flame indicator colors
+        # Red flame (0-2hr) = +3, Orange (2-12hr) = +2, Yellow (12-24hr) = +1
+        if self.catalyst_date and self.catalyst_type not in ("none", None, ""):
+            from datetime import timezone
+            try:
+                now = datetime.now(timezone.utc)
+                # Ensure catalyst_date is aware
+                cat_date = self.catalyst_date
+                if cat_date.tzinfo is None:
+                    cat_date = cat_date.replace(tzinfo=timezone.utc)
+                hours_old = (now - cat_date).total_seconds() / 3600
+                if hours_old <= 2:
+                    score += 3  # 🔴 Red flame: breaking news
+                elif hours_old <= 12:
+                    score += 2  # 🟠 Orange flame: earlier today
+                elif hours_old <= 24:
+                    score += 1  # 🟡 Yellow flame: yesterday
+                # >24hr: no bonus (no flame indicator)
+            except Exception:
+                pass  # Skip freshness scoring if date parsing fails
+        
         # Price quality (1 point max)
         if Decimal("5") <= self.price <= Decimal("15"):
             score += 1  # Sweet spot
@@ -248,7 +270,7 @@ class WarriorCandidate:
         if self.hard_to_borrow:
             score += 1  # HTB = squeezability bonus
         
-        return min(score, 11)  # Max now 11 with HTB bonus
+        return min(score, 14)  # Max now 14 with freshness bonus
 
 
 @dataclass
@@ -632,6 +654,7 @@ class WarriorScannerService:
         catalyst_type = "none"
         catalyst_desc = "No catalyst found"
         catalyst_confidence = 0.0
+        catalyst_date = None  # For freshness scoring (Ross's flame colors)
         
         # Check headlines with classifier (confidence-based)
         if headlines:
@@ -656,6 +679,12 @@ class WarriorScannerService:
                     has_catalyst = True
                     catalyst_type = best_type
                     catalyst_desc = best_headline[:80] if best_headline else ""
+                    # Try to get the publish date for this headline
+                    news_with_dates = self.market_data.fmp.get_news_with_dates(symbol, days=s.catalyst_lookback_days)
+                    for headline, pub_date in news_with_dates:
+                        if headline == best_headline or headline[:50] == best_headline[:50]:
+                            catalyst_date = pub_date
+                            break
                 else:
                     catalyst_desc = f"Weak catalyst (confidence {catalyst_confidence:.1f})"
             else:
@@ -915,6 +944,7 @@ class WarriorScannerService:
             relative_volume=rvol,
             catalyst_type=catalyst_type,
             catalyst_description=catalyst_desc,
+            catalyst_date=catalyst_date,  # For freshness scoring
             price=Decimal(str(last_price)),  # Use current quote price, not stale FMP price
             gap_percent=Decimal(str(gap_pct)),  # Recalculated gap
             is_ideal_float=is_ideal_float,

@@ -894,6 +894,47 @@ class FMPAdapter:
         
         return headlines
     
+    def get_news_with_dates(self, symbol: str, days: int = 5) -> List[tuple]:
+        """
+        Get headlines WITH publish dates for freshness scoring.
+        
+        Ross's flame indicator colors:
+        - Red: 0-2 hours old
+        - Orange: 2-12 hours old
+        - Yellow: 12-24 hours old
+        - None: >24 hours old
+        
+        Args:
+            symbol: Stock symbol
+            days: Days to look back
+            
+        Returns:
+            List of (headline: str, publish_date: datetime) tuples
+        """
+        from datetime import timedelta
+        
+        news = self.get_stock_news(symbol, limit=20)
+        
+        if not news:
+            return []
+        
+        today = datetime.now(timezone.utc).date()
+        cutoff = today - timedelta(days=days)
+        
+        results = []
+        for item in news:
+            try:
+                pub_date_str = item.get("date", "")
+                if pub_date_str:
+                    pub_datetime = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
+                    if pub_datetime.date() >= cutoff:
+                        results.append((item.get("title", ""), pub_datetime))
+            except (ValueError, TypeError):
+                # If date parsing fails, skip (can't score freshness)
+                continue
+        
+        return results
+    
     def has_recent_catalyst(
         self,
         symbol: str,
