@@ -71,6 +71,11 @@ class WarriorEngineConfig:
     scanner_interval_minutes: int = 5
     max_candidates: int = 5
     
+    # Entry Selectivity - Ross Cameron (Jan 20 2026): Only take the "A+ setup"
+    # "TWWG was the ONLY trade I took today" - quality over quantity
+    top_pick_only: bool = True  # Only enter highest-scoring candidate
+    min_entry_score: int = 6  # Minimum score to consider for entry (was 0)
+    
     # Risk
     risk_per_trade: Decimal = Decimal("125")  # $125 per trade
     max_positions: int = 10  # Higher default for testing

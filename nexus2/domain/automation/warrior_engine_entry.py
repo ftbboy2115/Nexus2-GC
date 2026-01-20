@@ -329,6 +329,26 @@ async def enter_position(
     # ENTRY GUARDS
     # =========================================================================
     
+    # TOP PICK ONLY - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
+    # Only enter the highest-scoring candidate, skip the rest
+    if engine.config.top_pick_only:
+        # Get all watched candidates sorted by score
+        all_watched = list(engine._watchlist.values())
+        if all_watched:
+            # Find the top scorer (by candidate quality score)
+            top_pick = max(all_watched, key=lambda w: getattr(w.candidate, 'quality_score', 0) or 0)
+            if watched.candidate.symbol != top_pick.candidate.symbol:
+                # Not the top pick - skip silently (avoid log spam)
+                return
+    
+    # MIN SCORE CHECK - Require minimum quality score for entry
+    candidate_score = getattr(watched.candidate, 'quality_score', 0) or 0
+    if candidate_score < engine.config.min_entry_score:
+        logger.info(
+            f"[Warrior Entry] {symbol}: Score {candidate_score} < min {engine.config.min_entry_score}, skipping"
+        )
+        return
+    
     # Check blacklist (static config + dynamic from broker rejections)
     if symbol in engine.config.static_blacklist or symbol in engine._blacklist:
         logger.info(f"[Warrior Entry] {symbol}: Blacklisted, skipping")
