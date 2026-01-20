@@ -339,72 +339,88 @@ def create_execute_callback(
                 is_filled = result.status.value == "filled"
                 initial_status = PositionStatus.OPEN.value if is_filled else PositionStatus.PENDING_FILL.value
                 
-                # Create position record
-                with get_session() as db:
-                    position_repo = PositionRepository(db)
-                    position = position_repo.create({
-                        "id": str(uuid4()),
-                        "symbol": signal.symbol,
-                        "setup_type": signal.setup_type.value,
-                        "status": initial_status,
-                        "entry_price": str(result.avg_fill_price or result.limit_price or signal.entry_price),
-                        "shares": shares,
-                        "remaining_shares": shares,
-                        "initial_stop": str(stop_price),
-                        "current_stop": str(stop_price),
-                        "realized_pnl": "0",
-                        "opened_at": now_utc(),
-                        "source": "nac",
-                        "quality_score": signal.quality_score,
-                        "tier": signal.tier,
-                        "rs_percentile": signal.rs_percentile,
-                        "adr_percent": str(signal.adr_percent) if signal.adr_percent else None,
-                        "broker_type": get_settings().broker_type,
-                        "account": get_settings().active_account,
-                        "scanner_settings": scanner_settings_snapshot,  # Audit trail
-                        "scanner_version": git_hash,  # Direct column for easy querying
-                    })
+                # Create position record with explicit error handling
+                # BUG FIX: CMG/IAG/COMP/HOUS were lost due to silent DB failures
+                position_id = str(uuid4())
+                try:
+                    logger.info(f"[NAC DB] Creating position record for {signal.symbol} (id={position_id[:8]}...)")
+                    print(f"📝 [NAC DB] Creating position: {signal.symbol} id={position_id[:8]}...")
                     
-                    # Update engine stats - only count filled orders
-                    engine.stats.orders_submitted += 1
-                    if is_filled:
-                        engine.stats.orders_filled += 1
-                    
-                    # Clear from recent exits (re-entry complete)
-                    from nexus2.api.routes.automation_state import clear_recent_exit
-                    clear_recent_exit(signal.symbol)
-                    
-                    logger.info(f"[AutoExec] SUCCESS: {signal.symbol} x {shares} @ stop ${stop_price}")
-                    print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
-                    
-                    # Log to persistent file
-                    log_execution_decision(
-                        signal.symbol, shares, float(stop_price), "EXECUTED",
-                        order_id=str(result.broker_order_id)
-                    )
-                    
-                    # Send Discord notification (if enabled)
-                    if discord_alerts_enabled:
-                        try:
-                            discord = DiscordNotifier()
-                            setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
-                            entry_price = float(signal.entry_price)
-                            order_total = entry_price * shares
-                            mode_label = "🧪 SIM" if sim_mode else "🔴 LIVE"
-                            discord.send_trade_alert(
-                                message=f"{mode_label} | ENTRY: {signal.symbol} x {shares} @ ${entry_price:.2f} = ${order_total:.2f}\n{setup_name.upper()} | Stop ${stop_price:.2f} | Score: {signal.quality_score}",
-                                trade_id=str(result.broker_order_id)
-                            )
-                        except Exception as e:
-                            logger.warning(f"Discord notification failed: {e}")
-                    
-                    executed.append({
-                        "symbol": signal.symbol,
-                        "shares": shares,
-                        "stop_price": float(stop_price),
-                        "order_id": str(result.broker_order_id),
-                        "position_id": position.id,
-                    })
+                    with get_session() as db:
+                        position_repo = PositionRepository(db)
+                        position = position_repo.create({
+                            "id": position_id,
+                            "symbol": signal.symbol,
+                            "setup_type": signal.setup_type.value,
+                            "status": initial_status,
+                            "entry_price": str(result.avg_fill_price or result.limit_price or signal.entry_price),
+                            "shares": shares,
+                            "remaining_shares": shares,
+                            "initial_stop": str(stop_price),
+                            "current_stop": str(stop_price),
+                            "realized_pnl": "0",
+                            "opened_at": now_utc(),
+                            "source": "nac",
+                            "quality_score": signal.quality_score,
+                            "tier": signal.tier,
+                            "rs_percentile": signal.rs_percentile,
+                            "adr_percent": str(signal.adr_percent) if signal.adr_percent else None,
+                            "broker_type": get_settings().broker_type,
+                            "account": get_settings().active_account,
+                            "scanner_settings": scanner_settings_snapshot,  # Audit trail
+                            "scanner_version": git_hash,  # Direct column for easy querying
+                        })
+                        
+                        logger.info(f"[NAC DB] ✅ Position CREATED: {signal.symbol} id={position.id}")
+                        print(f"✅ [NAC DB] Position saved: {signal.symbol} id={position.id}")
+                        
+                        # Update engine stats - only count filled orders
+                        engine.stats.orders_submitted += 1
+                        if is_filled:
+                            engine.stats.orders_filled += 1
+                        
+                        # Clear from recent exits (re-entry complete)
+                        from nexus2.api.routes.automation_state import clear_recent_exit
+                        clear_recent_exit(signal.symbol)
+                        
+                        logger.info(f"[AutoExec] SUCCESS: {signal.symbol} x {shares} @ stop ${stop_price}")
+                        print(f"✅ [AutoExec] Executed: {signal.symbol} x {shares}")
+                        
+                        # Log to persistent file
+                        log_execution_decision(
+                            signal.symbol, shares, float(stop_price), "EXECUTED",
+                            order_id=str(result.broker_order_id)
+                        )
+                        
+                        # Send Discord notification (if enabled)
+                        if discord_alerts_enabled:
+                            try:
+                                discord = DiscordNotifier()
+                                setup_name = signal.setup_type.value if hasattr(signal.setup_type, 'value') else str(signal.setup_type)
+                                entry_price = float(signal.entry_price)
+                                order_total = entry_price * shares
+                                mode_label = "🧪 SIM" if sim_mode else "🔴 LIVE"
+                                discord.send_trade_alert(
+                                    message=f"{mode_label} | ENTRY: {signal.symbol} x {shares} @ ${entry_price:.2f} = ${order_total:.2f}\n{setup_name.upper()} | Stop ${stop_price:.2f} | Score: {signal.quality_score}",
+                                    trade_id=str(result.broker_order_id)
+                                )
+                            except Exception as e:
+                                logger.warning(f"Discord notification failed: {e}")
+                        
+                        executed.append({
+                            "symbol": signal.symbol,
+                            "shares": shares,
+                            "stop_price": float(stop_price),
+                            "order_id": str(result.broker_order_id),
+                            "position_id": position.id,
+                        })
+                except Exception as db_error:
+                    # CRITICAL: Log DB failures explicitly - this was causing lost positions!
+                    logger.error(f"[NAC DB] ❌ POSITION CREATION FAILED for {signal.symbol}: {db_error}")
+                    print(f"❌ [NAC DB] CRITICAL: Position DB write FAILED for {signal.symbol}: {db_error}")
+                    errors.append({"symbol": signal.symbol, "error": f"DB write failed: {db_error}"})
+                    # Don't continue - the order was placed but not tracked!
+                    continue
             else:
                 logger.error(f"[AutoExec] Order not accepted for {signal.symbol}: {result}")
                 errors.append({"symbol": signal.symbol, "error": "Order not accepted by broker"})
