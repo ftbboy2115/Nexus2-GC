@@ -159,8 +159,47 @@ async def execute_scale_in(
         return False
     
     try:
-        # Submit scale order (limit order at current price + buffer)
-        limit_price = (price + Decimal("0.03")).quantize(Decimal("0.01"))  # 3 cents above
+        # FRESH QUOTE CHECK: Get real-time quote with bid/ask for accurate limit price
+        # This prevents using stale ~$9.20 prices when market is actually at $8.60
+        fresh_quote = None
+        limit_price = None
+        
+        if monitor._get_quote_with_spread:
+            try:
+                spread_data = await monitor._get_quote_with_spread(symbol)
+                if spread_data:
+                    ask = spread_data.get("ask")
+                    bid = spread_data.get("bid")
+                    quote_price = spread_data.get("price")
+                    
+                    # Validate quote freshness - if bid/ask is available, quote is real-time
+                    if ask and ask > 0:
+                        # Use ask + 2 cents for buy limit (ensures fill at real price)
+                        limit_price = (Decimal(str(ask)) + Decimal("0.02")).quantize(Decimal("0.01"))
+                        logger.info(f"[Warrior Scale] {symbol}: Using fresh ask ${ask:.2f} → limit ${limit_price}")
+                    elif bid and bid > 0 and quote_price and quote_price > 0:
+                        # No ask available - use mid-point
+                        mid = (Decimal(str(bid)) + Decimal(str(quote_price))) / 2
+                        limit_price = (mid + Decimal("0.03")).quantize(Decimal("0.01"))
+                        logger.info(f"[Warrior Scale] {symbol}: Using midpoint ${mid:.2f} → limit ${limit_price}")
+            except Exception as e:
+                logger.warning(f"[Warrior Scale] {symbol}: Fresh quote failed: {e}")
+        
+        # Fallback: Use passed-in price (may be stale) - add warning
+        if limit_price is None:
+            # SAFETY CHECK: Compare passed-in price vs entry price
+            # If > 10% different from entry, skip scale (likely stale quote)
+            price_diff_pct = abs(float(price) - float(position.entry_price)) / float(position.entry_price) * 100
+            if price_diff_pct > 10:
+                logger.warning(
+                    f"[Warrior Scale] {symbol}: STALE QUOTE SUSPECTED - "
+                    f"quote ${price:.2f} is {price_diff_pct:.1f}% from entry ${position.entry_price:.2f}, skipping"
+                )
+                revert_scaling(position.position_id)
+                return False
+            
+            limit_price = (price + Decimal("0.03")).quantize(Decimal("0.01"))
+            logger.warning(f"[Warrior Scale] {symbol}: Using fallback price ${price:.2f} → limit ${limit_price} (no fresh quote)")
         
         logger.info(
             f"[Warrior Scale] {symbol}: Submitting scale order - "
