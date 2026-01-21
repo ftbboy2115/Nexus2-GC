@@ -7,6 +7,14 @@ from .strategy_schema import (
     EngineConfig,
     MonitorConfig,
 )
+from .backtest_models import (
+    BacktestTrade,
+    BacktestResult,
+    BacktestMetrics,
+    BacktestComparison,
+    EquityPoint,
+    TradeOutcome,
+)
 
 __all__ = [
     "StrategySpec",
@@ -14,4 +22,10 @@ __all__ = [
     "ScannerConfig",
     "EngineConfig",
     "MonitorConfig",
+    "BacktestTrade",
+    "BacktestResult",
+    "BacktestMetrics",
+    "BacktestComparison",
+    "EquityPoint",
+    "TradeOutcome",
 ]
