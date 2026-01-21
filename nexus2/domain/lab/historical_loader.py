@@ -105,10 +105,24 @@ class HistoricalLoader:
     def _get_stock_universe(self) -> List[str]:
         """Get a list of stocks to check for gaps.
         
-        Uses a combination of common gap-and-go tickers and recent movers.
+        Uses scan history as primary source (logged from live Warrior scans),
+        with hardcoded fallback for bootstrapping.
         """
-        # Popular small-mid cap stocks that commonly gap
+        # Try to get symbols from scan history first
+        try:
+            from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+            history = get_scan_history_logger()
+            historical_symbols = history.get_all_symbols()
+            if historical_symbols and len(historical_symbols) >= 10:
+                logger.info(f"[HistoricalLoader] Using {len(historical_symbols)} symbols from scan history")
+                return historical_symbols
+        except Exception as e:
+            logger.debug(f"[HistoricalLoader] Scan history not available: {e}")
+        
+        # Fallback: hardcoded universe of known gappers
         base_universe = [
+            # Verified December 2025 gappers
+            "CRVS", "PATH", "USAR", "BEG", "BOXL", "IMTE", "MLEC",
             # Recent popular gappers (from Warrior scans)
             "IBRX", "ONDS", "SEGG", "MTEN", "POLA", "NVAX", "AFRM",
             "RIOT", "MARA", "COIN", "PLTR", "SOFI", "LCID", "RIVN",
@@ -122,7 +136,8 @@ class HistoricalLoader:
             # Additional common small caps
             "MULN", "FFIE", "IMPP", "PROG", "QLGN", "BFRI", "BIOR",
         ]
-        return list(set(base_universe))  # Remove duplicates
+        logger.info(f"[HistoricalLoader] Using {len(base_universe)} hardcoded symbols (no scan history)")
+        return list(set(base_universe))
     
     def _calculate_gap_for_date(
         self, 

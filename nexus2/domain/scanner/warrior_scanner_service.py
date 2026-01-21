@@ -480,6 +480,21 @@ class WarriorScannerService:
                 if candidate:
                     candidates.append(candidate)
                     scan_logger.info(f"PASS | {symbol} | Gap:{mover['change_percent']:.1f}% | RVOL:{candidate.relative_volume:.1f}x | Score:{candidate.quality_score}")
+                    
+                    # Log to scan history for Lab backtesting universe
+                    try:
+                        from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+                        history_logger = get_scan_history_logger()
+                        history_logger.log_passed_symbol(
+                            symbol=symbol,
+                            scan_date=now_et().date(),
+                            gap_percent=float(mover['change_percent']),
+                            rvol=float(candidate.relative_volume),
+                            score=candidate.quality_score,
+                            catalyst=candidate.catalyst_type,
+                        )
+                    except Exception as e:
+                        scan_logger.debug(f"[ScanHistory] Failed to log {symbol}: {e}")
             except Exception as e:
                 scan_logger.error(f"ERROR | {symbol} | {e}")
                 if verbose:
