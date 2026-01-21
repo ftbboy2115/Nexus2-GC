@@ -1,0 +1,62 @@
+# KK EP Strategy v1.0.0 - Baseline
+# Based on Kristjan Kullamägi (Qullamaggie) EP methodology
+# This is the production baseline configuration
+
+name: kk_ep
+version: "1.0.0"
+description: "Kristjan Kullamägi Episodic Pivot (EP) strategy - Catalyst-driven breakouts"
+author: "Nexus Lab"
+status: production
+based_on: null
+hypothesis: "Original KK EP implementation based on Qullamaggie methodology"
+
+scanner:
+  min_price: "5.00"
+  max_price: null
+  min_volume: 1000000
+  min_rvol: 3.0
+  min_gap_percent: 10.0
+  max_gap_percent: null
+  min_float: null
+  max_float: null
+  require_catalyst: true
+  catalyst_boost: true
+  custom_filters:
+    min_rs_percentile: 80
+    max_adr_percent: 10.0
+
+engine:
+  entry_triggers:
+    - EP_BREAK
+    - TIGHT_FLAG
+  trading_start: "09:30"
+  trading_end: "16:00"
+  max_positions: 5
+  max_daily_trades: 10
+  risk_per_trade: "250.00"
+  max_position_size: "10000.00"
+  min_consolidation_bars: 5
+  confirmation_threshold: 0.01
+  custom_settings:
+    require_tight_action: true
+    max_stop_atr: 1.0
+
+monitor:
+  stop_mode: technical
+  stop_cents: null
+  stop_atr_multiplier: 1.0
+  target_r: 3.0
+  partial_at_target: 0.33
+  trailing_stop_enabled: true
+  trailing_stop_activation_r: 2.0
+  scaling_enabled: true
+  max_scales: 3
+  scale_confirmation: above_20ema
+  eod_exit: false
+  max_hold_minutes: null
+  custom_settings:
+    use_setup_invalidation: true
+
+metrics: {}
+changelog:
+  - "v1.0.0: Initial baseline from production KK EP implementation"

@@ -1,0 +1,57 @@
+# Warrior Strategy v1.0.0 - Baseline
+# Based on Ross Cameron's Warrior Trading methodology
+# This is the production baseline configuration
+
+name: warrior
+version: "1.0.0"
+description: "Ross Cameron Warrior Trading strategy - Gap-and-Go with ORB/PMH entries"
+author: "Nexus Lab"
+status: production
+based_on: null
+hypothesis: "Original Warrior implementation based on Ross Cameron methodology"
+
+scanner:
+  min_price: "2.00"
+  max_price: "20.00"
+  min_volume: 500000
+  min_rvol: 2.0
+  min_gap_percent: 5.0
+  max_gap_percent: null
+  min_float: null
+  max_float: 50000000
+  require_catalyst: true
+  catalyst_boost: true
+  custom_filters: {}
+
+engine:
+  entry_triggers:
+    - ORB
+    - PMH_BREAK
+  trading_start: "09:30"
+  trading_end: "11:30"
+  max_positions: 3
+  max_daily_trades: 6
+  risk_per_trade: "100.00"
+  max_position_size: "5000.00"
+  min_consolidation_bars: 3
+  confirmation_threshold: 0.02
+  custom_settings: {}
+
+monitor:
+  stop_mode: mental
+  stop_cents: 15
+  stop_atr_multiplier: null
+  target_r: 2.0
+  partial_at_target: 0.5
+  trailing_stop_enabled: true
+  trailing_stop_activation_r: 1.5
+  scaling_enabled: true
+  max_scales: 2
+  scale_confirmation: above_vwap
+  eod_exit: true
+  max_hold_minutes: null
+  custom_settings: {}
+
+metrics: {}
+changelog:
+  - "v1.0.0: Initial baseline from production Warrior implementation"
