@@ -276,6 +276,7 @@ export default function Lab() {
                                         onClick={runExperiment}
                                         disabled={experimentRunning || !selectedStrategy}
                                         className={styles.primaryBtn}
+                                        title="Run full iterative loop: Researcher → Coder → Backtest → Evaluator. Loops until promotion threshold or max iterations."
                                     >
                                         {experimentRunning ? '⏳ Running...' : '🚀 Run Experiment'}
                                     </button>
@@ -283,6 +284,7 @@ export default function Lab() {
                                         onClick={generateHypothesis}
                                         disabled={!selectedStrategy}
                                         className={styles.secondaryBtn}
+                                        title="Generate a single hypothesis for strategy improvement using AI (without running backtest)."
                                     >
                                         💡 Generate Hypothesis
                                     </button>
