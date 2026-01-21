@@ -79,6 +79,41 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
                 # Example: TNMG at $3.93, target $4.00 level
                 if engine.config.dip_for_level_enabled and not watched.entry_triggered:
+                    # FALLING KNIFE FILTER: Block dip-for-level in sustained downtrends
+                    # PAVM case: stock dropped from $24 to $13 over 3 hours — not a dip, it's death
+                    # Check: must be above 20 EMA OR MACD positive (momentum recovering)
+                    is_falling_knife = False
+                    if engine._get_intraday_bars:
+                        try:
+                            candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+                            if candles and len(candles) >= 20:
+                                from nexus2.domain.indicators import get_technical_service
+                                tech = get_technical_service()
+                                candle_dicts = [
+                                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                                    for c in candles
+                                ]
+                                snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                                
+                                # Check trend conditions
+                                is_above_20_ema = snapshot.ema_20 and current_price > Decimal(str(snapshot.ema_20))
+                                macd_ok = snapshot.is_macd_bullish
+                                
+                                # FALLING KNIFE: Below 20 EMA AND MACD negative
+                                if not is_above_20_ema and not macd_ok:
+                                    is_falling_knife = True
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: FALLING KNIFE - blocked dip entry "
+                                        f"(below 20 EMA ${snapshot.ema_20:.2f if snapshot.ema_20 else 'N/A'}, "
+                                        f"MACD negative)"
+                                    )
+                        except Exception as e:
+                            logger.debug(f"[Warrior Entry] {symbol}: Falling knife check failed: {e}")
+                    
+                    # Skip entry if falling knife detected
+                    if is_falling_knife:
+                        continue
+                    
                     levels = engine._get_key_levels(current_price)
                     levels_above = [l for l in levels if l > current_price]
                     if levels_above:
