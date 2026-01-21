@@ -53,6 +53,8 @@ class SchwabAdapter:
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
         self._token_expiry: Optional[datetime] = None
+        self._refresh_token_obtained: Optional[datetime] = None  # When we got the refresh token
+        self._expiry_alert_sent: bool = False  # Prevent duplicate alerts
         
         # HTTP client
         self._client = httpx.Client(timeout=10.0)
@@ -74,6 +76,12 @@ class SchwabAdapter:
                     # Ensure timezone-aware for comparison with now_et()
                     if self._token_expiry.tzinfo is None:
                         self._token_expiry = self._token_expiry.replace(tzinfo=ZoneInfo("America/New_York"))
+                # Load refresh token obtained timestamp
+                rt_obtained = data.get("refresh_token_obtained")
+                if rt_obtained:
+                    self._refresh_token_obtained = datetime.fromisoformat(rt_obtained)
+                    if self._refresh_token_obtained.tzinfo is None:
+                        self._refresh_token_obtained = self._refresh_token_obtained.replace(tzinfo=ZoneInfo("America/New_York"))
                 logger.info("[Schwab] Loaded tokens from disk")
         except Exception as e:
             logger.warning(f"[Schwab] Failed to load tokens: {e}")
@@ -86,6 +94,7 @@ class SchwabAdapter:
                 "access_token": self._access_token,
                 "refresh_token": self._refresh_token,
                 "expiry": self._token_expiry.isoformat() if self._token_expiry else None,
+                "refresh_token_obtained": self._refresh_token_obtained.isoformat() if self._refresh_token_obtained else None,
             }
             self._token_file.write_text(json.dumps(data, indent=2))
             logger.debug("[Schwab] Saved tokens to disk")
@@ -100,6 +109,52 @@ class SchwabAdapter:
             # Token expired, try to refresh
             return self._refresh_access_token()
         return True
+    
+    def get_refresh_token_age_days(self) -> Optional[float]:
+        """Get age of refresh token in days. Returns None if unknown."""
+        if not self._refresh_token_obtained:
+            return None
+        delta = now_et() - self._refresh_token_obtained
+        return delta.total_seconds() / 86400  # seconds to days
+    
+    def check_expiry_and_alert(self, vps_base_url: str = "http://100.113.178.7:8000") -> bool:
+        """
+        Check if refresh token is approaching expiry (7 days) and send Discord alert.
+        
+        Args:
+            vps_base_url: Base URL for the API (used to generate auth link)
+            
+        Returns:
+            True if alert was sent, False otherwise
+        """
+        age_days = self.get_refresh_token_age_days()
+        
+        if age_days is None:
+            # No timestamp recorded - can't determine age
+            return False
+        
+        # Alert at 6 days (gives 1 day buffer before 7-day expiry)
+        if age_days >= 6.0 and not self._expiry_alert_sent:
+            try:
+                from nexus2.adapters.notifications.discord import DiscordNotifier
+                notifier = DiscordNotifier()
+                
+                if notifier.config.enabled:
+                    auth_url = f"{vps_base_url}/warrior/schwab/auth-url"
+                    message = (
+                        f"🔐 **Schwab Token Expiring Soon!**\n\n"
+                        f"Your Schwab refresh token is **{age_days:.1f} days old** (expires at 7 days).\n\n"
+                        f"**Re-authenticate now:** [Click here to get auth URL]({auth_url})\n\n"
+                        f"After clicking, open the URL in your browser, log in, and copy the `code=` parameter from the callback URL."
+                    )
+                    notifier.send_system_alert(message, level="warning")
+                    self._expiry_alert_sent = True
+                    logger.warning(f"[Schwab] Sent Discord expiry alert (token age: {age_days:.1f} days)")
+                    return True
+            except Exception as e:
+                logger.warning(f"[Schwab] Failed to send expiry alert: {e}")
+        
+        return False
     
     def get_auth_url(self) -> str:
         """Get OAuth authorization URL for user login."""
@@ -153,6 +208,10 @@ class SchwabAdapter:
             expires_in = data.get("expires_in", 1800)  # Default 30 min
             self._token_expiry = now_et() + timedelta(seconds=expires_in - 60)  # Buffer
             
+            # Track when we got a fresh refresh token (resets 7-day clock)
+            self._refresh_token_obtained = now_et()
+            self._expiry_alert_sent = False  # Reset alert flag on fresh auth
+            
             self._save_tokens()
             logger.info("[Schwab] Successfully authenticated!")
             return True
@@ -203,6 +262,8 @@ class SchwabAdapter:
         except Exception as e:
             logger.warning(f"[Schwab] Token refresh failed: {e}")
             self._access_token = None
+            # Check if this is due to 7-day expiry and send alert
+            self.check_expiry_and_alert()
             return False
     
     def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
