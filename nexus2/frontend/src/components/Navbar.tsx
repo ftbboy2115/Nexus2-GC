@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
     { label: 'Scanner', href: '/scanner', icon: '🔍' },
     { label: 'Analytics', href: '/analytics', icon: '📈' },
     { label: 'Simulation', href: '/simulation', icon: '🧪' },
+    { label: 'Lab', href: '/lab', icon: '🔬' },
 ];
 
 const secondaryItems: NavItem[] = [
