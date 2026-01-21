@@ -59,8 +59,8 @@ class IterationResult(BaseModel):
     """Result of a single iteration."""
     
     iteration: int
-    hypothesis: Dict[str, Any]
-    code_valid: bool
+    hypothesis: Dict[str, Any] = Field(default_factory=dict)
+    code_valid: bool = False
     validation_errors: List[str] = Field(default_factory=list)
     backtest_ran: bool = False
     metrics: Dict[str, Any] = Field(default_factory=dict)
