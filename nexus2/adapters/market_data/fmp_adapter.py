@@ -1031,6 +1031,59 @@ class FMPAdapter:
         
         # No catalyst found in headlines
         return (False, "none", f"No material catalyst in {len(headlines)} headlines")
+    
+    def get_ipo_calendar(
+        self,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Get IPO calendar (upcoming and recent IPOs).
+        
+        Per Ross Cameron methodology: IPOs are high-volatility plays.
+        Day 1-7 stocks often have momentum continuation.
+        
+        Args:
+            from_date: Start date YYYY-MM-DD (defaults to 30 days ago)
+            to_date: End date YYYY-MM-DD (defaults to 30 days ahead)
+            
+        Returns:
+            List of IPO events: [{symbol, company, date, exchange, priceRange, shares}, ...]
+        """
+        from datetime import timedelta
+        
+        # Default date range: 30 days back to 30 days forward
+        today = datetime.now(timezone.utc).date()
+        if from_date is None:
+            from_date = (today - timedelta(days=30)).isoformat()
+        if to_date is None:
+            to_date = (today + timedelta(days=30)).isoformat()
+        
+        # FMP IPO Calendar endpoint (stable API)
+        data = self._get(
+            "ipo_calendar",
+            params={
+                "from": from_date,
+                "to": to_date,
+            }
+        )
+        
+        if not data:
+            return []
+        
+        ipos = []
+        for item in data:
+            ipos.append({
+                "symbol": item.get("symbol", ""),
+                "company": item.get("company", ""),
+                "date": item.get("date", ""),
+                "exchange": item.get("exchange", ""),
+                "priceRange": item.get("priceRange", ""),
+                "shares": item.get("shares"),
+                "actions": item.get("actions", ""),
+            })
+        
+        return ipos
 
 
 # Global singleton for shared rate limiting

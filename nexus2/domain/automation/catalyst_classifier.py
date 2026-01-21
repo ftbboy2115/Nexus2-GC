@@ -60,6 +60,10 @@ class CatalystClassifier:
                 r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement|takes?\s+control|major\s+investor|activist\s+investor|significant\s+stake|controlling\s+(interest|stake)|board\s+seats?|proxy\s+(fight|battle|contest)|new\s+ownership|change\s+of\s+control)\b",
                 re.IGNORECASE,
             ),
+            "ipo": re.compile(
+                r"\b(ipo|initial\s+public\s+offering|newly\s+listed|begins\s+trading|starts\s+trading|debut|goes\s+public)\b",
+                re.IGNORECASE,
+            ),
         }
         
         # Negative catalyst patterns (avoid these)

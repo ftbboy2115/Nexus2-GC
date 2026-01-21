@@ -919,3 +919,48 @@ async def sync_positions_from_broker(request: SyncPositionsRequest = SyncPositio
 # ==================== SIMULATION ENDPOINTS ====================
 # Simulation endpoints have been moved to automation_simulation.py
 # See: nexus2/api/routes/automation_simulation.py
+
+
+# ==================== IPO CALENDAR ENDPOINTS ====================
+
+@router.post("/ipo/refresh")
+async def refresh_ipo_calendar():
+    """
+    Refresh IPO cache from FMP API.
+    
+    Fetches IPO calendar for the last 30 days and caches it.
+    IPO stocks get score boosts in the EP scanner.
+    """
+    from nexus2.domain.automation.ipo_service import get_ipo_service
+    
+    try:
+        ipo_service = get_ipo_service()
+        count = ipo_service.refresh()
+        recent = ipo_service.get_recent_ipos(max_days=14)
+        
+        return {
+            "status": "success",
+            "total_ipos": count,
+            "recent_14d": len(recent),
+            "recent_ipos": recent[:10],  # Show top 10
+        }
+    except Exception as e:
+        logger.error(f"[IPO] Refresh failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/ipo/status")
+async def get_ipo_status():
+    """
+    Get IPO service status and recent IPOs.
+    """
+    from nexus2.domain.automation.ipo_service import get_ipo_service
+    
+    ipo_service = get_ipo_service()
+    status = ipo_service.get_status()
+    recent = ipo_service.get_recent_ipos(max_days=14)
+    
+    return {
+        **status,
+        "recent_ipos": recent,
+    }

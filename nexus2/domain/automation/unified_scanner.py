@@ -399,6 +399,15 @@ class UnifiedScannerService:
                 quality += 1
             if candidate.catalyst_type:
                 quality += 2
+            
+            # IPO boost per Ross Cameron methodology
+            # Day 0-1: +3, Day 2-7: +2, Day 8-14: +1
+            from nexus2.domain.automation.ipo_service import get_ipo_service
+            ipo_boost = get_ipo_service().get_ipo_score_boost(candidate.symbol)
+            if ipo_boost > 0:
+                quality += ipo_boost
+                logger.debug(f"[IPO] {candidate.symbol}: +{ipo_boost} IPO boost")
+            
             quality = min(10, quality)
             
             return Signal(
