@@ -191,7 +191,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 await check_orb_setup(engine, watched, current_price)
             
             # PMH breakout
-            if engine.config.pmh_enabled:
+            if engine.config.pmh_enabled and not watched.entry_triggered:
                 trigger_price = watched.pmh + engine.config.pmh_buffer_cents / 100
                 if current_price >= trigger_price:
                     logger.info(f"[Warrior Entry] {symbol}: PMH BREAKOUT at ${current_price}")
@@ -338,7 +338,8 @@ async def enter_position(
             # Find the top scorer (by candidate quality score)
             top_pick = max(all_watched, key=lambda w: getattr(w.candidate, 'quality_score', 0) or 0)
             if watched.candidate.symbol != top_pick.candidate.symbol:
-                # Not the top pick - skip silently (avoid log spam)
+                # Not the top pick - mark as triggered to prevent log spam
+                watched.entry_triggered = True
                 return
     
     # MIN SCORE CHECK - Require minimum quality score for entry
