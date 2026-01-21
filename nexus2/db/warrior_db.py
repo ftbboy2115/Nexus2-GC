@@ -188,6 +188,49 @@ def log_warrior_entry(
         print(f"[Warrior DB] Logged entry: {symbol} x{quantity} @ ${entry_price:.2f}")
 
 
+def update_warrior_fill(
+    trade_id: str,
+    actual_entry_price: float,
+    actual_stop_price: float,
+    actual_quantity: int,
+) -> bool:
+    """
+    Update a Warrior trade with actual fill price after broker confirmation.
+    
+    Called after order is filled to update intended price with actual fill.
+    Does NOT overwrite trigger_type (that was set in the intent log).
+    
+    Args:
+        trade_id: The trade ID to update
+        actual_entry_price: Actual fill price from broker
+        actual_stop_price: Recalculated stop based on actual fill
+        actual_quantity: Actual filled quantity
+    
+    Returns:
+        True if updated successfully, False if trade not found
+    """
+    with get_warrior_session() as db:
+        trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
+        if not trade:
+            print(f"[Warrior DB] update_warrior_fill: Trade not found: {trade_id}")
+            return False
+        
+        old_price = trade.entry_price
+        trade.entry_price = str(actual_entry_price)
+        trade.stop_price = str(actual_stop_price)
+        trade.quantity = actual_quantity
+        trade.remaining_quantity = actual_quantity
+        trade.high_since_entry = str(actual_entry_price)  # Reset high to actual fill
+        trade.updated_at = now_utc()
+        db.commit()
+        
+        print(
+            f"[Warrior DB] Updated fill: {trade.symbol} "
+            f"${old_price} → ${actual_entry_price:.2f}"
+        )
+        return True
+
+
 def log_warrior_exit(
     trade_id: str,
     exit_price: float,

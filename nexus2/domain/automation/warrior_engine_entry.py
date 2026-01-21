@@ -655,11 +655,41 @@ async def enter_position(
                 order_status = order_result.get("status")
                 filled_qty = order_result.get("filled_qty", 0) or 0
             
-            # If order is not filled yet, skip monitor add - auto-recovery will handle it
+            # =================================================================
+            # INTENT LOGGING: Write to DB BEFORE fill check to preserve trigger_type
+            # This fixes the data loss bug where pending orders weren't logged,
+            # causing sync to create duplicate records with trigger_type='synced'
+            # =================================================================
+            support_level = watched.orb_low or watched.candidate.session_low or entry_price * Decimal("0.95")
+            try:
+                from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
+                mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
+                profit_target_r = Decimal(str(engine.monitor.settings.profit_target_r))
+                target = entry_price + (mental_stop_cents / 100 * profit_target_r)
+                log_warrior_entry(
+                    trade_id=order_id,
+                    symbol=symbol,
+                    entry_price=float(entry_price),  # Intended price (update on fill)
+                    quantity=shares,
+                    stop_price=float(mental_stop),
+                    target_price=float(target),
+                    trigger_type=trigger_type.value,  # CRITICAL: Preserve the real trigger
+                    support_level=float(support_level),
+                    stop_method=stop_method,
+                )
+                set_entry_order_id(order_id, order_id)
+                logger.info(
+                    f"[Warrior Entry] {symbol}: Intent logged to DB "
+                    f"(trigger={trigger_type.value}, order_id={order_id[:8]}...)"
+                )
+            except Exception as e:
+                logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
+            
+            # If order is not filled yet, skip monitor add - DB has intent, sync will match it
             if order_status and order_status.lower() not in ("filled", "partially_filled"):
                 logger.info(
                     f"[Warrior Entry] {symbol}: Order pending (status={order_status}) - "
-                    f"auto-recovery will sync when filled"
+                    f"intent recorded, will update on fill"
                 )
                 return
             
@@ -699,28 +729,18 @@ async def enter_position(
                 trigger_type=trigger_type.value,  # PMH_BREAK, ORB
             )
             
-            # Log to Warrior DB for restart recovery
+            # Update DB record with actual fill price (intent was already logged above)
             try:
-                from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
-                mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
-                profit_target_r = Decimal(str(engine.monitor.settings.profit_target_r))
-                target = actual_fill_price + (mental_stop_cents / 100 * profit_target_r)
-                log_warrior_entry(
+                from nexus2.db.warrior_db import update_warrior_fill
+                update_warrior_fill(
                     trade_id=order_id,
-                    symbol=symbol,
-                    entry_price=float(actual_fill_price),  # Use actual fill
-                    quantity=shares,
-                    stop_price=float(actual_stop),  # Use recalculated stop
-                    target_price=float(target),
-                    trigger_type=trigger_type.value,
-                    support_level=float(support_level),
-                    stop_method=stop_method,
+                    actual_entry_price=float(actual_fill_price),
+                    actual_stop_price=float(actual_stop),
+                    actual_quantity=int(filled_qty) if filled_qty else shares,
                 )
-                # Store broker order ID for sync recovery after restart
-                set_entry_order_id(order_id, order_id)
-                logger.debug(f"[Warrior Entry] {symbol}: Linked position {order_id[:8]}... to broker order")
+                logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")
             except Exception as e:
-                logger.warning(f"[Warrior Entry] DB log failed: {e}")
+                logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
             
             logger.info(
                 f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${actual_fill_price} "
