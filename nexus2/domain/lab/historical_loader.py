@@ -62,6 +62,7 @@ class HistoricalLoader:
             universe = self._get_stock_universe()
             
             gappers = []
+            gap_samples = []  # Debug: track what gaps we're finding
             batch_size = 20  # Process in batches to reduce API calls
             
             for i in range(0, len(universe), batch_size):
@@ -70,9 +71,14 @@ class HistoricalLoader:
                 for symbol in batch:
                     try:
                         gap_data = self._calculate_gap_for_date(symbol, target_date)
-                        if gap_data and gap_data["gap_percent"] >= min_gap_percent:
-                            if gap_data["open_price"] >= min_price:
-                                gappers.append(gap_data)
+                        if gap_data:
+                            # Debug: track all gaps found
+                            if len(gap_samples) < 5:
+                                gap_samples.append(f"{symbol}:{gap_data['gap_percent']:.1f}%")
+                            
+                            if gap_data["gap_percent"] >= min_gap_percent:
+                                if gap_data["open_price"] >= min_price:
+                                    gappers.append(gap_data)
                     except Exception as e:
                         logger.debug(f"[HistoricalLoader] Failed to get gap for {symbol}: {e}")
                         continue
@@ -83,6 +89,10 @@ class HistoricalLoader:
             
             # Sort by gap percent descending
             gappers.sort(key=lambda x: x["gap_percent"], reverse=True)
+            
+            # Debug: log sample gaps even if none qualified
+            if gap_samples and not gappers:
+                logger.debug(f"[HistoricalLoader] Gap samples for {target_date}: {gap_samples}")
             
             logger.info(f"[HistoricalLoader] Found {len(gappers)} gappers for {target_date}")
             self._save_cache(cache_key, gappers)
