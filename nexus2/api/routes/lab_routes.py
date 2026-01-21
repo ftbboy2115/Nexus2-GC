@@ -372,3 +372,54 @@ async def evaluate_results(request: EvaluateRequest):
     result = agent.evaluate(request.baseline_metrics, request.variant_metrics)
     
     return result.model_dump(mode="json")
+
+
+# =============================================================================
+# ORCHESTRATOR ENDPOINT (Phase 4)
+# =============================================================================
+
+class ExperimentRequest(BaseModel):
+    """Request for running a full experiment."""
+    base_strategy_name: str
+    base_strategy_version: Optional[str] = None
+    start_date: str  # YYYY-MM-DD
+    end_date: str
+    initial_capital: float = 25000.0
+    max_iterations: int = 5
+    promotion_threshold: float = 0.6
+    transcript_insights: list[str] = []
+
+
+@router.post("/experiment")
+async def run_experiment(request: ExperimentRequest):
+    """Run a full experiment loop.
+    
+    Orchestrates: Researcher → Coder → Backtest → Evaluator
+    Loops until promotion or max_iterations.
+    """
+    from datetime import date as dt_date
+    from decimal import Decimal
+    from nexus2.domain.lab.orchestrator import get_orchestrator, ExperimentConfig
+    
+    try:
+        start = dt_date.fromisoformat(request.start_date)
+        end = dt_date.fromisoformat(request.end_date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
+    
+    config = ExperimentConfig(
+        base_strategy_name=request.base_strategy_name,
+        base_strategy_version=request.base_strategy_version,
+        start_date=start,
+        end_date=end,
+        initial_capital=Decimal(str(request.initial_capital)),
+        max_iterations=request.max_iterations,
+        promotion_threshold=request.promotion_threshold,
+        transcript_insights=request.transcript_insights,
+    )
+    
+    orchestrator = get_orchestrator()
+    result = orchestrator.run_experiment(config)
+    
+    return result.model_dump(mode="json")
+
