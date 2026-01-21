@@ -295,37 +295,139 @@ async def _check_candle_under_candle(
     current_price: Decimal,
     r_multiple: float,
 ) -> Optional[WarriorExitSignal]:
-    """Check for candle-under-candle exit pattern."""
+    """
+    Check for candle-under-candle exit pattern.
+    
+    Ross Cameron: "Break out or bail out" - but with confirmation to avoid noise.
+    
+    Confirmation requirements (Jan 21 Calibration):
+    1. 60 second grace period after entry
+    2. Either: High volume (>1.5x avg) OR 5m boundary candle is also red
+    """
     s = monitor.settings
     
     if not s.enable_candle_under_candle or not monitor._get_intraday_candles:
         return None
     
-    candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
+    # GUARD 1: Grace period - skip if less than 60s since entry
+    entry_time = position.entry_time
+    if entry_time.tzinfo is None:
+        from datetime import timezone
+        entry_time = entry_time.replace(tzinfo=timezone.utc)
+    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    
+    grace_seconds = getattr(s, 'candle_exit_grace_seconds', 60)
+    if seconds_since_entry < grace_seconds:
+        logger.debug(
+            f"[Warrior] {position.symbol}: Candle-under-candle skipped "
+            f"(grace period: {seconds_since_entry:.0f}s < {grace_seconds}s)"
+        )
+        return None
+    
+    # Fetch 6 1m candles (need 5 for 5m aggregation + current comparison)
+    candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=6)
     if not candles or len(candles) < 2:
         return None
     
     current_candle = candles[-1]
     prev_candle = candles[-2]
     
-    # New low = current low < previous low
-    if current_candle.low < prev_candle.low:
-        # Also confirm it's red (close < open)
-        if current_candle.close < current_candle.open:
-            pnl = (current_price - position.entry_price) * position.shares
-            logger.info(f"[Warrior] {position.symbol}: Candle-under-candle detected")
-            return WarriorExitSignal(
-                position_id=position.position_id,
-                symbol=position.symbol,
-                reason=WarriorExitReason.CANDLE_UNDER_CANDLE,
-                exit_price=current_price,
-                shares_to_exit=position.shares,
-                pnl_estimate=pnl,
-                r_multiple=r_multiple,
-                trigger_description="New candle low (character exit)",
+    # Basic pattern: New low = current low < previous low AND candle is red
+    if current_candle.low >= prev_candle.low:
+        return None
+    if current_candle.close >= current_candle.open:
+        return None  # Not a red candle
+    
+    # At this point, we have a valid candle-under-candle pattern
+    # Now check for HIGH-VOLUME or 5M-RED confirmation
+    
+    # CONFIRMATION A: High volume (>1.5x average of recent candles)
+    volume_multiplier = getattr(s, 'candle_exit_volume_multiplier', 1.5)
+    recent_volumes = [c.volume for c in candles[:-1] if hasattr(c, 'volume') and c.volume]
+    
+    high_volume_confirmed = False
+    if recent_volumes:
+        avg_volume = sum(recent_volumes) / len(recent_volumes)
+        current_volume = getattr(current_candle, 'volume', 0) or 0
+        if avg_volume > 0 and current_volume > avg_volume * volume_multiplier:
+            high_volume_confirmed = True
+            logger.info(
+                f"[Warrior] {position.symbol}: Candle-under-candle HIGH VOLUME confirmed "
+                f"({current_volume:,.0f} > {avg_volume * volume_multiplier:,.0f})"
             )
     
-    return None
+    # CONFIRMATION B: Synthetic 5m candle is also red (boundary-aligned)
+    synthetic_5m_red = False
+    if len(candles) >= 5:
+        # Get current 5m boundary
+        from zoneinfo import ZoneInfo
+        et_now = datetime.now(ZoneInfo("America/New_York"))
+        bucket_start_minute = (et_now.minute // 5) * 5  # e.g., 9:37 → 35
+        
+        # Filter candles to those in the current 5m bucket
+        bucket_candles = []
+        for c in candles:
+            if hasattr(c, 'timestamp') and c.timestamp:
+                candle_time = c.timestamp
+                if hasattr(candle_time, 'minute'):
+                    # Check if this candle is in the current 5m bucket
+                    candle_bucket = (candle_time.minute // 5) * 5
+                    if candle_bucket == bucket_start_minute:
+                        bucket_candles.append(c)
+        
+        # If we have candles in the current bucket, aggregate them
+        if bucket_candles:
+            synthetic_open = bucket_candles[0].open
+            synthetic_close = bucket_candles[-1].close
+            if synthetic_close < synthetic_open:
+                synthetic_5m_red = True
+                logger.debug(
+                    f"[Warrior] {position.symbol}: Synthetic 5m is red "
+                    f"(O={synthetic_open:.2f}, C={synthetic_close:.2f})"
+                )
+        else:
+            # Fallback: use last 5 candles as rolling window
+            # (less accurate but better than no confirmation)
+            if len(candles) >= 5:
+                synthetic_open = candles[-5].open
+                synthetic_close = candles[-1].close
+                if synthetic_close < synthetic_open:
+                    synthetic_5m_red = True
+                    logger.debug(
+                        f"[Warrior] {position.symbol}: Rolling 5m is red (fallback) "
+                        f"(O={synthetic_open:.2f}, C={synthetic_close:.2f})"
+                    )
+    
+    # Require at least one confirmation
+    if not high_volume_confirmed and not synthetic_5m_red:
+        logger.debug(
+            f"[Warrior] {position.symbol}: Candle-under-candle skipped "
+            f"(no confirmation: vol={high_volume_confirmed}, 5m_red={synthetic_5m_red})"
+        )
+        return None
+    
+    # Generate exit signal
+    pnl = (current_price - position.entry_price) * position.shares
+    confirmation_type = []
+    if high_volume_confirmed:
+        confirmation_type.append("high_volume")
+    if synthetic_5m_red:
+        confirmation_type.append("5m_red")
+    
+    logger.info(
+        f"[Warrior] {position.symbol}: Candle-under-candle CONFIRMED "
+        f"({', '.join(confirmation_type)})"
+    )
+    return WarriorExitSignal(
+        position_id=position.position_id,
+        symbol=position.symbol,
+        reason=WarriorExitReason.CANDLE_UNDER_CANDLE,
+        exit_price=current_price,
+        shares_to_exit=position.shares,
+        pnl_estimate=pnl,
+        r_multiple=r_multiple,
+        trigger_description=f"New candle low ({', '.join(confirmation_type)})",
+    )
 
 
 async def _check_topping_tail(

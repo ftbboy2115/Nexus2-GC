@@ -71,6 +71,8 @@ class WarriorMonitorSettings:
     
     # Character Exit Patterns
     enable_candle_under_candle: bool = True
+    candle_exit_grace_seconds: int = 60  # Wait 60s after entry before this exit can trigger
+    candle_exit_volume_multiplier: float = 1.5  # Require >1.5x avg volume OR 5m red confirmation
     enable_topping_tail: bool = True
     topping_tail_threshold: float = 0.6  # Wick > 60% of candle range
     
