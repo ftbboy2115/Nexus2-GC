@@ -98,6 +98,10 @@ Last updated: 2026-01-19
   - [x] **Order ID Linkage Fix** — Root cause of data loss (Jan 17)
     - Sync now recovers existing position_id from warrior_db
     - Preserves original trigger_type through restarts
+- [ ] **Alpaca Stale Quote Bug** — Returns stale/incorrect prices during premarket (Jan 21)
+  - IBRX showed $15.72 (Alpaca) vs actual $6.15 (FMP correct) — 142% divergence
+  - Unified adapter chose Alpaca as "median" despite being wildly wrong
+  - **Fix needed:** Prefer FMP when divergence >50% or add validation against prev close
     - See [order_id_linkage_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/order_id_linkage_plan.md)
   - Root cause: Multiple data sources (in-memory monitor vs warrior_db vs broker)
 - [x] **Recovery Integrity Guards** — Ensure stop/target preserved through restarts (Jan 19)
