@@ -150,21 +150,109 @@ class BacktestRunner:
     ) -> Optional[BacktestTrade]:
         """Simulate a trade for a symbol on a given day.
         
-        This is a simplified simulation. Production would need:
-        - Actual intraday bar replay
-        - Order fill simulation  
-        - Stop/target hit detection
+        Uses intraday bars if available, falls back to daily OHLC simulation.
         """
-        # Get intraday bars
+        # Try intraday bars first
         bars = self.loader.get_intraday_bars(symbol, trade_date, interval="5min")
         
-        if not bars or len(bars) < 10:
+        if bars and len(bars) >= 10:
+            return self._simulate_intraday_trade(symbol, trade_date, strategy, bars)
+        
+        # Fallback to daily bar simulation
+        return self._simulate_daily_trade(symbol, trade_date, strategy)
+    
+    def _simulate_daily_trade(
+        self,
+        symbol: str,
+        trade_date: date,
+        strategy: StrategySpec,
+    ) -> Optional[BacktestTrade]:
+        """Simulate trade using daily OHLC bar (when intraday not available)."""
+        # Get the daily bar for target date
+        bars = self.loader.get_daily_bars(symbol, trade_date, trade_date)
+        
+        if not bars:
             return None
         
-        # Simplified simulation: 
-        # - Entry at first bar after 9:35 AM
-        # - Exit based on stop or target hit
+        bar = bars[0]
         
+        # Entry at open
+        entry_price = Decimal(str(bar["open"]))
+        high = Decimal(str(bar["high"]))
+        low = Decimal(str(bar["low"]))
+        close = Decimal(str(bar["close"]))
+        
+        # Calculate stop and target
+        stop_distance = Decimal(str(strategy.monitor.stop_cents or 15)) / 100
+        stop_price = entry_price - stop_distance
+        target_price = entry_price + (stop_distance * Decimal(str(strategy.monitor.target_r)))
+        
+        # Calculate position size
+        risk_per_trade = strategy.engine.risk_per_trade
+        shares = int(risk_per_trade / stop_distance) if stop_distance > 0 else 0
+        
+        if shares <= 0:
+            return None
+        
+        # Cap to max position size
+        max_shares = int(strategy.engine.max_position_size / entry_price)
+        shares = min(shares, max_shares)
+        
+        # Determine outcome based on daily bar
+        # Conservative: assume stop hit if low <= stop, else check target
+        if low <= stop_price:
+            exit_price = stop_price
+            exit_reason = "stop"
+        elif high >= target_price:
+            exit_price = target_price
+            exit_reason = "target"
+        else:
+            exit_price = close
+            exit_reason = "eod"
+        
+        # Calculate P&L
+        pnl = (exit_price - entry_price) * shares
+        r_multiple = float(pnl / risk_per_trade) if risk_per_trade > 0 else 0
+        
+        # Determine outcome
+        if pnl > Decimal("1"):
+            outcome = TradeOutcome.WIN
+        elif pnl < Decimal("-1"):
+            outcome = TradeOutcome.LOSS
+        else:
+            outcome = TradeOutcome.BREAKEVEN
+        
+        entry_time = datetime.combine(trade_date, datetime.strptime("09:35", "%H:%M").time())
+        exit_time = datetime.combine(trade_date, datetime.strptime("16:00", "%H:%M").time())
+        
+        return BacktestTrade(
+            trade_id=f"{trade_date.isoformat()}_{symbol}",
+            symbol=symbol,
+            entry_time=entry_time,
+            entry_price=entry_price,
+            entry_shares=shares,
+            entry_trigger=strategy.engine.entry_triggers[0] if strategy.engine.entry_triggers else "gap",
+            exit_time=exit_time,
+            exit_price=exit_price,
+            exit_shares=shares,
+            exit_reason=exit_reason,
+            stop_price=stop_price,
+            target_price=target_price,
+            risk_dollars=risk_per_trade,
+            realized_pnl=pnl,
+            realized_r=r_multiple,
+            outcome=outcome,
+        )
+    
+    def _simulate_intraday_trade(
+        self,
+        symbol: str,
+        trade_date: date,
+        strategy: StrategySpec,
+        bars: List[Dict],
+    ) -> Optional[BacktestTrade]:
+        """Simulate trade using intraday bars (detailed simulation)."""
+        # Entry at first bar after 9:35 AM
         entry_bar = None
         for bar in bars:
             bar_time = datetime.fromisoformat(bar["timestamp"])

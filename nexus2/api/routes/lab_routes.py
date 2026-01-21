@@ -423,3 +423,35 @@ async def run_experiment(request: ExperimentRequest):
     
     return result.model_dump(mode="json")
 
+
+@router.get("/health")
+async def lab_health():
+    """Health check for Lab API."""
+    from nexus2.domain.lab.historical_loader import get_historical_loader
+    
+    loader = get_historical_loader()
+    cache_dir = loader.cache_dir
+    cache_files = list(cache_dir.glob("*.json")) if cache_dir.exists() else []
+    
+    return {
+        "status": "ok",
+        "cache_dir": str(cache_dir),
+        "cache_files": len(cache_files),
+    }
+
+
+@router.delete("/cache/clear")
+async def clear_cache():
+    """Clear all cached historical data.
+    
+    Use this when you need fresh data from FMP.
+    """
+    from nexus2.domain.lab.historical_loader import get_historical_loader
+    
+    loader = get_historical_loader()
+    count = loader.clear_cache()
+    
+    return {
+        "status": "cleared",
+        "files_deleted": count,
+    }
