@@ -133,7 +133,10 @@ class CoderAgent:
         self._client = None
     
     def _get_client(self):
-        """Lazy-load Gemini client."""
+        """Lazy-load Gemini client.
+        
+        Uses GEMINI_LAB_KEY if available, falls back to GEMINI_API_KEY.
+        """
         if self._client is None:
             try:
                 from dotenv import load_dotenv
@@ -141,11 +144,13 @@ class CoderAgent:
                 import os
                 from google import genai
                 
-                api_key = os.environ.get("GEMINI_API_KEY")
+                # Prefer dedicated lab key, fall back to shared key
+                api_key = os.environ.get("GEMINI_LAB_KEY") or os.environ.get("GEMINI_API_KEY")
                 if not api_key:
-                    raise ValueError("GEMINI_API_KEY not set")
+                    raise ValueError("GEMINI_LAB_KEY or GEMINI_API_KEY not set")
                 
                 self._client = genai.Client(api_key=api_key)
+                logger.info(f"[CoderAgent] Using {'GEMINI_LAB_KEY' if os.environ.get('GEMINI_LAB_KEY') else 'GEMINI_API_KEY'}")
             except Exception as e:
                 logger.error(f"[CoderAgent] Failed to init Gemini client: {e}")
                 raise
