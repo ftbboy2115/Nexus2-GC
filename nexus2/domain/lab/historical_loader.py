@@ -47,7 +47,7 @@ class HistoricalLoader:
             min_volume: Minimum average volume
             
         Returns:
-            List of dicts with symbol, gap_percent, price, volume
+            List of dicts with symbol, gap_percent, open_price, prev_close, volume
         """
         cache_key = f"gappers_{target_date.isoformat()}"
         cached = self._load_cache(cache_key)
@@ -55,27 +55,117 @@ class HistoricalLoader:
             return cached
         
         try:
-            # Use FMP's stock screener or gainers endpoint
-            # For backtesting, we'll use the gainers endpoint filtered by date
-            # Note: FMP's historical gainers may not be available, 
-            # so we may need to calculate from daily bars
-            
-            # Alternative approach: Get a broad universe and filter
-            # This is a simplified version - production would need more sophisticated logic
-            gainers = []
-            
-            # Try to get gainers for the date
-            # FMP doesn't have historical gainers, so we simulate with current patterns
             logger.info(f"[HistoricalLoader] Getting gapper universe for {target_date}")
             
-            # For now, return empty and cache it
-            # In production, this would calculate gaps from daily bars
-            self._save_cache(cache_key, gainers)
-            return gainers
+            # Get active stock universe - use FMP's stock screener or actives
+            # We'll use a predefined list of popular gapper tickers + FMP gainers
+            universe = self._get_stock_universe()
+            
+            gappers = []
+            batch_size = 20  # Process in batches to reduce API calls
+            
+            for i in range(0, len(universe), batch_size):
+                batch = universe[i:i + batch_size]
+                
+                for symbol in batch:
+                    try:
+                        gap_data = self._calculate_gap_for_date(symbol, target_date)
+                        if gap_data and gap_data["gap_percent"] >= min_gap_percent:
+                            if gap_data["open_price"] >= min_price:
+                                gappers.append(gap_data)
+                    except Exception as e:
+                        logger.debug(f"[HistoricalLoader] Failed to get gap for {symbol}: {e}")
+                        continue
+                
+                # Limit total gappers to avoid excessive processing
+                if len(gappers) >= 20:
+                    break
+            
+            # Sort by gap percent descending
+            gappers.sort(key=lambda x: x["gap_percent"], reverse=True)
+            
+            logger.info(f"[HistoricalLoader] Found {len(gappers)} gappers for {target_date}")
+            self._save_cache(cache_key, gappers)
+            return gappers
             
         except Exception as e:
             logger.error(f"[HistoricalLoader] Failed to get gapper universe: {e}")
             return []
+    
+    def _get_stock_universe(self) -> List[str]:
+        """Get a list of stocks to check for gaps.
+        
+        Uses a combination of common gap-and-go tickers and recent movers.
+        """
+        # Popular small-mid cap stocks that commonly gap
+        base_universe = [
+            # Recent popular gappers (from Warrior scans)
+            "IBRX", "ONDS", "SEGG", "MTEN", "POLA", "NVAX", "AFRM",
+            "RIOT", "MARA", "COIN", "PLTR", "SOFI", "LCID", "RIVN",
+            "AMC", "GME", "BB", "BBBY", "SPCE", "PLUG", "NIO", "XPEV",
+            # Biotech/pharma (common gap catalysts)
+            "MRNA", "BNTX", "ARCT", "SAVA", "AGEN", "OCGN", "VXRT",
+            "NKLA", "GOEV", "RIDE", "WKHS", "FSR", "NKTR", "CLOV",
+            # Tech/growth
+            "UPST", "AFRM", "HOOD", "DKNG", "PENN", "SKLZ", "WISH",
+            "ATER", "IRNT", "OPAD", "TMC", "LIDR", "RDBX", "HKD",
+            # Additional common small caps
+            "MULN", "FFIE", "IMPP", "PROG", "QLGN", "BFRI", "BIOR",
+        ]
+        return list(set(base_universe))  # Remove duplicates
+    
+    def _calculate_gap_for_date(
+        self, 
+        symbol: str, 
+        target_date: date
+    ) -> Optional[Dict[str, Any]]:
+        """Calculate gap % for a symbol on a specific date.
+        
+        Returns gap data if the stock traded on target_date, None otherwise.
+        """
+        # Get daily bars around the target date
+        start = target_date - timedelta(days=5)  # Get a few days before
+        end = target_date
+        
+        bars = self.get_daily_bars(symbol, start, end)
+        if len(bars) < 2:
+            return None
+        
+        # Find the bar for target_date and previous day
+        target_bar = None
+        prev_bar = None
+        
+        for i, bar in enumerate(bars):
+            bar_date = date.fromisoformat(bar["date"])
+            if bar_date == target_date:
+                target_bar = bar
+                if i > 0:
+                    prev_bar = bars[i - 1]
+                break
+        
+        if not target_bar or not prev_bar:
+            return None
+        
+        # Calculate gap: (open - prev_close) / prev_close * 100
+        prev_close = prev_bar["close"]
+        open_price = target_bar["open"]
+        
+        if prev_close <= 0:
+            return None
+        
+        gap_percent = ((open_price - prev_close) / prev_close) * 100
+        
+        return {
+            "symbol": symbol,
+            "date": target_date.isoformat(),
+            "gap_percent": round(gap_percent, 2),
+            "open_price": open_price,
+            "prev_close": prev_close,
+            "high": target_bar["high"],
+            "low": target_bar["low"],
+            "close": target_bar["close"],
+            "volume": target_bar["volume"],
+        }
     
     def get_daily_bars(
         self,
