@@ -38,6 +38,15 @@ const nextConfig = {
                 source: '/trade-events/:path*',
                 destination: 'http://localhost:8000/trade-events/:path*',
             },
+            // R&D LAB ROUTES
+            {
+                source: '/lab/:path*',
+                destination: 'http://localhost:8000/lab/:path*',
+            },
+            {
+                source: '/lab',
+                destination: 'http://localhost:8000/lab',
+            },
             {
                 source: '/api/:path*',
                 destination: 'http://localhost:8000/:path*',
