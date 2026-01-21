@@ -268,6 +268,11 @@ Last updated: 2026-01-19
 - [ ] **User-Defined Momentum Screener** — TradingView-style filter (RSI>80, 1M>25%, stacked MAs)
   - [Spec](.agent/rules/user-defined-momentum-screener.md)
 - [ ] **Backtesting Framework** — Historical signal validation with P&L simulation
+- [ ] **Bearish Market Strategy** — Backtest inverse/short strategies when market is bearish
+  - Buy SQQQ (3x inverse QQQ) during confirmed downtrends
+  - Go long on short positions (shorting individual stocks) with weak RS
+  - Market condition detection: SPY below 20/50 EMA, VIX > 20, breadth indicators
+  - Use R&D Lab to backtest and compare vs cash/sideline approach
 
 ---
 

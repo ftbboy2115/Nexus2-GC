@@ -259,3 +259,116 @@ async def compare_strategies(request: CompareRequest):
         "recommendation": comparison.recommendation,
         "summary": comparison.summary,
     }
+
+
+# =============================================================================
+# AGENT ENDPOINTS (Phase 3)
+# =============================================================================
+
+class ResearchRequest(BaseModel):
+    """Request for generating a hypothesis."""
+    strategy_name: str
+    strategy_version: Optional[str] = None
+    evaluator_feedback: Optional[str] = None
+    transcript_insights: list[str] = []
+
+
+@router.post("/agents/research")
+async def generate_hypothesis(request: ResearchRequest):
+    """Generate a strategy improvement hypothesis using AI.
+    
+    The Researcher Agent analyzes the strategy and proposes improvements.
+    """
+    from nexus2.domain.lab.strategy_registry import get_registry
+    from nexus2.domain.lab.researcher_agent import get_researcher_agent, ResearchContext
+    
+    registry = get_registry()
+    strategy = registry.load_strategy(request.strategy_name, request.strategy_version)
+    
+    if not strategy:
+        raise HTTPException(status_code=404, detail=f"Strategy not found: {request.strategy_name}")
+    
+    # Build context from strategy
+    context = ResearchContext(
+        strategy_name=strategy.name,
+        strategy_version=strategy.version,
+        rules_summary=strategy.description,
+        evaluator_feedback=request.evaluator_feedback,
+        transcript_insights=request.transcript_insights,
+    )
+    
+    agent = get_researcher_agent()
+    hypothesis = agent.propose(context)
+    
+    return hypothesis.model_dump(mode="json")
+
+
+class CodeRequest(BaseModel):
+    """Request for generating strategy code."""
+    hypothesis: dict
+    base_strategy_name: str
+    base_strategy_version: Optional[str] = None
+    new_strategy_name: str
+    new_strategy_version: str
+
+
+@router.post("/agents/code")
+async def generate_code(request: CodeRequest):
+    """Generate strategy code from a hypothesis.
+    
+    The Coder Agent creates scanner, engine, monitor, and tests.
+    """
+    from nexus2.domain.lab.strategy_registry import get_registry
+    from nexus2.domain.lab.coder_agent import get_coder_agent
+    import yaml
+    
+    registry = get_registry()
+    base = registry.load_strategy(request.base_strategy_name, request.base_strategy_version)
+    
+    if not base:
+        raise HTTPException(status_code=404, detail=f"Base strategy not found: {request.base_strategy_name}")
+    
+    # Convert base strategy to YAML
+    base_config = yaml.dump(base.model_dump(mode="json"), default_flow_style=False)
+    
+    agent = get_coder_agent()
+    code = agent.generate(
+        hypothesis=request.hypothesis,
+        base_config=base_config,
+        strategy_name=request.new_strategy_name,
+        strategy_version=request.new_strategy_version,
+    )
+    
+    return {
+        "strategy_name": code.strategy_name,
+        "strategy_version": code.strategy_version,
+        "is_valid": code.is_valid,
+        "validation_errors": code.validation_errors,
+        "files": {
+            "config_yaml": code.config_yaml[:500] + "..." if len(code.config_yaml) > 500 else code.config_yaml,
+            "scanner_py": f"{len(code.scanner_py)} bytes",
+            "engine_py": f"{len(code.engine_py)} bytes",
+            "monitor_py": f"{len(code.monitor_py)} bytes",
+            "tests_py": f"{len(code.tests_py)} bytes",
+        },
+    }
+
+
+class EvaluateRequest(BaseModel):
+    """Request for evaluating backtest results."""
+    baseline_metrics: dict
+    variant_metrics: dict
+
+
+@router.post("/agents/evaluate")
+async def evaluate_results(request: EvaluateRequest):
+    """Evaluate experiment results against baseline.
+    
+    Returns deltas, improvement score, and recommendation.
+    """
+    from nexus2.domain.lab.evaluator_agent import get_evaluator_agent
+    
+    agent = get_evaluator_agent()
+    result = agent.evaluate(request.baseline_metrics, request.variant_metrics)
+    
+    return result.model_dump(mode="json")
