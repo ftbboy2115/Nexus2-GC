@@ -964,3 +964,53 @@ async def get_ipo_status():
         **status,
         "recent_ipos": recent,
     }
+
+
+# ==================== REVERSE SPLIT CALENDAR ENDPOINTS ====================
+
+@router.post("/reverse-splits/refresh")
+async def refresh_reverse_splits():
+    """
+    Refresh reverse split cache from FMP API.
+    
+    Fetches stock split calendar and filters for reverse splits in last 45 days.
+    Reverse split stocks get +2 score boost in the Warrior scanner.
+    
+    Per Ross Cameron (Jan 21, 2026): "Some of the biggest winners in the last 
+    six weeks were stocks that had recently done reverse splits."
+    """
+    from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+    
+    try:
+        rsplit_service = get_reverse_split_service()
+        count = rsplit_service.refresh()
+        tracked = rsplit_service.get_all_tracked()
+        
+        return {
+            "status": "success",
+            "total_tracked": count,
+            "lookback_days": rsplit_service.LOOKBACK_DAYS,
+            "score_boost": rsplit_service.SCORE_BOOST,
+            "tracked_splits": tracked[:15],  # Show top 15
+        }
+    except Exception as e:
+        logger.error(f"[RSPLIT] Refresh failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/reverse-splits/status")
+async def get_reverse_split_status():
+    """
+    Get reverse split service status and tracked stocks.
+    """
+    from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+    
+    rsplit_service = get_reverse_split_service()
+    status = rsplit_service.get_status()
+    tracked = rsplit_service.get_all_tracked()
+    
+    return {
+        **status,
+        "tracked_splits": tracked,
+    }
+

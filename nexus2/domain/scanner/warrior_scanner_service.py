@@ -189,6 +189,12 @@ class WarriorCandidate:
     # Icebreaker flag (Chinese stock with high score)
     is_icebreaker: bool = False  # Flag for reduced position sizing
     
+    # Reverse split watchlist (Ross Cameron Jan 21, 2026)
+    # Companies pump stock after reverse splits before secondary offerings
+    is_reverse_split: bool = False  # Had reverse split in last 45 days
+    split_date: Optional[str] = None  # Date of split (YYYY-MM-DD)
+    split_ratio: Optional[str] = None  # e.g., "1:10"
+    
     # Technical context
     session_high: Decimal = Decimal("0")
     session_low: Decimal = Decimal("0")
@@ -276,7 +282,12 @@ class WarriorCandidate:
         if self.hard_to_borrow:
             score += 1  # HTB = squeezability bonus
         
-        return min(score, 14)  # Max now 14 with freshness bonus
+        # Reverse split bonus (2 points) - Ross Cameron Jan 21, 2026
+        # "Some of the biggest winners in the last 6 weeks were stocks that recently did reverse splits"
+        if self.is_reverse_split:
+            score += 2  # Proactive watchlist bonus
+        
+        return min(score, 16)  # Max now 16 with freshness + reverse split bonus
 
 
 @dataclass
@@ -675,9 +686,16 @@ class WarriorScannerService:
         # =========================================================================
         # PILLAR 3: Catalyst (News/Earnings/Former Runner)
         # Uses CatalystClassifier with confidence scoring to filter weak catalysts
+        # Now fetches from BOTH FMP and Alpaca (Benzinga) for better coverage
+        # (AQMS "battery supply agreement" was in Alpaca but not FMP)
         # =========================================================================
         classifier = get_classifier()
-        headlines = self.market_data.fmp.get_recent_headlines(symbol, days=s.catalyst_lookback_days)
+        # Use merged headlines from FMP + Alpaca for better micro-cap coverage
+        headlines = self.market_data.get_merged_headlines(
+            symbol, 
+            days=s.catalyst_lookback_days,
+            alpaca_broker=self.alpaca_broker,
+        )
         
         has_catalyst = False
         catalyst_type = "none"
@@ -966,6 +984,23 @@ class WarriorScannerService:
             except Exception as e:
                 scan_logger.debug(f"Could not get HTB status for {symbol}: {e}")
         
+        # Check Reverse Split status - Ross Cameron Jan 21, 2026
+        # "Some of the biggest winners in the last 6 weeks were stocks that recently did reverse splits"
+        is_reverse_split = False
+        split_date = None
+        split_ratio = None
+        try:
+            from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+            rsplit_service = get_reverse_split_service()
+            rsplit_record = rsplit_service.is_recent_reverse_split(symbol)
+            if rsplit_record:
+                is_reverse_split = True
+                split_date = rsplit_record.date
+                split_ratio = rsplit_record.ratio
+                scan_logger.info(f"RSPLIT BONUS | {symbol} has recent reverse split ({split_ratio} on {split_date}) +2 score")
+        except Exception as e:
+            scan_logger.debug(f"Could not check reverse split for {symbol}: {e}")
+        
         candidate = WarriorCandidate(
             symbol=symbol,
             name=name,
@@ -982,6 +1017,9 @@ class WarriorScannerService:
             is_former_runner=is_former_runner,
             hard_to_borrow=hard_to_borrow,
             easy_to_borrow=easy_to_borrow,
+            is_reverse_split=is_reverse_split,  # Reverse split watchlist (Ross Jan 21)
+            split_date=split_date,
+            split_ratio=split_ratio,
             session_high=Decimal(str(session_high)),
             session_low=Decimal(str(session_low)),
             session_volume=session_volume,

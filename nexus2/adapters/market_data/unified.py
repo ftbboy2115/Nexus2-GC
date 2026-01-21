@@ -638,3 +638,55 @@ class UnifiedMarketData:
             (has_upcoming, earnings_date)
         """
         return self.fmp.has_upcoming_earnings(symbol, days=days)
+    
+    def get_merged_headlines(
+        self,
+        symbol: str,
+        days: int = 5,
+        alpaca_broker=None,
+    ) -> List[str]:
+        """
+        Get headlines from FMP + Alpaca (Benzinga) merged and deduplicated.
+        
+        Alpaca provides Benzinga-powered news with better micro-cap coverage.
+        The AQMS "battery supply agreement" was in Alpaca but not FMP.
+        
+        Args:
+            symbol: Stock symbol
+            days: Number of days to look back
+            alpaca_broker: Optional AlpacaBroker instance for news; pass from caller
+            
+        Returns:
+            List of unique headline strings
+        """
+        headlines_set = set()
+        headlines_list = []
+        
+        # 1. FMP headlines (existing source)
+        try:
+            fmp_headlines = self.fmp.get_recent_headlines(symbol, days=days)
+            for headline in fmp_headlines:
+                # Normalize for deduplication
+                normalized = headline.strip().lower()
+                if normalized and normalized not in headlines_set:
+                    headlines_set.add(normalized)
+                    headlines_list.append(headline.strip())
+        except Exception as e:
+            print(f"[Unified] FMP headlines error for {symbol}: {e}")
+        
+        # 2. Alpaca headlines (Benzinga-powered, better micro-cap coverage)
+        if alpaca_broker:
+            try:
+                alpaca_news = alpaca_broker.get_news(symbol, limit=10, days=days)
+                for item in alpaca_news:
+                    headline = item.get("headline", "").strip()
+                    if not headline:
+                        continue
+                    normalized = headline.lower()
+                    if normalized not in headlines_set:
+                        headlines_set.add(normalized)
+                        headlines_list.append(headline)
+            except Exception as e:
+                print(f"[Unified] Alpaca headlines error for {symbol}: {e}")
+        
+        return headlines_list

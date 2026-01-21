@@ -654,3 +654,54 @@ class AlpacaBroker:
             "total_capital_deployed": round(total_capital_deployed, 2),
             "total_realized_pnl": round(total_realized_pnl, 2),
         }
+    
+    def get_news(self, symbol: str, limit: int = 10, days: int = 5) -> list[dict]:
+        """
+        Get news headlines from Alpaca's data API (Benzinga-powered).
+        
+        This provides better micro-cap coverage than FMP for catalyst detection.
+        The AQMS "battery supply agreement" headline was in Alpaca but not FMP.
+        
+        Args:
+            symbol: Stock symbol
+            limit: Maximum headlines to return
+            days: Number of days to look back
+            
+        Returns:
+            List of dicts with 'headline', 'created_at', 'source', 'url'
+        """
+        from datetime import timedelta, timezone
+        
+        # Alpaca news is on data.alpaca.markets, not the trading API
+        data_url = "https://data.alpaca.markets"
+        
+        # Calculate start date
+        start_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        
+        try:
+            url = f"{data_url}/v1beta1/news"
+            params = {
+                "symbols": symbol,
+                "limit": limit,
+                "start": start_date,
+            }
+            
+            response = self._client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            news = data.get("news", [])
+            
+            return [
+                {
+                    "headline": item.get("headline", ""),
+                    "created_at": item.get("created_at"),
+                    "source": item.get("source", ""),
+                    "url": item.get("url", ""),
+                    "symbols": item.get("symbols", []),
+                }
+                for item in news
+            ]
+        except Exception as e:
+            print(f"[Alpaca] Failed to get news for {symbol}: {e}")
+            return []
