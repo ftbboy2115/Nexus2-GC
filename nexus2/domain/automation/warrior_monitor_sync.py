@@ -399,6 +399,20 @@ async def _recover_position(
             )
         except Exception as event_err:
             logger.warning(f"[Warrior Sync] {symbol}: Event log failed: {event_err}")
+    else:
+        # Recovered existing trade - still need trade_event ENTRY for analytics
+        # The position already exists in warrior_db, but trade_events needs the entry
+        try:
+            trade_event_service.log_warrior_entry(
+                position_id=position.position_id,
+                symbol=symbol,
+                entry_price=recovered_entry_price,
+                stop_price=stop_price,
+                shares=qty,
+                trigger_type=recovered_trigger_type,  # Preserve original trigger from intent
+            )
+        except Exception as event_err:
+            logger.debug(f"[Warrior Sync] {symbol}: Recovery event log failed: {event_err}")
     
     logger.info(
         f"[Warrior Sync] {symbol}: {'Recovered' if existing_trade else 'Auto-synced'} "
