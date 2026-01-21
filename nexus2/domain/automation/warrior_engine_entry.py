@@ -374,6 +374,12 @@ async def enter_position(
             top_pick = max(all_watched, key=lambda w: getattr(w.candidate, 'quality_score', 0) or 0)
             if watched.candidate.symbol != top_pick.candidate.symbol:
                 # Not the top pick - mark as triggered to prevent log spam
+                top_score = getattr(top_pick.candidate, 'quality_score', 0) or 0
+                our_score = getattr(watched.candidate, 'quality_score', 0) or 0
+                logger.info(
+                    f"[Warrior Entry] {symbol}: TOP_PICK_ONLY - blocked (score {our_score}) "
+                    f"top pick is {top_pick.candidate.symbol} (score {top_score})"
+                )
                 watched.entry_triggered = True
                 return
     
@@ -383,6 +389,7 @@ async def enter_position(
         logger.info(
             f"[Warrior Entry] {symbol}: Score {candidate_score} < min {engine.config.min_entry_score}, skipping"
         )
+        watched.entry_triggered = True  # Mark to prevent log spam
         return
     
     # Check blacklist (static config + dynamic from broker rejections)
