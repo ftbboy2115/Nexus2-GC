@@ -47,10 +47,6 @@ Last updated: 2026-01-19
   - MarketAux: 5000+ sources, 100 req/day free tier, built-in sentiment
   - Fallback when FMP headline doesn't contain the actual catalyst
   - Add `MARKETAUX_API_KEY` to config
-- [ ] **Market Conditions Tracking** — Dedicated `market_snapshots` table for correlation analysis
-  - Periodic capture of SPY, QQQ, VIX, sector ETFs
-  - Link to trade events for win/loss correlation
-  - Dashboard widget showing market health
 
 ---
 
