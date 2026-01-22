@@ -254,19 +254,20 @@ class CoderAgent:
         # Method 1: Try direct parse first
         try:
             return json.loads(text)
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug(f"[CoderAgent] Direct parse failed: {e}")
         
         # Method 2: Extract from markdown code blocks
         # Handle ```json ... ``` or ``` ... ```
         code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
         matches = re.findall(code_block_pattern, text)
         
-        for match in matches:
+        for i, match in enumerate(matches):
             cleaned = self._sanitize_json(match.strip())
             try:
                 return json.loads(cleaned)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                logger.debug(f"[CoderAgent] Code block {i} parse failed: {e}")
                 continue
         
         # Method 3: Find JSON object in text
@@ -279,7 +280,24 @@ class CoderAgent:
             try:
                 return json.loads(cleaned)
             except json.JSONDecodeError as e:
-                logger.debug(f"[CoderAgent] JSON extraction failed after sanitization: {e}")
+                logger.debug(f"[CoderAgent] Brace extraction failed: {e}")
+        
+        # All methods failed - log the response for debugging
+        logger.warning(f"[CoderAgent] All JSON extraction methods failed. Response length: {len(text)} chars")
+        logger.debug(f"[CoderAgent] First 500 chars: {text[:500]}")
+        
+        # Save failed response to file for analysis
+        try:
+            from pathlib import Path
+            from datetime import datetime
+            debug_dir = Path(__file__).parent / "debug_responses"
+            debug_dir.mkdir(exist_ok=True)
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            debug_file = debug_dir / f"failed_response_{timestamp}.txt"
+            debug_file.write_text(text)
+            logger.info(f"[CoderAgent] Saved failed response to {debug_file.name}")
+        except Exception as e:
+            logger.debug(f"[CoderAgent] Could not save debug file: {e}")
         
         return None
     
