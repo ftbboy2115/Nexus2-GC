@@ -305,9 +305,9 @@ class CoderAgent:
         """Sanitize JSON string to fix common LLM escape issues.
         
         Fixes:
+        - Python hex escapes (\\xNN) to JSON unicode (\\u00NN)
         - Invalid escape sequences like \\e, \\s, \\d, etc.
-        - Unescaped newlines in strings
-        - Other common JSON malformations
+        - Raw unicode characters that may cause issues
         
         Args:
             text: Raw JSON string
@@ -317,9 +317,17 @@ class CoderAgent:
         """
         import re
         
-        # Fix invalid escape sequences
+        # Fix 1: Convert Python hex escapes (\xNN) to JSON unicode escapes (\u00NN)
+        # e.g., \xE4 -> \u00E4
+        def hex_to_unicode(match):
+            hex_val = match.group(1)
+            return f"\\u00{hex_val}"
+        
+        text = re.sub(r'\\x([0-9a-fA-F]{2})', hex_to_unicode, text)
+        
+        # Fix 2: Replace invalid escape sequences
         # JSON only allows: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
-        # Replace invalid escapes with double backslash (literal backslash)
+        # Replace other escapes with double backslash
         invalid_escapes = re.compile(r'\\(?!["\\/bfnrtu])')
         text = invalid_escapes.sub(r'\\\\', text)
         
