@@ -23,6 +23,7 @@ from .researcher_agent import get_researcher_agent, ResearchContext, Hypothesis
 from .coder_agent import get_coder_agent, GeneratedCode
 from .backtest_runner import get_backtest_runner, BacktestResult
 from .evaluator_agent import get_evaluator_agent, EvaluationResult
+from .lab_logger import configure_lab_logging
 
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,9 @@ class LabOrchestrator:
     """
     
     def __init__(self):
+        # Redirect all lab module logs to lab.log file
+        configure_lab_logging()
+        
         self.registry = get_registry()
         self.researcher = get_researcher_agent()
         self.coder = get_coder_agent()
