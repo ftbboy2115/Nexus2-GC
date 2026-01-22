@@ -68,7 +68,21 @@ export default function PositionsCard({
     const renderCellValue = (pos: BrokerPosition, colId: string) => {
         switch (colId) {
             case 'symbol':
-                return <td key={colId} className={styles.symbol}>{pos.symbol}</td>
+                return (
+                    <td key={colId} className={styles.symbol}>
+                        <a
+                            href={`https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#38bdf8', textDecoration: 'none', cursor: 'pointer' }}
+                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                            title={`Open ${pos.symbol} chart on TradingView`}
+                        >
+                            {pos.symbol}
+                        </a>
+                    </td>
+                )
             case 'qty':
                 return <td key={colId}>{pos.qty}</td>
             case 'side':
@@ -235,7 +249,19 @@ export default function PositionsCard({
                                     <tbody>
                                         {simPositions.positions.map((pos) => (
                                             <tr key={pos.symbol}>
-                                                <td className={styles.symbol}>{pos.symbol}</td>
+                                                <td className={styles.symbol}>
+                                                    <a
+                                                        href={`https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{ color: '#38bdf8', textDecoration: 'none', cursor: 'pointer' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                                        title={`Open ${pos.symbol} chart on TradingView`}
+                                                    >
+                                                        {pos.symbol}
+                                                    </a>
+                                                </td>
                                                 <td>{pos.qty}</td>
                                                 <td>${pos.avg_price.toFixed(2)}</td>
                                                 <td>${pos.market_value.toFixed(0)}</td>

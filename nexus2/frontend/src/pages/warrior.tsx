@@ -160,7 +160,7 @@ export default function Warrior() {
 
     // Open TradingView chart in new tab
     const openChart = (symbol: string) => {
-        window.open(`https://www.tradingview.com/chart/?symbol=${symbol}`, '_blank')
+        window.open(`https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`, '_blank')
     }
 
     // Use relative URLs - Next.js rewrites proxy to backend
