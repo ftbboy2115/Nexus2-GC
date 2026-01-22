@@ -190,15 +190,17 @@ class CoderAgent:
                 ],
             )
             
-            # Parse JSON response
+            # Extract and parse JSON with robust error handling
             response_text = response.text.strip()
+            data = self._extract_json(response_text)
             
-            # Handle markdown code blocks
-            if response_text.startswith("```"):
-                lines = response_text.split("\n")
-                response_text = "\n".join(lines[1:-1])
-            
-            data = json.loads(response_text)
+            if data is None:
+                return GeneratedCode(
+                    strategy_name=strategy_name,
+                    strategy_version=strategy_version,
+                    is_valid=False,
+                    validation_errors=["Failed to extract valid JSON from response"],
+                )
             
             result = GeneratedCode(
                 strategy_name=strategy_name,
@@ -232,6 +234,78 @@ class CoderAgent:
                 is_valid=False,
                 validation_errors=[f"Generation error: {e}"],
             )
+    
+    def _extract_json(self, text: str) -> Optional[Dict[str, Any]]:
+        """Extract and parse JSON from LLM response with robust error handling.
+        
+        Handles:
+        - Markdown code blocks (```json ... ```)
+        - Invalid escape sequences from Gemini
+        - Nested JSON structures
+        
+        Args:
+            text: Raw response text from LLM
+            
+        Returns:
+            Parsed dict or None if extraction fails
+        """
+        import re
+        
+        # Method 1: Try direct parse first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        
+        # Method 2: Extract from markdown code blocks
+        # Handle ```json ... ``` or ``` ... ```
+        code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
+        matches = re.findall(code_block_pattern, text)
+        
+        for match in matches:
+            cleaned = self._sanitize_json(match.strip())
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                continue
+        
+        # Method 3: Find JSON object in text
+        # Look for { ... } pattern
+        brace_pattern = r'\{[\s\S]*\}'
+        brace_match = re.search(brace_pattern, text)
+        
+        if brace_match:
+            cleaned = self._sanitize_json(brace_match.group())
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError as e:
+                logger.debug(f"[CoderAgent] JSON extraction failed after sanitization: {e}")
+        
+        return None
+    
+    def _sanitize_json(self, text: str) -> str:
+        """Sanitize JSON string to fix common LLM escape issues.
+        
+        Fixes:
+        - Invalid escape sequences like \\e, \\s, \\d, etc.
+        - Unescaped newlines in strings
+        - Other common JSON malformations
+        
+        Args:
+            text: Raw JSON string
+            
+        Returns:
+            Sanitized JSON string
+        """
+        import re
+        
+        # Fix invalid escape sequences
+        # JSON only allows: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+        # Replace invalid escapes with double backslash (literal backslash)
+        invalid_escapes = re.compile(r'\\(?!["\\/bfnrtu])')
+        text = invalid_escapes.sub(r'\\\\', text)
+        
+        return text
     
     def validate(self, code: GeneratedCode) -> GeneratedCode:
         """Validate generated code for syntax errors.
