@@ -272,7 +272,7 @@ class HistoricalLoader:
         
         try:
             # FMP intraday endpoint
-            bars = self.fmp.get_intraday_bars(symbol, interval=interval, limit=500)
+            bars = self.fmp.get_intraday_bars(symbol, timeframe=interval, date=target_date.isoformat())
             if not bars:
                 return []
             
