@@ -368,9 +368,9 @@ class BacktestRunner:
         win_count = len(wins)
         loss_count = len(losses)
         
-        # Rates
-        win_rate = (win_count / total * 100) if total > 0 else 0
-        loss_rate = (loss_count / total * 100) if total > 0 else 0
+        # Rates (stored as decimals 0.0-1.0 for proper % formatting)
+        win_rate = (win_count / total) if total > 0 else 0
+        loss_rate = (loss_count / total) if total > 0 else 0
         
         # R-multiples
         all_r = [t.realized_r for t in trades if t.realized_r is not None]
