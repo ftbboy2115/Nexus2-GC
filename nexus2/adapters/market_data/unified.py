@@ -156,9 +156,22 @@ class UnifiedMarketData:
         max_price = max(price_list)
         divergence_pct = ((max_price - min_price) / min_price * 100) if min_price > 0 else 0
         
-        # If all sources agree (within 20%), use Alpaca for real-time
+        # If all sources agree (within 20%), select based on time window
+        # Extended hours: Schwab is most accurate (brokers have live extended hours data)
+        # Regular hours: Alpaca is most accurate (real-time streaming)
         if divergence_pct <= 20:
-            if alpaca_price:
+            # Determine time-based priority
+            from nexus2.domain.audit.quote_audit_service import determine_time_window
+            time_window = determine_time_window()
+            
+            # Extended hours: prefer Schwab (accurate during pre/post market)
+            is_extended_hours = time_window in ("premarket_early", "premarket_late", "postmarket_early", "postmarket_late")
+            
+            if is_extended_hours and schwab_price:
+                logger.debug(f"[Quote] {symbol}: Extended hours ({time_window}) - using Schwab (${schwab_price:.2f})")
+                schwab_quote = Quote(symbol=symbol, price=Decimal(str(schwab_price)), change=Decimal("0"), change_percent=Decimal("0"), volume=0, timestamp=None)
+                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+            elif alpaca_price:
                 logger.debug(f"[Quote] {symbol}: Sources agree ({divergence_pct:.1f}% spread) - using Alpaca")
                 return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
             elif schwab_price:
