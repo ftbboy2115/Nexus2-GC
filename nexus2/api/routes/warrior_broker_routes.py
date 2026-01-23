@@ -288,6 +288,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_positions=broker_get_positions,
         check_pending_fill=check_pending_fill,
         get_order_status=broker_get_order_status,  # For polling actual fill price
+        get_intraday_bars=broker_get_intraday_bars,  # For VWAP/EMA dynamic scoring
     )
     
     # Wire scanner to broker for HTB/ETB lookups (Ross Cameron methodology)
