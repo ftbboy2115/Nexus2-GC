@@ -441,7 +441,8 @@ class WarriorEngine:
             
             fmp = get_fmp_adapter()
             if fmp:
-                pmh = fmp.get_premarket_high(symbol)
+                # Run in thread pool to avoid blocking event loop
+                pmh = await asyncio.to_thread(fmp.get_premarket_high, symbol)
                 if pmh:
                     return pmh
         except Exception as e:
