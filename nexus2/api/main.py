@@ -17,7 +17,7 @@ from nexus2.adapters.broker import OrderExecutor
 from nexus2.settings.risk_settings import PartialExitSettings
 from nexus2.api.broker_factory import create_broker_by_type
 
-from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics, automation_simulation, ma_check_routes, monitor_routes, scheduler_routes, docs_routes, preferences, warrior_routes, trade_event_routes, lab_routes  # v3
+from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics, automation_simulation, ma_check_routes, monitor_routes, scheduler_routes, docs_routes, preferences, warrior_routes, trade_event_routes, lab_routes, audit_routes  # v3
 from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
@@ -222,6 +222,45 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[Startup] NAC auto-resume check failed: {e}")
     
+    # Schedule daily quote audit cleanup (8:30 PM ET)
+    async def quote_audit_cleanup_loop():
+        """Run quote audit cleanup daily at 8:30 PM ET."""
+        from nexus2.utils.time_utils import now_et
+        from datetime import timedelta
+        
+        while True:
+            try:
+                now = now_et()
+                # Target 8:30 PM ET today or tomorrow
+                target_hour, target_minute = 20, 30
+                
+                if now.hour > target_hour or (now.hour == target_hour and now.minute >= target_minute):
+                    # Already past target time today, schedule for tomorrow
+                    target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0) + timedelta(days=1)
+                else:
+                    target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+                
+                wait_seconds = (target - now).total_seconds()
+                print(f"[QuoteAudit] Next cleanup scheduled in {wait_seconds/3600:.1f} hours")
+                await asyncio.sleep(wait_seconds)
+                
+                # Run cleanup
+                from nexus2.domain.audit.quote_audit_service import get_quote_audit_service
+                service = get_quote_audit_service()
+                deleted = service.cleanup_old_audits()
+                print(f"[QuoteAudit] Scheduled cleanup complete: deleted {deleted} records")
+                
+            except asyncio.CancelledError:
+                print("[QuoteAudit] Cleanup loop cancelled")
+                break
+            except Exception as e:
+                print(f"[QuoteAudit] Cleanup error: {e}")
+                # Wait an hour before retrying on error
+                await asyncio.sleep(3600)
+    
+    app.state.quote_audit_cleanup_task = asyncio.create_task(quote_audit_cleanup_loop())
+    print("[Startup] Quote audit cleanup scheduler initialized")
+    
     yield
     
     # Shutdown - cleanup
@@ -265,6 +304,26 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
         print("[Shutdown] Auto-start checker cancelled")
+    
+    # Cancel quote audit cleanup task
+    if hasattr(app.state, 'quote_audit_cleanup_task'):
+        cleanup_task = app.state.quote_audit_cleanup_task
+        if cleanup_task and not cleanup_task.done():
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
+            print("[Shutdown] Quote audit cleanup task cancelled")
+    
+    # Shutdown quote audit service (flush remaining records)
+    try:
+        from nexus2.domain.audit.quote_audit_service import get_quote_audit_service
+        service = get_quote_audit_service()
+        service.shutdown()
+        print("[Shutdown] Quote audit service shutdown complete")
+    except Exception as e:
+        print(f"[Shutdown] Quote audit shutdown error: {e}")
     
     print("[Shutdown] Cleanup complete")
 
@@ -313,6 +372,7 @@ def create_app() -> FastAPI:
     app.include_router(warrior_routes.router)
     app.include_router(trade_event_routes.router)
     app.include_router(lab_routes.router)
+    app.include_router(audit_routes.router, prefix="/audit", tags=["audit"])
     
     return app
 

@@ -60,6 +60,7 @@ class UnifiedMarketData:
         3. If Schwab not available, prefer Schwab > FMP > Alpaca based on availability
         
         This prevents acting on stale/corrupt data from any single source.
+        All quote checks are logged to the audit service for reliability tracking.
         """
         import logging
         from decimal import Decimal
@@ -71,6 +72,7 @@ class UnifiedMarketData:
         
         # Try Schwab (real-time pre-market bid/ask)
         schwab_price = None
+        schwab_unavailable = False
         try:
             from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
             schwab = get_schwab_adapter()
@@ -78,18 +80,42 @@ class UnifiedMarketData:
                 schwab_data = schwab.get_quote(symbol)
                 if schwab_data and schwab_data.get("price") and schwab_data["price"] > 0:
                     schwab_price = float(schwab_data["price"])
+            else:
+                schwab_unavailable = True
+                logger.debug(f"[Quote] {symbol}: Schwab unavailable (not authenticated)")
         except Exception as e:
+            schwab_unavailable = True
             logger.debug(f"[Quote] {symbol}: Schwab lookup failed: {e}")
         
         # Extract prices
         alpaca_price = float(alpaca_quote.price) if alpaca_quote and alpaca_quote.price > 0 else None
         fmp_price = float(fmp_quote.price) if fmp_quote and fmp_quote.price > 0 else None
         
-        # Build price list for comparison
+        # Build price dict for comparison and audit logging
         prices = {}
         if alpaca_price: prices["Alpaca"] = alpaca_price
         if fmp_price: prices["FMP"] = fmp_price
         if schwab_price: prices["Schwab"] = schwab_price
+        
+        # Helper to log audit and return result
+        def _log_and_return(result_quote: Optional[Quote], selected_source: str, divergence: float) -> Optional[Quote]:
+            try:
+                from nexus2.domain.audit.quote_audit_service import get_quote_audit_service, determine_time_window
+                audit = get_quote_audit_service()
+                audit.log_quote_check(
+                    symbol=symbol,
+                    sources_dict={
+                        "Alpaca": alpaca_price,
+                        "FMP": fmp_price,
+                        "Schwab": schwab_price,
+                    },
+                    selected_source=selected_source,
+                    divergence_pct=divergence,
+                    time_window=determine_time_window(),
+                )
+            except Exception as e:
+                logger.debug(f"[Quote] {symbol}: Audit logging failed: {e}")
+            return result_quote
         
         if not prices:
             logger.warning(f"[Quote] {symbol}: No valid quotes from any source!")
@@ -99,11 +125,13 @@ class UnifiedMarketData:
         if len(prices) == 1:
             source, price = list(prices.items())[0]
             logger.debug(f"[Quote] {symbol}: Only {source} available (${price:.2f})")
-            if source == "Alpaca": return alpaca_quote
-            if source == "FMP": return fmp_quote
+            if source == "Alpaca": 
+                return _log_and_return(alpaca_quote, "Alpaca", 0.0)
+            if source == "FMP": 
+                return _log_and_return(fmp_quote, "FMP", 0.0)
             # Schwab returns dict, not Quote - convert it
             if source == "Schwab":
-                return Quote(
+                schwab_quote = Quote(
                     symbol=symbol,
                     price=Decimal(str(schwab_price)),
                     change=Decimal("0"),
@@ -111,6 +139,7 @@ class UnifiedMarketData:
                     volume=0,
                     timestamp=None,
                 )
+                return _log_and_return(schwab_quote, "Schwab", 0.0)
         
         # Calculate max divergence between any two sources
         price_list = list(prices.values())
@@ -122,11 +151,12 @@ class UnifiedMarketData:
         if divergence_pct <= 20:
             if alpaca_price:
                 logger.debug(f"[Quote] {symbol}: Sources agree ({divergence_pct:.1f}% spread) - using Alpaca")
-                return alpaca_quote
+                return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
             elif schwab_price:
-                return Quote(symbol=symbol, price=Decimal(str(schwab_price)), change=Decimal("0"), change_percent=Decimal("0"), volume=0, timestamp=None)
+                schwab_quote = Quote(symbol=symbol, price=Decimal(str(schwab_price)), change=Decimal("0"), change_percent=Decimal("0"), volume=0, timestamp=None)
+                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
             else:
-                return fmp_quote
+                return _log_and_return(fmp_quote, "FMP", divergence_pct)
         
         # Major divergence - need to pick the best source
         logger.warning(
@@ -138,7 +168,7 @@ class UnifiedMarketData:
         # Priority: Schwab (real-time pre-market) > median > FMP > Alpaca
         if schwab_price:
             logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) as trusted source")
-            return Quote(
+            schwab_quote = Quote(
                 symbol=symbol,
                 price=Decimal(str(schwab_price)),
                 change=Decimal("0"),
@@ -146,6 +176,7 @@ class UnifiedMarketData:
                 volume=0,
                 timestamp=None,
             )
+            return _log_and_return(schwab_quote, "Schwab", divergence_pct)
         
         # No Schwab - use median of available prices
         if len(prices) >= 2:
@@ -155,13 +186,15 @@ class UnifiedMarketData:
             for source, price in prices.items():
                 if price == median_price:
                     logger.info(f"[Quote] {symbol}: Using {source} (${price:.2f}) as median")
-                    if source == "Alpaca": return alpaca_quote
-                    if source == "FMP": return fmp_quote
+                    if source == "Alpaca": 
+                        return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
+                    if source == "FMP": 
+                        return _log_and_return(fmp_quote, "FMP", divergence_pct)
         
         # Fallback to FMP (usually more reliable than corrupt Alpaca)
         if fmp_price:
-            return fmp_quote
-        return alpaca_quote
+            return _log_and_return(fmp_quote, "FMP", divergence_pct)
+        return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
         """Get quotes for multiple symbols via FMP."""

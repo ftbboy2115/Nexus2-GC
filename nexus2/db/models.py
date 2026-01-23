@@ -463,3 +463,49 @@ class TradeAnalysisModel(Base):
             "event_count": self.event_count,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class QuoteAuditModel(Base):
+    """
+    Quote fidelity audit log.
+    
+    Tracks divergence between quote providers (Alpaca, FMP, Schwab) across time windows.
+    Used to detect unreliable data sources and inform dynamic source priority.
+    """
+    __tablename__ = "quote_audits"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(10), nullable=False, index=True)
+    
+    # Time context (timezone-aware UTC)
+    timestamp = Column(DateTime, default=now_utc, nullable=False, index=True)
+    time_window = Column(String(20), nullable=False, index=True)  # premarket_early, premarket_late, regular_hours, postmarket_early, postmarket_late, closed
+    
+    # Source prices (nullable - source may be unavailable)
+    alpaca_price = Column(String(20), nullable=True)
+    fmp_price = Column(String(20), nullable=True)
+    schwab_price = Column(String(20), nullable=True)
+    
+    # Decision made
+    selected_source = Column(String(20), nullable=False)  # Alpaca, FMP, Schwab
+    selected_price = Column(String(20), nullable=False)
+    divergence_pct = Column(String(10), nullable=False)  # Max spread between sources
+    
+    # Flags
+    high_divergence = Column(Boolean, default=False, index=True)  # True if divergence >20%
+    
+    def to_dict(self):
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "symbol": self.symbol,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "time_window": self.time_window,
+            "alpaca_price": self.alpaca_price,
+            "fmp_price": self.fmp_price,
+            "schwab_price": self.schwab_price,
+            "selected_source": self.selected_source,
+            "selected_price": self.selected_price,
+            "divergence_pct": self.divergence_pct,
+            "high_divergence": self.high_divergence,
+        }
