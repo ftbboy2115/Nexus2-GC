@@ -140,4 +140,40 @@ class WatchedCandidate:
     recent_high: Optional[Decimal] = None  # Intraday high for pullback detection
     dip_from_high_pct: float = 0.0  # Current pullback depth %
     target_level: Optional[Decimal] = None  # Nearest psychological level
+    
+    # VWAP/EMA tracking for dynamic scoring (Ross: trend matters for TOP_PICK_ONLY)
+    current_vwap: Optional[Decimal] = None  # Current VWAP value
+    current_ema_9: Optional[Decimal] = None  # Current 9 EMA value
+    current_price: Optional[Decimal] = None  # Last known price
+    is_above_vwap: bool = False  # True if price > VWAP
+    is_above_ema_9: bool = False  # True if price > 9 EMA
+    trend_updated_at: Optional[datetime] = None  # When trend data was last updated
+    
+    @property
+    def dynamic_score(self) -> int:
+        """
+        Calculate dynamic score for TOP_PICK_ONLY ranking.
+        
+        Adds trend bonus to quality_score:
+        - +3 if above VWAP AND above 9 EMA (trending strongly)
+        - +1 if above VWAP only
+        - -2 if below VWAP (fading/weak)
+        
+        This ensures trending stocks like BNAI outrank fading stocks like RVYL
+        even if RVYL has higher static metrics (RVOL, price sweet spot).
+        """
+        base_score = getattr(self.candidate, 'quality_score', 0) or 0
+        
+        # Trend bonus (only if we have VWAP data)
+        if self.current_vwap is not None and self.current_price is not None:
+            if self.is_above_vwap:
+                if self.is_above_ema_9:
+                    base_score += 3  # Strong trend: above both VWAP and 9 EMA
+                else:
+                    base_score += 1  # Moderate: above VWAP but below 9 EMA
+            else:
+                base_score -= 2  # Weak/fading: below VWAP
+        
+        return max(base_score, 0)  # Don't go negative
+
 

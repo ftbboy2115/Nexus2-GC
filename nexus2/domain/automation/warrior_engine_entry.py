@@ -60,6 +60,33 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             if watched.recent_high is None or current_price > watched.recent_high:
                 watched.recent_high = current_price
             
+            # UPDATE VWAP/EMA TRACKING for dynamic_score (TOP_PICK_ONLY uses this)
+            # Calculate once per cycle, reuse for entry guard later
+            watched.current_price = current_price
+            if engine._get_intraday_bars:
+                try:
+                    candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+                    if candles and len(candles) >= 10:
+                        from nexus2.domain.indicators import get_technical_service
+                        from datetime import datetime, timezone
+                        tech = get_technical_service()
+                        candle_dicts = [
+                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                            for c in candles
+                        ]
+                        snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                        
+                        # Store trend data on watched candidate
+                        if snapshot.vwap:
+                            watched.current_vwap = Decimal(str(snapshot.vwap))
+                            watched.is_above_vwap = current_price > watched.current_vwap
+                        if snapshot.ema_9:
+                            watched.current_ema_9 = Decimal(str(snapshot.ema_9))
+                            watched.is_above_ema_9 = current_price > watched.current_ema_9
+                        watched.trend_updated_at = datetime.now(timezone.utc)
+                except Exception as e:
+                    logger.debug(f"[Warrior Entry] {symbol}: Trend update failed: {e}")
+            
             # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
             # This enables "curl back up" pattern detection for re-entries
             if current_price < watched.pmh:
@@ -366,19 +393,23 @@ async def enter_position(
     
     # TOP PICK ONLY - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
     # Only enter the highest-scoring candidate, skip the rest
+    # Uses dynamic_score which includes VWAP/EMA trend bonus (trending > fading)
     if engine.config.top_pick_only:
-        # Get all watched candidates sorted by score
+        # Get all watched candidates sorted by dynamic score (includes trend bonus)
         all_watched = list(engine._watchlist.values())
         if all_watched:
-            # Find the top scorer (by candidate quality score)
-            top_pick = max(all_watched, key=lambda w: getattr(w.candidate, 'quality_score', 0) or 0)
+            # Find the top scorer using dynamic_score (quality_score + trend bonus)
+            top_pick = max(all_watched, key=lambda w: w.dynamic_score)
             if watched.candidate.symbol != top_pick.candidate.symbol:
                 # Not the top pick - mark as triggered to prevent log spam
-                top_score = getattr(top_pick.candidate, 'quality_score', 0) or 0
-                our_score = getattr(watched.candidate, 'quality_score', 0) or 0
+                top_dynamic = top_pick.dynamic_score
+                our_dynamic = watched.dynamic_score
+                top_static = getattr(top_pick.candidate, 'quality_score', 0) or 0
+                our_static = getattr(watched.candidate, 'quality_score', 0) or 0
                 logger.info(
-                    f"[Warrior Entry] {symbol}: TOP_PICK_ONLY - blocked (score {our_score}) "
-                    f"top pick is {top_pick.candidate.symbol} (score {top_score})"
+                    f"[Warrior Entry] {symbol}: TOP_PICK_ONLY - blocked "
+                    f"(dynamic={our_dynamic}, static={our_static}) "
+                    f"top pick is {top_pick.candidate.symbol} (dynamic={top_dynamic}, static={top_static})"
                 )
                 watched.entry_triggered = True
                 return
