@@ -119,6 +119,7 @@ class WarriorEngine:
         self._get_intraday_bars: Optional[Callable] = None
         self._check_pending_fill: Optional[Callable] = None  # Check for pending buy orders
         self._create_pending_position: Optional[Callable] = None  # Create PENDING_FILL position
+        self._get_order_status: Optional[Callable] = None  # Poll order for actual fill price
     
     def set_callbacks(
         self,
@@ -129,6 +130,7 @@ class WarriorEngine:
         get_intraday_bars: Callable = None,
         check_pending_fill: Callable = None,
         create_pending_position: Callable = None,
+        get_order_status: Callable = None,  # For polling actual fill price
     ):
         """Set callbacks for order execution and data."""
         self._submit_order = submit_order
@@ -138,6 +140,7 @@ class WarriorEngine:
         self._get_intraday_bars = get_intraday_bars
         self._check_pending_fill = check_pending_fill
         self._create_pending_position = create_pending_position
+        self._get_order_status = get_order_status  # For fill price polling
         
         # Also wire up monitor callbacks
         self.monitor.set_callbacks(

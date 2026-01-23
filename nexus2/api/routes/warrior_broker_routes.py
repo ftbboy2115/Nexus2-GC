@@ -273,12 +273,21 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_quote_with_spread_fn=broker_get_quote_with_spread,
     )
     
+    async def broker_get_order_status(order_id: str):
+        """Get order status from Alpaca by broker_order_id."""
+        try:
+            return broker.get_order_status(order_id)
+        except Exception as e:
+            print(f"[Warrior] Error getting order status: {e}")
+            return None
+    
     # Wire engine callbacks
     engine.set_callbacks(
         submit_order=broker_submit_order,
         get_quote=broker_get_quote,
         get_positions=broker_get_positions,
         check_pending_fill=check_pending_fill,
+        get_order_status=broker_get_order_status,  # For polling actual fill price
     )
     
     # Wire scanner to broker for HTB/ETB lookups (Ross Cameron methodology)
@@ -297,14 +306,6 @@ async def wire_warrior_callbacks(broker) -> dict:
             ]
         except Exception as e:
             print(f"[Warrior] Error getting broker positions: {e}")
-            return None
-    
-    async def broker_get_order_status(order_id: str):
-        """Get order status from Alpaca by broker_order_id."""
-        try:
-            return broker.get_order_status(order_id)
-        except Exception as e:
-            print(f"[Warrior] Error getting order status: {e}")
             return None
     
     monitor.set_callbacks(

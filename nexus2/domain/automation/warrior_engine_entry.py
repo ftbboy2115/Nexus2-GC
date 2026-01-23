@@ -742,27 +742,60 @@ async def enter_position(
             
             # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
             # This prevents immediate stop-outs when market price differs from quote
+            # 
+            # ISSUE: Alpaca may return status="filled" but filled_avg_price=NULL
+            # in the immediate response. We must poll to get the actual fill price.
             actual_fill_price = entry_price  # Default to intended price
             slippage_cents = Decimal("0")  # Track slippage
             
+            # Try to get fill price from order result first
             if hasattr(order_result, 'filled_avg_price') and order_result.filled_avg_price:
                 actual_fill_price = Decimal(str(order_result.filled_avg_price))
-                slippage_cents = (actual_fill_price - entry_price) * 100  # In cents
-                if slippage_cents != 0:
-                    slippage_bps = (actual_fill_price / entry_price - 1) * 10000  # Basis points
-                    logger.info(
-                        f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
-                        f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
-                    )
             elif isinstance(order_result, dict) and order_result.get("filled_avg_price"):
                 actual_fill_price = Decimal(str(order_result["filled_avg_price"]))
-                slippage_cents = (actual_fill_price - entry_price) * 100
-                if slippage_cents != 0:
-                    slippage_bps = (actual_fill_price / entry_price - 1) * 10000
-                    logger.info(
-                        f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
-                        f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
-                    )
+            else:
+                # Fill price not in immediate response - poll for it
+                # This fixes the phantom quote entry price bug (e.g., DVLT $5.44 -> $0.96)
+                logger.info(f"[Warrior Entry] {symbol}: Fill price null in response, polling for actual fill...")
+                
+                broker_order_id = None
+                if hasattr(order_result, 'broker_order_id'):
+                    broker_order_id = order_result.broker_order_id
+                elif isinstance(order_result, dict):
+                    broker_order_id = order_result.get("id") or order_result.get("broker_order_id")
+                
+                if broker_order_id and engine._get_order_status:
+                    import asyncio
+                    for attempt in range(5):  # Max 5 attempts, 500ms each = 2.5s max
+                        await asyncio.sleep(0.5)  # Wait 500ms before polling
+                        try:
+                            order_detail = await engine._get_order_status(broker_order_id)
+                            if order_detail:
+                                fill_price = getattr(order_detail, 'avg_fill_price', None)
+                                if fill_price and fill_price > 0:
+                                    actual_fill_price = Decimal(str(fill_price))
+                                    filled_qty = getattr(order_detail, 'filled_quantity', filled_qty) or filled_qty
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: Got fill price on attempt {attempt+1}: "
+                                        f"${actual_fill_price:.4f}"
+                                    )
+                                    break
+                        except Exception as poll_err:
+                            logger.debug(f"[Warrior Entry] {symbol}: Poll attempt {attempt+1} failed: {poll_err}")
+                    else:
+                        logger.warning(
+                            f"[Warrior Entry] {symbol}: Could not get fill price after 5 attempts, "
+                            f"using quote price ${entry_price:.4f}"
+                        )
+            
+            # Calculate slippage
+            slippage_cents = (actual_fill_price - entry_price) * 100  # In cents
+            if abs(slippage_cents) > 0.01:  # Only log if there's meaningful slippage
+                slippage_bps = (actual_fill_price / entry_price - 1) * 10000  # Basis points
+                logger.info(
+                    f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
+                    f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
+                )
             
             # Recalculate stop based on actual fill price
             actual_stop = actual_fill_price - engine.monitor.settings.mental_stop_cents / 100
