@@ -75,6 +75,13 @@ class WarriorTradeModel(WarriorBase):
     # Intraday tracking (for restart recovery)
     high_since_entry = Column(String(20), default="0")  # Track highest price
     
+    # Quote vs Fill tracking (phantom quote detection)
+    quote_price = Column(String(20), nullable=True)  # Price from quote at decision time
+    limit_price = Column(String(20), nullable=True)  # Limit price sent to broker
+    fill_price = Column(String(20), nullable=True)   # Actual fill price from broker
+    slippage_cents = Column(String(20), nullable=True)  # fill - quote in cents
+    quote_source = Column(String(20), nullable=True)  # Alpaca, Schwab, FMP, etc.
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -101,6 +108,11 @@ class WarriorTradeModel(WarriorBase):
             "entry_order_id": self.entry_order_id,
             "exit_order_id": self.exit_order_id,
             "high_since_entry": self.high_since_entry,
+            "quote_price": self.quote_price,
+            "limit_price": self.limit_price,
+            "fill_price": self.fill_price,
+            "slippage_cents": self.slippage_cents,
+            "quote_source": self.quote_source,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -143,6 +155,13 @@ def init_warrior_db():
             conn.commit()
         except Exception:
             pass  # Column already exists
+        # Quote tracking columns (phantom quote detection)
+        for col in ["quote_price", "limit_price", "fill_price", "slippage_cents", "quote_source"]:
+            try:
+                conn.execute(text(f"ALTER TABLE warrior_trades ADD COLUMN {col} TEXT"))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -162,8 +181,12 @@ def log_warrior_entry(
     support_level: float = None,
     high_since_entry: float = None,
     stop_method: str = None,
+    # Quote tracking (phantom quote detection)
+    quote_price: float = None,
+    limit_price: float = None,
+    quote_source: str = None,
 ):
-    """Log a new Warrior trade entry."""
+    """Log a new Warrior trade entry with quote tracking."""
     # Default high_since_entry to entry_price if not provided
     high = high_since_entry if high_since_entry is not None else entry_price
     
@@ -182,6 +205,10 @@ def log_warrior_entry(
             support_level=str(support_level) if support_level else None,
             remaining_quantity=quantity,
             high_since_entry=str(high),
+            # Quote tracking
+            quote_price=str(quote_price) if quote_price else None,
+            limit_price=str(limit_price) if limit_price else None,
+            quote_source=quote_source,
         )
         db.add(trade)
         db.commit()
@@ -199,6 +226,7 @@ def update_warrior_fill(
     
     Called after order is filled to update intended price with actual fill.
     Does NOT overwrite trigger_type (that was set in the intent log).
+    Also calculates slippage if quote_price was recorded.
     
     Args:
         trade_id: The trade ID to update
@@ -221,12 +249,21 @@ def update_warrior_fill(
         trade.quantity = actual_quantity
         trade.remaining_quantity = actual_quantity
         trade.high_since_entry = str(actual_entry_price)  # Reset high to actual fill
+        trade.fill_price = str(actual_entry_price)  # Record actual fill
+        
+        # Calculate slippage if we have quote_price
+        if trade.quote_price:
+            quote = float(trade.quote_price)
+            slippage = (actual_entry_price - quote) * 100  # In cents
+            trade.slippage_cents = str(round(slippage, 2))
+        
         trade.updated_at = now_utc()
         db.commit()
         
+        slippage_str = f", slippage={trade.slippage_cents}¢" if trade.slippage_cents else ""
         print(
             f"[Warrior DB] Updated fill: {trade.symbol} "
-            f"${old_price} → ${actual_entry_price:.2f}"
+            f"${old_price} → ${actual_entry_price:.2f}{slippage_str}"
         )
         return True
 

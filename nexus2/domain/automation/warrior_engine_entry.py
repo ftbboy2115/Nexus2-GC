@@ -719,6 +719,10 @@ async def enter_position(
                     trigger_type=trigger_type.value,  # CRITICAL: Preserve the real trigger
                     support_level=float(support_level),
                     stop_method=stop_method,
+                    # Quote tracking for phantom quote detection
+                    quote_price=float(entry_price),  # Price from quote at decision time
+                    limit_price=float(limit_price),  # Limit sent to broker
+                    quote_source="unified",  # TODO: Pass actual source from quote
                 )
                 set_entry_order_id(order_id, order_id)
                 logger.info(
