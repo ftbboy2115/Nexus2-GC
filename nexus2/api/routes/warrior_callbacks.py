@@ -105,8 +105,8 @@ def create_get_quote():
     umd = UnifiedMarketData()
     
     async def get_quote(symbol: str):
-        """Get quote from real market data."""
-        quote = umd.get_quote(symbol)
+        """Get quote from real market data (thread pool to avoid blocking)."""
+        quote = await asyncio.to_thread(umd.get_quote, symbol)
         return float(quote.price) if quote else None
     
     return get_quote
@@ -118,13 +118,13 @@ def create_get_quotes_batch():
     umd = UnifiedMarketData()
     
     async def get_quotes_batch(symbols: list):
-        """Get quotes for multiple symbols with cross-validation."""
+        """Get quotes for multiple symbols with cross-validation (thread pool)."""
         try:
             # Use individual cross-validated quotes for each symbol
-            # This ensures each price is validated against FMP
+            # Run in thread pool to avoid blocking event loop
             prices = {}
             for symbol in symbols:
-                quote = umd.get_quote(symbol)
+                quote = await asyncio.to_thread(umd.get_quote, symbol)
                 if quote and quote.price > 0:
                     prices[symbol] = float(quote.price)
             return prices
