@@ -102,9 +102,36 @@ class AlpacaAdapter:
             return None
         
         q = data["quote"]
+        
+        # Parse timestamp and check for stale data
+        quote_timestamp = None
+        if q.get("t"):
+            try:
+                quote_timestamp = datetime.fromisoformat(q["t"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+        
+        # Reject stale quotes (older than 1 hour or from previous day)
+        if quote_timestamp:
+            now_utc = datetime.now(timezone.utc)
+            age_seconds = (now_utc - quote_timestamp).total_seconds()
+            quote_date = quote_timestamp.date()
+            today = now_utc.date()
+            
+            # If quote is from a previous day or >1 hour old, it's stale
+            if quote_date < today or age_seconds > 3600:
+                print(f"[Alpaca] {symbol}: Rejecting stale quote (age={age_seconds/3600:.1f}h, date={quote_date})")
+                return None
+        
         # Alpaca quote has bid/ask, use midpoint for price
         bid = Decimal(str(q.get("bp", 0)))
         ask = Decimal(str(q.get("ap", 0)))
+        
+        # Reject suspicious spreads (ask > 5x bid indicates phantom data)
+        if bid > 0 and ask > 0 and ask > bid * 5:
+            print(f"[Alpaca] {symbol}: Rejecting suspicious spread (bid=${bid}, ask=${ask})")
+            return None
+        
         price = (bid + ask) / 2 if bid and ask else bid or ask
         
         quote = Quote(
@@ -113,7 +140,7 @@ class AlpacaAdapter:
             change=Decimal("0"),  # Would need prev close to calculate
             change_percent=Decimal("0"),
             volume=0,  # Quote doesn't include volume
-            timestamp=datetime.fromisoformat(q.get("t", "").replace("Z", "+00:00")),
+            timestamp=quote_timestamp or datetime.now(timezone.utc),
         )
         
         # Cache the result
