@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-19
+Last updated: 2026-01-22
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -66,6 +66,19 @@ Last updated: 2026-01-19
   - Created `useWarriorData` and `useWarriorActions` hooks
   - Added `formatters.ts` and `types.ts` utilities
   - See [modular_dashboard_pattern.md](file:///C:/Users/ftbbo/.gemini/antigravity/knowledge/nexus2_core_systems/artifacts/implementation/modular_dashboard_pattern.md)
+- [ ] **Async FMP Adapter Refactor** — Convert sync FMP to native async (Jan 23)
+  - **Problem:** `time.sleep()` in `fmp_adapter.py:188` blocks entire async event loop
+  - **Impact:** Discord heartbeat failures, API timeouts, scanner hangs
+  - **Quick Fix (deployed Jan 23):** Thread pool wrapper via `asyncio.to_thread()`
+  - **Full Fix Required:**
+    1. Convert `httpx.Client` → `httpx.AsyncClient` in FMP adapter
+    2. Replace `time.sleep()` → `await asyncio.sleep()`
+    3. Replace `threading.Lock` → `asyncio.Lock` in rate limiter
+    4. Update all ~50 FMP call sites to use `await`
+    5. Cascade async through callers: scanner, unified, monitor, etc.
+    6. Update tests to use async fixtures
+  - **Estimated Effort:** 3-4 hours
+  - **Priority:** Medium (quick fix deployed, but proper async is cleaner)
 
 ---
 
@@ -104,11 +117,29 @@ Last updated: 2026-01-19
   - **Fix needed:** Prefer FMP when divergence >50% or add validation against prev close
     - See [order_id_linkage_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/order_id_linkage_plan.md)
   - Root cause: Multiple data sources (in-memory monitor vs warrior_db vs broker)
+- [ ] **Pre-Market Quote Discrepancy (CRITICAL)** — Affects trade decisions, not just UI (Jan 22)
+  - IBRX showed $16.25 (Nexus) vs actual $7.07 (TradingView) — 130% divergence
+  - **Root Cause:** Both UI (`warrior_positions.py`) and Warrior decision-making (`warrior_monitor_exit.py`) use Alpaca as primary quote source
+  - This means stale/incorrect Alpaca quotes affect: stop-loss checks, P&L tracking, exit decisions
+  - **Fix Options:**
+    1. Add divergence check: reject Alpaca quote if >50% off FMP/Schwab
+    2. Prefer FMP during pre-market when Alpaca diverges
+    3. Cross-validate against previous close for sanity check
+  - Related: Alpaca Stale Quote Bug (line 101-106)
+- [ ] **Quote Fidelity Audit Service** — Systematic quote quality monitoring across providers
+  - Track quote divergence patterns by time window (early pre-market, late pre-market, regular hours)
+  - Log discrepancies between Alpaca/FMP/Schwab over time for trend analysis
+  - Identify reliability patterns: which providers are stable when, and which are unreliable
+  - Enable data-driven quote source selection based on time-of-day and historical accuracy
+  - Discovered from IBRX investigation: Alpaca wildly wrong early ($16.33) but stabilized near open ($7.39)
 - [x] **Recovery Integrity Guards** — Ensure stop/target preserved through restarts (Jan 19)
   - DB-authoritative restoration of stop_price/target_price in `_sync_with_broker()`
   - Target sanity check prevents false partial-exit if price > target
   - Timezone-aware entry_time using `now_utc()`
   - 25 new unit tests covering recovery scenarios
+- [ ] **NAC State Drift Bug** — CMG quantity mismatch (Jan 23)
+  - Error: `BLOCKED: Attempted to sell 12 shares but only hold 6`
+  - Root cause TBD: partial fill not recorded, manual trade, or scaling DB update fail
 
 ---
 

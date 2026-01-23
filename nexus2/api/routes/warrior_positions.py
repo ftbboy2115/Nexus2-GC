@@ -4,6 +4,7 @@ Warrior Positions Routes
 Position management, watchlist, diagnostics, and manual exit endpoints.
 """
 
+import asyncio
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -119,8 +120,8 @@ async def get_positions_health():
     result = []
     for p in positions:
         try:
-            # Fetch 1-min candles (enough for MACD calculation: 26 bars minimum)
-            candles_1min = fmp.get_intraday_bars(p.symbol, timeframe="1min")
+            # Fetch 1-min candles (run in thread pool to avoid blocking event loop)
+            candles_1min = await asyncio.to_thread(fmp.get_intraday_bars, p.symbol, "1min")
             
             if not candles_1min or len(candles_1min) < 30:
                 # Not enough intraday data - use fallback price sources
@@ -130,7 +131,7 @@ async def get_positions_health():
                 if current_price <= 0:
                     # Try to get a quote from FMP
                     try:
-                        quote = fmp.get_quote(p.symbol)
+                        quote = await asyncio.to_thread(fmp.get_quote, p.symbol)
                         if quote and quote.get("price"):
                             current_price = float(quote["price"])
                     except Exception:

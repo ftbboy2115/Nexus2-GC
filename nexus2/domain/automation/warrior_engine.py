@@ -377,7 +377,7 @@ class WarriorEngine:
         
         logger.info("[Warrior Scan] Running scan...")
         
-        result = self.scanner.scan(verbose=self.config.debug_catalyst)
+        result = await asyncio.to_thread(self.scanner.scan, self.config.debug_catalyst)
         
         # Count only NEW candidates (not seen before this session)
         for candidate in result.candidates:

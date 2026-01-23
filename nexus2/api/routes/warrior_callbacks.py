@@ -9,6 +9,7 @@ import asyncio
 from decimal import Decimal
 from uuid import uuid4
 from typing import Optional, Callable, Any
+from functools import partial
 
 
 # =============================================================================
@@ -239,11 +240,11 @@ def create_get_intraday_bars():
                         volume=int(b.volume)
                     ) for b in bars]
             
-            # Fallback: FMP
+            # Fallback: FMP (run in thread pool to avoid blocking event loop)
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
             if fmp:
-                fmp_bars = fmp.get_intraday_bars(symbol, timeframe="5min")
+                fmp_bars = await asyncio.to_thread(fmp.get_intraday_bars, symbol, "5min")
                 if fmp_bars and len(fmp_bars) >= 5:
                     bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
                     return [Bar(
