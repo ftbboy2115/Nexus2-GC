@@ -144,21 +144,23 @@ class AlphaVantageAdapter(MarketDataProvider):
             volume = int(quote_data.get("06. volume", "0"))
             day_high = Decimal(quote_data.get("03. high", "0"))
             day_low = Decimal(quote_data.get("04. low", "0"))
-            open_price = Decimal(quote_data.get("02. open", "0"))
+            
+            # Calculate change_percent
+            change_percent = Decimal("0")
+            if prev_close and prev_close > 0:
+                change_percent = (change / prev_close * 100)
             
             return Quote(
                 symbol=symbol,
                 price=price,
-                bid=None,  # Alpha Vantage GLOBAL_QUOTE doesn't include bid/ask
-                ask=None,
+                change=change,
+                change_percent=change_percent,
                 volume=volume,
                 timestamp=datetime.now(timezone.utc),
                 day_high=day_high,
                 day_low=day_low,
-                open=open_price,
-                prev_close=prev_close,
-                change=change,
-                change_percent=float(change / prev_close * 100) if prev_close else 0.0,
+                bid=None,  # Alpha Vantage GLOBAL_QUOTE doesn't include bid/ask
+                ask=None,
             )
         except Exception as e:
             print(f"[Alpha Vantage] Parse error for {symbol}: {e}")

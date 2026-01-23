@@ -61,7 +61,7 @@ DISCORD_BOT_TOKEN = get_env("DISCORD_BOT_TOKEN")
 DISCORD_CHANNEL_ID = get_env("DISCORD_CHANNEL_ID")
 
 # Alpha Vantage (4th quote source - optional)
-ALPHA_VANTAGE_API_KEY = get_env("ALPHA_VANTAGE_API_KEY")
+ALPHA_VANTAGE_API_KEY = get_env("ALPHA_VANTAGE_API_KEY") or get_env("ALPHAVANTAGE_API_KEY")
 
 # Validate on import
 if not FMP_API_KEY:
