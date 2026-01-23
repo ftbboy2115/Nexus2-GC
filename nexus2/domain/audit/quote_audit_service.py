@@ -192,8 +192,9 @@ class QuoteAuditService:
         message = f"⚠️ **Quote Divergence Alert**\n{symbol} ({time_window}): {divergence_pct:.1f}% spread\n{prices}"
         
         try:
-            from nexus2.adapters.notifications.discord_adapter import send_discord_message
-            send_discord_message(message)
+            from nexus2.adapters.notifications.discord import DiscordNotifier
+            notifier = DiscordNotifier()
+            notifier.send_system_alert(message, level="warning")
             logger.info(f"[QuoteAudit] Alert sent for {symbol}: {divergence_pct:.1f}% divergence")
         except Exception as e:
             logger.error(f"[QuoteAudit] Failed to send alert: {e}")
