@@ -20,6 +20,7 @@ cryptography==46.0.3
 cycler==0.12.1
 cyclopts==4.4.3
 diskcache==5.6.3
+discord.py>=2.0
 distro==1.9.0
 dnspython==2.8.0
 docstring_parser==0.17.0

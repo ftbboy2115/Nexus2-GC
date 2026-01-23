@@ -66,6 +66,15 @@ class UnifiedMarketData:
         from decimal import Decimal
         logger = logging.getLogger(__name__)
         
+        # Check if symbol is blacklisted (due to prior divergence issue)
+        try:
+            from nexus2.domain.audit.symbol_blacklist import get_symbol_blacklist
+            if get_symbol_blacklist().is_blacklisted(symbol):
+                logger.info(f"[Quote] {symbol}: Skipped - on divergence blacklist")
+                return None
+        except Exception:
+            pass  # Blacklist not critical, continue if import fails
+        
         # Collect quotes from all available sources
         alpaca_quote = self.alpaca.get_quote(symbol)
         fmp_quote = self.fmp.get_quote(symbol)

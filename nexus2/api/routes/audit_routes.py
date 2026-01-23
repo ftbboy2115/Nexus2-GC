@@ -175,3 +175,112 @@ async def get_audit_status():
     """Get audit service status."""
     service = get_quote_audit_service()
     return service.get_status()
+
+
+# =========================================================================
+# Pending Approvals Endpoints
+# =========================================================================
+
+@router.get("/pending")
+async def get_pending_approvals():
+    """Get all pending quote divergence approvals."""
+    from nexus2.domain.audit.pending_approvals import get_pending_queue
+    
+    queue = get_pending_queue()
+    pending = queue.get_all_pending()
+    
+    return {
+        "pending": [
+            {
+                "symbol": a.symbol,
+                "time_window": a.time_window,
+                "alpaca_price": a.alpaca_price,
+                "fmp_price": a.fmp_price,
+                "divergence_pct": a.divergence_pct,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "expires_at": a.expires_at.isoformat() if a.expires_at else None,
+                "status": a.status.value,
+            }
+            for a in pending
+        ],
+        "count": len(pending),
+    }
+
+
+@router.post("/approve/{symbol}/fmp")
+async def approve_fmp(symbol: str):
+    """Approve FMP as source for symbol."""
+    from nexus2.domain.audit.pending_approvals import get_pending_queue, ApprovalStatus
+    
+    queue = get_pending_queue()
+    approval = queue.resolve(symbol, ApprovalStatus.APPROVED_FMP, selected_source="FMP")
+    
+    if approval:
+        return {"approved": True, "symbol": symbol, "source": "FMP"}
+    return {"approved": False, "error": "No pending approval for symbol"}
+
+
+@router.post("/approve/{symbol}/alpaca")
+async def approve_alpaca(symbol: str):
+    """Approve Alpaca as source for symbol."""
+    from nexus2.domain.audit.pending_approvals import get_pending_queue, ApprovalStatus
+    
+    queue = get_pending_queue()
+    approval = queue.resolve(symbol, ApprovalStatus.APPROVED_ALPACA, selected_source="Alpaca")
+    
+    if approval:
+        return {"approved": True, "symbol": symbol, "source": "Alpaca"}
+    return {"approved": False, "error": "No pending approval for symbol"}
+
+
+# =========================================================================
+# Blacklist Endpoints
+# =========================================================================
+
+@router.get("/blacklist")
+async def get_blacklist():
+    """Get current symbol blacklist."""
+    from nexus2.domain.audit.symbol_blacklist import get_symbol_blacklist
+    
+    blacklist = get_symbol_blacklist()
+    entries = blacklist.get_all()
+    
+    return {
+        "entries": [e.to_dict() for e in entries],
+        "count": len(entries),
+    }
+
+
+@router.post("/blacklist/{symbol}")
+async def add_to_blacklist(
+    symbol: str,
+    duration: str = Query("1hour", description="Duration: 10min, 30min, 1hour, 2hours, 3hours, 4hours, today"),
+    reason: str = Query("manual", description="Reason for blacklisting"),
+):
+    """Add symbol to blacklist."""
+    from nexus2.domain.audit.symbol_blacklist import get_symbol_blacklist, SKIP_DURATIONS
+    
+    if duration not in SKIP_DURATIONS:
+        return {"error": f"Invalid duration. Valid: {list(SKIP_DURATIONS.keys())}"}
+    
+    blacklist = get_symbol_blacklist()
+    entry = blacklist.add(symbol=symbol, duration_key=duration, reason=reason)
+    
+    return {
+        "added": True,
+        "symbol": symbol.upper(),
+        "duration": duration,
+        "expires_at": entry.expires_at.isoformat() if entry.expires_at else None,
+    }
+
+
+@router.delete("/blacklist/{symbol}")
+async def remove_from_blacklist(symbol: str):
+    """Remove symbol from blacklist."""
+    from nexus2.domain.audit.symbol_blacklist import get_symbol_blacklist
+    
+    blacklist = get_symbol_blacklist()
+    removed = blacklist.remove(symbol)
+    
+    return {"removed": removed, "symbol": symbol.upper()}
+

@@ -261,6 +261,17 @@ async def lifespan(app: FastAPI):
     app.state.quote_audit_cleanup_task = asyncio.create_task(quote_audit_cleanup_loop())
     print("[Startup] Quote audit cleanup scheduler initialized")
     
+    # Start Discord divergence approval bot (optional - requires DISCORD_BOT_TOKEN)
+    try:
+        from nexus2.adapters.notifications.discord_bot import start_divergence_bot
+        bot_started = await start_divergence_bot()
+        if bot_started:
+            print("[Startup] Discord divergence bot starting...")
+        else:
+            print("[Startup] Discord divergence bot disabled (missing credentials)")
+    except Exception as e:
+        print(f"[Startup] Discord bot startup failed: {e}")
+    
     yield
     
     # Shutdown - cleanup
@@ -324,6 +335,14 @@ async def lifespan(app: FastAPI):
         print("[Shutdown] Quote audit service shutdown complete")
     except Exception as e:
         print(f"[Shutdown] Quote audit shutdown error: {e}")
+    
+    # Stop Discord divergence bot
+    try:
+        from nexus2.adapters.notifications.discord_bot import stop_divergence_bot
+        await stop_divergence_bot()
+        print("[Shutdown] Discord divergence bot stopped")
+    except Exception as e:
+        print(f"[Shutdown] Discord bot shutdown error: {e}")
     
     print("[Shutdown] Cleanup complete")
 

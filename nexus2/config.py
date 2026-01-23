@@ -56,6 +56,10 @@ DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
 SCHWAB_CLIENT_ID = get_env("SCHWAB_CLIENT_ID")
 SCHWAB_CLIENT_SECRET = get_env("SCHWAB_CLIENT_SECRET")
 
+# Discord Bot (for divergence approval reactions)
+DISCORD_BOT_TOKEN = get_env("DISCORD_BOT_TOKEN")
+DISCORD_CHANNEL_ID = get_env("DISCORD_CHANNEL_ID")
+
 # Validate on import
 if not FMP_API_KEY:
     print("[Config] WARNING: FMP_API_KEY not set")
