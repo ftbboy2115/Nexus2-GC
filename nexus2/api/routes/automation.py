@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
+import asyncio
 
 from nexus2.domain.automation.engine import AutomationEngine, EngineConfig, EngineState
 from nexus2.domain.automation.scheduler import AutomationScheduler
@@ -319,8 +320,8 @@ async def scan_all(
     )
     scanner = UnifiedScannerService(settings=settings)
     
-    # Run unified scan
-    result = scanner.scan(verbose=False)
+    # Run unified scan in thread pool to avoid blocking event loop
+    result = await asyncio.to_thread(scanner.scan, False)
     
     # Update engine stats
     engine.stats.scans_run += 1
