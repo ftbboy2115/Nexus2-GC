@@ -558,3 +558,105 @@ async def get_trade_detail(trade_id: str):
         raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found")
     
     return {"trade": trade}
+
+
+@broker_router.get("/trades/discrepancies/report")
+async def get_discrepancies_report(min_percent: float = 5.0, days: int = 7):
+    """
+    Get trades with significant quote vs fill price discrepancies.
+    
+    Used to identify phantom quotes and data source reliability issues.
+    
+    Args:
+        min_percent: Minimum discrepancy % to include (default 5%)
+        days: Number of days to look back (default 7)
+    
+    Returns:
+        List of trades with discrepancies and summary statistics
+    """
+    from datetime import datetime, timedelta
+    from nexus2.db.warrior_db import get_warrior_session, WarriorTradeModel
+    
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    
+    discrepancies = []
+    stats = {
+        "total_with_tracking": 0,
+        "quote_errors": 0,      # >10%
+        "high_slippage": 0,     # 5-10%
+        "normal_slippage": 0,   # <5%
+        "avg_slippage_cents": 0.0,
+        "sources": {},
+    }
+    
+    with get_warrior_session() as db:
+        trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.entry_time >= cutoff,
+            WarriorTradeModel.slippage_cents != None,
+        ).all()
+        
+        total_slippage = 0.0
+        
+        for trade in trades:
+            stats["total_with_tracking"] += 1
+            
+            slippage_cents = float(trade.slippage_cents or 0)
+            quote_price = float(trade.quote_price or 0)
+            fill_price = float(trade.fill_price or trade.entry_price or 0)
+            
+            # Calculate discrepancy percent
+            if quote_price > 0:
+                discrepancy_pct = abs((fill_price - quote_price) / quote_price * 100)
+            else:
+                discrepancy_pct = 0
+            
+            total_slippage += abs(slippage_cents)
+            
+            # Classify
+            if discrepancy_pct > 10:
+                stats["quote_errors"] += 1
+                verdict = "quote_error"
+            elif discrepancy_pct > 5:
+                stats["high_slippage"] += 1
+                verdict = "high_slippage"
+            else:
+                stats["normal_slippage"] += 1
+                verdict = "normal"
+            
+            # Track by source
+            source = trade.quote_source or "unknown"
+            if source not in stats["sources"]:
+                stats["sources"][source] = {"count": 0, "errors": 0}
+            stats["sources"][source]["count"] += 1
+            if discrepancy_pct > 10:
+                stats["sources"][source]["errors"] += 1
+            
+            # Include if above threshold
+            if discrepancy_pct >= min_percent:
+                discrepancies.append({
+                    "trade_id": trade.id,
+                    "symbol": trade.symbol,
+                    "date": trade.entry_time.strftime("%Y-%m-%d") if trade.entry_time else None,
+                    "trigger_type": trade.trigger_type,
+                    "quote_price": quote_price,
+                    "fill_price": fill_price,
+                    "slippage_cents": slippage_cents,
+                    "discrepancy_percent": round(discrepancy_pct, 2),
+                    "quote_source": source,
+                    "verdict": verdict,
+                })
+        
+        if stats["total_with_tracking"] > 0:
+            stats["avg_slippage_cents"] = round(total_slippage / stats["total_with_tracking"], 2)
+    
+    # Sort by discrepancy (worst first)
+    discrepancies.sort(key=lambda x: abs(x["discrepancy_percent"]), reverse=True)
+    
+    return {
+        "discrepancies": discrepancies,
+        "summary": stats,
+        "query": {
+            "min_percent": min_percent,
+            "days": days,
+        }
+    }
