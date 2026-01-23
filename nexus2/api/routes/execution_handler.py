@@ -303,10 +303,11 @@ def create_execute_callback(
                 client_order_id = uuid4()
                 
                 # KK methodology: stop = LOD (Low of Day so far)
-                # Get today's low from FMP quote
+                # Get today's low from FMP quote (in thread pool)
+                import asyncio
                 from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
                 fmp = get_fmp_adapter()
-                quote = fmp.get_quote(signal.symbol)
+                quote = await asyncio.to_thread(fmp.get_quote, signal.symbol)
                 
                 if quote and quote.day_low and quote.day_low > 0:
                     stop_price = quote.day_low

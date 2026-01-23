@@ -203,10 +203,11 @@ async def start_scheduler(
             except Exception as e:
                 logger.debug(f"[Monitor Price] {symbol}: Alpaca position error: {e}")
         
-        # 2. Get FMP price for cross-validation
+        # 2. Get FMP price for cross-validation (in thread pool)
         if market_data:
             try:
-                quote = market_data.fmp.get_quote(symbol)
+                import asyncio
+                quote = await asyncio.to_thread(market_data.fmp.get_quote, symbol)
                 if quote and quote.price:
                     fmp_price = float(quote.price)
             except Exception as e:

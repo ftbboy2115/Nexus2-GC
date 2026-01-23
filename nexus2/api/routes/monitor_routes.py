@@ -62,9 +62,10 @@ async def start_monitor(
     # Get price callback (uses FMP or returns mock for demo)
     async def get_price(symbol: str):
         try:
+            import asyncio
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
-            quote = fmp.get_quote(symbol)
+            quote = await asyncio.to_thread(fmp.get_quote, symbol)
             if quote:
                 return quote.price
         except Exception as e:
