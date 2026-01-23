@@ -172,7 +172,7 @@ class QuoteAuditService:
         divergence_pct: float,
         time_window: str,
     ):
-        """Send Discord alert if not in cooldown."""
+        """Send Discord alert via bot if not in cooldown."""
         key = (symbol, time_window)
         now = now_utc()
         
@@ -183,21 +183,32 @@ class QuoteAuditService:
             
             self._alert_cooldowns[key] = now
         
-        # Format prices
-        prices = ", ".join(
-            f"{source}=${price:.2f}" if price else f"{source}=N/A"
-            for source, price in sources.items()
-        )
-        
-        message = f"⚠️ **Quote Divergence Alert**\n{symbol} ({time_window}): {divergence_pct:.1f}% spread\n{prices}"
-        
+        # Try to send via bot (to auditor channel) - async operation
         try:
-            from nexus2.adapters.notifications.discord import DiscordNotifier
-            notifier = DiscordNotifier()
-            notifier.send_system_alert(message, level="warning")
-            logger.info(f"[QuoteAudit] Alert sent for {symbol}: {divergence_pct:.1f}% divergence")
+            import asyncio
+            from nexus2.domain.audit.pending_approvals import PendingApproval, get_pending_queue
+            from nexus2.adapters.notifications.discord_bot import get_divergence_bot, send_divergence_alert
+            
+            # Create pending approval entry
+            approval = PendingApproval(
+                symbol=symbol,
+                time_window=time_window,
+                alpaca_price=sources.get("Alpaca"),
+                fmp_price=sources.get("FMP"),
+                divergence_pct=divergence_pct,
+            )
+            get_pending_queue().add(approval)
+            
+            # Send alert via bot if available
+            bot = get_divergence_bot()
+            if bot and bot.is_ready():
+                # Schedule the async alert send
+                asyncio.create_task(send_divergence_alert(approval))
+                logger.info(f"[QuoteAudit] Bot alert queued for {symbol}: {divergence_pct:.1f}% divergence")
+            else:
+                logger.debug(f"[QuoteAudit] Bot not ready, skipping alert for {symbol}")
         except Exception as e:
-            logger.error(f"[QuoteAudit] Failed to send alert: {e}")
+            logger.error(f"[QuoteAudit] Failed to send bot alert: {e}")
     
     def get_recent_audits(self, symbol: Optional[str] = None, limit: int = 100) -> List[Dict]:
         """Get recent audit logs."""
