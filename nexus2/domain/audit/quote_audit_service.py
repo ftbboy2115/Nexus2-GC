@@ -44,6 +44,7 @@ class QuoteAuditEntry:
     selected_source: str
     selected_price: float
     divergence_pct: float
+    fmp_endpoint: Optional[str] = None  # "quote" or "aftermarket-quote"
 
 
 class QuoteAuditService:
@@ -124,6 +125,7 @@ class QuoteAuditService:
                         selected_source=entry.selected_source,
                         selected_price=str(entry.selected_price),
                         divergence_pct=f"{entry.divergence_pct:.2f}",
+                        fmp_endpoint=entry.fmp_endpoint,
                         high_divergence=entry.divergence_pct > HIGH_DIVERGENCE_THRESHOLD,
                     )
                     session.add(model)
@@ -139,6 +141,7 @@ class QuoteAuditService:
         selected_source: str,
         divergence_pct: float,
         time_window: str,
+        fmp_endpoint: Optional[str] = None,
     ):
         """
         Log a quote validation event.
@@ -154,6 +157,7 @@ class QuoteAuditService:
             selected_source=selected_source,
             selected_price=sources_dict.get(selected_source, 0) or 0,
             divergence_pct=divergence_pct,
+            fmp_endpoint=fmp_endpoint,
         )
         
         try:

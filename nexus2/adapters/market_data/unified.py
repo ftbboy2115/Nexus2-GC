@@ -110,7 +110,15 @@ class UnifiedMarketData:
         def _log_and_return(result_quote: Optional[Quote], selected_source: str, divergence: float) -> Optional[Quote]:
             try:
                 from nexus2.domain.audit.quote_audit_service import get_quote_audit_service, determine_time_window
+                from nexus2.utils.time_utils import is_market_hours
+                
                 audit = get_quote_audit_service()
+                time_window = determine_time_window()
+                
+                # Track which FMP endpoint was used based on market hours
+                # FMP uses aftermarket-quote during extended hours, regular quote during market hours
+                fmp_endpoint = "quote" if is_market_hours() else "aftermarket-quote"
+                
                 audit.log_quote_check(
                     symbol=symbol,
                     sources_dict={
@@ -120,7 +128,8 @@ class UnifiedMarketData:
                     },
                     selected_source=selected_source,
                     divergence_pct=divergence,
-                    time_window=determine_time_window(),
+                    time_window=time_window,
+                    fmp_endpoint=fmp_endpoint if fmp_price else None,
                 )
             except Exception as e:
                 logger.debug(f"[Quote] {symbol}: Audit logging failed: {e}")

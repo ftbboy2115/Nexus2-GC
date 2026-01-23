@@ -6,6 +6,7 @@ Ported from: core/scan_ep.py
 """
 
 import os
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -13,6 +14,8 @@ from typing import Dict, List, Optional
 
 import httpx
 import threading
+
+logger = logging.getLogger(__name__)
 
 from nexus2.adapters.market_data.protocol import (
     MarketDataProvider,
@@ -230,23 +233,52 @@ class FMPAdapter:
     def get_premarket_quote(self, symbol: str) -> Optional[Quote]:
         """Get pre-market/after-hours quote for a symbol.
         
-        Uses FMP's aftermarket quote endpoint which has actual extended hours prices.
-        Returns None if no pre-market data available.
+        Uses FMP's stable aftermarket-quote endpoint which has actual extended hours
+        bid/ask data. Returns midpoint of bid/ask as price.
+        
+        Returns None if no extended hours data available.
         """
-        data = self._get(f"pre-post-market-trade/{symbol}")
+        # Use stable API endpoint (different from v3 base_url)
+        # Format: https://financialmodelingprep.com/stable/aftermarket-quote?symbol=X&apikey=Y
+        try:
+            # Throttle if needed (reuse rate limiter logic)
+            with self.rate_limiter._lock:
+                if self.rate_limiter.remaining < 50 and not self._shutdown:
+                    return None  # Skip extended hours check if rate limited
+                self.rate_limiter.record_call()
+            
+            response = self._client.get(
+                f"https://financialmodelingprep.com/stable/aftermarket-quote",
+                params={"symbol": symbol, "apikey": self.config.api_key}
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.debug(f"[FMP] Aftermarket quote failed for {symbol}: {e}")
+            return None
+        
         if not data or len(data) == 0:
             return None
         
         q = data[0]
-        price = q.get("price", 0)
-        if not price or price == 0:
+        bid = q.get("bidPrice", 0)
+        ask = q.get("askPrice", 0)
+        
+        # Calculate midpoint for price (more accurate than using bid or ask alone)
+        if bid and ask and bid > 0 and ask > 0:
+            price = (bid + ask) / 2
+        elif bid and bid > 0:
+            price = bid
+        elif ask and ask > 0:
+            price = ask
+        else:
             return None
         
         return Quote(
             symbol=symbol,
-            price=Decimal(str(price)),
-            change=Decimal(str(q.get("change", 0))),
-            change_percent=Decimal(str(q.get("changesPercentage", 0))),
+            price=Decimal(str(round(price, 4))),
+            change=Decimal("0"),  # Not provided by aftermarket endpoint
+            change_percent=Decimal("0"),
             volume=int(q.get("volume", 0)),
             timestamp=datetime.now(timezone.utc),
         )

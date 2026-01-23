@@ -491,6 +491,9 @@ class QuoteAuditModel(Base):
     selected_price = Column(String(20), nullable=False)
     divergence_pct = Column(String(10), nullable=False)  # Max spread between sources
     
+    # Endpoint tracking (for source analysis)
+    fmp_endpoint = Column(String(30), nullable=True)  # "quote" or "aftermarket-quote"
+    
     # Flags
     high_divergence = Column(Boolean, default=False, index=True)  # True if divergence >20%
     
@@ -507,5 +510,6 @@ class QuoteAuditModel(Base):
             "selected_source": self.selected_source,
             "selected_price": self.selected_price,
             "divergence_pct": self.divergence_pct,
+            "fmp_endpoint": self.fmp_endpoint,
             "high_divergence": self.high_divergence,
         }
