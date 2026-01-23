@@ -80,12 +80,23 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         if snapshot.vwap:
                             watched.current_vwap = Decimal(str(snapshot.vwap))
                             watched.is_above_vwap = current_price > watched.current_vwap
+                            logger.debug(
+                                f"[Warrior Entry] {symbol}: VWAP=${snapshot.vwap:.2f}, "
+                                f"price=${current_price:.2f}, above={watched.is_above_vwap}"
+                            )
+                        else:
+                            logger.info(f"[Warrior Entry] {symbol}: No VWAP in snapshot (candles={len(candles)})")
                         if snapshot.ema_9:
                             watched.current_ema_9 = Decimal(str(snapshot.ema_9))
                             watched.is_above_ema_9 = current_price > watched.current_ema_9
                         watched.trend_updated_at = datetime.now(timezone.utc)
+                    else:
+                        candle_count = len(candles) if candles else 0
+                        logger.info(f"[Warrior Entry] {symbol}: Not enough candles for VWAP ({candle_count} < 10)")
                 except Exception as e:
-                    logger.debug(f"[Warrior Entry] {symbol}: Trend update failed: {e}")
+                    logger.warning(f"[Warrior Entry] {symbol}: Trend update failed: {e}")
+            else:
+                logger.info(f"[Warrior Entry] {symbol}: _get_intraday_bars not set")
             
             # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
             # This enables "curl back up" pattern detection for re-entries
