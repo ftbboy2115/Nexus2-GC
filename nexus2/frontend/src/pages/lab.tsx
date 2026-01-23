@@ -55,12 +55,27 @@ interface IterationResult {
 
 const API_BASE = ''
 
-async function fetchAPI(path: string, options?: RequestInit) {
-    const res = await fetch(`${API_BASE}${path}`, options)
-    if (!res.ok) {
-        throw new Error(`API error: ${res.status}`)
+async function fetchAPI(path: string, options?: RequestInit, timeoutMs: number = 30000) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        const res = await fetch(`${API_BASE}${path}`, {
+            ...options,
+            signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        if (!res.ok) {
+            throw new Error(`API error: ${res.status}`)
+        }
+        return res.json()
+    } catch (err) {
+        clearTimeout(timeoutId)
+        if (err instanceof Error && err.name === 'AbortError') {
+            throw new Error('Request timed out')
+        }
+        throw err
     }
-    return res.json()
 }
 
 // ============================================================================
@@ -131,7 +146,7 @@ export default function Lab() {
                     max_iterations: maxIterations,
                     promotion_threshold: 0.6,
                 }),
-            })
+            }, 300000)  // 5-minute timeout for long-running experiments
 
             setExperimentResult(data)
             addToLog(`✅ Experiment complete: ${data.final_recommendation}`)
