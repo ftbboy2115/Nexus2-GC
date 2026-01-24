@@ -13,7 +13,7 @@ from typing import Any, Optional
 from nexus2.db.database import get_session
 from nexus2.db.models import UserPreferencesModel
 
-router = APIRouter(prefix="/api", tags=["preferences"])
+router = APIRouter(tags=["preferences"])
 logger = logging.getLogger(__name__)
 
 
