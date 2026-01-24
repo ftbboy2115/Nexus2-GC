@@ -117,14 +117,18 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         if sim_broker is None:
             return None
         
+        # Don't create broker-level hard stops in sim mode
+        # Let the monitor handle all exits (mental stops, profit targets, etc.)
+        # This properly tests the monitor exit logic
         result = sim_broker.submit_bracket_order(
             client_order_id=uuid4(),
             symbol=symbol,
             quantity=shares,
-            stop_loss_price=stop_loss,
+            stop_loss_price=None,  # Monitor controls exits, not broker stops
             limit_price=Decimal(str(limit_price)) if limit_price else None,
         )
         return result
+
     
     async def sim_get_quote(symbol: str):
         sim_broker = get_warrior_sim_broker()
