@@ -575,9 +575,13 @@ async def load_historical_test_case(case_id: str):
     watched = WatchedCandidate(candidate=candidate, pmh=pmh)
     
     engine = get_engine()
-    engine._watchlist[symbol] = watched
-    
-    print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
+    added_to_watchlist = False
+    if engine:
+        engine._watchlist[symbol] = watched
+        added_to_watchlist = True
+        print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
+    else:
+        print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
     
     return {
         "status": "loaded",
@@ -587,7 +591,7 @@ async def load_historical_test_case(case_id: str):
         "bar_count": len(data.bars),
         "premarket": data.premarket,
         "clock": clock.to_dict(),
-        "added_to_watchlist": True,
+        "added_to_watchlist": added_to_watchlist,
     }
 
 
