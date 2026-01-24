@@ -67,6 +67,7 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
         timeframe=TimeFrame.Minute,
         start=start,
         end=end,
+        feed="sip",  # SIP feed includes extended hours data
     )
     
     bars_data = client.get_stock_bars(request)
@@ -121,8 +122,8 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
     """Create a test case JSON file."""
     data = fetch_bars(symbol, date_str)
     
-    # Combine premarket and market bars (use market bars only for replay)
-    all_bars = data["market_bars"]
+    # Combine premarket and market bars for full replay
+    all_bars = data["premarket_bars"] + data["market_bars"]
     
     test_case = {
         "symbol": symbol,
@@ -137,7 +138,7 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
         "bars": all_bars
     }
     
-    filename = f"ross_{date_str.replace('-', '')}_{symbol.lower()}.json"
+    filename = f"ross_{symbol.lower()}_{date_str.replace('-', '')}.json"
     output_path = output_dir / filename
     
     with open(output_path, "w") as f:
