@@ -633,11 +633,35 @@ async def load_historical_test_case(case_id: str):
                 print(f"[Historical Replay] EXIT: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
             return success
         
+        async def sim_update_stop(position_id: str, new_stop_price):
+            """Update stop in MockBroker for historical replay."""
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is None:
+                return False
+            
+            # Find symbol from position_id
+            symbol = None
+            for pos in engine.monitor.get_positions():
+                if pos.position_id == position_id:
+                    symbol = pos.symbol
+                    break
+            
+            if not symbol:
+                print(f"[Historical Replay] Could not find symbol for position {position_id[:8]}...")
+                return False
+            
+            success = sim_broker.update_stop(symbol, float(new_stop_price))
+            if success:
+                print(f"[Historical Replay] Updated stop: {symbol} -> ${new_stop_price:.2f}")
+            return success
+        
         engine.monitor.set_callbacks(
             get_price=sim_get_price,
             get_prices_batch=sim_get_prices_batch,
             execute_exit=sim_execute_exit,
+            update_stop=sim_update_stop,
         )
+
         # Disable live Alpaca order status polling during replay
         # MockBroker fills are instantaneous, no need to poll
         engine._get_order_status = None
