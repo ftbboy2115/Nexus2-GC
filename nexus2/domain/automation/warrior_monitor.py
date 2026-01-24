@@ -387,11 +387,13 @@ class WarriorMonitor:
         self.last_check = now_utc()
         self.checks_run += 1
         
-        # Periodic sync with broker (every N checks)
-        self._sync_counter += 1
-        if self._sync_counter >= self._sync_interval:
-            self._sync_counter = 0
-            await self._sync_with_broker()
+        # Periodic sync with broker (every N checks) - SKIP in sim_mode
+        # Sync checks live Alpaca broker which has 0 shares during replay
+        if not self.sim_mode:
+            self._sync_counter += 1
+            if self._sync_counter >= self._sync_interval:
+                self._sync_counter = 0
+                await self._sync_with_broker()
         
         if not self._positions:
             return
