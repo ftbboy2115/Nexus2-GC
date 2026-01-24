@@ -101,6 +101,24 @@ class WarriorMonitorSettings:
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
+    
+    # ==========================================================================
+    # EXIT MODE CONFIGURATION (Ross Cameron: Base Hit vs Home Run)
+    # ==========================================================================
+    # Session-level mode: "base_hit" or "home_run"
+    # Base hits = quick 10-20¢ profits (cold market / first trade of day)
+    # Home runs = hold for bigger moves, trail stops (hot market / high conviction)
+    session_exit_mode: str = "base_hit"  # Default to safer base hit mode
+    
+    # Base Hit Mode Settings
+    base_hit_profit_cents: Decimal = Decimal("18")  # Take profit at +18¢ (Ross's typical)
+    base_hit_stop_cents: Decimal = Decimal("15")  # Mental stop at -15¢
+    
+    # Home Run Mode Settings  
+    home_run_partial_at_r: float = 2.0  # Take 50% partial at 2:1 R
+    home_run_trail_after_r: float = 1.5  # Start trailing stop after 1.5R
+    home_run_trail_percent: float = 0.20  # Trail 20% below high_since_entry
+    home_run_move_to_be: bool = True  # Move stop to breakeven after partial
 
 
 @dataclass
@@ -138,3 +156,7 @@ class WarriorPosition:
     last_candle_low: Decimal = Decimal("0")
     last_candle_high: Decimal = Decimal("0")
     candles_since_entry: int = 0
+    
+    # Exit Mode Override (per-position, overrides session mode)
+    # None = inherit session_exit_mode, "base_hit" or "home_run" = override
+    exit_mode_override: Optional[str] = None

@@ -32,6 +32,29 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# EXIT MODE HELPERS
+# =============================================================================
+
+
+def get_effective_exit_mode(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+) -> str:
+    """
+    Get the effective exit mode for a position.
+    
+    Priority:
+    1. Position override (if set)
+    2. Session-level mode from settings
+    
+    Returns: "base_hit" or "home_run"
+    """
+    if position.exit_mode_override:
+        return position.exit_mode_override
+    return monitor.settings.session_exit_mode
+
+
+# =============================================================================
 # PRICE FALLBACK CHAIN
 # =============================================================================
 
@@ -544,6 +567,144 @@ async def _check_profit_target(
 
 
 # =============================================================================
+# MODE-SPECIFIC EXIT CHECKS
+# =============================================================================
+
+
+async def _check_base_hit_target(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+    r_multiple: float,
+) -> Optional[WarriorExitSignal]:
+    """
+    Base Hit Mode: Quick fixed-cents profit target.
+    
+    Ross Cameron in cold markets / first trade: Take 10-20¢ profit, full exit.
+    No partials, no trailing - just lock in the base hit and move on.
+    """
+    s = monitor.settings
+    profit_cents = s.base_hit_profit_cents
+    
+    target_price = position.entry_price + profit_cents / 100
+    
+    if current_price < target_price:
+        return None
+    
+    # FULL EXIT at fixed cents target
+    pnl = (current_price - position.entry_price) * position.shares
+    
+    logger.info(
+        f"[Warrior] {position.symbol}: BASE HIT target hit at ${current_price:.2f} "
+        f"(+{profit_cents}¢ target) -> Full exit"
+    )
+    
+    return WarriorExitSignal(
+        position_id=position.position_id,
+        symbol=position.symbol,
+        reason=WarriorExitReason.PROFIT_TARGET,
+        exit_price=current_price,
+        shares_to_exit=position.shares,  # Full exit
+        pnl_estimate=pnl,
+        r_multiple=r_multiple,
+        trigger_description=f"Base hit +{profit_cents}¢ target hit",
+    )
+
+
+async def _check_home_run_exit(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+    r_multiple: float,
+) -> Optional[WarriorExitSignal]:
+    """
+    Home Run Mode: Hold for bigger moves, trail stop, partial at target.
+    
+    Ross Cameron in hot markets:
+    1. After 1.5R, start trailing stop at 20% below high_since_entry
+    2. At 2R, take 50% partial and move stop to breakeven
+    3. Let remainder ride with trailing stop
+    """
+    from nexus2.domain.automation.trade_event_service import trade_event_service
+    
+    s = monitor.settings
+    
+    # 1. Check trailing stop (if above threshold)
+    if r_multiple >= s.home_run_trail_after_r:
+        trail_stop = position.high_since_entry * (1 - Decimal(str(s.home_run_trail_percent)))
+        
+        # Only trail UP, never down
+        if trail_stop > position.current_stop and trail_stop > position.entry_price:
+            old_stop = position.current_stop
+            position.current_stop = trail_stop
+            logger.info(
+                f"[Warrior] {position.symbol}: HOME RUN trailing stop updated "
+                f"${old_stop:.2f} -> ${trail_stop:.2f} "
+                f"(20% below high ${position.high_since_entry:.2f})"
+            )
+        
+        # Check if price hit trailing stop
+        if current_price <= position.current_stop:
+            pnl = (current_price - position.entry_price) * position.shares
+            logger.info(
+                f"[Warrior] {position.symbol}: HOME RUN trailing stop hit at ${current_price:.2f}"
+            )
+            return WarriorExitSignal(
+                position_id=position.position_id,
+                symbol=position.symbol,
+                reason=WarriorExitReason.PROFIT_TARGET,  # Profitable trailing exit
+                exit_price=current_price,
+                shares_to_exit=position.shares,
+                pnl_estimate=pnl,
+                r_multiple=r_multiple,
+                trigger_description=f"Trailing stop hit at ${position.current_stop:.2f}",
+            )
+    
+    # 2. Check partial at R target (if not already taken)
+    if not position.partial_taken and r_multiple >= s.home_run_partial_at_r:
+        shares_to_exit = int(position.shares * s.partial_exit_fraction)
+        if shares_to_exit < 1:
+            return None
+        
+        pnl = (current_price - position.entry_price) * shares_to_exit
+        
+        logger.info(
+            f"[Warrior] {position.symbol}: HOME RUN {s.home_run_partial_at_r}R target hit "
+            f"at {r_multiple:.1f}R -> Partial exit ({shares_to_exit} shares)"
+        )
+        
+        position.partial_taken = True
+        position.shares -= shares_to_exit
+        
+        # Move stop to breakeven
+        if s.home_run_move_to_be:
+            position.current_stop = position.entry_price
+            if monitor._update_stop:
+                await monitor._update_stop(position.position_id, position.entry_price)
+            trade_event_service.log_warrior_breakeven(
+                position_id=position.position_id,
+                symbol=position.symbol,
+                entry_price=position.entry_price,
+            )
+            logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven")
+        
+        monitor.partials_triggered += 1
+        
+        return WarriorExitSignal(
+            position_id=position.position_id,
+            symbol=position.symbol,
+            reason=WarriorExitReason.PARTIAL_EXIT,
+            exit_price=current_price,
+            shares_to_exit=shares_to_exit,
+            pnl_estimate=pnl,
+            r_multiple=r_multiple,
+            trigger_description=f"Home run {s.home_run_partial_at_r}:1 R target hit",
+        )
+    
+    return None
+
+
+# =============================================================================
 # MAIN EVALUATION FUNCTION
 # =============================================================================
 
@@ -616,10 +777,19 @@ async def evaluate_position(
     if signal:
         return signal
     
-    # CHECK 4: Profit Target
-    signal = await _check_profit_target(monitor, position, current_price, r_multiple)
-    if signal:
-        return signal
+    # CHECK 4: Mode-Aware Profit Target / Trailing Stop
+    exit_mode = get_effective_exit_mode(monitor, position)
+    
+    if exit_mode == "base_hit":
+        # BASE HIT MODE: Quick fixed-cents profit target, full exit
+        signal = await _check_base_hit_target(monitor, position, current_price, r_multiple)
+        if signal:
+            return signal
+    else:
+        # HOME RUN MODE: Trail stop after threshold, R-based partial at target
+        signal = await _check_home_run_exit(monitor, position, current_price, r_multiple)
+        if signal:
+            return signal
     
     return None
 
