@@ -501,7 +501,8 @@ async def enter_position(
     
     # Check re-entry cooldown: block entry if symbol was recently exited
     # This prevents immediately buying back after exit (e.g., after spread exit or stop)
-    if symbol in engine.monitor._recently_exited:
+    # SKIP in sim_mode: cooldown uses wall-clock time, not simulation time
+    if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
         exit_time = engine.monitor._recently_exited[symbol]
         seconds_ago = (now_utc() - exit_time).total_seconds()
         cooldown = engine.monitor._recovery_cooldown_seconds
