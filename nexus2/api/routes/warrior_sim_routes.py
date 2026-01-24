@@ -510,6 +510,8 @@ async def load_historical_test_case(case_id: str):
     from decimal import Decimal
     import pytz
     
+    from nexus2.domain.automation.warrior_engine import get_engine
+    
     loader = get_historical_bar_loader()
     data = loader.load_test_case(case_id)
     
