@@ -941,3 +941,91 @@
         flex-wrap: wrap;
     }
 }
+
+/* =================================================================
+   PLAYBACK CONTROLS - Historical Replay
+   ================================================================= */
+
+.playbackControls {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+}
+
+.clockDisplay {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.clockTime {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #6366f1;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.clockSpeed {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.playbackButtons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.btnPlayback {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: all 0.2s;
+}
+
+.btnPlayback:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.speedSelector {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btnSpeed {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #888;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btnSpeed:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.2);
+    color: #6366f1;
+}
+
+.btnSpeedActive {
+    background: rgba(99, 102, 241, 0.3);
+    color: #6366f1;
+    border-color: rgba(99, 102, 241, 0.4);
+}

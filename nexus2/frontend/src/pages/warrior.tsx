@@ -75,6 +75,7 @@ export default function Warrior() {
     const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
     const [selectedTestCase, setSelectedTestCase] = useState<string>('')
     const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
+    const [clockState, setClockState] = useState<{ time_string: string, is_market_hours: boolean, speed: number } | null>(null)
 
     // Sorting state for tables
     const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
@@ -326,6 +327,100 @@ export default function Warrior() {
         }
     }
 
+    // Historical Replay: Load with intraday bars
+    const loadHistoricalTestCase = async () => {
+        if (!selectedTestCase) return
+        setActionLoading('loadHistorical')
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/load_historical?case_id=${selectedTestCase}`, {
+                method: 'POST'
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setLoadedTestCase({
+                    symbol: data.symbol,
+                    price: data.premarket?.pmh || 0
+                })
+                setClockState(data.clock)
+                addToLog(`📊 Loaded historical replay: ${data.symbol} (${data.bar_count} bars)`)
+                await refetch()
+            }
+        } catch (err) {
+            addToLog('❌ Failed to load historical test case')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // Historical Replay: Step forward
+    const stepClock = async (minutes: number) => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/step?minutes=${minutes}`, { method: 'POST' })
+            if (res.ok) {
+                const data = await res.json()
+                setClockState(data.clock)
+                // Update price if available
+                const prices = data.prices || {}
+                const symbol = Object.keys(prices)[0]
+                if (symbol && prices[symbol]) {
+                    setLoadedTestCase(prev => prev ? { ...prev, price: prices[symbol] } : null)
+                }
+            }
+        } catch (err) {
+            console.error('Failed to step clock:', err)
+        }
+    }
+
+    // Historical Replay: Step backward
+    const stepClockBack = async (minutes: number) => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/step_back?minutes=${minutes}`, { method: 'POST' })
+            if (res.ok) {
+                const data = await res.json()
+                setClockState(data.clock)
+                const prices = data.prices || {}
+                const symbol = Object.keys(prices)[0]
+                if (symbol && prices[symbol]) {
+                    setLoadedTestCase(prev => prev ? { ...prev, price: prices[symbol] } : null)
+                }
+            }
+        } catch (err) {
+            console.error('Failed to step clock back:', err)
+        }
+    }
+
+    // Historical Replay: Reset to market open
+    const resetClock = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/reset_clock`, { method: 'POST' })
+            if (res.ok) {
+                const data = await res.json()
+                setClockState(data.clock)
+                const prices = data.prices || {}
+                const symbol = Object.keys(prices)[0]
+                if (symbol && prices[symbol]) {
+                    setLoadedTestCase(prev => prev ? { ...prev, price: prices[symbol] } : null)
+                }
+                addToLog('⏮️ Reset to 9:30 AM')
+            }
+        } catch (err) {
+            console.error('Failed to reset clock:', err)
+        }
+    }
+
+    // Historical Replay: Set playback speed
+    const setPlaybackSpeed = async (speed: number) => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/speed?speed=${speed}`, { method: 'POST' })
+            if (res.ok) {
+                const data = await res.json()
+                setClockState(data.clock)
+            }
+        } catch (err) {
+            console.error('Failed to set playback speed:', err)
+        }
+    }
+
     // ========================================================================
     // Render
     // ========================================================================
@@ -409,6 +504,12 @@ export default function Warrior() {
                                 loadTestCase={loadTestCase}
                                 setMockPrice={setMockPrice}
                                 actionLoading={actionLoading}
+                                clockState={clockState}
+                                onLoadHistorical={loadHistoricalTestCase}
+                                onStep={stepClock}
+                                onStepBack={stepClockBack}
+                                onResetClock={resetClock}
+                                onSetSpeed={setPlaybackSpeed}
                             />
 
                             {/* Exit Rules Card */}

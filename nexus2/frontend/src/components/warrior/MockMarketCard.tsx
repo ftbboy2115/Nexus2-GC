@@ -1,6 +1,9 @@
 /**
  * MockMarketCard - Test case selector and price simulation controls
+ * 
+ * Includes historical replay with time-based playback controls.
  */
+import { useState } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
 
@@ -8,6 +11,12 @@ interface TestCase {
     id: string
     symbol: string
     description: string
+}
+
+interface ClockState {
+    time_string: string
+    is_market_hours: boolean
+    speed: number
 }
 
 interface MockMarketCardProps {
@@ -18,7 +27,16 @@ interface MockMarketCardProps {
     loadTestCase: () => void
     setMockPrice: (symbol: string, price: number) => void
     actionLoading: string | null
+    // Historical replay props
+    clockState?: ClockState | null
+    onLoadHistorical?: () => void
+    onStep?: (minutes: number) => void
+    onStepBack?: (minutes: number) => void
+    onResetClock?: () => void
+    onSetSpeed?: (speed: number) => void
 }
+
+const SPEEDS = [1, 2, 5, 10]
 
 export function MockMarketCard({
     testCases,
@@ -28,7 +46,15 @@ export function MockMarketCard({
     loadTestCase,
     setMockPrice,
     actionLoading,
+    clockState,
+    onLoadHistorical,
+    onStep,
+    onStepBack,
+    onResetClock,
+    onSetSpeed,
 }: MockMarketCardProps) {
+    const [isHistoricalMode, setIsHistoricalMode] = useState(false)
+
     return (
         <CollapsibleCard
             id="mockmarket"
@@ -59,7 +85,88 @@ export function MockMarketCard({
                     >
                         {actionLoading === 'loadTest' ? '...' : '📦 Load'}
                     </button>
+                    {onLoadHistorical && (
+                        <button
+                            onClick={() => { onLoadHistorical(); setIsHistoricalMode(true) }}
+                            className={styles.btnSecondary}
+                            disabled={!selectedTestCase || actionLoading === 'loadHistorical'}
+                            style={{ flexShrink: 0 }}
+                            title="Load with historical bar data for time-based replay"
+                        >
+                            {actionLoading === 'loadHistorical' ? '...' : '📊 Replay'}
+                        </button>
+                    )}
                 </div>
+
+                {/* Playback Controls - Only show when historical bars loaded */}
+                {clockState && isHistoricalMode && (
+                    <div className={styles.playbackControls}>
+                        {/* Time Display */}
+                        <div className={styles.clockDisplay}>
+                            <span className={styles.clockTime}>{clockState.time_string}</span>
+                            <span className={styles.clockSpeed}>{clockState.speed}x</span>
+                        </div>
+
+                        {/* Playback Buttons */}
+                        <div className={styles.playbackButtons}>
+                            <button
+                                onClick={onResetClock}
+                                className={styles.btnPlayback}
+                                title="Reset to 9:30 AM"
+                            >
+                                ⏮️
+                            </button>
+                            <button
+                                onClick={() => onStepBack?.(5)}
+                                className={styles.btnPlayback}
+                                title="Step back 5 min"
+                            >
+                                ⏪
+                            </button>
+                            <button
+                                onClick={() => onStepBack?.(1)}
+                                className={styles.btnPlayback}
+                                title="Step back 1 min"
+                            >
+                                ◀️
+                            </button>
+                            <button
+                                onClick={() => onStep?.(1)}
+                                className={styles.btnPlayback}
+                                title="Step forward 1 min"
+                            >
+                                ▶️
+                            </button>
+                            <button
+                                onClick={() => onStep?.(5)}
+                                className={styles.btnPlayback}
+                                title="Step forward 5 min"
+                            >
+                                ⏩
+                            </button>
+                            <button
+                                onClick={() => onStep?.(30)}
+                                className={styles.btnPlayback}
+                                title="Jump 30 min"
+                            >
+                                ⏭️
+                            </button>
+                        </div>
+
+                        {/* Speed Selector */}
+                        <div className={styles.speedSelector}>
+                            {SPEEDS.map(speed => (
+                                <button
+                                    key={speed}
+                                    onClick={() => onSetSpeed?.(speed)}
+                                    className={`${styles.btnSpeed} ${clockState.speed === speed ? styles.btnSpeedActive : ''}`}
+                                >
+                                    {speed}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Price Controls */}
                 {loadedTestCase && loadedTestCase.price != null && (
@@ -87,3 +194,4 @@ export function MockMarketCard({
         </CollapsibleCard>
     )
 }
+
