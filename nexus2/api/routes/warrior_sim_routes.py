@@ -579,6 +579,14 @@ async def load_historical_test_case(case_id: str):
     engine = get_engine()
     added_to_watchlist = False
     if engine:
+        # Clear any existing pending entry for this symbol (allows fresh entry)
+        if symbol in engine._pending_entries:
+            del engine._pending_entries[symbol]
+            print(f"[Historical Replay] Cleared pending entry for {symbol}")
+        
+        # Reset the watched candidate (fresh state)
+        watched.entry_triggered = False
+        
         engine._watchlist[symbol] = watched
         added_to_watchlist = True
         print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
