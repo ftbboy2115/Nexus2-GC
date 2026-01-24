@@ -496,14 +496,18 @@ async def load_historical_test_case(case_id: str):
     """
     Load a historical test case with intraday bar data.
     
-    Sets the simulation clock to 9:30 AM and loads real intraday bars.
+    Sets the simulation clock to 9:30 AM, loads real intraday bars,
+    and adds the symbol to the watchlist so the engine can take trades.
     """
     from nexus2.adapters.simulation import (
         get_historical_bar_loader,
         get_simulation_clock,
         reset_simulation_clock
     )
+    from nexus2.domain.automation.warrior_engine import WatchedCandidate
+    from nexus2.domain.scanner.warrior_scanner_service import WarriorCandidate
     from datetime import datetime
+    from decimal import Decimal
     import pytz
     
     loader = get_historical_bar_loader()
@@ -519,15 +523,61 @@ async def load_historical_test_case(case_id: str):
     
     clock = reset_simulation_clock(start_time=market_open)
     
-    # Also set up MockMarketData with the historical bars
+    # Ensure sim broker exists
+    broker = get_warrior_sim_broker()
+    if broker is None:
+        from nexus2.adapters.simulation.mock_broker import MockBroker
+        broker = MockBroker(initial_cash=25000.0)
+        set_warrior_sim_broker(broker)
+    
+    # Set up MockMarketData with the clock
     from nexus2.adapters.simulation import get_mock_market_data
     mock_data = get_mock_market_data()
     mock_data.set_clock(clock)
     
     # Set initial price from first bar
-    broker = get_warrior_sim_broker()
-    if broker and data.bars:
-        broker.set_price(data.symbol, data.bars[0].open)
+    symbol = data.symbol
+    entry_price = data.bars[0].open if data.bars else 10.0
+    broker.set_price(symbol, entry_price)
+    
+    # Load synthetic historical data for VWAP/EMA calculation
+    mock_data.load_synthetic_data(
+        symbol=symbol,
+        start_price=entry_price * 0.9,
+        days=30,
+        volatility=0.03,
+        trend=0.005,
+    )
+    
+    # Extract premarket data
+    premarket = data.premarket
+    gap_pct = premarket.get("gap_percent", 25.0)
+    pmh = Decimal(str(premarket.get("pmh", entry_price)))
+    prev_close = premarket.get("previous_close", entry_price * 0.8)
+    
+    # Create a WatchedCandidate and add to watchlist
+    candidate = WarriorCandidate(
+        symbol=symbol,
+        name=symbol,
+        price=Decimal(str(entry_price)),
+        gap_percent=Decimal(str(gap_pct)),
+        relative_volume=Decimal("10.0"),
+        float_shares=premarket.get("float_shares"),
+        catalyst_type=premarket.get("catalyst", "news"),
+        catalyst_description=f"Historical replay: {case_id}",
+        is_ideal_float=True,
+        is_ideal_rvol=True,
+        is_ideal_gap=True,
+        session_high=pmh,
+        session_low=Decimal(str(prev_close)),
+    )
+    
+    watched = WatchedCandidate(candidate=candidate, pmh=pmh)
+    
+    engine = get_engine()
+    engine._watchlist[symbol] = watched
+    
+    print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
     
     return {
         "status": "loaded",
@@ -537,6 +587,7 @@ async def load_historical_test_case(case_id: str):
         "bar_count": len(data.bars),
         "premarket": data.premarket,
         "clock": clock.to_dict(),
+        "added_to_watchlist": True,
     }
 
 
@@ -545,12 +596,14 @@ async def step_clock(minutes: int = 1):
     """
     Step the simulation clock forward by specified minutes.
     
-    Also updates the mock price based on historical bar data.
+    Also updates the mock price based on historical bar data
+    and triggers entry checks if engine is running.
     """
     from nexus2.adapters.simulation import (
         get_simulation_clock,
         get_historical_bar_loader,
     )
+    from nexus2.domain.automation.warrior_engine_entry import check_entry_triggers
     
     clock = get_simulation_clock()
     loader = get_historical_bar_loader()
@@ -569,11 +622,31 @@ async def step_clock(minutes: int = 1):
             broker.set_price(symbol, price)
             prices[symbol] = price
     
+    # Trigger entry check if engine is running with sim mode
+    engine = get_engine()
+    entry_triggered = None
+    if engine and engine._state in ("running", "premarket"):
+        try:
+            await check_entry_triggers(engine)
+            # Check if any entry was triggered for the symbols
+            for symbol in loader.get_loaded_symbols():
+                if symbol in engine._watchlist:
+                    watched = engine._watchlist[symbol]
+                    if watched.entry_triggered:
+                        entry_triggered = {
+                            "symbol": symbol,
+                            "pmh": str(watched.pmh),
+                            "trigger_time": time_str,
+                        }
+        except Exception as e:
+            print(f"[Historical Replay] Entry check error: {e}")
+    
     return {
         "status": "stepped",
         "minutes": minutes,
         "clock": clock.to_dict(),
         "prices": prices,
+        "entry_triggered": entry_triggered,
     }
 
 
