@@ -18,7 +18,7 @@ from nexus2.utils.time_utils import now_utc, format_iso_utc
 # ROUTER
 # =============================================================================
 
-positions_router = APIRouter(tags=["warrior-positions"])
+positions_router = APIRouter()  # No separate tag - inherits from parent 'warrior' router
 
 
 # =============================================================================

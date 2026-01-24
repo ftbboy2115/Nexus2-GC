@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 # ROUTER
 # =============================================================================
 
-sim_router = APIRouter(tags=["warrior-sim"])
+sim_router = APIRouter()  # No separate tag - inherits from parent 'warrior' router
 
 
 # =============================================================================
@@ -648,12 +648,36 @@ async def step_clock(minutes: int = 1):
         except Exception as e:
             print(f"[Historical Replay] Entry check error: {e}")
     
+    # Get orders for GUI
+    orders = []
+    if broker:
+        orders = broker.get_orders()
+    
     return {
         "status": "stepped",
         "minutes": minutes,
         "clock": clock.to_dict(),
         "prices": prices,
         "entry_triggered": entry_triggered,
+        "orders": orders,
+    }
+
+
+@sim_router.get("/sim/orders")
+async def get_sim_orders():
+    """
+    Get all MockBroker orders for GUI visibility.
+    
+    Returns orders with their current status (PENDING, FILLED, CANCELLED).
+    """
+    broker = get_warrior_sim_broker()
+    if broker is None:
+        return {"orders": [], "error": "MockBroker not available"}
+    
+    return {
+        "orders": broker.get_orders(),
+        "positions": broker.get_positions(),
+        "account": broker.get_account(),
     }
 
 

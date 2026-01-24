@@ -9,7 +9,7 @@ This document describes the logging files used by the Nexus 2 platform.
 | `automation.log` | `nexus2/logs/` | NAC (KK-style) automation: scanner results, position sizing, trade execution | Daily, 7 days |
 | `warrior_scan.log` | Root + `data/` | Warrior Trading scanner: PASS/FAIL results with gap%, RVOL, score | None |
 | `startup.log` | Root | Server startup and initialization | Overwritten on restart |
-| `lab.log` | `nexus2/logs/` | R&D Lab: backtest runner, historical loader, orchestrator, agents | **(Planned)** |
+| `lab.log` | `nexus2/logs/` | R&D Lab: backtest runner, historical loader, orchestrator, agents | Daily, 14 days |
 
 ## Archived/Orphaned Logs
 

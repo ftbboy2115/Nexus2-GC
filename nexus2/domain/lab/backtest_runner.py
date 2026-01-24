@@ -22,6 +22,7 @@ from .backtest_models import (
 )
 from .strategy_schema import StrategySpec
 from .historical_loader import get_historical_loader
+from .lab_logger import log_backtest_start, log_backtest_complete, log_backtest_trade
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,15 @@ class BacktestRunner:
         
         logger.info(f"[Backtest] Starting {strategy.name} v{strategy.version} "
                    f"from {start_date} to {end_date}")
+        
+        # Log to dedicated lab.log
+        log_backtest_start(
+            strategy_name=strategy.name,
+            strategy_version=strategy.version,
+            start_date=str(start_date),
+            end_date=str(end_date),
+            initial_capital=float(initial_capital),
+        )
         
         # Initialize tracking
         equity = initial_capital
@@ -110,6 +120,16 @@ class BacktestRunner:
         duration = (completed_at - started_at).total_seconds()
         
         total_return = float((equity - initial_capital) / initial_capital * 100) if initial_capital > 0 else 0
+        
+        # Log completion to lab.log
+        log_backtest_complete(
+            strategy_name=strategy.name,
+            result_id=result_id,
+            total_trades=len(trades),
+            win_rate=metrics.win_rate,
+            total_pnl=float(metrics.total_pnl),
+            duration_seconds=duration,
+        )
         
         return BacktestResult(
             result_id=result_id,

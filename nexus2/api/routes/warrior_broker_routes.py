@@ -25,7 +25,7 @@ from .warrior_callbacks import (
 # ROUTER
 # =============================================================================
 
-broker_router = APIRouter(tags=["warrior-broker"])
+broker_router = APIRouter()  # No separate tag - inherits from parent 'warrior' router
 
 
 # =============================================================================

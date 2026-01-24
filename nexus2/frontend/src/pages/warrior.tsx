@@ -76,6 +76,7 @@ export default function Warrior() {
     const [selectedTestCase, setSelectedTestCase] = useState<string>('')
     const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
     const [clockState, setClockState] = useState<{ time_string: string, is_market_hours: boolean, speed: number } | null>(null)
+    const [simOrders, setSimOrders] = useState<any[]>([])
 
     // Sorting state for tables
     const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
@@ -365,6 +366,10 @@ export default function Warrior() {
                 if (symbol && prices[symbol]) {
                     setLoadedTestCase(prev => prev ? { ...prev, price: prices[symbol] } : null)
                 }
+                // Update orders for GUI
+                if (data.orders) {
+                    setSimOrders(data.orders)
+                }
             }
         } catch (err) {
             console.error('Failed to step clock:', err)
@@ -510,6 +515,7 @@ export default function Warrior() {
                                 onStepBack={stepClockBack}
                                 onResetClock={resetClock}
                                 onSetSpeed={setPlaybackSpeed}
+                                orders={simOrders}
                             />
 
                             {/* Exit Rules Card */}

@@ -19,6 +19,21 @@ interface ClockState {
     speed: number
 }
 
+interface MockOrder {
+    id: string
+    symbol: string
+    side: string
+    qty: number
+    order_type: string
+    status: string
+    limit_price: number | null
+    stop_price: number | null
+    avg_fill_price: number | null
+    filled_qty: number
+    created_at: string | null
+    filled_at: string | null
+}
+
 interface MockMarketCardProps {
     testCases: TestCase[]
     selectedTestCase: string
@@ -34,6 +49,8 @@ interface MockMarketCardProps {
     onStepBack?: (minutes: number) => void
     onResetClock?: () => void
     onSetSpeed?: (speed: number) => void
+    // Orders visibility
+    orders?: MockOrder[]
 }
 
 const SPEEDS = [1, 2, 5, 10]
@@ -52,9 +69,21 @@ export function MockMarketCard({
     onStepBack,
     onResetClock,
     onSetSpeed,
+    orders = [],
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
+
+    // Helper to get status indicator
+    const getStatusIcon = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'pending': return '🟡'
+            case 'filled': return '🟢'
+            case 'cancelled': return '🔴'
+            case 'rejected': return '⚠️'
+            default: return '⚪'
+        }
+    }
 
     // Auto-play effect - advances clock automatically when playing
     useEffect(() => {
@@ -185,6 +214,45 @@ export function MockMarketCard({
                                 >
                                     {speed}x
                                 </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Orders Panel - Show when in historical mode and orders exist */}
+                {isHistoricalMode && orders.length > 0 && (
+                    <div className={styles.ordersPanel}>
+                        <div className={styles.ordersPanelHeader}>📋 Orders</div>
+                        <div className={styles.ordersList}>
+                            {orders.map(order => (
+                                <div key={order.id} className={styles.orderRow}>
+                                    <span className={styles.orderStatus}>
+                                        {getStatusIcon(order.status)}
+                                    </span>
+                                    <span className={styles.orderSide}>
+                                        {order.side.toUpperCase()}
+                                    </span>
+                                    <span className={styles.orderQty}>
+                                        {order.qty}x
+                                    </span>
+                                    <span className={styles.orderSymbol}>
+                                        {order.symbol}
+                                    </span>
+                                    <span className={styles.orderPrice}>
+                                        @ ${order.order_type === 'limit'
+                                            ? order.limit_price?.toFixed(2)
+                                            : order.order_type === 'stop'
+                                                ? order.stop_price?.toFixed(2)
+                                                : order.avg_fill_price?.toFixed(2) || '???'
+                                        }
+                                    </span>
+                                    <span className={styles.orderType}>
+                                        {order.order_type}
+                                    </span>
+                                    <span className={`${styles.orderStatusBadge} ${styles['status' + order.status.charAt(0).toUpperCase() + order.status.slice(1)]}`}>
+                                        {order.status.toUpperCase()}
+                                    </span>
+                                </div>
                             ))}
                         </div>
                     </div>

@@ -119,6 +119,8 @@ class MockBroker:
         """
         Set current price for a symbol.
         
+        Also checks if any pending limit or stop orders should fill.
+        
         Args:
             symbol: Stock symbol
             price: Current price
@@ -129,7 +131,10 @@ class MockBroker:
         if symbol in self._positions:
             self._positions[symbol].current_price = price
         
-        # Check stop orders
+        # Check pending limit orders (for entry)
+        self._check_pending_limit_orders(symbol)
+        
+        # Check stop orders (for exit)
         self._check_stop_orders(symbol)
     
     def get_price(self, symbol: str) -> Optional[float]:
@@ -148,14 +153,15 @@ class MockBroker:
         """
         Submit bracket order (entry + stop + optional TP).
         
-        Interface matches AlpacaBroker for seamless swapping in sim_mode.
+        If limit_price is provided, creates a PENDING limit order that fills
+        when price crosses the limit. Otherwise fills immediately at market.
         
         Args:
             client_order_id: Unique client order ID (UUID)
             symbol: Stock symbol
             quantity: Number of shares
             stop_loss_price: Stop loss price
-            limit_price: Optional limit price (not used in sim)
+            limit_price: If provided, order stays PENDING until price <= limit
             take_profit_price: Take profit price (optional)
         
         Returns:
@@ -167,43 +173,113 @@ class MockBroker:
         current_price = self._current_prices.get(symbol)
         
         if current_price is None:
-            # Return rejected order
             return BrokerOrder(
                 client_order_id=client_order_id,
                 broker_order_id=str(uuid4()),
                 symbol=symbol,
                 side="buy",
                 quantity=quantity,
-                order_type="market",
+                order_type="limit" if limit_price else "market",
                 status=BrokerOrderStatus.REJECTED,
             )
         
+        # Handle None stop_loss_price with fallback (5% below entry)
+        stop_price = float(stop_loss_price) if stop_loss_price is not None else current_price * 0.95
+        entry_order_id = str(uuid4())
+        
+        # Determine if this is a limit order (PENDING) or market order (immediate fill)
+        if limit_price is not None:
+            limit_price_float = float(limit_price)
+            
+            # Check if we can fill immediately (price already at or below limit)
+            if current_price <= limit_price_float:
+                # Can fill immediately
+                return self._fill_entry_order(
+                    client_order_id, entry_order_id, symbol, quantity, 
+                    current_price, stop_price
+                )
+            else:
+                # Create PENDING limit order - will fill when price crosses
+                entry_order = MockOrder(
+                    id=entry_order_id,
+                    symbol=symbol,
+                    side="buy",
+                    qty=quantity,
+                    order_type="limit",
+                    status=MockOrderStatus.PENDING,
+                    limit_price=limit_price_float,
+                    stop_price=stop_price,  # Store for when it fills
+                )
+                self._orders[entry_order_id] = entry_order
+                
+                logger.info(
+                    f"[MockBroker] PENDING limit BUY {quantity}x {symbol} @ ${limit_price_float:.2f} "
+                    f"(current: ${current_price:.2f})"
+                )
+                
+                return BrokerOrder(
+                    client_order_id=client_order_id,
+                    broker_order_id=entry_order_id,
+                    symbol=symbol,
+                    side="buy",
+                    quantity=quantity,
+                    order_type="limit",
+                    limit_price=Decimal(str(limit_price_float)),
+                    status=BrokerOrderStatus.PENDING,
+                    submitted_at=now_utc(),
+                )
+        else:
+            # Market order - check buying power and fill immediately
+            order_value = current_price * quantity
+            if order_value > self._cash:
+                return BrokerOrder(
+                    client_order_id=client_order_id,
+                    broker_order_id=str(uuid4()),
+                    symbol=symbol,
+                    side="buy",
+                    quantity=quantity,
+                    order_type="market",
+                    status=BrokerOrderStatus.REJECTED,
+                )
+            
+            return self._fill_entry_order(
+                client_order_id, entry_order_id, symbol, quantity, 
+                current_price, stop_price
+            )
+    
+    def _fill_entry_order(
+        self, 
+        client_order_id, 
+        entry_order_id: str, 
+        symbol: str, 
+        quantity: int, 
+        fill_price: float, 
+        stop_price: float
+    ):
+        """Internal helper to fill an entry order and create position."""
+        from nexus2.adapters.broker.protocol import BrokerOrder, BrokerOrderStatus
+        from decimal import Decimal
+        
         # Check buying power
-        order_value = current_price * quantity
+        order_value = fill_price * quantity
         if order_value > self._cash:
             return BrokerOrder(
                 client_order_id=client_order_id,
-                broker_order_id=str(uuid4()),
+                broker_order_id=entry_order_id,
                 symbol=symbol,
                 side="buy",
                 quantity=quantity,
-                order_type="market",
+                order_type="limit",
                 status=BrokerOrderStatus.REJECTED,
             )
         
-        # Create and fill entry order immediately (sim behavior)
-        entry_order_id = str(uuid4())
-        fill_price = current_price
-        # Handle None stop_loss_price with fallback (5% below entry)
-        stop_price = float(stop_loss_price) if stop_loss_price is not None else fill_price * 0.95
-        
-        # Store internal mock order for tracking
+        # Create filled entry order
         entry_order = MockOrder(
             id=entry_order_id,
             symbol=symbol,
             side="buy",
             qty=quantity,
-            order_type="market",
+            order_type="limit",
             status=MockOrderStatus.FILLED,
             avg_fill_price=fill_price,
             filled_qty=quantity,
@@ -235,7 +311,6 @@ class MockBroker:
         # Create/update position
         if symbol in self._positions:
             pos = self._positions[symbol]
-            # Average up (simplified)
             total_qty = pos.qty + quantity
             total_cost = (pos.avg_entry_price * pos.qty) + (fill_price * quantity)
             pos.qty = total_qty
@@ -248,18 +323,18 @@ class MockBroker:
                 avg_entry_price=fill_price,
                 current_price=fill_price,
                 stop_price=stop_price,
+                opened_at=now_utc(),
             )
         
-        logger.info(f"[MockBroker] Filled BUY {quantity}x {symbol} @ ${fill_price:.2f}")
+        logger.info(f"[MockBroker] FILLED BUY {quantity}x {symbol} @ ${fill_price:.2f}")
         
-        # Return BrokerOrder (same type as AlpacaBroker)
         return BrokerOrder(
             client_order_id=client_order_id,
             broker_order_id=entry_order_id,
             symbol=symbol,
             side="buy",
             quantity=quantity,
-            order_type="market",
+            order_type="limit",
             status=BrokerOrderStatus.FILLED,
             filled_quantity=quantity,
             avg_fill_price=Decimal(str(fill_price)),
@@ -382,6 +457,89 @@ class MockBroker:
             "position_count": len(self._positions),
         }
     
+    def _check_pending_limit_orders(self, symbol: str):
+        """
+        Check and fill pending limit buy orders when price is favorable.
+        
+        Limit buy fills when current price <= limit price.
+        """
+        price = self._current_prices.get(symbol)
+        if price is None:
+            return
+        
+        for order in list(self._orders.values()):
+            if (order.symbol == symbol and 
+                order.order_type == "limit" and 
+                order.status == MockOrderStatus.PENDING and
+                order.limit_price is not None):
+                
+                # Limit BUY: fill when price <= limit
+                if order.side == "buy" and price <= order.limit_price:
+                    # Fill at the better price (current price, not limit)
+                    fill_price = price
+                    
+                    # Check buying power
+                    order_value = fill_price * order.qty
+                    if order_value > self._cash:
+                        order.status = MockOrderStatus.REJECTED
+                        logger.warning(f"[MockBroker] REJECTED {symbol}: Insufficient buying power")
+                        continue
+                    
+                    # Fill the order
+                    order.status = MockOrderStatus.FILLED
+                    order.avg_fill_price = fill_price
+                    order.filled_qty = order.qty
+                    order.filled_at = now_utc()
+                    
+                    # Update cash
+                    self._cash -= fill_price * order.qty
+                    
+                    # Create/update position
+                    stop_price = order.stop_price or (fill_price * 0.95)
+                    if symbol in self._positions:
+                        pos = self._positions[symbol]
+                        total_qty = pos.qty + order.qty
+                        total_cost = (pos.avg_entry_price * pos.qty) + (fill_price * order.qty)
+                        pos.qty = total_qty
+                        pos.avg_entry_price = total_cost / total_qty
+                    else:
+                        self._positions[symbol] = MockPosition(
+                            symbol=symbol,
+                            qty=order.qty,
+                            avg_entry_price=fill_price,
+                            current_price=fill_price,
+                            stop_price=stop_price,
+                            opened_at=now_utc(),
+                        )
+                    
+                    logger.info(
+                        f"[MockBroker] LIMIT FILL: BUY {order.qty}x {symbol} "
+                        f"@ ${fill_price:.2f} (limit was ${order.limit_price:.2f})"
+                    )
+                
+                # Limit SELL: fill when price >= limit (take profit)
+                elif order.side == "sell" and price >= order.limit_price:
+                    fill_price = price
+                    order.status = MockOrderStatus.FILLED
+                    order.avg_fill_price = fill_price
+                    order.filled_qty = order.qty
+                    order.filled_at = now_utc()
+                    
+                    # Close position
+                    if symbol in self._positions:
+                        pos = self._positions[symbol]
+                        pnl = (fill_price - pos.avg_entry_price) * order.qty
+                        self._realized_pnl += pnl
+                        self._cash += fill_price * order.qty
+                        pos.qty -= order.qty
+                        if pos.qty <= 0:
+                            del self._positions[symbol]
+                        
+                        logger.info(
+                            f"[MockBroker] LIMIT FILL: SELL {order.qty}x {symbol} "
+                            f"@ ${fill_price:.2f}, P&L: ${pnl:.2f}"
+                        )
+    
     def _check_stop_orders(self, symbol: str):
         """Check and trigger stop orders for symbol."""
         price = self._current_prices.get(symbol)
@@ -394,12 +552,11 @@ class MockBroker:
                 order.status == MockOrderStatus.PENDING and
                 order.stop_price is not None):
                 
-                # For short stops (shouldn't happen in long-only), check >= stop
                 # For long stops, trigger when price <= stop
                 if price <= order.stop_price:
                     # Trigger stop
                     order.status = MockOrderStatus.FILLED
-                    order.avg_fill_price = price  # Fill at current (could be slippage)
+                    order.avg_fill_price = price  # Fill at current (slippage)
                     order.filled_qty = order.qty
                     order.filled_at = now_utc()
                     
@@ -415,6 +572,26 @@ class MockBroker:
                             f"[MockBroker] STOP TRIGGERED: {symbol} @ ${price:.2f}, "
                             f"P&L: ${pnl:.2f}"
                         )
+    
+    def get_orders(self) -> List[Dict]:
+        """Get all orders for GUI visibility."""
+        return [
+            {
+                "id": order.id,
+                "symbol": order.symbol,
+                "side": order.side,
+                "qty": order.qty,
+                "order_type": order.order_type,
+                "status": order.status.value,
+                "limit_price": order.limit_price,
+                "stop_price": order.stop_price,
+                "avg_fill_price": order.avg_fill_price,
+                "filled_qty": order.filled_qty,
+                "created_at": order.created_at.isoformat() if order.created_at else None,
+                "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+            }
+            for order in self._orders.values()
+        ]
     
     def to_dict(self) -> Dict:
         """Convert broker state to dict for debugging."""

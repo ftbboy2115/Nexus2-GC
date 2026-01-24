@@ -1053,3 +1053,97 @@
         opacity: 0.5;
     }
 }
+
+/* Orders Panel */
+.ordersPanel {
+    background: rgba(30, 30, 40, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.ordersPanelHeader {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #999;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ordersList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.orderRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.orderStatus {
+    font-size: 0.9rem;
+}
+
+.orderSide {
+    font-weight: 600;
+    min-width: 2.5rem;
+}
+
+.orderQty {
+    color: #888;
+    min-width: 3rem;
+}
+
+.orderSymbol {
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.orderPrice {
+    color: #22c55e;
+    min-width: 4.5rem;
+}
+
+.orderType {
+    color: #666;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.orderStatusBadge {
+    margin-left: auto;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.statusPending {
+    background: rgba(234, 179, 8, 0.2);
+    color: #eab308;
+}
+
+.statusFilled {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.statusCancelled {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.statusRejected {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+}
