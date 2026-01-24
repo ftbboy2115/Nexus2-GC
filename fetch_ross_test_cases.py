@@ -152,7 +152,8 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
 
 
 if __name__ == "__main__":
-    output_dir = Path(__file__).parent.parent / "nexus2" / "tests" / "test_cases" / "intraday"
+    # Script is in Nexus root, output to nexus2/tests/test_cases/intraday/
+    output_dir = Path(__file__).parent / "nexus2" / "tests" / "test_cases" / "intraday"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Ross Cameron trades from transcripts
