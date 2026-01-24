@@ -734,7 +734,9 @@ async def enter_position(
             order_status = None
             filled_qty = 0
             if hasattr(order_result, 'status'):
-                order_status = str(order_result.status)
+                # Handle enum status (BrokerOrderStatus.FILLED -> "filled")
+                status_val = order_result.status
+                order_status = status_val.value if hasattr(status_val, 'value') else str(status_val)
                 filled_qty = getattr(order_result, 'filled_qty', 0) or 0
             elif isinstance(order_result, dict):
                 order_status = order_result.get("status")
