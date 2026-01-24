@@ -654,14 +654,14 @@ async def enter_position(
     shares = int(engine.config.risk_per_trade / risk_per_share)
     
     # Cap by max capital
-    max_shares = int(engine.config.max_capital / entry_price)
+    max_shares = int(engine.config.max_capital / entry_decimal)
     shares = min(shares, max_shares)
     
     # Apply testing limits
     if engine.config.max_shares_per_trade is not None:
         shares = min(shares, engine.config.max_shares_per_trade)
     if engine.config.max_value_per_trade is not None:
-        max_by_value = int(engine.config.max_value_per_trade / entry_price)
+        max_by_value = int(engine.config.max_value_per_trade / entry_decimal)
         shares = min(shares, max_by_value)
     
     # ICEBREAKER: 50% size for high-score Chinese stocks
@@ -692,8 +692,8 @@ async def enter_position(
         # Fallback: 1.5% above entry price (scales better for runners)
         # This handles pre-market when Alpaca doesn't provide bid/ask
         fallback_multiplier = Decimal("1.015")  # 1.5% above entry
-        limit_price = (entry_price * fallback_multiplier).quantize(Decimal("0.01"))
-        logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_price:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
+        limit_price = (entry_decimal * fallback_multiplier).quantize(Decimal("0.01"))
+        logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_decimal:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
     
     # Mark pending entry BEFORE submitting order (prevents duplicate entries on restart)
     engine._pending_entries[symbol] = now_utc()
