@@ -842,12 +842,14 @@ async def enter_position(
                 )
             
             # Recalculate stop based on actual fill price
-            actual_stop = actual_fill_price - engine.monitor.settings.mental_stop_cents / 100
+            # Ensure Decimal types for arithmetic (actual_fill_price may be float from MockBroker)
+            actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
+            actual_stop = actual_fill_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
             
             engine.monitor.add_position(
                 position_id=order_id,
                 symbol=symbol,
-                entry_price=actual_fill_price,  # Use ACTUAL fill price
+                entry_price=actual_fill_decimal,  # Use ACTUAL fill price (Decimal)
                 shares=int(filled_qty) if filled_qty else shares,  # Use actual filled qty
                 support_level=support_level,
                 trigger_type=trigger_type.value,  # PMH_BREAK, ORB
