@@ -590,6 +590,48 @@ async def load_historical_test_case(case_id: str):
         engine._watchlist[symbol] = watched
         added_to_watchlist = True
         print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
+        
+        # =========================================================================
+        # Re-wire monitor callbacks to use MockBroker for historical replay
+        # Without this, monitor evaluates positions against LIVE Alpaca prices
+        # =========================================================================
+        engine.monitor.sim_mode = True
+        
+        async def sim_get_price(symbol: str):
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker:
+                price = sim_broker.get_price(symbol)
+                if price is not None:
+                    return price
+            return None
+        
+        async def sim_get_prices_batch(symbols):
+            sim_broker = get_warrior_sim_broker()
+            result = {}
+            for s in symbols:
+                if sim_broker:
+                    price = sim_broker.get_price(s)
+                    if price:
+                        result[s] = price
+            return result
+        
+        async def sim_execute_exit(signal):
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is None:
+                print("[Historical Replay] No broker for exit execution")
+                return False
+            
+            success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
+            if success:
+                print(f"[Historical Replay] EXIT: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+            return success
+        
+        engine.monitor.set_callbacks(
+            get_price=sim_get_price,
+            get_prices_batch=sim_get_prices_batch,
+            execute_exit=sim_execute_exit,
+        )
+        print(f"[Historical Replay] Monitor callbacks re-wired to MockBroker")
     else:
         print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
     
