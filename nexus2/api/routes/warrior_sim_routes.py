@@ -631,6 +631,9 @@ async def load_historical_test_case(case_id: str):
             get_prices_batch=sim_get_prices_batch,
             execute_exit=sim_execute_exit,
         )
+        # Disable live Alpaca order status polling during replay
+        # MockBroker fills are instantaneous, no need to poll
+        engine._get_order_status = None
         print(f"[Historical Replay] Monitor callbacks re-wired to MockBroker")
     else:
         print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
