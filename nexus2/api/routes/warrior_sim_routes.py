@@ -629,16 +629,21 @@ async def step_clock(minutes: int = 1):
             broker.set_price(symbol, price)
             prices[symbol] = price
     
+    # DEBUG: Log step info
+    print(f"[Historical Replay] Step to {time_str}, prices: {prices}")
+    
     # Trigger entry check if engine is running with sim mode
     engine = get_engine()
     entry_triggered = None
     if engine and engine.state in ("running", "premarket"):
+        print(f"[Historical Replay] Engine state: {engine.state}, checking entry triggers...")
         try:
             await check_entry_triggers(engine)
             # Check if any entry was triggered for the symbols
             for symbol in loader.get_loaded_symbols():
                 if symbol in engine._watchlist:
                     watched = engine._watchlist[symbol]
+                    print(f"[Historical Replay] {symbol}: entry_triggered={watched.entry_triggered}, pmh={watched.pmh}")
                     if watched.entry_triggered:
                         entry_triggered = {
                             "symbol": symbol,
@@ -647,6 +652,8 @@ async def step_clock(minutes: int = 1):
                         }
         except Exception as e:
             print(f"[Historical Replay] Entry check error: {e}")
+    else:
+        print(f"[Historical Replay] Engine not ready: engine={engine}, state={engine.state if engine else 'N/A'}")
     
     # Get orders for GUI
     orders = []
