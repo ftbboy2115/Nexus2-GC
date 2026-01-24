@@ -148,6 +148,13 @@ Last updated: 2026-01-22
 - [x] **API Usage card sync** — Verified: shows real FMP rate limit stats
 - [x] **Total P&L % in Open Positions** — Already implemented (per-row + total)
 - [ ] **Simulation Control Page** — Mock market GUI with clock, scenarios, event log → [Plan](docs/simulation_plan.md)
+- [ ] **MockMarket Historical Replay** — TradingView-style time-based playback for Warrior testing
+  - Load real intraday data from JSON test case files
+  - Playback controls: step, play, pause, speed (1x/2x/5x/10x)
+  - Price updates tied to SimulationClock
+- [ ] **FMP Test Case Capture** — Fetch real intraday data to save as test cases
+  - `POST /warrior/sim/capture?symbol=X&date=YYYY-MM-DD` → saves JSON
+  - Turn real trading sessions into replayable test cases
 - [x] **Countdown Timer to Next Scan** — Shows time until next scan, smart weekend/holiday labels (Jan 10)
 - [x] **Score Breakdown Display** — Hover tooltip on quality score shows RS%, stop%, tier (Jan 10)
 - [ ] **Trade Details Deep Link** — Discord notifications link to `/trade/{id}` page with full trade history

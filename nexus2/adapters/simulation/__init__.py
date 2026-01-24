@@ -5,6 +5,7 @@ Provides mock trading environment for backtesting and simulation:
 - SimulationClock: Time control with acceleration
 - MockBroker: Simulated order execution
 - MockMarketData: Historical data replay
+- HistoricalBarLoader: Load intraday bars from JSON test cases
 """
 
 from nexus2.adapters.simulation.sim_clock import (
@@ -19,6 +20,13 @@ from nexus2.adapters.simulation.mock_market_data import (
     reset_mock_market_data,
     OHLCV
 )
+from nexus2.adapters.simulation.historical_bar_loader import (
+    HistoricalBarLoader,
+    IntradayBar,
+    IntradayData,
+    get_historical_bar_loader,
+    reset_historical_bar_loader,
+)
 
 __all__ = [
     "SimulationClock",
@@ -30,4 +38,10 @@ __all__ = [
     "get_mock_market_data",
     "reset_mock_market_data",
     "OHLCV",
+    "HistoricalBarLoader",
+    "IntradayBar",
+    "IntradayData",
+    "get_historical_bar_loader",
+    "reset_historical_bar_loader",
 ]
+

@@ -218,10 +218,75 @@ class SimulationClock:
         delta = (self._current_time.date() - dt.date()).days
         return max(0, delta)
     
+    def get_time_string(self) -> str:
+        """Get current time as HH:MM string."""
+        return self._current_time.strftime("%H:%M")
+    
+    def step_forward(self, minutes: int = 1) -> datetime:
+        """
+        Step forward by specified minutes.
+        
+        Used for manual stepping through historical replay.
+        
+        Args:
+            minutes: Number of minutes to step forward
+        
+        Returns:
+            New current time
+        """
+        return self.advance(minutes=minutes)
+    
+    def step_back(self, minutes: int = 1) -> datetime:
+        """
+        Step backward by specified minutes.
+        
+        Args:
+            minutes: Number of minutes to step backward
+        
+        Returns:
+            New current time
+        """
+        self._current_time -= timedelta(minutes=minutes)
+        return self._current_time
+    
+    def reset_to_market_open(self) -> datetime:
+        """
+        Reset time to market open (9:30 AM) on the current day.
+        
+        Returns:
+            New current time at market open
+        """
+        self._current_time = self._current_time.replace(
+            hour=self.MARKET_OPEN[0],
+            minute=self.MARKET_OPEN[1],
+            second=0,
+            microsecond=0
+        )
+        return self._current_time
+    
+    def set_playback_speed(self, speed: float) -> None:
+        """
+        Set playback speed multiplier.
+        
+        Args:
+            speed: Speed multiplier (1.0 = 1 minute per minute, 
+                   2.0 = 2 minutes per minute, etc.)
+        """
+        if speed <= 0:
+            raise ValueError("Speed must be positive")
+        if speed > 100:
+            raise ValueError("Speed cannot exceed 100x")
+        self._speed = speed
+    
+    def get_playback_speed(self) -> float:
+        """Get current playback speed."""
+        return self._speed
+    
     def to_dict(self) -> dict:
         """Convert to dictionary for API responses."""
         return {
             "current_time": self._current_time.isoformat(),
+            "time_string": self.get_time_string(),
             "speed": self._speed,
             "is_market_hours": self.is_market_hours(),
             "is_eod_window": self.is_eod_window(),

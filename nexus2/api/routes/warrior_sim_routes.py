@@ -485,3 +485,211 @@ async def load_warrior_test_case(case_id: str):
         "synthetic": case.get("synthetic", False),
         "added_to_watchlist": candidate is not None,
     }
+
+
+# =============================================================================
+# HISTORICAL REPLAY ENDPOINTS
+# =============================================================================
+
+@sim_router.post("/sim/load_historical")
+async def load_historical_test_case(case_id: str):
+    """
+    Load a historical test case with intraday bar data.
+    
+    Sets the simulation clock to 9:30 AM and loads real intraday bars.
+    """
+    from nexus2.adapters.simulation import (
+        get_historical_bar_loader,
+        get_simulation_clock,
+        reset_simulation_clock
+    )
+    from datetime import datetime
+    import pytz
+    
+    loader = get_historical_bar_loader()
+    data = loader.load_test_case(case_id)
+    
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Test case '{case_id}' not found")
+    
+    # Parse date and set clock to 9:30 AM on that date
+    ET = pytz.timezone("US/Eastern")
+    trade_date = datetime.strptime(data.date, "%Y-%m-%d")
+    market_open = ET.localize(trade_date.replace(hour=9, minute=30, second=0))
+    
+    clock = reset_simulation_clock(start_time=market_open)
+    
+    # Also set up MockMarketData with the historical bars
+    from nexus2.adapters.simulation import get_mock_market_data
+    mock_data = get_mock_market_data()
+    mock_data.set_clock(clock)
+    
+    # Set initial price from first bar
+    broker = get_warrior_sim_broker()
+    if broker and data.bars:
+        broker.set_price(data.symbol, data.bars[0].open)
+    
+    return {
+        "status": "loaded",
+        "case_id": case_id,
+        "symbol": data.symbol,
+        "date": data.date,
+        "bar_count": len(data.bars),
+        "premarket": data.premarket,
+        "clock": clock.to_dict(),
+    }
+
+
+@sim_router.post("/sim/step")
+async def step_clock(minutes: int = 1):
+    """
+    Step the simulation clock forward by specified minutes.
+    
+    Also updates the mock price based on historical bar data.
+    """
+    from nexus2.adapters.simulation import (
+        get_simulation_clock,
+        get_historical_bar_loader,
+    )
+    
+    clock = get_simulation_clock()
+    loader = get_historical_bar_loader()
+    
+    # Step forward
+    clock.step_forward(minutes)
+    time_str = clock.get_time_string()
+    
+    # Update prices for all loaded symbols
+    broker = get_warrior_sim_broker()
+    prices = {}
+    
+    for symbol in loader.get_loaded_symbols():
+        price = loader.get_price_at(symbol, time_str)
+        if price and broker:
+            broker.set_price(symbol, price)
+            prices[symbol] = price
+    
+    return {
+        "status": "stepped",
+        "minutes": minutes,
+        "clock": clock.to_dict(),
+        "prices": prices,
+    }
+
+
+@sim_router.post("/sim/step_back")
+async def step_clock_back(minutes: int = 1):
+    """Step the simulation clock backward by specified minutes."""
+    from nexus2.adapters.simulation import (
+        get_simulation_clock,
+        get_historical_bar_loader,
+    )
+    
+    clock = get_simulation_clock()
+    loader = get_historical_bar_loader()
+    
+    # Step backward
+    clock.step_back(minutes)
+    time_str = clock.get_time_string()
+    
+    # Update prices for all loaded symbols
+    broker = get_warrior_sim_broker()
+    prices = {}
+    
+    for symbol in loader.get_loaded_symbols():
+        price = loader.get_price_at(symbol, time_str)
+        if price and broker:
+            broker.set_price(symbol, price)
+            prices[symbol] = price
+    
+    return {
+        "status": "stepped_back",
+        "minutes": minutes,
+        "clock": clock.to_dict(),
+        "prices": prices,
+    }
+
+
+@sim_router.post("/sim/reset_clock")
+async def reset_clock_to_open():
+    """Reset the simulation clock to market open (9:30 AM)."""
+    from nexus2.adapters.simulation import (
+        get_simulation_clock,
+        get_historical_bar_loader,
+    )
+    
+    clock = get_simulation_clock()
+    loader = get_historical_bar_loader()
+    
+    # Reset to market open
+    clock.reset_to_market_open()
+    time_str = clock.get_time_string()
+    
+    # Update prices to opening prices
+    broker = get_warrior_sim_broker()
+    prices = {}
+    
+    for symbol in loader.get_loaded_symbols():
+        price = loader.get_price_at(symbol, time_str)
+        if price and broker:
+            broker.set_price(symbol, price)
+            prices[symbol] = price
+    
+    return {
+        "status": "reset",
+        "clock": clock.to_dict(),
+        "prices": prices,
+    }
+
+
+@sim_router.post("/sim/speed")
+async def set_playback_speed(speed: float = 1.0):
+    """
+    Set the playback speed for auto-advance.
+    
+    Args:
+        speed: Speed multiplier (1.0, 2.0, 5.0, 10.0)
+    """
+    from nexus2.adapters.simulation import get_simulation_clock
+    
+    if speed not in [1.0, 2.0, 5.0, 10.0]:
+        raise HTTPException(status_code=400, detail="Speed must be 1, 2, 5, or 10")
+    
+    clock = get_simulation_clock()
+    clock.set_playback_speed(speed)
+    
+    return {
+        "status": "speed_set",
+        "speed": speed,
+        "clock": clock.to_dict(),
+    }
+
+
+@sim_router.get("/sim/clock")
+async def get_clock_status():
+    """Get current simulation clock status."""
+    from nexus2.adapters.simulation import (
+        get_simulation_clock,
+        get_historical_bar_loader,
+    )
+    
+    clock = get_simulation_clock()
+    loader = get_historical_bar_loader()
+    
+    # Get current prices
+    broker = get_warrior_sim_broker()
+    time_str = clock.get_time_string()
+    
+    prices = {}
+    for symbol in loader.get_loaded_symbols():
+        price = loader.get_price_at(symbol, time_str)
+        if price:
+            prices[symbol] = price
+    
+    return {
+        "clock": clock.to_dict(),
+        "loader": loader.to_dict(),
+        "prices": prices,
+        "sim_enabled": broker is not None,
+    }
+
