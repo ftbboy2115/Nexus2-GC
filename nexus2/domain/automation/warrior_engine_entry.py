@@ -637,10 +637,15 @@ async def enter_position(
             logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
     
     if mental_stop is None:
-        mental_stop = entry_price - engine.monitor.settings.mental_stop_cents / 100
+        # Ensure Decimal arithmetic (entry_price may be float from MockBroker)
+        entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+        mental_stop = entry_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
         stop_method = "fallback_15c"
     
-    risk_per_share = entry_price - mental_stop
+    # Ensure Decimal arithmetic for risk calculation
+    entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+    mental_stop_decimal = Decimal(str(mental_stop)) if not isinstance(mental_stop, Decimal) else mental_stop
+    risk_per_share = entry_decimal - mental_stop_decimal
     
     if risk_per_share <= 0:
         logger.warning(f"[Warrior Entry] {symbol}: Invalid risk calculation")
