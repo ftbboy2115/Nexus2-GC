@@ -1029,3 +1029,27 @@
     color: #6366f1;
     border-color: rgba(99, 102, 241, 0.4);
 }
+
+.btnPlaybackActive {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.5);
+    animation: pulse 1s infinite;
+}
+
+.playingIndicator {
+    color: #22c55e;
+    animation: pulse 1s infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}

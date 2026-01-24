@@ -3,7 +3,7 @@
  * 
  * Includes historical replay with time-based playback controls.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
 
@@ -54,6 +54,26 @@ export function MockMarketCard({
     onSetSpeed,
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
+    const [isPlaying, setIsPlaying] = useState(false)
+
+    // Auto-play effect - advances clock automatically when playing
+    useEffect(() => {
+        if (!isPlaying || !onStep || !clockState) return
+
+        // Calculate interval based on speed: 1x=1000ms, 2x=500ms, 5x=200ms, 10x=100ms
+        const intervalMs = Math.round(1000 / clockState.speed)
+
+        const interval = setInterval(() => {
+            onStep(1)  // Step 1 minute
+        }, intervalMs)
+
+        return () => clearInterval(interval)
+    }, [isPlaying, clockState?.speed, onStep])
+
+    // Stop playing when clock state is lost
+    useEffect(() => {
+        if (!clockState) setIsPlaying(false)
+    }, [clockState])
 
     return (
         <CollapsibleCard
@@ -105,47 +125,49 @@ export function MockMarketCard({
                         <div className={styles.clockDisplay}>
                             <span className={styles.clockTime}>{clockState.time_string}</span>
                             <span className={styles.clockSpeed}>{clockState.speed}x</span>
+                            {isPlaying && <span className={styles.playingIndicator}>▶</span>}
                         </div>
 
                         {/* Playback Buttons */}
                         <div className={styles.playbackButtons}>
                             <button
-                                onClick={onResetClock}
+                                onClick={() => { onResetClock?.(); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
                                 title="Reset to 9:30 AM"
                             >
                                 ⏮️
                             </button>
                             <button
-                                onClick={() => onStepBack?.(5)}
+                                onClick={() => { onStepBack?.(5); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
                                 title="Step back 5 min"
                             >
                                 ⏪
                             </button>
                             <button
-                                onClick={() => onStepBack?.(1)}
+                                onClick={() => { onStepBack?.(1); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
                                 title="Step back 1 min"
                             >
                                 ◀️
                             </button>
+                            {/* Play/Pause Toggle */}
                             <button
-                                onClick={() => onStep?.(1)}
-                                className={styles.btnPlayback}
-                                title="Step forward 1 min"
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className={`${styles.btnPlayback} ${isPlaying ? styles.btnPlaybackActive : ''}`}
+                                title={isPlaying ? "Pause" : "Play (auto-advance)"}
                             >
-                                ▶️
+                                {isPlaying ? '⏸️' : '▶️'}
                             </button>
                             <button
-                                onClick={() => onStep?.(5)}
+                                onClick={() => { onStep?.(5); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
                                 title="Step forward 5 min"
                             >
                                 ⏩
                             </button>
                             <button
-                                onClick={() => onStep?.(30)}
+                                onClick={() => { onStep?.(30); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
                                 title="Jump 30 min"
                             >
