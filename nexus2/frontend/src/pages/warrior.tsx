@@ -354,7 +354,8 @@ export default function Warrior() {
     }
 
     // Historical Replay: Step forward
-    const stepClock = async (minutes: number) => {
+    // Wrapped in useCallback to prevent effect re-runs on every render
+    const stepClock = useCallback(async (minutes: number) => {
         try {
             const res = await fetch(`${API_BASE}/warrior/sim/step?minutes=${minutes}`, { method: 'POST' })
             if (res.ok) {
@@ -374,7 +375,7 @@ export default function Warrior() {
         } catch (err) {
             console.error('Failed to step clock:', err)
         }
-    }
+    }, [])  // Empty deps - function doesn't depend on any props/state
 
     // Historical Replay: Step backward
     const stepClockBack = async (minutes: number) => {
