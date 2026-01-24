@@ -86,17 +86,30 @@ export function MockMarketCard({
     }
 
     // Auto-play effect - advances clock automatically when playing
+    // Uses setTimeout chain instead of setInterval to prevent race conditions
+    // (waits for each API call to complete before scheduling the next)
     useEffect(() => {
         if (!isPlaying || !onStep || !clockState) return
 
-        // Calculate interval based on speed: 1x=1000ms, 2x=500ms, 5x=200ms, 10x=100ms
-        const intervalMs = Math.round(1000 / clockState.speed)
+        let cancelled = false
+        let timeoutId: NodeJS.Timeout
 
-        const interval = setInterval(() => {
-            onStep(1)  // Step 1 minute
-        }, intervalMs)
+        const step = async () => {
+            if (cancelled) return
+            await onStep(1)  // Wait for step to complete
+            if (!cancelled) {
+                const delayMs = Math.round(1000 / clockState.speed)
+                timeoutId = setTimeout(step, delayMs)
+            }
+        }
 
-        return () => clearInterval(interval)
+        // Start the chain
+        step()
+
+        return () => {
+            cancelled = true
+            if (timeoutId) clearTimeout(timeoutId)
+        }
     }, [isPlaying, clockState?.speed, onStep])
 
     // Stop playing when clock state is lost

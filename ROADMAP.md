@@ -47,8 +47,12 @@ Last updated: 2026-01-22
   - MarketAux: 5000+ sources, 100 req/day free tier, built-in sentiment
   - Fallback when FMP headline doesn't contain the actual catalyst
   - Add `MARKETAUX_API_KEY` to config
+- [ ] **Sort API Endpoints by Name** — Swagger docs currently show endpoints in random order
+  - Add `sorted_endpoints` parameter to FastAPI app or use tags ordering
+- [x] **MockMarket Playback Timing Bug** — Play button shows pulsing green but time doesn't advance at 1x
+  - **Root Cause:** `setInterval` fired before previous API call completed
+  - **Fix:** Replaced with async `setTimeout` chain that awaits `onStep()` completion
 
----
 
 ## 🛠 Technical Debt
 
