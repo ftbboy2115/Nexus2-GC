@@ -610,6 +610,7 @@ async def step_clock(minutes: int = 1):
         get_historical_bar_loader,
     )
     from nexus2.domain.automation.warrior_engine_entry import check_entry_triggers
+    from nexus2.api.routes.warrior_routes import get_engine
     
     clock = get_simulation_clock()
     loader = get_historical_bar_loader()
