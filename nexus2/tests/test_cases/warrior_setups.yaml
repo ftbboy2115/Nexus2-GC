@@ -356,6 +356,26 @@ test_cases:
       win_pct: 6.0
     notes: "Tests partial at 2R, stop to breakeven"
 
+  - id: test_pmh_breakout
+    symbol: TEST
+    setup_type: pmh
+    outcome: winner
+    synthetic: true
+    status: SYNTHETIC
+    description: "Historical replay test - PMH breakout with 16 1-min bars"
+    trade_date: "2026-01-23"
+    intraday_file: "intraday/test_pmh_breakout.json"
+    premarket_data:
+      gap_percent: 25.0
+      premarket_high: 10.50
+      previous_close: 8.40
+      float_shares: 5000000
+      catalyst: "earnings"
+    expected:
+      entry_near: 10.50
+      stop_near: 10.15
+    notes: "Sample test case for historical replay feature"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
