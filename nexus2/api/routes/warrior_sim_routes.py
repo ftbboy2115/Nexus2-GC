@@ -635,8 +635,10 @@ async def step_clock(minutes: int = 1):
     # Trigger entry check if engine is running with sim mode
     engine = get_engine()
     entry_triggered = None
-    if engine and engine.state in ("running", "premarket"):
-        print(f"[Historical Replay] Engine state: {engine.state}, checking entry triggers...")
+    # Check engine state - handle both enum and string values
+    engine_state_str = engine.state.value if hasattr(engine.state, 'value') else str(engine.state) if engine else None
+    if engine and engine_state_str in ("running", "premarket"):
+        print(f"[Historical Replay] Engine state: {engine_state_str}, checking entry triggers...")
         try:
             await check_entry_triggers(engine)
             # Check if any entry was triggered for the symbols
