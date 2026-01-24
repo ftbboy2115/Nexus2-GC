@@ -281,6 +281,7 @@ class MockBroker:
             qty=quantity,
             order_type="limit",
             status=MockOrderStatus.FILLED,
+            limit_price=fill_price,  # Store for GUI display
             avg_fill_price=fill_price,
             filled_qty=quantity,
             filled_at=now_utc(),
