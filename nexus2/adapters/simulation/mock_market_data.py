@@ -805,6 +805,118 @@ class MockMarketData:
             for b in reversed(bars)
         ]
     
+    def get_intraday_bars(
+        self, 
+        symbol: str, 
+        timeframe: str = "1min", 
+        limit: int = 50,
+        date: str = None
+    ) -> List[OHLCV]:
+        """
+        Get intraday bars for VWAP/EMA calculation.
+        
+        In simulation, generates synthetic intraday bars from the daily bar.
+        This allows VWAP/EMA technical indicators to work in mock mode.
+        
+        Args:
+            symbol: Stock symbol
+            timeframe: Bar timeframe (ignored, always returns 1-min style bars)
+            limit: Number of bars to return
+            date: Optional date (uses sim clock if not provided)
+        
+        Returns:
+            List of OHLCV bars (oldest first) suitable for VWAP calculation
+        """
+        if symbol not in self._data:
+            return []
+        
+        # Get the daily bar for the sim date
+        sim_date = date or (self._sim_clock.get_trading_day() if self._sim_clock else None)
+        today_bar = None
+        yesterday_bar = None
+        
+        for i, bar in enumerate(self._data[symbol]):
+            if sim_date and bar.date == sim_date:
+                today_bar = bar
+                if i > 0:
+                    yesterday_bar = self._data[symbol][i - 1]
+                break
+            elif not sim_date or bar.date <= sim_date:
+                yesterday_bar = today_bar
+                today_bar = bar
+        
+        if not today_bar:
+            return []
+        
+        # Generate synthetic intraday bars from the daily bar
+        # This creates a realistic price path from open to close
+        import random
+        
+        intraday_bars = []
+        num_bars = min(limit, 390)  # Max 390 minutes (full trading day)
+        
+        if num_bars <= 0:
+            return []
+        
+        # Calculate price progression
+        open_price = today_bar.open
+        close_price = today_bar.close
+        high_price = today_bar.high
+        low_price = today_bar.low
+        total_volume = today_bar.volume
+        
+        # Determine if trending up or down
+        is_uptrend = close_price > open_price
+        price_range = high_price - low_price
+        
+        current_price = open_price
+        cumulative_volume = 0
+        
+        for i in range(num_bars):
+            progress = (i + 1) / num_bars  # 0 to 1
+            
+            # Price moves toward close over time with some noise
+            target_price = open_price + (close_price - open_price) * progress
+            noise = (random.random() - 0.5) * price_range * 0.1  # 10% of range as noise
+            
+            bar_close = target_price + noise
+            
+            # Constrain within high/low
+            bar_close = max(low_price, min(high_price, bar_close))
+            
+            # Generate OHLC for this bar
+            bar_range = price_range * 0.02  # Each bar ~2% of daily range
+            bar_open = current_price
+            bar_high = max(bar_open, bar_close) + random.random() * bar_range * 0.5
+            bar_low = min(bar_open, bar_close) - random.random() * bar_range * 0.5
+            
+            # Constrain within daily range
+            bar_high = min(bar_high, high_price)
+            bar_low = max(bar_low, low_price)
+            
+            # Volume distribution (heavier at open and close)
+            if i < num_bars * 0.1 or i > num_bars * 0.9:
+                vol_factor = 2.0  # Higher volume first/last 10%
+            else:
+                vol_factor = 0.8  # Normal volume mid-day
+            
+            bar_volume = int((total_volume / num_bars) * vol_factor)
+            cumulative_volume += bar_volume
+            
+            intraday_bars.append(OHLCV(
+                date=sim_date or today_bar.date,
+                open=round(bar_open, 2),
+                high=round(bar_high, 2),
+                low=round(bar_low, 2),
+                close=round(bar_close, 2),
+                volume=bar_volume,
+            ))
+            
+            current_price = bar_close
+        
+        return intraday_bars
+
+    
     def get_company_name(self, symbol: str) -> Optional[str]:
         """
         Get company name for HTF scanner.
