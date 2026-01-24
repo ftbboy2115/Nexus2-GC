@@ -388,7 +388,7 @@ test_cases:
     status: REAL_TRADE
     description: "Ross Cameron +$43,950 - Reverse Split Short Squeeze"
     trade_date: "2026-01-21"
-    intraday_file: "intraday/ross_20260121_pavm.json"
+    intraday_file: "intraday/ross_pavm_20260121.json"
     premarket_data:
       gap_percent: 177.2
       premarket_high: 19.90
@@ -408,7 +408,7 @@ test_cases:
     status: REAL_TRADE
     description: "Ross Cameron +$10,000 - Headline at 8am"
     trade_date: "2026-01-16"
-    intraday_file: "intraday/ross_20260116_lcfy.json"
+    intraday_file: "intraday/ross_lcfy_20260116.json"
     premarket_data:
       gap_percent: 70.9
       premarket_high: 7.42
