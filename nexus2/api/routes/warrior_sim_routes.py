@@ -416,6 +416,18 @@ async def load_warrior_test_case(case_id: str):
     
     if entry_price:
         broker.set_price(symbol, entry_price)
+        
+        # Load synthetic data into MockMarketData for VWAP/EMA calculation
+        from nexus2.adapters.simulation import get_mock_market_data
+        mock_data = get_mock_market_data()
+        mock_data.load_synthetic_data(
+            symbol=symbol,
+            start_price=entry_price * 0.9,  # Start 10% lower
+            days=30,  # 30 days of history
+            volatility=0.03,  # 3% daily volatility
+            trend=0.005,  # Slight uptrend
+        )
+        print(f"[Mock Market] Loaded synthetic data for {symbol} (price=${entry_price:.2f})")
     
     scanner = get_warrior_scanner_service()
     gap_pct = premarket.get("gap_percent", 0)
