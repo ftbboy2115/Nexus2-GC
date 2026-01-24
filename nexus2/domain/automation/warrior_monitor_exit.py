@@ -153,8 +153,19 @@ async def _check_after_hours_exit(
     if not s.enable_after_hours_exit:
         return None
     
+    # Use simulation clock if available, otherwise real time
     from zoneinfo import ZoneInfo
-    et_now = datetime.now(ZoneInfo("America/New_York"))
+    ET = ZoneInfo("America/New_York")
+    try:
+        from nexus2.adapters.simulation import get_simulation_clock
+        sim_clock = get_simulation_clock()
+        if sim_clock.is_active():
+            et_now = sim_clock.now().astimezone(ET)
+        else:
+            et_now = datetime.now(ET)
+    except Exception:
+        et_now = datetime.now(ET)
+    
     current_time_str = et_now.strftime("%H:%M")
     
     # Force exit at 7:30 PM ET with ESCALATING offset
