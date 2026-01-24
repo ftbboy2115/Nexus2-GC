@@ -142,6 +142,15 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         sim_broker = get_warrior_sim_broker()
         return sim_broker.get_positions() if sim_broker else []
     
+    async def sim_get_intraday_bars(symbol: str, timeframe: str = "1min", limit: int = 50):
+        """Get intraday bars from MockMarketData for VWAP/EMA calculation."""
+        from nexus2.adapters.simulation import get_mock_market_data
+        mock_data = get_mock_market_data()
+        
+        # Get intraday bars from MockMarketData
+        bars = mock_data.get_intraday_bars(symbol, timeframe, limit)
+        return bars
+    
     async def sim_execute_exit(signal):
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
@@ -188,6 +197,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         submit_order=sim_submit_order,
         get_quote=sim_get_quote,
         get_positions=sim_get_positions,
+        get_intraday_bars=sim_get_intraday_bars,  # For VWAP/EMA dynamic scoring
     )
     
     from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
