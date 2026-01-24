@@ -632,7 +632,7 @@ async def step_clock(minutes: int = 1):
     # Trigger entry check if engine is running with sim mode
     engine = get_engine()
     entry_triggered = None
-    if engine and engine._state in ("running", "premarket"):
+    if engine and engine.state in ("running", "premarket"):
         try:
             await check_entry_triggers(engine)
             # Check if any entry was triggered for the symbols
