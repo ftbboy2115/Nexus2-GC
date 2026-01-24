@@ -153,17 +153,23 @@ async def _check_after_hours_exit(
     if not s.enable_after_hours_exit:
         return None
     
-    # Use simulation clock if available, otherwise real time
+    # Use simulation clock if historical replay is active, otherwise real time
     from zoneinfo import ZoneInfo
     ET = ZoneInfo("America/New_York")
     try:
         from nexus2.adapters.simulation import get_simulation_clock
         sim_clock = get_simulation_clock()
-        if sim_clock.is_active():
-            et_now = sim_clock.now().astimezone(ET)
+        # Check if clock is set to a simulated date (not today)
+        clock_time = sim_clock.current_time
+        real_now = datetime.now(ET)
+        # If simulated date differs from today, use simulated time
+        if clock_time.date() != real_now.date():
+            et_now = clock_time.astimezone(ET) if clock_time.tzinfo else ET.localize(clock_time)
+            logger.debug(f"[Warrior] Using sim clock time {et_now.strftime('%H:%M')} for after-hours check")
         else:
-            et_now = datetime.now(ET)
-    except Exception:
+            et_now = real_now
+    except Exception as e:
+        logger.debug(f"[Warrior] Sim clock error: {e}, using real time")
         et_now = datetime.now(ET)
     
     current_time_str = et_now.strftime("%H:%M")
