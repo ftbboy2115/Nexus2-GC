@@ -376,6 +376,50 @@ test_cases:
       stop_near: 10.15
     notes: "Sample test case for historical replay feature"
 
+  # ========================================================================
+  # ROSS CAMERON REAL TRADES (January 2026)
+  # ========================================================================
+  
+  - id: ross_pavm_20260121
+    symbol: PAVM
+    setup_type: pmh
+    outcome: winner
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron +$43,950 - Reverse Split Short Squeeze"
+    trade_date: "2026-01-21"
+    intraday_file: "intraday/ross_20260121_pavm.json"
+    premarket_data:
+      gap_percent: 177.2
+      premarket_high: 19.90
+      previous_close: 7.19
+      float_shares: 5000000
+      catalyst: "reverse_split"
+    expected:
+      entry_near: 20.00
+      stop_near: 19.00
+    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze"
+
+  - id: ross_lcfy_20260116
+    symbol: LCFY
+    setup_type: pmh
+    outcome: winner
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron +$10,000 - Headline at 8am"
+    trade_date: "2026-01-16"
+    intraday_file: "intraday/ross_20260116_lcfy.json"
+    premarket_data:
+      gap_percent: 70.9
+      premarket_high: 7.42
+      previous_close: 4.34
+      float_shares: 5000000
+      catalyst: "headline"
+    expected:
+      entry_near: 7.50
+      stop_near: 7.00
+    notes: "Ross Cameron transcript Jan 16 - 4 Base Hit Winners"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -384,4 +428,5 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
+# REAL_TRADE:                  2 (PAVM, LCFY) - Ross Cameron Jan 2026
 # ==========================================================================
