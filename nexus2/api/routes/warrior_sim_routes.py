@@ -518,12 +518,19 @@ async def load_historical_test_case(case_id: str):
     if data is None:
         raise HTTPException(status_code=404, detail=f"Test case '{case_id}' not found")
     
-    # Parse date and set clock to 9:30 AM on that date
+    # Parse date and set clock to first bar's time (supports pre-market)
     ET = pytz.timezone("US/Eastern")
     trade_date = datetime.strptime(data.date, "%Y-%m-%d")
-    market_open = ET.localize(trade_date.replace(hour=9, minute=30, second=0))
     
-    clock = reset_simulation_clock(start_time=market_open)
+    # Use first bar's time if available, otherwise default to 9:30 AM
+    if data.bars:
+        first_bar_time = data.bars[0].time  # e.g. "07:56"
+        hour, minute = map(int, first_bar_time.split(":"))
+        start_time = ET.localize(trade_date.replace(hour=hour, minute=minute, second=0))
+    else:
+        start_time = ET.localize(trade_date.replace(hour=9, minute=30, second=0))
+    
+    clock = reset_simulation_clock(start_time=start_time)
     
     # Ensure sim broker exists
     broker = get_warrior_sim_broker()
