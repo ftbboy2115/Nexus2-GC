@@ -665,6 +665,28 @@ async def step_clock(minutes: int = 1):
     else:
         print(f"[Historical Replay] Engine not ready: engine={engine}, state={engine.state if engine else 'N/A'}")
     
+    # =========================================================================
+    # MONITOR TICK: Check positions for exits, scaling, and profit targets
+    # =========================================================================
+    if engine and engine.monitor and engine.monitor._positions:
+        try:
+            # Ensure batch price callback is available for monitor
+            if not engine.monitor._get_prices_batch:
+                async def sim_get_prices_batch(symbols):
+                    result = {}
+                    for s in symbols:
+                        if broker:
+                            price = broker.get_price(s)
+                            if price:
+                                result[s] = price
+                    return result
+                engine.monitor._get_prices_batch = sim_get_prices_batch
+            
+            await engine.monitor._check_all_positions()
+            print(f"[Historical Replay] Monitor tick complete - {len(engine.monitor._positions)} positions checked")
+        except Exception as e:
+            print(f"[Historical Replay] Monitor check error: {e}")
+    
     # Get orders for GUI
     orders = []
     if broker:
