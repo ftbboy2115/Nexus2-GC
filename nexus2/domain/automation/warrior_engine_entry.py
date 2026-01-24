@@ -832,18 +832,20 @@ async def enter_position(
                             f"using quote price ${entry_price:.4f}"
                         )
             
+            # Ensure Decimal types for all arithmetic (actual_fill_price may be float from MockBroker)
+            actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
+            entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+            
             # Calculate slippage
-            slippage_cents = (actual_fill_price - entry_price) * 100  # In cents
-            if abs(slippage_cents) > 0.01:  # Only log if there's meaningful slippage
-                slippage_bps = (actual_fill_price / entry_price - 1) * 10000  # Basis points
+            slippage_cents = (actual_fill_decimal - entry_decimal) * 100  # In cents
+            if abs(slippage_cents) > Decimal("0.01"):  # Only log if there's meaningful slippage
+                slippage_bps = (actual_fill_decimal / entry_decimal - 1) * 10000  # Basis points
                 logger.info(
-                    f"[Warrior Slippage] {symbol}: Fill ${actual_fill_price:.2f} vs "
-                    f"intended ${entry_price:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
+                    f"[Warrior Slippage] {symbol}: Fill ${actual_fill_decimal:.2f} vs "
+                    f"intended ${entry_decimal:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
                 )
             
             # Recalculate stop based on actual fill price
-            # Ensure Decimal types for arithmetic (actual_fill_price may be float from MockBroker)
-            actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
             actual_stop = actual_fill_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
             
             engine.monitor.add_position(
