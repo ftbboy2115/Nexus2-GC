@@ -3,7 +3,7 @@
  * 
  * Includes historical replay with time-based playback controls.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
 
@@ -85,6 +85,16 @@ export function MockMarketCard({
         }
     }
 
+    // Track speed in a ref to avoid effect re-running on every clockState change
+    const speedRef = useRef(clockState?.speed ?? 1)
+
+    // Update ref when speed actually changes
+    useEffect(() => {
+        if (clockState?.speed !== undefined) {
+            speedRef.current = clockState.speed
+        }
+    }, [clockState?.speed])
+
     // Auto-play effect - advances clock automatically when playing
     // Uses setTimeout chain instead of setInterval to prevent race conditions
     // (waits for each API call to complete before scheduling the next)
@@ -98,7 +108,7 @@ export function MockMarketCard({
             if (cancelled) return
             await onStep(1)  // Wait for step to complete
             if (!cancelled) {
-                const delayMs = Math.round(1000 / clockState.speed)
+                const delayMs = Math.round(1000 / speedRef.current)
                 timeoutId = setTimeout(step, delayMs)
             }
         }
@@ -110,7 +120,7 @@ export function MockMarketCard({
             cancelled = true
             if (timeoutId) clearTimeout(timeoutId)
         }
-    }, [isPlaying, clockState?.speed, onStep])
+    }, [isPlaying, onStep])  // Removed clockState?.speed - using ref instead
 
     // Stop playing when clock state is lost
     useEffect(() => {
