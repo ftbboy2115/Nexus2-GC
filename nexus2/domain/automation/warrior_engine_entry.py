@@ -752,12 +752,12 @@ async def enter_position(
             # This fixes the data loss bug where pending orders weren't logged,
             # causing sync to create duplicate records with trigger_type='synced'
             # =================================================================
-            support_level = watched.orb_low or watched.candidate.session_low or entry_price * Decimal("0.95")
+            support_level = watched.orb_low or watched.candidate.session_low or entry_decimal * Decimal("0.95")
             try:
                 from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
                 mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
                 profit_target_r = Decimal(str(engine.monitor.settings.profit_target_r))
-                target = entry_price + (mental_stop_cents / 100 * profit_target_r)
+                target = entry_decimal + (mental_stop_cents / 100 * profit_target_r)
                 log_warrior_entry(
                     trade_id=order_id,
                     symbol=symbol,
