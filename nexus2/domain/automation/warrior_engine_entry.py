@@ -884,7 +884,8 @@ async def enter_position(
             engine.clear_pending_entry(symbol)
             
         except Exception as e:
-            logger.error(f"[Warrior Entry] {symbol}: Order failed: {e}")
+            import traceback
+            logger.error(f"[Warrior Entry] {symbol}: Order failed: {e}\n{traceback.format_exc()}")
             engine.stats.last_error = str(e)
             # Clear pending entry on failure (allow retry)
             engine.clear_pending_entry(symbol)
