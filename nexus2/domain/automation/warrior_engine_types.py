@@ -102,6 +102,7 @@ class WarriorEngineConfig:
     # Ross methodology: candle-based detection, not fixed % thresholds
     dip_for_level_enabled: bool = True  # Enable dip-for-level entries
     pullback_enabled: bool = True  # Enable general pullback entries
+    bull_flag_enabled: bool = True  # Enable bull flag pattern (first green after red pullback)
     level_proximity_cents: int = 10  # How close to level to trigger (default 10c)
     level_granularity: str = "quarter"  # "quarter" ($0.25), "half" ($0.50), "whole" ($1.00)
     require_macd_positive: bool = True  # Ross-confirmed: MACD must be positive for entry
@@ -148,6 +149,10 @@ class WatchedCandidate:
     is_above_vwap: bool = False  # True if price > VWAP
     is_above_ema_9: bool = False  # True if price > 9 EMA
     trend_updated_at: Optional[datetime] = None  # When trend data was last updated
+    
+    # Bull flag pattern tracking (Ross: "first green after pullback")
+    last_candle_was_green: Optional[bool] = None  # Track previous candle color
+    consecutive_red_candles: int = 0  # Count of consecutive red candles before potential flag break
     
     @property
     def dynamic_score(self) -> int:

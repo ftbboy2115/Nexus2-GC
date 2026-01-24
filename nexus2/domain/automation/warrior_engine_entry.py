@@ -286,6 +286,59 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         EntryTriggerType.ORB
                     )
             
+            # BULL FLAG - Ross Cameron: "First green after pullback"
+            # Pattern: 2+ consecutive red candles (pullback), then first green candle
+            # breaks above the previous candle's high
+            if engine.config.bull_flag_enabled and not watched.entry_triggered:
+                if engine._get_intraday_bars:
+                    try:
+                        candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                        if candles and len(candles) >= 3:
+                            # Analyze recent candles for bull flag pattern
+                            # candles[-1] = current, candles[-2] = previous, etc.
+                            current_candle = candles[-1]
+                            prev_candle = candles[-2]
+                            
+                            # Determine candle colors (green = close > open)
+                            current_is_green = current_candle.close > current_candle.open
+                            prev_is_green = prev_candle.close > prev_candle.open
+                            
+                            # Track consecutive red candles
+                            if not prev_is_green:
+                                # Count how many red candles in a row before this
+                                red_count = 0
+                                for i in range(len(candles) - 2, -1, -1):  # Walk back from prev
+                                    c = candles[i]
+                                    if c.close < c.open:  # Red candle
+                                        red_count += 1
+                                    else:
+                                        break  # Hit a green, stop counting
+                                watched.consecutive_red_candles = red_count
+                            
+                            # Bull flag trigger: First green after 2+ red candles,
+                            # AND current price > previous candle high (breakout)
+                            if (current_is_green and 
+                                watched.consecutive_red_candles >= 2 and
+                                current_price > Decimal(str(prev_candle.high))):
+                                
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: BULL FLAG at ${current_price:.2f} "
+                                    f"(first green after {watched.consecutive_red_candles} red candles, "
+                                    f"break of prev high ${prev_candle.high:.2f})"
+                                )
+                                watched.consecutive_red_candles = 0  # Reset for next detection
+                                await enter_position(
+                                    engine,
+                                    watched,
+                                    current_price,
+                                    EntryTriggerType.BULL_FLAG
+                                )
+                            
+                            # Update tracking for next iteration
+                            watched.last_candle_was_green = current_is_green
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: Bull flag check failed: {e}")
+            
             # VWAP BREAK - Ross Cameron (Jan 20 2026): "I took this trade for the break through VWAP"
             # Pattern: Stock pulls back below VWAP, consolidates, then breaks back above
             # This is distinct from VWAP_RECLAIM (which is reclaiming after losing VWAP)
@@ -450,10 +503,10 @@ async def enter_position(
         watched.entry_triggered = True  # Mark to prevent retries
         return
     
-    # ROSS RE-ENTRY MACD GATE: Block re-entry when MACD is negative
-    # Per Ross Cameron: "Because MACD was negative, it was taking too much risk"
-    # Only applies to re-entries (entry_attempt_count > 0), not first entry
-    if watched.entry_attempt_count > 0 and engine._get_intraday_bars:
+    # ROSS MACD GATE: Block ALL entries when MACD is negative
+    # Per Ross Cameron: "Red light, green light - MACD negative = don't trade"
+    # Applies to ALL entries (first and re-entries alike)
+    if engine._get_intraday_bars:
         try:
             candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
             if candles and len(candles) >= 10:
@@ -467,15 +520,15 @@ async def enter_position(
                 
                 if not snapshot.is_macd_bullish:
                     logger.info(
-                        f"[Warrior Entry] {symbol}: MACD GATE - blocking re-entry "
+                        f"[Warrior Entry] {symbol}: MACD GATE - blocking entry "
                         f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'}, "
-                        f"crossover={snapshot.macd_crossover}) - Ross rule: no re-entry when MACD negative"
+                        f"crossover={snapshot.macd_crossover}) - Ross rule: no entry when MACD negative"
                     )
                     watched.entry_triggered = True  # Block this attempt
                     return
                 else:
                     logger.info(
-                        f"[Warrior Entry] {symbol}: MACD OK for re-entry "
+                        f"[Warrior Entry] {symbol}: MACD OK for entry "
                         f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'})"
                     )
         except Exception as e:

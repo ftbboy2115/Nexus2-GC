@@ -235,6 +235,11 @@ Last updated: 2026-01-22
   - [ ] Multi-session ORB (4am, 6am, 7am)
   - [ ] 10:00 AM exit time priority
   - [ ] First red 5-min candle exit signal
+- [ ] **VWAP Reclaim Pattern** — Add trigger for scaling into existing positions
+  - Pattern: Stock was above VWAP, loses it, then reclaims with volume
+  - Usage: Adding to existing positions (not initial entry)
+  - Evidence: Ross Cameron Jan 14 2026: "Add on VWAP reclaims"
+  - Requires: Track "was above VWAP before" state per watched candidate
 - [x] **Spread Management** — Bid/ask spread considerations for cleaner execution (Jan 12)
   - [x] Spread exit trigger (exit if spread > 3% after grace period)
   - [x] Bid-based limit exits for illiquid stocks

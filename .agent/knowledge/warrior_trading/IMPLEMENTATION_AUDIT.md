@@ -1,5 +1,5 @@
 # Warrior Bot Implementation Audit
-**Date:** 2026-01-16  
+**Date:** 2026-01-24  
 **Scope:** Compare `ROSS_RULES_EXTRACTION.md` against actual implementation  
 
 ---
@@ -9,13 +9,13 @@
 | Category | Implemented | Gaps |
 |----------|-------------|------|
 | Stock Selection (5 Pillars) | ✅ Complete | Minor tuning |
-| Entry Patterns | ✅ ORB + PMH | Bull flag, VWAP reclaim not auto-triggered |
+| Entry Patterns | ✅ ORB + PMH + BULL_FLAG | VWAP reclaim deferred to adds feature |
 | Exit/Stop Logic | ✅ Technical stops | Manual 18¢ profit target not automated |
 | Avoid Rules | ✅ Chinese, dilution | REIT filter missing, jack knife detection missing |
 | Position Sizing | ✅ Risk-based | Cash account 98% mode not implemented |
 | Trade Management | ✅ 2-strike rule | Weekly P/L aggression scaling missing |
 
-**Overall:** ~85% aligned with Ross Cameron methodology
+**Overall:** ~90% aligned with Ross Cameron methodology (up from 85%, Jan 24)
 
 ---
 
@@ -53,11 +53,11 @@
 |------|-------------|----------------|--------|
 | ORB (1-min breakout) | Buy break of first candle high | `_check_orb_setup()` | ✅ |
 | PMH breakout | Buy 5¢ above pre-market high | `pmh_buffer_cents=5` | ✅ |
-| Bull flag | First green after pullback | Defined as enum, not triggered | ⚠️ Partial |
-| VWAP reclaim | Buy on VWAP cross with volume | Defined as enum, not triggered | ⚠️ Partial |
+| Bull flag | First green after pullback | Auto-triggered (2+ red → green break) | ✅ Jan 24 |
+| VWAP reclaim | Add on VWAP reclaim | Roadmap item (adds feature, not entry) | ⏳ Roadmap |
 | Above VWAP check | Reject if below VWAP | Lines 756-763 | ✅ |
 | Above 9 EMA | Reject if below 9 EMA (1% tolerance) | Lines 765-772 | ✅ |
-| MACD gating | Only enter when MACD positive | Logged but not gated | ⚠️ Logged only |
+| MACD gating | Only enter when MACD positive | Hard gate for ALL entries | ✅ Jan 24 |
 
 ---
 
