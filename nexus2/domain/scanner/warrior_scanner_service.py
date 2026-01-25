@@ -259,8 +259,8 @@ class WarriorCandidate:
                 try:
                     from nexus2.adapters.simulation import get_simulation_clock
                     sim_clock = get_simulation_clock()
-                    if sim_clock and sim_clock.is_running():
-                        now = sim_clock.get_time()
+                    if sim_clock and sim_clock.current_time:
+                        now = sim_clock.current_time
                         clock_source = "sim_clock"
                     else:
                         now = datetime.now(timezone.utc)
