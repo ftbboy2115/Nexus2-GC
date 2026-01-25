@@ -253,7 +253,18 @@ class WarriorCandidate:
         if self.catalyst_date and self.catalyst_type not in ("none", None, ""):
             from datetime import timezone
             try:
-                now = datetime.now(timezone.utc)
+                # Use simulation clock time if available (for historical replay)
+                # Otherwise use real time (for live trading)
+                try:
+                    from nexus2.adapters.simulation import get_simulation_clock
+                    sim_clock = get_simulation_clock()
+                    if sim_clock and sim_clock.is_running():
+                        now = sim_clock.get_time()
+                    else:
+                        now = datetime.now(timezone.utc)
+                except ImportError:
+                    now = datetime.now(timezone.utc)
+                
                 # Ensure catalyst_date is aware
                 cat_date = self.catalyst_date
                 if cat_date.tzinfo is None:
