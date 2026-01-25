@@ -40,33 +40,44 @@ class ManualExitRequest(BaseModel):
 async def get_warrior_positions():
     """Get positions being monitored by Warrior engine with current prices."""
     from .warrior_routes import get_engine
-    from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+    from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
     
     engine = get_engine()
     positions = engine.monitor.get_positions()
     
-    # Get current prices - first try broker positions, then fetch quotes
+    # Get current prices - check sim mode first to avoid live API calls
     current_prices = {}
-    try:
-        broker = engine.broker
-        if broker:
-            alpaca_positions = broker.get_positions()
-            for symbol, pos in alpaca_positions.items():
-                if pos.current_price:
-                    current_prices[symbol] = float(pos.current_price)
-    except Exception:
-        pass  # Continue without current prices if broker unavailable
+    mock_broker = get_warrior_sim_broker()
     
-    # Fetch quotes for any positions missing current_price
-    alpaca = AlpacaAdapter()
-    for p in positions:
-        if p.symbol not in current_prices:
-            try:
-                quote = alpaca.get_quote(p.symbol)
-                if quote and quote.price > 0:
-                    current_prices[p.symbol] = float(quote.price)
-            except Exception:
-                pass  # Continue without this quote
+    if mock_broker is not None:
+        # SIM MODE: Use MockBroker prices (no live API calls)
+        for p in positions:
+            price = mock_broker.get_price(p.symbol)
+            if price and price > 0:
+                current_prices[p.symbol] = float(price)
+    else:
+        # LIVE MODE: Try broker positions, then fetch quotes
+        try:
+            broker = engine.broker
+            if broker:
+                alpaca_positions = broker.get_positions()
+                for symbol, pos in alpaca_positions.items():
+                    if pos.current_price:
+                        current_prices[symbol] = float(pos.current_price)
+        except Exception:
+            pass  # Continue without current prices if broker unavailable
+        
+        # Fetch quotes for any positions missing current_price
+        from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+        alpaca = AlpacaAdapter()
+        for p in positions:
+            if p.symbol not in current_prices:
+                try:
+                    quote = alpaca.get_quote(p.symbol)
+                    if quote and quote.price > 0:
+                        current_prices[p.symbol] = float(quote.price)
+                except Exception:
+                    pass  # Continue without this quote
     
     return {
         "count": len(positions),
@@ -100,18 +111,42 @@ async def get_positions_health():
     Returns traffic light indicators (green/yellow/red) for each position.
     """
     from .warrior_routes import get_engine
-    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
-    from nexus2.domain.indicators import get_technical_service
-    from nexus2.domain.automation.indicator_service import (
-        get_indicator_service,
-        aggregate_candles_to_timeframe,
-    )
+    from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+    from nexus2.domain.automation.indicator_service import get_indicator_service
     
     engine = get_engine()
     positions = engine.monitor.get_positions()
     
     if not positions:
         return {"count": 0, "positions": []}
+    
+    # SIM MODE: Return simplified health data without FMP/Alpaca API calls
+    mock_broker = get_warrior_sim_broker()
+    if mock_broker is not None:
+        indicator_service = get_indicator_service()
+        result = []
+        for p in positions:
+            # Get current price from MockBroker
+            current_price = mock_broker.get_price(p.symbol) or float(p.entry_price)
+            
+            # Compute basic health without live technicals
+            health = indicator_service.compute_position_health(
+                current_price=float(current_price),
+                entry_price=float(p.entry_price),
+                stop_price=float(p.current_stop),
+                target_price=float(p.profit_target),
+            )
+            result.append({
+                "position_id": p.position_id,
+                "symbol": p.symbol,
+                "health": health.to_dict(),
+            })
+        return {"count": len(result), "positions": result}
+    
+    # LIVE MODE: Full health indicators with FMP intraday data
+    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
+    from nexus2.domain.indicators import get_technical_service
+    from nexus2.domain.automation.indicator_service import aggregate_candles_to_timeframe
     
     fmp = FMPAdapter()
     tech_service = get_technical_service()
