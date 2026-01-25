@@ -930,3 +930,46 @@ async def get_clock_status():
         "sim_enabled": broker is not None,
     }
 
+
+@sim_router.get("/exit-mode")
+async def get_exit_mode():
+    """Get current exit mode (base_hit or home_run)."""
+    from nexus2.api.routes.warrior_routes import get_engine
+    
+    engine = get_engine()
+    if not engine:
+        return {"exit_mode": "unknown", "error": "Engine not initialized"}
+    
+    return {
+        "exit_mode": engine.monitor.settings.session_exit_mode,
+        "options": ["base_hit", "home_run"],
+    }
+
+
+@sim_router.post("/exit-mode")
+async def set_exit_mode(mode: str = "base_hit"):
+    """
+    Set exit mode for the session.
+    
+    Args:
+        mode: "base_hit" (quick +18¢ profit) or "home_run" (trail stop, let winners run)
+    """
+    from nexus2.api.routes.warrior_routes import get_engine
+    
+    if mode not in ("base_hit", "home_run"):
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Use 'base_hit' or 'home_run'")
+    
+    engine = get_engine()
+    if not engine:
+        raise HTTPException(status_code=400, detail="Engine not initialized")
+    
+    old_mode = engine.monitor.settings.session_exit_mode
+    engine.monitor.settings.session_exit_mode = mode
+    
+    print(f"[Warrior] Exit mode changed: {old_mode} → {mode}")
+    
+    return {
+        "success": True,
+        "old_mode": old_mode,
+        "new_mode": mode,
+    }
