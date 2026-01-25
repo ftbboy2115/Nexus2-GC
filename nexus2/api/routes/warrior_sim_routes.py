@@ -568,6 +568,20 @@ async def load_historical_test_case(case_id: str):
     pmh = Decimal(str(premarket.get("pmh", entry_price)))
     prev_close = premarket.get("previous_close", entry_price * 0.8)
     
+    # Catalyst date for freshness scoring
+    # If specified in YAML, use it. Otherwise default to market open (9:30 AM on trade date)
+    catalyst_date_str = premarket.get("catalyst_date")
+    if catalyst_date_str:
+        # Parse explicit catalyst date from YAML (format: "2026-01-17 08:00")
+        try:
+            catalyst_date = ET.localize(datetime.strptime(catalyst_date_str, "%Y-%m-%d %H:%M"))
+        except ValueError:
+            # Try date-only format
+            catalyst_date = ET.localize(datetime.strptime(catalyst_date_str, "%Y-%m-%d").replace(hour=9, minute=30))
+    else:
+        # Default to market open for backwards compatibility
+        catalyst_date = ET.localize(trade_date.replace(hour=9, minute=30, second=0))
+    
     # Create a WatchedCandidate and add to watchlist
     candidate = WarriorCandidate(
         symbol=symbol,
@@ -577,7 +591,8 @@ async def load_historical_test_case(case_id: str):
         relative_volume=Decimal("10.0"),
         float_shares=premarket.get("float_shares"),
         catalyst_type=premarket.get("catalyst", "news"),
-        catalyst_description=f"Historical replay: {case_id}",
+        catalyst_description=premarket.get("catalyst_description", f"Historical replay: {case_id}"),
+        catalyst_date=catalyst_date,  # For freshness scoring
         is_ideal_float=True,
         is_ideal_rvol=True,
         is_ideal_gap=True,
