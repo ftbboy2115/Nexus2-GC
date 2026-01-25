@@ -738,10 +738,46 @@ async def load_historical_test_case(case_id: str):
         
         engine._get_quote = sim_get_quote_historical
 
+        # Wire _submit_order to use MockBroker for historical replay
+        # This is CRITICAL - Alpaca broker callbacks are set on server startup and OVERWRITE sim callbacks
+        # Without this, orders go to real Alpaca broker instead of MockBroker
+        async def sim_submit_order_historical(
+            symbol: str, shares: int, side: str = "buy", order_type: str = "market",
+            stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb",
+            exit_mode: str = None, **kwargs
+        ):
+            """Submit order through MockBroker for historical replay."""
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is None:
+                print(f"[Historical Replay] No MockBroker for order submission")
+                return None
+            
+            from decimal import Decimal
+            from uuid import uuid4
+            
+            # Get sim_time for order tracking
+            sim_time = clock.get_time_string() if clock and clock.current_time else None
+            
+            result = sim_broker.submit_bracket_order(
+                client_order_id=uuid4(),
+                symbol=symbol,
+                quantity=shares,
+                stop_loss_price=None,  # Monitor controls exits
+                limit_price=Decimal(str(limit_price)) if limit_price else None,
+                exit_mode=exit_mode,
+                sim_time=sim_time,
+            )
+            
+            if result:
+                print(f"[Historical Replay] MockBroker order: {symbol} x{shares} @ ${limit_price} ({side})")
+            return result
+        
+        engine._submit_order = sim_submit_order_historical
+
         # Disable live Alpaca order status polling during replay
         # MockBroker fills are instantaneous, no need to poll
         engine._get_order_status = None
-        print(f"[Historical Replay] Monitor callbacks re-wired to MockBroker")
+        print(f"[Historical Replay] Engine + Monitor callbacks re-wired to MockBroker")
     else:
         print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
     
