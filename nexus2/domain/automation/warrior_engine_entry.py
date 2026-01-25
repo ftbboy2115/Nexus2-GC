@@ -548,9 +548,16 @@ async def check_micro_pullback_entry(
             logger.debug(f"[Warrior Entry] {symbol}: MACD/volume check failed: {e}")
             return
     
-    # MACD check (Ross's "green light" system)
-    if engine.config.require_macd_positive and not is_macd_bullish:
-        logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD negative ({macd_debug_info})")
+    # MACD check (Ross relaxes for scalps - allow near-zero)
+    # Ross enters extended stock scalps when MACD is near zero, not strictly positive
+    macd_tolerance = engine.config.micro_pullback_macd_tolerance
+    macd_ok = is_macd_bullish or (macd_val >= macd_tolerance)
+    
+    if engine.config.require_macd_positive and not macd_ok:
+        logger.info(
+            f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD too negative "
+            f"({macd_val:.4f} < {macd_tolerance}, {macd_debug_info})"
+        )
         return
     
     # TRACK SWING HIGHS

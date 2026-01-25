@@ -113,6 +113,7 @@ class WarriorEngineConfig:
     extension_threshold: float = 100.0  # Gap % above which to use micro-pullback instead of PMH
     micro_pullback_min_dip: float = 1.0  # Minimum pullback % to trigger (too shallow = no setup)
     micro_pullback_max_dip: float = 5.0  # Maximum pullback % (deeper = reversal, not pullback)
+    micro_pullback_macd_tolerance: float = -0.10  # Allow MACD slightly negative for scalps (Ross relaxes rule)
 
 
 @dataclass
