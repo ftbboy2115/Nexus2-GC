@@ -605,6 +605,13 @@ async def _check_base_hit_target(
     
     target_price = position.entry_price + profit_cents / 100
     
+    # DEBUG: Log base hit check for troubleshooting (INFO level for testing)
+    logger.info(
+        f"[Warrior] {position.symbol}: BASE HIT check - "
+        f"current=${current_price:.2f}, target=${target_price:.2f}, "
+        f"entry=${position.entry_price:.2f}, +{profit_cents}¢"
+    )
+    
     if current_price < target_price:
         return None
     
@@ -615,6 +622,7 @@ async def _check_base_hit_target(
         f"[Warrior] {position.symbol}: BASE HIT target hit at ${current_price:.2f} "
         f"(+{profit_cents}¢ target) -> Full exit"
     )
+
     
     return WarriorExitSignal(
         position_id=position.position_id,
@@ -748,7 +756,9 @@ async def evaluate_position(
     # Get current price
     if prefetched_price is not None and prefetched_price != 0:
         current_price = Decimal(str(prefetched_price))
+        logger.debug(f"[Warrior] {position.symbol}: Using prefetched_price=${prefetched_price}")
     else:
+        logger.warning(f"[Warrior] {position.symbol}: prefetched_price={prefetched_price}, using fallback")
         current_price = await _get_price_with_fallbacks(monitor, position)
         if current_price is None:
             return None
