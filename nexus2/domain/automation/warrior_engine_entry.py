@@ -806,15 +806,31 @@ async def enter_position(
         try:
             # Calculate exit mode BEFORE order submission (for MockBroker GUI display)
             quality_score = getattr(watched.candidate, 'quality_score', 0) or 0
+            gap_percent = float(watched.candidate.gap_percent or 0)
             high_quality_threshold = 10  # TODO: Pull from scanner settings
-            if quality_score >= high_quality_threshold:
+            extension_threshold = 100  # Gap >100% = already extended, force base hit
+            
+            # EXTENSION-BASED EXIT MODE SELECTION:
+            # Per Ross's pattern: extended stocks (e.g., VERO at 375%) get quick scalps
+            # "Felt like missed the bulk of it" = don't try for home run on extended moves
+            if gap_percent > extension_threshold:
+                selected_exit_mode = "base_hit"
+                logger.info(
+                    f"[Warrior Entry] {symbol}: exit_mode=base_hit "
+                    f"(EXTENDED: gap={gap_percent:.0f}% > {extension_threshold}% threshold)"
+                )
+            elif quality_score >= high_quality_threshold:
                 selected_exit_mode = "home_run"
+                logger.info(
+                    f"[Warrior Entry] {symbol}: exit_mode=home_run "
+                    f"(quality_score={quality_score} >= {high_quality_threshold})"
+                )
             else:
                 selected_exit_mode = "base_hit"
-            logger.info(
-                f"[Warrior Entry] {symbol}: exit_mode={selected_exit_mode} "
-                f"(quality_score={quality_score}, threshold={high_quality_threshold})"
-            )
+                logger.info(
+                    f"[Warrior Entry] {symbol}: exit_mode=base_hit "
+                    f"(quality_score={quality_score} < {high_quality_threshold})"
+                )
             
             order_result = await engine._submit_order(
                 symbol=symbol,
