@@ -263,17 +263,64 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             if engine.config.orb_enabled and not watched.orb_established:
                 await check_orb_setup(engine, watched, current_price)
             
-            # PMH breakout
+            # PMH breakout with CANDLE CONFIRMATION (Ross: "Candle Over Candle")
+            # Pattern: First candle exceeds PMH = "control candle"
+            #          Entry triggers when NEXT candle breaks control candle's high
+            # This naturally filters rejection wicks (LCFY 08:01 had high $7.26 but close $6.20)
             if engine.config.pmh_enabled and not watched.entry_triggered:
                 trigger_price = watched.pmh + engine.config.pmh_buffer_cents / 100
+                
+                # Get current candle info for confirmation logic
+                current_candle_high = None
+                current_candle_time = None
+                if engine._get_intraday_bars:
+                    try:
+                        candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
+                        if candles and len(candles) >= 1:
+                            current_candle = candles[-1]
+                            current_candle_high = Decimal(str(current_candle.high))
+                            # Get time from candle if available
+                            if hasattr(current_candle, 'timestamp') and current_candle.timestamp:
+                                current_candle_time = current_candle.timestamp.strftime("%H:%M") if hasattr(current_candle.timestamp, 'strftime') else str(current_candle.timestamp)
+                            else:
+                                # Use sim clock time as fallback
+                                try:
+                                    from nexus2.adapters.simulation import get_simulation_clock
+                                    sim_clock = get_simulation_clock()
+                                    current_candle_time = sim_clock.get_time_string()
+                                except Exception:
+                                    current_candle_time = "unknown"
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: Candle fetch for confirmation failed: {e}")
+                
                 if current_price >= trigger_price:
-                    logger.info(f"[Warrior Entry] {symbol}: PMH BREAKOUT at ${current_price}")
-                    await enter_position(
-                        engine, 
-                        watched, 
-                        current_price, 
-                        EntryTriggerType.PMH_BREAK
-                    )
+                    # STAGE 1: Set control candle if not already set
+                    if watched.control_candle_high is None:
+                        watched.control_candle_high = current_candle_high if current_candle_high else current_price
+                        watched.control_candle_time = current_candle_time if current_candle_time else "N/A"
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: PMH break detected at {watched.control_candle_time}, "
+                            f"control candle high=${watched.control_candle_high:.2f} - waiting for confirmation"
+                        )
+                    # STAGE 2: Check if CURRENT candle is DIFFERENT from control candle and breaks control high
+                    elif current_candle_time and current_candle_time != watched.control_candle_time:
+                        if current_price > watched.control_candle_high:
+                            logger.info(
+                                f"[Warrior Entry] {symbol}: CANDLE CONFIRMATION - "
+                                f"${current_price:.2f} breaks control high ${watched.control_candle_high:.2f} "
+                                f"(control set at {watched.control_candle_time})"
+                            )
+                            await enter_position(
+                                engine, 
+                                watched, 
+                                current_price, 
+                                EntryTriggerType.PMH_BREAK
+                            )
+                        else:
+                            logger.debug(
+                                f"[Warrior Entry] {symbol}: Waiting for break of control high "
+                                f"${watched.control_candle_high:.2f} (current=${current_price:.2f})"
+                            )
             
             # ORB breakout (after ORB established)
             if watched.orb_established and watched.orb_high:

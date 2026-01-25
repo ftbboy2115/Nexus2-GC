@@ -154,6 +154,13 @@ class WatchedCandidate:
     last_candle_was_green: Optional[bool] = None  # Track previous candle color
     consecutive_red_candles: int = 0  # Count of consecutive red candles before potential flag break
     
+    # Candle Over Candle confirmation (Ross: "buy as second candle breaks high of first")
+    # When PMH is first exceeded, we store the candle's high as control_candle_high.
+    # Entry only triggers when a SUBSEQUENT candle breaks this high.
+    # This naturally filters rejection wicks (like LCFY 08:01 with high $7.26, close $6.20)
+    control_candle_high: Optional[Decimal] = None  # High of control candle for confirmation
+    control_candle_time: Optional[str] = None  # Time string of control candle (e.g., "08:01")
+    
     @property
     def dynamic_score(self) -> int:
         """
