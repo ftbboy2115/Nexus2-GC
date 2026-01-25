@@ -371,25 +371,9 @@ async def list_warrior_test_cases():
     
     base_path = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "test_cases")
     summary = []
+    json_symbols = set()  # Track symbols loaded from JSON to avoid duplicates
     
-    # 1. Load from YAML file (legacy format)
-    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
-    if os.path.exists(yaml_path):
-        with open(yaml_path, "r") as f:
-            data = yaml.safe_load(f)
-        
-        for tc in data.get("test_cases", []):
-            summary.append({
-                "id": tc.get("id"),
-                "symbol": tc.get("symbol"),
-                "setup_type": tc.get("setup_type"),
-                "outcome": tc.get("outcome"),
-                "description": tc.get("description"),
-                "trade_date": tc.get("trade_date"),
-                "synthetic": tc.get("synthetic", False),
-            })
-    
-    # 2. Scan intraday directory for JSON files (new format with full bar data)
+    # 1. First, scan intraday directory for JSON files (preferred - has bar data)
     intraday_path = os.path.join(base_path, "intraday")
     if os.path.exists(intraday_path):
         for filename in os.listdir(intraday_path):
@@ -401,6 +385,7 @@ async def list_warrior_test_cases():
                     
                     # Extract info from JSON test case
                     symbol = tc_data.get("symbol", filename.replace(".json", "").upper())
+                    json_symbols.add(symbol)  # Track for duplicate filtering
                     date = tc_data.get("date", "")
                     premarket = tc_data.get("premarket", {})
                     catalyst = premarket.get("catalyst", "")
@@ -428,6 +413,27 @@ async def list_warrior_test_cases():
                     })
                 except Exception as e:
                     print(f"[Test Cases] Error loading {filename}: {e}")
+    
+    # 2. Load from YAML file (legacy format) - skip entries that have JSON equivalent
+    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
+    if os.path.exists(yaml_path):
+        with open(yaml_path, "r") as f:
+            data = yaml.safe_load(f)
+        
+        for tc in data.get("test_cases", []):
+            symbol = tc.get("symbol")
+            # Skip if we already have this symbol from JSON files
+            if symbol in json_symbols:
+                continue
+            summary.append({
+                "id": tc.get("id"),
+                "symbol": symbol,
+                "setup_type": tc.get("setup_type"),
+                "outcome": tc.get("outcome"),
+                "description": tc.get("description"),
+                "trade_date": tc.get("trade_date"),
+                "synthetic": tc.get("synthetic", False),
+            })
     
     # Sort by date (most recent first), then by symbol
     summary.sort(key=lambda x: (x.get("trade_date", "") or "", x.get("symbol", "")), reverse=True)
