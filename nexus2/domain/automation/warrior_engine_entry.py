@@ -670,6 +670,7 @@ async def enter_position(
     # Falls back to 15 cents if candle data unavailable
     mental_stop = None
     stop_method = "fallback_15c"
+    calculated_candle_low = None  # Track for passing to add_position
     
     if engine._get_intraday_bars:
         try:
@@ -677,15 +678,15 @@ async def enter_position(
             if candles and len(candles) >= 1:
                 # Ross method: Use low of the current/entry candle with 2¢ buffer
                 entry_candle = candles[-1]  # Most recent candle (entry candle)
-                entry_candle_low = Decimal(str(entry_candle.low))
+                calculated_candle_low = Decimal(str(entry_candle.low))
                 
                 # Add 2¢ buffer below the low
-                mental_stop = entry_candle_low - Decimal("0.02")
+                mental_stop = calculated_candle_low - Decimal("0.02")
                 stop_method = "candle_low"
                 
                 logger.info(
                     f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method} "
-                    f"(candle low=${entry_candle_low:.2f} - 2¢)"
+                    f"(candle low=${calculated_candle_low:.2f} - 2¢)"
                 )
         except Exception as e:
             logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
@@ -806,8 +807,13 @@ async def enter_position(
             # This fixes the data loss bug where pending orders weren't logged,
             # causing sync to create duplicate records with trigger_type='synced'
             # =================================================================
-            support_level_raw = watched.orb_low or watched.candidate.session_low or float(entry_decimal) * 0.95
-            support_level = Decimal(str(support_level_raw))  # Ensure Decimal for add_position
+            # Use calculated candle low if available, otherwise fall back to ORB low
+            # This ensures stop matches what was logged in entry
+            if calculated_candle_low:
+                support_level = calculated_candle_low  # Use calculated low for correct stop
+            else:
+                support_level_raw = watched.orb_low or watched.candidate.session_low or float(entry_decimal) * 0.95
+                support_level = Decimal(str(support_level_raw))
             try:
                 from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
                 mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
