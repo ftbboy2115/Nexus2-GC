@@ -61,10 +61,31 @@ class UnifiedMarketData:
         
         This prevents acting on stale/corrupt data from any single source.
         All quote checks are logged to the audit service for reliability tracking.
+        
+        NOTE: During simulation mode, returns MockBroker price to avoid external API calls.
         """
         import logging
         from decimal import Decimal
         logger = logging.getLogger(__name__)
+        
+        # Skip external API calls during simulation mode - use MockBroker price
+        try:
+            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is not None:
+                price = sim_broker.get_price(symbol)
+                if price:
+                    return Quote(
+                        symbol=symbol,
+                        price=Decimal(str(price)),
+                        change=Decimal("0"),
+                        change_percent=Decimal("0"),
+                        volume=0,
+                        timestamp=None,
+                    )
+                return None
+        except Exception:
+            pass  # If import fails, continue with normal path
         
         # Check if symbol is blacklisted (due to prior divergence issue)
         try:
