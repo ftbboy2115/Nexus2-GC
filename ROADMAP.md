@@ -167,6 +167,10 @@ Last updated: 2026-01-22
 - [x] **Column totals on Open Positions table** — Footer row with Cost Basis, Value, P/L totals (Jan 10)
 - [x] **Scheduler Last Run shows UTC — FIXED** — Now displays ET with label (Jan 10)
 - [ ] **Account-Strategy Locking** — Lock navbar account dropdown to specific strategies (e.g., Account A for NAC, Account B for Warrior) to prevent accidental mixing
+- [ ] **Exit Mode Threshold Settings** — Add GUI controls for exit mode selection thresholds
+  - `high_quality_threshold` (default 10) — Quality score above which to use HOME_RUN mode
+  - `extension_threshold` (default 100%) — Gap % above which to force BASE_HIT mode (already extended stocks)
+  - Currently hardcoded in `warrior_engine_entry.py:810-811`
 - [ ] **Connection Status Indicator** — Visual badge + smart event logging for backend connectivity
   - Show 🟢/🔴 badge near Refresh button for current connection state
   - Only log transitions: "❌ Failed to connect" → "✅ Connection restored"
