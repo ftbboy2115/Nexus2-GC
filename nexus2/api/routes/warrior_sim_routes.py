@@ -558,6 +558,7 @@ async def load_historical_test_case(case_id: str):
     # Set up MockMarketData with the clock
     from nexus2.adapters.simulation import get_mock_market_data
     mock_data = get_mock_market_data()
+    mock_data.reset()  # Clear previous test case data (LCFY prices when loading PAVM)
     mock_data.set_clock(clock)
     
     # Set initial price from first bar

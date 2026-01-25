@@ -79,6 +79,13 @@ class MockMarketData:
         """Set simulation clock reference."""
         self._sim_clock = clock
     
+    def reset(self):
+        """Reset all market data (called when loading new test case)."""
+        self._data.clear()
+        self._current_prices.clear()
+        self._sim_clock = None
+        logger.info("[MockMarketData] Reset all data")
+    
     @property
     def fmp(self):
         """
