@@ -79,8 +79,15 @@ class TradeEventService:
         
         Returns dict with spy_price, spy_change_pct, vix, spy_ma_status, timestamp.
         Failures return empty dict (non-blocking).
+        
+        IMPORTANT: Skips during simulation mode to prevent blocking API calls.
         """
         try:
+            # Skip external API calls during simulation mode (they block with time.sleep)
+            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+            if get_warrior_sim_broker() is not None:
+                return {"market_context": "skipped_sim_mode", "market_snapshot_time": now_utc().isoformat()}
+            
             from nexus2.adapters.market_data.unified import UnifiedMarketData
             
             umd = UnifiedMarketData()
