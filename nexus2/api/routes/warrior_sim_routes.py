@@ -665,6 +665,20 @@ async def load_historical_test_case(case_id: str):
             execute_exit=sim_execute_exit,
             update_stop=sim_update_stop,
         )
+        
+        # Wire _get_intraday_bars to use historical bar loader at simulated time
+        # Without this, entry stop calculation uses real (stale) bars instead of simulated-time bars
+        async def sim_get_intraday_bars(symbol: str, timeframe: str = "1min", limit: int = 50):
+            """Return historical bars up to current simulated time."""
+            loader = get_historical_bar_loader()
+            time_str = clock.get_time_string()
+            bars = loader.get_bars_up_to(symbol, time_str, timeframe)
+            # Return last N bars per limit
+            if bars and len(bars) > limit:
+                bars = bars[-limit:]
+            return bars
+        
+        engine._get_intraday_bars = sim_get_intraday_bars
 
         # Disable live Alpaca order status polling during replay
         # MockBroker fills are instantaneous, no need to poll
