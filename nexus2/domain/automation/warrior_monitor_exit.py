@@ -482,6 +482,22 @@ async def _check_topping_tail(
     if not s.enable_topping_tail or not monitor._get_intraday_candles:
         return None
     
+    # GRACE PERIOD: Skip topping tail check for first 2 minutes after entry
+    # This prevents premature exits during premarket when position is still establishing
+    entry_time = position.entry_time
+    if entry_time.tzinfo is None:
+        from datetime import timezone
+        entry_time = entry_time.replace(tzinfo=timezone.utc)
+    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    
+    grace_seconds = getattr(s, 'topping_tail_grace_seconds', 120)  # Default 2 minutes
+    if seconds_since_entry < grace_seconds:
+        logger.debug(
+            f"[Warrior] {position.symbol}: Topping tail skipped "
+            f"(grace period: {seconds_since_entry:.0f}s < {grace_seconds}s)"
+        )
+        return None
+    
     candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=2)
     if not candles:
         return None
