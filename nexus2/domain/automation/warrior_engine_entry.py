@@ -757,6 +757,18 @@ async def enter_position(
     
     if engine._submit_order:
         try:
+            # Calculate exit mode BEFORE order submission (for MockBroker GUI display)
+            quality_score = getattr(watched.candidate, 'quality_score', 0) or 0
+            high_quality_threshold = 10  # TODO: Pull from scanner settings
+            if quality_score >= high_quality_threshold:
+                selected_exit_mode = "home_run"
+            else:
+                selected_exit_mode = "base_hit"
+            logger.info(
+                f"[Warrior Entry] {symbol}: exit_mode={selected_exit_mode} "
+                f"(quality_score={quality_score}, threshold={high_quality_threshold})"
+            )
+            
             order_result = await engine._submit_order(
                 symbol=symbol,
                 shares=shares,
@@ -764,6 +776,7 @@ async def enter_position(
                 order_type="limit",  # Limit order, not market
                 limit_price=float(limit_price),  # offset above ask
                 stop_loss=None,  # Mental stop, not broker stop
+                exit_mode=selected_exit_mode,  # Pass to MockBroker for GUI display
             )
             
             # Check for blacklist response from broker
@@ -815,18 +828,7 @@ async def enter_position(
                 support_level_raw = watched.orb_low or watched.candidate.session_low or float(entry_decimal) * 0.95
                 support_level = Decimal(str(support_level_raw))
             
-            # Auto-select exit mode based on quality score
-            # A+ setups (score >= high_quality_threshold) get home_run mode
-            quality_score = getattr(watched.candidate, 'quality_score', 0) or 0
-            high_quality_threshold = 10  # TODO: Pull from scanner settings
-            if quality_score >= high_quality_threshold:
-                selected_exit_mode = "home_run"
-            else:
-                selected_exit_mode = "base_hit"
-            logger.info(
-                f"[Warrior Entry] {symbol}: exit_mode={selected_exit_mode} "
-                f"(quality_score={quality_score}, threshold={high_quality_threshold})"
-            )
+            # NOTE: exit_mode already calculated above and passed to _submit_order
             
             try:
                 from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id

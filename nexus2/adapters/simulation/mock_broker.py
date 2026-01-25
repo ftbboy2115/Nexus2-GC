@@ -410,6 +410,14 @@ class MockBroker:
         self._cash += current_price * sell_qty
         
         # Create SELL order record for GUI visibility
+        # Get sim_time from simulation clock for GUI display
+        try:
+            from nexus2.adapters.simulation import get_simulation_clock
+            sim_clock = get_simulation_clock()
+            sim_time = sim_clock.get_time_string() if sim_clock and sim_clock.current_time else None
+        except ImportError:
+            sim_time = None
+        
         sell_order_id = str(uuid4())
         sell_order = MockOrder(
             id=sell_order_id,
@@ -421,6 +429,7 @@ class MockBroker:
             avg_fill_price=current_price,
             filled_qty=sell_qty,
             filled_at=now_utc(),
+            sim_time=sim_time,
         )
         self._orders[sell_order_id] = sell_order
         
