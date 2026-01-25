@@ -120,7 +120,13 @@ class AlpacaAdapter:
             
             # If quote is from a previous day or >1 hour old, it's stale
             if quote_date < today or age_seconds > 3600:
-                print(f"[Alpaca] {symbol}: Rejecting stale quote (age={age_seconds/3600:.1f}h, date={quote_date})")
+                # Only log during live mode - sim mode has expected stale quotes
+                try:
+                    from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+                    if get_warrior_sim_broker() is None:
+                        print(f"[Alpaca] {symbol}: Rejecting stale quote (age={age_seconds/3600:.1f}h, date={quote_date})")
+                except Exception:
+                    print(f"[Alpaca] {symbol}: Rejecting stale quote (age={age_seconds/3600:.1f}h, date={quote_date})")
                 return None
         
         # Alpaca quote has bid/ask, use midpoint for price
