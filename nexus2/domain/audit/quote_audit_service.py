@@ -82,7 +82,7 @@ class QuoteAuditService:
     def _writer_loop(self):
         """Background loop: batch insert every 100 records or 5 seconds."""
         batch: List[QuoteAuditEntry] = []
-        last_flush = datetime.now()
+        last_flush = now_utc()
         
         while not self._shutdown.is_set():
             try:
@@ -91,16 +91,16 @@ class QuoteAuditService:
                 batch.append(entry)
                 
                 # Flush if batch is large enough or time elapsed
-                if len(batch) >= 100 or (datetime.now() - last_flush).seconds >= 5:
+                if len(batch) >= 100 or (now_utc() - last_flush).seconds >= 5:
                     self._flush_batch(batch)
                     batch = []
-                    last_flush = datetime.now()
+                    last_flush = now_utc()
             except queue.Empty:
                 # Timeout - flush any pending records
                 if batch:
                     self._flush_batch(batch)
                     batch = []
-                    last_flush = datetime.now()
+                    last_flush = now_utc()
             except Exception as e:
                 logger.error(f"[QuoteAudit] Writer error: {e}")
         
