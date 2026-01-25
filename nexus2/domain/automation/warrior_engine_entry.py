@@ -505,7 +505,7 @@ async def check_micro_pullback_entry(
     """
     from datetime import datetime, timezone
     
-    symbol = watched.symbol
+    symbol = watched.candidate.symbol
     
     # REQUIREMENT 1: Above VWAP (confirm uptrend)
     if not watched.is_above_vwap:
