@@ -394,6 +394,21 @@ class MockBroker:
         self._realized_pnl += pnl
         self._cash += current_price * sell_qty
         
+        # Create SELL order record for GUI visibility
+        sell_order_id = str(uuid4())
+        sell_order = MockOrder(
+            id=sell_order_id,
+            symbol=symbol,
+            side="sell",
+            qty=sell_qty,
+            order_type="market",
+            status=MockOrderStatus.FILLED,
+            avg_fill_price=current_price,
+            filled_qty=sell_qty,
+            filled_at=now_utc(),
+        )
+        self._orders[sell_order_id] = sell_order
+        
         # Update or remove position
         pos.qty -= sell_qty
         if pos.qty <= 0:
@@ -405,6 +420,7 @@ class MockBroker:
         
         logger.info(f"[MockBroker] Sold {sell_qty}x {symbol} @ ${current_price:.2f}, P&L: ${pnl:.2f}")
         return True
+
     
     def update_stop(self, symbol: str, new_stop_price: float) -> bool:
         """
