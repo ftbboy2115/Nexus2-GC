@@ -617,10 +617,11 @@ async def load_historical_test_case(case_id: str):
     engine = get_engine()
     added_to_watchlist = False
     if engine:
-        # Clear any existing pending entry for this symbol (allows fresh entry)
-        if symbol in engine._pending_entries:
-            del engine._pending_entries[symbol]
-            print(f"[Historical Replay] Cleared pending entry for {symbol}")
+        # FRESH START: Clear all watchlist entries and pending entries when loading new test case
+        # This prevents old symbols (e.g., PAVM) from trading when loading a new case (e.g., LCFY)
+        engine._watchlist.clear()
+        engine._pending_entries.clear()
+        print(f"[Historical Replay] Cleared watchlist and pending entries for fresh start")
         
         # Reset the watched candidate (fresh state)
         watched.entry_triggered = False
