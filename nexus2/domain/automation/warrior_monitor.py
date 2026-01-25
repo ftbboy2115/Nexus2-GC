@@ -252,6 +252,12 @@ class WarriorMonitor:
         """
         s = self.settings
         
+        # Clear any pending_exit status for this symbol from previous positions
+        # This prevents the new position from being skipped in monitor tick
+        if self._is_pending_exit(symbol):
+            self._clear_pending_exit(symbol, to_closed=True)
+            logger.info(f"[Warrior] {symbol}: Cleared stale pending_exit for new position")
+        
         # Mental stop: Entry - N cents (FALLBACK only - used when no candle data)
         mental_stop = entry_price - s.mental_stop_cents / 100
         
