@@ -159,8 +159,14 @@ if __name__ == "__main__":
     
     # Ross Cameron trades from transcripts
     test_cases = [
+        # Existing test cases
         {"symbol": "PAVM", "date": "2026-01-21", "catalyst": "reverse_split"},
         {"symbol": "LCFY", "date": "2026-01-16", "catalyst": "headline"},
+        # New test cases to add
+        {"symbol": "ROLR", "date": "2026-01-14", "catalyst": "prediction_market"},  # +$85k big winner
+        {"symbol": "TNMG", "date": "2026-01-16", "catalyst": "momentum"},  # Chinese stock, dip buy
+        {"symbol": "GWAV", "date": "2026-01-16", "catalyst": "momentum"},  # No news momentum scalp
+        {"symbol": "VERO", "date": "2026-01-16", "catalyst": "after_hours"},  # After-hours mover
     ]
     
     created_files = []
