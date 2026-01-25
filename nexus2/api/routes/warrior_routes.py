@@ -515,6 +515,8 @@ async def get_warrior_monitor_settings():
         "min_rvol_for_scale": s.min_rvol_for_scale,
         "allow_scale_below_entry": s.allow_scale_below_entry,
         "move_stop_to_breakeven_after_scale": s.move_stop_to_breakeven_after_scale,
+        # Exit mode (base_hit vs home_run)
+        "session_exit_mode": s.session_exit_mode,
     }
 
 
