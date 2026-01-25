@@ -148,9 +148,23 @@ def create_get_quote_with_spread():
         """Get quote with bid/ask spread for spread exit trigger.
         
         Priority: Alpaca (primary) -> Schwab (fallback when bid/ask = 0)
+        
+        During simulation mode, returns MockBroker price with 0 spread.
         """
         import time
         nonlocal _schwab_quote_cache
+        
+        # Skip external API calls during simulation mode - use MockBroker price
+        try:
+            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is not None:
+                price = sim_broker.get_price(symbol)
+                if price:
+                    return {"price": price, "bid": price * 0.999, "ask": price * 1.001}
+                return None
+        except Exception:
+            pass  # If import fails, continue with normal path
         
         bid = 0
         ask = 0
@@ -224,7 +238,29 @@ def create_get_intraday_bars():
         volume: int
     
     async def get_intraday_bars(symbol: str, timeframe: str = "5min", limit: int = 50):
-        """Get intraday bars for technical indicator calculation."""
+        """Get intraday bars for technical indicator calculation.
+        
+        During simulation mode, returns bars from HistoricalBarLoader.
+        """
+        # Skip external API calls during simulation mode - use HistoricalBarLoader
+        try:
+            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker is not None:
+                from nexus2.adapters.simulation import get_historical_bar_loader, get_simulation_clock
+                loader = get_historical_bar_loader()
+                clock = get_simulation_clock()
+                if loader and clock:
+                    bars = loader.get_bars_up_to(symbol, clock.get_time_string(), limit)
+                    if bars:
+                        return [Bar(
+                            open=float(b.open), high=float(b.high), low=float(b.low),
+                            close=float(b.close), volume=int(b.volume)
+                        ) for b in bars]
+                return None
+        except Exception:
+            pass  # If import fails, continue with normal path
+        
         try:
             from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
             alpaca = AlpacaAdapter()
