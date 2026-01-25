@@ -720,6 +720,24 @@ async def load_historical_test_case(case_id: str):
         
         engine._get_intraday_bars = sim_get_intraday_bars
 
+        # Wire _get_quote to use historical bar loader at simulated time
+        # This is CRITICAL - entry logic at warrior_engine_entry.py:53 uses engine._get_quote
+        # Without this, it falls back to Alpaca which causes stale quote rejections
+        async def sim_get_quote_historical(symbol: str):
+            """Return price from historical bar loader at current simulated time."""
+            loader = get_historical_bar_loader()
+            time_str = clock.get_time_string()
+            price = loader.get_price_at(symbol, time_str)
+            if price:
+                return price
+            # Fallback to broker price if loader doesn't have it
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker:
+                return sim_broker.get_price(symbol)
+            return None
+        
+        engine._get_quote = sim_get_quote_historical
+
         # Disable live Alpaca order status polling during replay
         # MockBroker fills are instantaneous, no need to poll
         engine._get_order_status = None
