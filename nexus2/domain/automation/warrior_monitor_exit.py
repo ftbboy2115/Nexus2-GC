@@ -807,6 +807,12 @@ async def evaluate_position(
     # CHECK 4: Mode-Aware Profit Target / Trailing Stop
     exit_mode = get_effective_exit_mode(monitor, position)
     
+    # DEBUG: Log exit mode for troubleshooting
+    logger.info(
+        f"[Warrior] {position.symbol}: Exit mode={exit_mode}, "
+        f"current_price=${current_price:.2f}, entry=${position.entry_price:.2f}"
+    )
+    
     if exit_mode == "base_hit":
         # BASE HIT MODE: Quick fixed-cents profit target, full exit
         signal = await _check_base_hit_target(monitor, position, current_price, r_multiple)
