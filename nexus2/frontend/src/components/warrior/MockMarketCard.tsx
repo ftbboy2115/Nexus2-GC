@@ -260,7 +260,7 @@ export function MockMarketCard({
                                             {order.sim_time}
                                         </span>
                                     )}
-                                    <span className={styles.orderSide}>
+                                    <span className={`${styles.orderSide} ${order.side === 'buy' ? styles.orderSideBuy : styles.orderSideSell}`}>
                                         {order.side.toUpperCase()}
                                     </span>
                                     <span className={styles.orderQty}>
