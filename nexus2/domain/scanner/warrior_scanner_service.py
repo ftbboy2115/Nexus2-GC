@@ -261,13 +261,10 @@ class WarriorCandidate:
                     sim_clock = get_simulation_clock()
                     if sim_clock and sim_clock.current_time:
                         now = sim_clock.current_time
-                        clock_source = "sim_clock"
                     else:
                         now = datetime.now(timezone.utc)
-                        clock_source = "real_time"
                 except ImportError:
                     now = datetime.now(timezone.utc)
-                    clock_source = "real_time_import_error"
                 
                 # Ensure catalyst_date is aware
                 cat_date = self.catalyst_date
@@ -282,11 +279,8 @@ class WarriorCandidate:
                     freshness_bonus = 1  # 🟡 Yellow flame: yesterday
                 # >24hr: no bonus (no flame indicator)
                 score += freshness_bonus
-                print(f"[Quality Score Debug] {self.symbol}: catalyst_date={cat_date}, now={now}, hours_old={hours_old:.1f}, freshness_bonus={freshness_bonus}, clock={clock_source}")
-            except Exception as e:
-                print(f"[Quality Score Debug] {self.symbol}: freshness error: {e}")
-        else:
-            print(f"[Quality Score Debug] {self.symbol}: No catalyst_date (catalyst_date={self.catalyst_date}, catalyst_type={self.catalyst_type})")
+            except Exception:
+                pass  # Skip freshness scoring if date parsing fails
         
         # Price quality (1 point max)
         if Decimal("5") <= self.price <= Decimal("15"):
