@@ -424,8 +424,9 @@ class MockBroker:
             symbol=symbol,
             side="sell",
             qty=sell_qty,
-            order_type="market",
+            order_type="limit",  # Ross uses limit orders, not market
             status=MockOrderStatus.FILLED,
+            limit_price=current_price,  # Limit price for display
             avg_fill_price=current_price,
             filled_qty=sell_qty,
             filled_at=now_utc(),
