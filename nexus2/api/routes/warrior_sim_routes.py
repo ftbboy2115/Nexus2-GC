@@ -366,31 +366,71 @@ async def set_warrior_sim_price(symbol: str, price: float):
 
 @sim_router.get("/sim/test_cases")
 async def list_warrior_test_cases():
-    """List available Warrior test cases."""
-    yaml_path = os.path.join(
-        os.path.dirname(__file__),
-        "..", "..", "tests", "test_cases", "warrior_setups.yaml"
-    )
+    """List available Warrior test cases (YAML and JSON intraday files)."""
+    import json
     
-    if not os.path.exists(yaml_path):
-        return {"test_cases": [], "message": "No test cases file found"}
-    
-    with open(yaml_path, "r") as f:
-        data = yaml.safe_load(f)
-    
-    test_cases = data.get("test_cases", [])
-    
+    base_path = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "test_cases")
     summary = []
-    for tc in test_cases:
-        summary.append({
-            "id": tc.get("id"),
-            "symbol": tc.get("symbol"),
-            "setup_type": tc.get("setup_type"),
-            "outcome": tc.get("outcome"),
-            "description": tc.get("description"),
-            "trade_date": tc.get("trade_date"),
-            "synthetic": tc.get("synthetic", False),
-        })
+    
+    # 1. Load from YAML file (legacy format)
+    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
+    if os.path.exists(yaml_path):
+        with open(yaml_path, "r") as f:
+            data = yaml.safe_load(f)
+        
+        for tc in data.get("test_cases", []):
+            summary.append({
+                "id": tc.get("id"),
+                "symbol": tc.get("symbol"),
+                "setup_type": tc.get("setup_type"),
+                "outcome": tc.get("outcome"),
+                "description": tc.get("description"),
+                "trade_date": tc.get("trade_date"),
+                "synthetic": tc.get("synthetic", False),
+            })
+    
+    # 2. Scan intraday directory for JSON files (new format with full bar data)
+    intraday_path = os.path.join(base_path, "intraday")
+    if os.path.exists(intraday_path):
+        for filename in os.listdir(intraday_path):
+            if filename.endswith(".json"):
+                json_path = os.path.join(intraday_path, filename)
+                try:
+                    with open(json_path, "r") as f:
+                        tc_data = json.load(f)
+                    
+                    # Extract info from JSON test case
+                    symbol = tc_data.get("symbol", filename.replace(".json", "").upper())
+                    date = tc_data.get("date", "")
+                    premarket = tc_data.get("premarket", {})
+                    catalyst = premarket.get("catalyst", "")
+                    gap_pct = premarket.get("gap_percent", 0)
+                    bar_count = len(tc_data.get("bars", []))
+                    
+                    # Create description from available data
+                    description = f"{date} - {catalyst}" if catalyst else date
+                    if bar_count > 0:
+                        description += f" ({bar_count} bars)"
+                    
+                    # Use filename without extension as ID
+                    case_id = filename.replace(".json", "")
+                    
+                    summary.append({
+                        "id": case_id,
+                        "symbol": symbol,
+                        "setup_type": "historical_replay",
+                        "outcome": "real_data",
+                        "description": description,
+                        "trade_date": date,
+                        "synthetic": False,
+                        "has_bars": bar_count > 0,
+                        "gap_percent": gap_pct,
+                    })
+                except Exception as e:
+                    print(f"[Test Cases] Error loading {filename}: {e}")
+    
+    # Sort by date (most recent first), then by symbol
+    summary.sort(key=lambda x: (x.get("trade_date", "") or "", x.get("symbol", "")), reverse=True)
     
     return {"test_cases": summary, "count": len(summary)}
 

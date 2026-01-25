@@ -234,6 +234,31 @@
     cursor: not-allowed;
 }
 
+/* Select Input - Dropdown styling for dark theme */
+.selectInput {
+    background: rgba(30, 30, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f0f0f0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    flex: 1;
+    min-width: 200px;
+}
+
+.selectInput:focus {
+    outline: none;
+    border-color: #ff6b35;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+}
+
+.selectInput option {
+    background: #1a1a2e;
+    color: #f0f0f0;
+    padding: 0.5rem;
+}
+
 /* Loading */
 .loading {
     display: flex;
