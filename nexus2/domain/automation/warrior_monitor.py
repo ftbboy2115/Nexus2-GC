@@ -244,11 +244,15 @@ class WarriorMonitor:
         shares: int,
         support_level: Optional[Decimal] = None,
         trigger_type: str = "ORB",  # PMH_BREAK, ORB, or synced
+        exit_mode_override: Optional[str] = None,  # Auto-selected based on quality score
     ) -> WarriorPosition:
         """
         Add a new position to monitor.
         
         Calculates stops and targets based on Ross Cameron rules.
+        
+        Args:
+            exit_mode_override: If provided, overrides session exit mode ("base_hit" or "home_run")
         """
         s = self.settings
         
@@ -298,6 +302,7 @@ class WarriorMonitor:
             risk_per_share=risk_per_share,
             high_since_entry=entry_price,
             original_shares=shares,  # Track for scaling calculations
+            exit_mode_override=exit_mode_override,  # Auto-selected based on quality score
         )
         
         self._positions[position_id] = position
@@ -312,9 +317,10 @@ class WarriorMonitor:
             trigger_type=trigger_type,
         )
         
+        exit_mode_str = f", mode={exit_mode_override}" if exit_mode_override else ""
         logger.info(
             f"[Warrior] Added {symbol}: entry=${entry_price}, "
-            f"stop=${current_stop}, target=${profit_target}"
+            f"stop=${current_stop}, target=${profit_target}{exit_mode_str}"
         )
         
         return position

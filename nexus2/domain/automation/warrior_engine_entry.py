@@ -814,6 +814,20 @@ async def enter_position(
             else:
                 support_level_raw = watched.orb_low or watched.candidate.session_low or float(entry_decimal) * 0.95
                 support_level = Decimal(str(support_level_raw))
+            
+            # Auto-select exit mode based on quality score
+            # A+ setups (score >= high_quality_threshold) get home_run mode
+            quality_score = getattr(watched.candidate, 'quality_score', 0) or 0
+            high_quality_threshold = 10  # TODO: Pull from scanner settings
+            if quality_score >= high_quality_threshold:
+                selected_exit_mode = "home_run"
+            else:
+                selected_exit_mode = "base_hit"
+            logger.info(
+                f"[Warrior Entry] {symbol}: exit_mode={selected_exit_mode} "
+                f"(quality_score={quality_score}, threshold={high_quality_threshold})"
+            )
+            
             try:
                 from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
                 mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
@@ -833,6 +847,7 @@ async def enter_position(
                     quote_price=float(entry_price),  # Price from quote at decision time
                     limit_price=float(limit_price),  # Limit sent to broker
                     quote_source="unified",  # TODO: Pass actual source from quote
+                    exit_mode=selected_exit_mode,  # Auto-selected based on quality score
                 )
                 set_entry_order_id(order_id, order_id)
                 logger.info(
@@ -921,6 +936,7 @@ async def enter_position(
                 shares=int(filled_qty) if filled_qty else shares,  # Use actual filled qty
                 support_level=support_level,
                 trigger_type=trigger_type.value,  # PMH_BREAK, ORB
+                exit_mode_override=selected_exit_mode,  # Auto-selected based on quality score
             )
             
             # Update DB record with actual fill price (intent was already logged above)

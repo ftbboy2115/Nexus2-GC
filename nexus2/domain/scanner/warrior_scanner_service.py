@@ -107,7 +107,7 @@ class WarriorScanSettings:
     exclude_chinese_stocks: bool = True  # Ross avoids HKD, TOP, MEGL, etc.
     # Icebreaker Exception: Ross trades Chinese with reduced size when score is exceptional (Jan 20 TWWG)
     chinese_icebreaker_enabled: bool = True  # Allow high-score Chinese stocks
-    chinese_icebreaker_min_score: int = 10  # Score threshold to pass (high bar)
+    high_quality_threshold: int = 10  # A+ setup threshold (used by icebreaker, exit mode selection)
     require_catalyst: bool = True  # Require news/earnings
     include_former_runners: bool = False  # Disabled: Ross uses this as score boost, not catalyst substitute
     use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
@@ -1034,11 +1034,11 @@ class WarriorScannerService:
         # =========================================================================
         if is_chinese:
             score = candidate.quality_score
-            if score >= s.chinese_icebreaker_min_score:
+            if score >= s.high_quality_threshold:
                 # High score - allow as icebreaker with reduced size
                 candidate.is_icebreaker = True
                 scan_logger.info(
-                    f"ICEBREAKER | {symbol} | Score: {score} >= {s.chinese_icebreaker_min_score} | "
+                    f"ICEBREAKER | {symbol} | Score: {score} >= {s.high_quality_threshold} | "
                     f"Chinese stock PASSES with 50% size"
                 )
                 if verbose:
@@ -1049,9 +1049,9 @@ class WarriorScannerService:
                     symbol=symbol,
                     scanner="warrior",
                     reason=RejectionReason.COUNTRY_EXCLUDED,
-                    details=f"Chinese stock, score {score} < {s.chinese_icebreaker_min_score} threshold",
+                    details=f"Chinese stock, score {score} < {s.high_quality_threshold} threshold",
                 )
-                scan_logger.info(f"FAIL | {symbol} | Reason: chinese_low_score | Score: {score} < {s.chinese_icebreaker_min_score}")
+                scan_logger.info(f"FAIL | {symbol} | Reason: chinese_low_score | Score: {score} < {s.high_quality_threshold}")
                 if verbose:
                     print(f"{symbol}: Rejected - Chinese stock, score {score} too low")
                 return None

@@ -82,6 +82,9 @@ class WarriorTradeModel(WarriorBase):
     slippage_cents = Column(String(20), nullable=True)  # fill - quote in cents
     quote_source = Column(String(20), nullable=True)  # Alpaca, Schwab, FMP, etc.
     
+    # Exit mode tracking (base_hit or home_run)
+    exit_mode = Column(String(20), nullable=True)  # Auto-selected based on quality_score
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -113,6 +116,7 @@ class WarriorTradeModel(WarriorBase):
             "fill_price": self.fill_price,
             "slippage_cents": self.slippage_cents,
             "quote_source": self.quote_source,
+            "exit_mode": self.exit_mode,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -162,6 +166,12 @@ def init_warrior_db():
                 conn.commit()
             except Exception:
                 pass  # Column already exists
+        # Exit mode tracking
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN exit_mode TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -185,6 +195,8 @@ def log_warrior_entry(
     quote_price: float = None,
     limit_price: float = None,
     quote_source: str = None,
+    # Exit mode tracking
+    exit_mode: str = None,  # "base_hit" or "home_run"
 ):
     """Log a new Warrior trade entry with quote tracking."""
     # Default high_since_entry to entry_price if not provided
@@ -209,10 +221,11 @@ def log_warrior_entry(
             quote_price=str(quote_price) if quote_price else None,
             limit_price=str(limit_price) if limit_price else None,
             quote_source=quote_source,
+            exit_mode=exit_mode,
         )
         db.add(trade)
         db.commit()
-        print(f"[Warrior DB] Logged entry: {symbol} x{quantity} @ ${entry_price:.2f}")
+        print(f"[Warrior DB] Logged entry: {symbol} x{quantity} @ ${entry_price:.2f} (exit_mode={exit_mode})")
 
 
 def update_warrior_fill(
