@@ -526,6 +526,7 @@ async def load_historical_test_case(case_id: str):
     from nexus2.api.routes.warrior_routes import get_engine
     
     loader = get_historical_bar_loader()
+    loader.reset()  # Clear previous test case data (LCFY bars before loading PAVM)
     data = loader.load_test_case(case_id)
     
     if data is None:

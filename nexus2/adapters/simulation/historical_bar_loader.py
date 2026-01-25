@@ -172,6 +172,12 @@ class HistoricalBarLoader:
         self._loaded_data: Dict[str, IntradayData] = {}  # symbol -> IntradayData
         self._current_case_id: Optional[str] = None
     
+    def reset(self):
+        """Reset all cached data (called when loading new test case)."""
+        self._loaded_data.clear()
+        self._current_case_id = None
+        logger.info("[HistoricalBarLoader] Reset all cached data")
+    
     def load_test_case(self, case_id: str) -> Optional[IntradayData]:
         """
         Load a test case from JSON file.
