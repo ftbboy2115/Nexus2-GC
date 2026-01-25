@@ -1147,3 +1147,32 @@
     background: rgba(251, 146, 60, 0.2);
     color: #fb923c;
 }
+
+/* Sim time stamp for orders */
+.orderTime {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.75rem;
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+    min-width: 3rem;
+    text-align: center;
+}
+
+/* Exit mode badge (base_hit / home_run) */
+.exitModeBadge {
+    font-size: 0.9rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+}
+
+.exitModeBadge.homeRun {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.exitModeBadge.baseHit {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}

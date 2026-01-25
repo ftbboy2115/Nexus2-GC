@@ -45,6 +45,11 @@ class MockOrder:
     parent_id: Optional[str] = None
     stop_order_id: Optional[str] = None
     tp_order_id: Optional[str] = None
+    
+    # Exit mode for GUI display (base_hit or home_run)
+    exit_mode: Optional[str] = None
+    # Sim clock time when order was placed (for historical replay)
+    sim_time: Optional[str] = None
 
 
 @dataclass
@@ -149,6 +154,8 @@ class MockBroker:
         stop_loss_price,  # Decimal
         limit_price=None,  # Optional[Decimal]
         take_profit_price=None,  # Optional[Decimal]
+        exit_mode: Optional[str] = None,  # "base_hit" or "home_run" for GUI
+        sim_time: Optional[str] = None,  # Sim clock time (e.g. "10:45") for GUI
     ):
         """
         Submit bracket order (entry + stop + optional TP).
@@ -163,6 +170,8 @@ class MockBroker:
             stop_loss_price: Stop loss price
             limit_price: If provided, order stays PENDING until price <= limit
             take_profit_price: Take profit price (optional)
+            exit_mode: "base_hit" or "home_run" (for GUI display)
+            sim_time: Sim clock time when order placed (for GUI display)
         
         Returns:
             BrokerOrder matching AlpacaBroker's return type
@@ -197,7 +206,7 @@ class MockBroker:
                 # Can fill immediately
                 return self._fill_entry_order(
                     client_order_id, entry_order_id, symbol, quantity, 
-                    current_price, stop_price
+                    current_price, stop_price, exit_mode, sim_time
                 )
             else:
                 # Create PENDING limit order - will fill when price crosses
@@ -210,6 +219,8 @@ class MockBroker:
                     status=MockOrderStatus.PENDING,
                     limit_price=limit_price_float,
                     stop_price=stop_price,  # Store for when it fills
+                    exit_mode=exit_mode,
+                    sim_time=sim_time,
                 )
                 self._orders[entry_order_id] = entry_order
                 
@@ -245,7 +256,7 @@ class MockBroker:
             
             return self._fill_entry_order(
                 client_order_id, entry_order_id, symbol, quantity, 
-                current_price, stop_price
+                current_price, stop_price, exit_mode, sim_time
             )
     
     def _fill_entry_order(
@@ -255,7 +266,9 @@ class MockBroker:
         symbol: str, 
         quantity: int, 
         fill_price: float, 
-        stop_price: float
+        stop_price: float,
+        exit_mode: Optional[str] = None,
+        sim_time: Optional[str] = None,
     ):
         """Internal helper to fill an entry order and create position."""
         from nexus2.adapters.broker.protocol import BrokerOrder, BrokerOrderStatus
@@ -286,6 +299,8 @@ class MockBroker:
             avg_fill_price=fill_price,
             filled_qty=quantity,
             filled_at=now_utc(),
+            exit_mode=exit_mode,
+            sim_time=sim_time,
         )
         
         # Only create stop order if stop_price is provided
@@ -610,6 +625,8 @@ class MockBroker:
                 "filled_qty": order.filled_qty,
                 "created_at": order.created_at.isoformat() if order.created_at else None,
                 "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                "exit_mode": order.exit_mode,
+                "sim_time": order.sim_time,
             }
             for order in self._orders.values()
         ]

@@ -79,6 +79,7 @@ async def get_warrior_sim_status():
     
     account = broker.get_account()
     positions = broker.get_positions()
+    orders = broker.get_orders()
     
     return {
         "sim_enabled": True,
@@ -90,6 +91,7 @@ async def get_warrior_sim_status():
         },
         "positions": positions,
         "position_count": len(positions),
+        "orders": orders,
     }
 
 
@@ -112,10 +114,15 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
     engine.monitor.sim_mode = True
     
     # Wire up sim callbacks
-    async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb"):
+    async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb", exit_mode: str = None):
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
             return None
+        
+        # Get sim_time from simulation clock for GUI display
+        from nexus2.adapters.simulation import get_simulation_clock
+        sim_clock = get_simulation_clock()
+        sim_time = sim_clock.get_time_string() if sim_clock and sim_clock.current_time else None
         
         # Don't create broker-level hard stops in sim mode
         # Let the monitor handle all exits (mental stops, profit targets, etc.)
@@ -126,6 +133,8 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
             quantity=shares,
             stop_loss_price=None,  # Monitor controls exits, not broker stops
             limit_price=Decimal(str(limit_price)) if limit_price else None,
+            exit_mode=exit_mode,
+            sim_time=sim_time,
         )
         return result
 
