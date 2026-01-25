@@ -116,20 +116,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 
                 # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
                 # Example: TNMG at $3.93, target $4.00 level
-                # IMPORTANT: Ross only does this AFTER witnessing the squeeze and pullback
-                # Not on first sight of the stock - requires prior breakout above PMH
                 if engine.config.dip_for_level_enabled and not watched.entry_triggered:
-                    # GUARD: Only allow dip buy if we've seen PMH exceeded previously
-                    # This prevents buying on first candle (like LCFY 08:01 at $6.20)
-                    # Ross's TNMG: watched it squeeze $3→$3.74→pullback→$4→dip→bought $3.93
-                    if not watched.control_candle_high:
-                        # Haven't seen PMH exceeded yet - skip dip buy
-                        logger.debug(
-                            f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL skipped - "
-                            f"no prior PMH break witnessed (waiting for breakout first)"
-                        )
-                        continue
-                    
                     # FALLING KNIFE FILTER: Block dip-for-level in sustained downtrends
                     # PAVM case: stock dropped from $24 to $13 over 3 hours — not a dip, it's death
                     # Check: must be above 20 EMA OR MACD positive (momentum recovering)
