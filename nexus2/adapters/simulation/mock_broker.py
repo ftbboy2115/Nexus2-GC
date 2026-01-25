@@ -183,9 +183,10 @@ class MockBroker:
                 status=BrokerOrderStatus.REJECTED,
             )
         
-        # Handle None stop_loss_price with fallback (5% below entry)
-        stop_price = float(stop_loss_price) if stop_loss_price is not None else current_price * 0.95
+        # Keep stop_loss_price as-is (None means no stop - monitor controls exits)
+        stop_price = float(stop_loss_price) if stop_loss_price is not None else None
         entry_order_id = str(uuid4())
+
         
         # Determine if this is a limit order (PENDING) or market order (immediate fill)
         if limit_price is not None:
@@ -287,24 +288,27 @@ class MockBroker:
             filled_at=now_utc(),
         )
         
-        # Create stop order (pending)
-        stop_order_id = str(uuid4())
-        stop_order = MockOrder(
-            id=stop_order_id,
-            symbol=symbol,
-            side="sell",
-            qty=quantity,
-            order_type="stop",
-            status=MockOrderStatus.PENDING,
-            stop_price=stop_price,
-            parent_id=entry_order_id,
-        )
+        # Only create stop order if stop_price is provided
+        # (None = monitor controls exits, no broker-level stops)
+        stop_order_id = None
+        if stop_price is not None:
+            stop_order_id = str(uuid4())
+            stop_order = MockOrder(
+                id=stop_order_id,
+                symbol=symbol,
+                side="sell",
+                qty=quantity,
+                order_type="stop",
+                status=MockOrderStatus.PENDING,
+                stop_price=stop_price,
+                parent_id=entry_order_id,
+            )
+            entry_order.stop_order_id = stop_order_id
+            self._orders[stop_order_id] = stop_order
         
-        entry_order.stop_order_id = stop_order_id
-        
-        # Store orders
+        # Store entry order
         self._orders[entry_order_id] = entry_order
-        self._orders[stop_order_id] = stop_order
+
         
         # Update cash
         self._cash -= fill_price * quantity
