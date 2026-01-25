@@ -753,6 +753,12 @@ async def evaluate_position(
         position: The position to evaluate
         prefetched_price: Pre-fetched price from batch quote (avoids individual API call)
     """
+    # DEBUG: Log entry to evaluate_position
+    logger.info(
+        f"[Warrior] {position.symbol}: evaluate_position called, "
+        f"prefetched_price={prefetched_price}, entry=${position.entry_price}"
+    )
+    
     # Get current price
     if prefetched_price is not None and prefetched_price != 0:
         current_price = Decimal(str(prefetched_price))
