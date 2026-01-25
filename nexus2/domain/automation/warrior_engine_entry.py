@@ -516,6 +516,7 @@ async def check_micro_pullback_entry(
     current_bar_volume = 0
     prior_bar_volume = 0
     is_macd_bullish = False
+    macd_debug_info = ""
     
     if engine._get_intraday_bars:
         try:
@@ -530,6 +531,16 @@ async def check_micro_pullback_entry(
                 snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
                 is_macd_bullish = snapshot.is_macd_bullish
                 
+                # DEBUG: Log MACD details
+                first_time = getattr(candles[0], 'timestamp', getattr(candles[0], 't', 'N/A'))
+                last_time = getattr(candles[-1], 'timestamp', getattr(candles[-1], 't', 'N/A'))
+                macd_val = snapshot.macd if snapshot.macd else 0
+                signal_val = snapshot.macd_signal if snapshot.macd_signal else 0
+                macd_debug_info = (
+                    f"candles={len(candles)}, range={first_time}->{last_time}, "
+                    f"MACD={macd_val:.4f}, signal={signal_val:.4f}, bullish={is_macd_bullish}"
+                )
+                
                 # Get volume for current and prior bar
                 current_bar_volume = candles[-1].volume if candles else 0
                 prior_bar_volume = candles[-2].volume if len(candles) >= 2 else 0
@@ -539,7 +550,7 @@ async def check_micro_pullback_entry(
     
     # MACD check (Ross's "green light" system)
     if engine.config.require_macd_positive and not is_macd_bullish:
-        logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD negative")
+        logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD negative ({macd_debug_info})")
         return
     
     # TRACK SWING HIGHS
