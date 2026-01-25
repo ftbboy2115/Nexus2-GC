@@ -140,16 +140,26 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
 
     
     async def sim_get_quote(symbol: str):
+        # Priority 1: Get price from MockBroker
         sim_broker = get_warrior_sim_broker()
         if sim_broker:
             price = sim_broker.get_price(symbol)
             if price is not None:
                 return price
         
-        from nexus2.adapters.market_data.unified import UnifiedMarketData
-        umd = UnifiedMarketData()
-        quote = umd.get_quote(symbol)
-        return float(quote.price) if quote else None
+        # Priority 2: Get price from HistoricalBarLoader (for historical replay)
+        # Do NOT fall back to Alpaca - that causes stale quote rejections
+        from nexus2.adapters.simulation import get_historical_bar_loader, get_simulation_clock
+        loader = get_historical_bar_loader()
+        clock = get_simulation_clock()
+        if loader and clock:
+            time_str = clock.get_time_string()
+            price = loader.get_price_at(symbol, time_str)
+            if price:
+                return price
+        
+        # No fallback to Alpaca in sim mode - return None
+        return None
     
     async def sim_get_positions():
         sim_broker = get_warrior_sim_broker()
