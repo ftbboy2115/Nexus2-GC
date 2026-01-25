@@ -37,6 +37,7 @@ class EntryTriggerType(Enum):
     VWAP_BREAK = "vwap_break"  # Break above VWAP after consolidation below (Ross: Jan 20 2026)
     DIP_FOR_LEVEL = "dip_for_level"  # Dip + level break (Ross: TNMG $3.93 → $4.00)
     PULLBACK = "pullback"  # General pullback entry (first candle new high)
+    MICRO_PULLBACK = "micro_pullback"  # For extended stocks (>100% gap): swing high break
 
 
 # =============================================================================
@@ -106,6 +107,12 @@ class WarriorEngineConfig:
     level_proximity_cents: int = 10  # How close to level to trigger (default 10c)
     level_granularity: str = "quarter"  # "quarter" ($0.25), "half" ($0.50), "whole" ($1.00)
     require_macd_positive: bool = True  # Ross-confirmed: MACD must be positive for entry
+    
+    # MICRO-PULLBACK settings (for extended stocks)
+    micro_pullback_enabled: bool = True  # Enable micro-pullback entries for extended stocks
+    extension_threshold: float = 100.0  # Gap % above which to use micro-pullback instead of PMH
+    micro_pullback_min_dip: float = 1.0  # Minimum pullback % to trigger (too shallow = no setup)
+    micro_pullback_max_dip: float = 5.0  # Maximum pullback % (deeper = reversal, not pullback)
 
 
 @dataclass
@@ -160,6 +167,12 @@ class WatchedCandidate:
     # This naturally filters rejection wicks (like LCFY 08:01 with high $7.26, close $6.20)
     control_candle_high: Optional[Decimal] = None  # High of control candle for confirmation
     control_candle_time: Optional[str] = None  # Time string of control candle (e.g., "08:01")
+    
+    # MICRO-PULLBACK tracking (for extended stocks >100% gap)
+    swing_high: Optional[Decimal] = None  # Recent local high for micro-pullback detection
+    swing_high_time: Optional[str] = None  # When swing high was set
+    pullback_low: Optional[Decimal] = None  # Low after swing high (pullback depth)
+    micro_pullback_ready: bool = False  # Pullback detected, ready for entry on break
     
     @property
     def dynamic_score(self) -> int:
