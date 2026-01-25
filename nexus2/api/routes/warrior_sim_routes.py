@@ -552,6 +552,9 @@ async def load_historical_test_case(case_id: str):
         broker = MockBroker(initial_cash=25000.0)
         set_warrior_sim_broker(broker)
     
+    # Reset broker state when loading new test case (clears previous orders/positions)
+    broker.reset()
+    
     # Set up MockMarketData with the clock
     from nexus2.adapters.simulation import get_mock_market_data
     mock_data = get_mock_market_data()
