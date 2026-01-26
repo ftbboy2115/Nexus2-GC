@@ -88,6 +88,8 @@ async def get_warrior_sim_status():
             "portfolio_value": account["portfolio_value"],
             "unrealized_pnl": account["unrealized_pnl"],
             "realized_pnl": account["realized_pnl"],
+            "max_capital_deployed": account.get("max_capital_deployed", 0),
+            "max_shares_held": account.get("max_shares_held", 0),
         },
         "positions": positions,
         "position_count": len(positions),
