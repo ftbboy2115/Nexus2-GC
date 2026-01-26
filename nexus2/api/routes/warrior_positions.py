@@ -69,12 +69,14 @@ async def get_warrior_positions():
         
         # Fetch quotes for any positions missing current_price
         # Use UnifiedMarketData for fallback (Alpaca -> FMP -> Schwab) + cross-validation
+        # IMPORTANT: Use asyncio.to_thread() because UMD->FMP can block on rate limits
+        import asyncio
         from nexus2.adapters.market_data.unified import UnifiedMarketData
         umd = UnifiedMarketData()
         for p in positions:
             if p.symbol not in current_prices:
                 try:
-                    quote = umd.get_quote(p.symbol)
+                    quote = await asyncio.to_thread(umd.get_quote, p.symbol)
                     if quote and quote.price > 0:
                         current_prices[p.symbol] = float(quote.price)
                 except Exception:
