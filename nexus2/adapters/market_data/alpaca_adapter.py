@@ -233,13 +233,26 @@ class AlpacaAdapter:
             symbol: Stock symbol
             timeframe: "1Min", "5Min", "15Min", "1Hour"
             limit: Max bars to return
+        
+        Note: Returns today's bars in chronological order (oldest first).
+        Without start parameter, Alpaca returns OLD historical bars, not today's.
         """
+        from datetime import timezone, timedelta
+        
+        # Start from today 4 AM ET (extended hours start) to get today's bars
+        # This ensures we get the current session, not old historical data
+        now_utc = datetime.now(timezone.utc)
+        # ET is UTC-5 (EST) or UTC-4 (EDT) - use -5 as safe default
+        today_4am_et = now_utc.replace(hour=9, minute=0, second=0, microsecond=0)  # 4 AM ET = 9 AM UTC
+        
         data = self._get(
             f"v2/stocks/{symbol}/bars",
             params={
                 "timeframe": timeframe,
                 "limit": str(limit),
                 "adjustment": "raw",
+                "start": today_4am_et.isoformat(),
+                "sort": "asc",  # Chronological order (oldest first, newest last)
             }
         )
         
