@@ -366,6 +366,12 @@ class WarriorScannerService:
             # Use pre-market gainers endpoint for stocks actually gapping today
             gainers = self.market_data.get_premarket_gainers(min_change_pct=float(self.settings.min_gap))
             scan_logger.info(f"PREMARKET MODE | Using pre_post_market/gainers | Found: {len(gainers)} stocks")
+            
+            # Fallback to regular gainers if pre-market endpoint returns empty
+            # (FMP pre_post_market can be empty early in pre-market or due to data issues)
+            if not gainers:
+                gainers = self.market_data.get_gainers()
+                scan_logger.info(f"PREMARKET FALLBACK | Using stock_market/gainers | Found: {len(gainers)} stocks")
         else:
             gainers = self.market_data.get_gainers()
             scan_logger.info(f"REGULAR MODE | Using stock_market/gainers | Found: {len(gainers)} stocks")
