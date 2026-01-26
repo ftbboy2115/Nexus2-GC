@@ -323,15 +323,26 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
         reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
         symbol = signal.symbol
         
-        # DEFENSIVE GUARD: Check actual broker position to prevent short attempts
-        # This handles race conditions where scale orders haven't filled yet
+        # DEFENSIVE GUARD: Check actual broker position
+        # - For FULL exits: sell ALL broker shares (prevents orphaned shares)
+        # - For partial exits: adjust down to prevent shorting
+        from nexus2.domain.automation.warrior_types import WarriorExitReason
+        is_partial = signal.reason == WarriorExitReason.PARTIAL_EXIT
+        
         try:
             broker_positions = alpaca.get_positions()
             if symbol in broker_positions:
                 broker_qty = broker_positions[symbol].quantity
-                if broker_qty < shares:
-                    print(f"[Warrior] {symbol}: Adjusting exit from {shares} to {broker_qty} shares (broker qty)")
-                    shares = broker_qty
+                if is_partial:
+                    # Partial exit: only adjust down to prevent shorting
+                    if broker_qty < shares:
+                        print(f"[Warrior] {symbol}: Adjusting exit from {shares} to {broker_qty} shares (broker qty)")
+                        shares = broker_qty
+                else:
+                    # FULL EXIT: sell ALL broker shares (prevents orphaned shares)
+                    if broker_qty != shares:
+                        print(f"[Warrior] {symbol}: Full exit - selling ALL {broker_qty} shares (signal had {shares})")
+                        shares = broker_qty
             else:
                 print(f"[Warrior] {symbol}: No broker position found - skipping exit")
                 return None
