@@ -155,6 +155,45 @@ class PositionRepository:
         if status:
             query = query.filter(PositionModel.status == status)
         return query.order_by(PositionModel.opened_at.desc()).limit(limit).all()
+    
+    def close_orphaned_positions(self, active_symbols: set) -> List[str]:
+        """
+        Close positions in DB that are marked 'open' but not at broker.
+        
+        This reconciles the DB with broker reality after restarts or when
+        broker stop orders fill independently (e.g., intraday stop hit).
+        
+        Matches Warrior's close_orphaned_trades() pattern.
+        
+        Args:
+            active_symbols: Set of symbols currently held on broker
+        
+        Returns:
+            List of symbols that were closed as orphans
+        """
+        closed = []
+        
+        # Only check positions that SHOULD exist at broker
+        # Exclude 'pending_fill' - order placed but not yet filled, won't be at broker yet
+        # Exclude 'closed' - already closed
+        open_positions = self.db.query(PositionModel).filter(
+            PositionModel.status.in_(["open", "partial", "scaling"])
+        ).all()
+        
+        for pos in open_positions:
+            if pos.symbol not in active_symbols:
+                print(f"[NAC DB] Closing orphan: {pos.symbol} (not at broker)")
+                pos.status = "closed"
+                pos.remaining_shares = 0
+                pos.closed_at = now_utc()
+                closed.append(pos.symbol)
+        
+        self.db.commit()
+        
+        if closed:
+            print(f"[NAC DB] Closed {len(closed)} orphaned positions: {closed}")
+        
+        return closed
 
 
 class PositionExitRepository:

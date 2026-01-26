@@ -103,6 +103,24 @@ async def start_scheduler(
     logger.info("[Scheduler] Auto-started Engine")
     
     # =============================
+    # SYNC NAC POSITIONS - Close orphans not at broker
+    # =============================
+    # Similar to Warrior's close_orphaned_trades() pattern
+    if broker:
+        try:
+            broker_positions = broker.get_positions()
+            active_symbols = set(broker_positions.keys())
+            
+            with get_session() as db:
+                repo = PositionRepository(db)
+                orphaned = repo.close_orphaned_positions(active_symbols)
+                if orphaned:
+                    logger.info(f"[NAC] Closed {len(orphaned)} orphaned positions: {orphaned}")
+                    print(f"🧹 [NAC] Closed orphaned positions: {orphaned}")
+        except Exception as e:
+            logger.warning(f"[NAC] Orphan cleanup failed: {e}")
+    
+    # =============================
     # AUTO-START POSITION MONITOR
     # =============================
     # This handles Day 3-5 partials and intraday stop checks
