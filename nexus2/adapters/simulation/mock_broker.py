@@ -111,6 +111,9 @@ class MockBroker:
         self._positions: Dict[str, MockPosition] = {}
         self._current_prices: Dict[str, float] = {}
         self._realized_pnl: float = 0.0
+        # Track peak capital usage metrics
+        self._max_capital_deployed: float = 0.0  # Peak capital in positions
+        self._max_shares_held: int = 0  # Peak total shares across all positions
         
     def reset(self):
         """Reset broker to initial state."""
@@ -119,6 +122,20 @@ class MockBroker:
         self._positions.clear()
         self._current_prices.clear()
         self._realized_pnl = 0.0
+        self._max_capital_deployed = 0.0
+        self._max_shares_held = 0
+    
+    def _update_max_metrics(self):
+        """Update peak capital and shares metrics based on current positions."""
+        total_shares = sum(pos.qty for pos in self._positions.values())
+        total_capital = sum(
+            pos.qty * pos.avg_entry_price for pos in self._positions.values()
+        )
+        
+        if total_shares > self._max_shares_held:
+            self._max_shares_held = total_shares
+        if total_capital > self._max_capital_deployed:
+            self._max_capital_deployed = total_capital
     
     def set_price(self, symbol: str, price: float):
         """
@@ -346,6 +363,9 @@ class MockBroker:
                 opened_at=now_utc(),
             )
         
+        # Update peak metrics
+        self._update_max_metrics()
+        
         logger.info(f"[MockBroker] FILLED BUY {quantity}x {symbol} @ ${fill_price:.2f}")
         
         return BrokerOrder(
@@ -501,6 +521,8 @@ class MockBroker:
             "realized_pnl": self._realized_pnl,
             "unrealized_pnl": total_unrealized,
             "position_count": len(self._positions),
+            "max_capital_deployed": self._max_capital_deployed,
+            "max_shares_held": self._max_shares_held,
         }
     
     def _check_pending_limit_orders(self, symbol: str):
@@ -557,6 +579,9 @@ class MockBroker:
                             stop_price=stop_price,
                             opened_at=now_utc(),
                         )
+                    
+                    # Update peak metrics
+                    self._update_max_metrics()
                     
                     logger.info(
                         f"[MockBroker] LIMIT FILL: BUY {order.qty}x {symbol} "

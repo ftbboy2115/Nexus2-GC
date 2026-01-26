@@ -17,6 +17,8 @@ interface SimAccount {
     portfolio_value: number
     unrealized_pnl: number
     realized_pnl: number
+    max_capital_deployed?: number
+    max_shares_held?: number
 }
 
 interface SimStatus {
@@ -93,6 +95,22 @@ export function TradingModeCard({
                                     {formatPnL(simStatus.account.realized_pnl)}
                                 </div>
                                 <div className={styles.statLabel}>Realized</div>
+                            </div>
+                        </div>
+
+                        {/* Capital metrics for scaling analysis */}
+                        <div className={styles.statsGrid} style={{ marginTop: '8px' }}>
+                            <div className={styles.statBox}>
+                                <div className={styles.statValue} style={{ color: '#60a5fa' }}>
+                                    {formatCurrency(simStatus.account.max_capital_deployed || 0)}
+                                </div>
+                                <div className={styles.statLabel}>Max Capital</div>
+                            </div>
+                            <div className={styles.statBox}>
+                                <div className={styles.statValue} style={{ color: '#60a5fa' }}>
+                                    {simStatus.account.max_shares_held || 0}
+                                </div>
+                                <div className={styles.statLabel}>Max Shares</div>
                             </div>
                         </div>
 
