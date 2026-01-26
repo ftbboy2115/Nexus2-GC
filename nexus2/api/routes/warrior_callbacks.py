@@ -265,8 +265,9 @@ def create_get_intraday_bars():
             from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
             alpaca = AlpacaAdapter()
             
-            if hasattr(alpaca, 'get_bars'):
-                bars = alpaca.get_bars(symbol, timeframe=timeframe, limit=limit)
+            # Use Alpaca's get_intraday_bars method (exists since adapter creation)
+            if hasattr(alpaca, 'get_intraday_bars'):
+                bars = alpaca.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
                 if bars:
                     return [Bar(
                         open=float(b.open),
@@ -277,10 +278,11 @@ def create_get_intraday_bars():
                     ) for b in bars]
             
             # Fallback: FMP (run in thread pool to avoid blocking event loop)
+            # Pass the requested timeframe instead of hardcoding "5min"
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
             if fmp:
-                fmp_bars = await asyncio.to_thread(fmp.get_intraday_bars, symbol, "5min")
+                fmp_bars = await asyncio.to_thread(fmp.get_intraday_bars, symbol, timeframe)
                 if fmp_bars and len(fmp_bars) >= 5:
                     bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
                     return [Bar(
