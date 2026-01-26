@@ -30,7 +30,8 @@ class EvaluationResult(BaseModel):
     max_dd_delta: float = Field(default=0.0, description="Positive = less drawdown")
     
     # Verdict
-    improvement_score: float = Field(default=0.0, description="Weighted 0-1 score")
+    improvement_score: float = Field(default=0.0, description="Weighted 0-1 score relative to baseline")
+    absolute_score: float = Field(default=0.0, description="Absolute performance score (0-1) independent of baseline")
     passed_threshold: bool = Field(default=False)
     recommendation: str = Field(default="reject", description="iterate/promote/reject")
     
@@ -152,6 +153,28 @@ class EvaluatorAgent:
             score += self.WEIGHTS["min_trades"] * 1.0
         
         result.improvement_score = score
+        
+        # Calculate absolute score based on raw variant metrics (not deltas)
+        # This allows comparing scores across experiments with different baselines
+        abs_score = 0.0
+        
+        # Win rate component: 50% win rate = 0.5 score, 60% = 0.6, etc.
+        abs_score += self.WEIGHTS["win_rate"] * min(1.0, v_win / 100)
+        
+        # Sharpe component: positive sharpe is good
+        if v_sharpe is not None:
+            abs_score += self.WEIGHTS["sharpe"] * max(0, min(1, (v_sharpe + 1) / 3))
+        
+        # Max DD component: 0% DD = 1.0, 20% DD = 0.5, 40%+ DD = 0
+        abs_score += self.WEIGHTS["max_dd"] * max(0, 1 - (abs(v_dd) / 40))
+        
+        # Trade count component: meets minimum = 1.0
+        if v_trades >= self.MIN_TRADES:
+            abs_score += self.WEIGHTS["min_trades"] * 1.0
+        elif v_trades > 0:
+            abs_score += self.WEIGHTS["min_trades"] * (v_trades / self.MIN_TRADES)
+        
+        result.absolute_score = abs_score
         
         # Determine recommendation
         if rejection_reasons:

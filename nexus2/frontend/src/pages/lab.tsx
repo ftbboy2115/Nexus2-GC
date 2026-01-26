@@ -42,6 +42,7 @@ interface IterationResult {
     }
     evaluation: {
         improvement_score?: number
+        absolute_score?: number
         recommendation?: string
         summary?: string
     }
@@ -375,7 +376,8 @@ export default function Lab() {
                                                 <th>Valid</th>
                                                 <th>Win Rate</th>
                                                 <th>Avg R</th>
-                                                <th>Score</th>
+                                                <th title="Relative improvement over baseline">Δ Score</th>
+                                                <th title="Absolute performance score">Abs</th>
                                                 <th>Result</th>
                                             </tr>
                                         </thead>
@@ -389,7 +391,8 @@ export default function Lab() {
                                                     <td>{iter.code_valid ? '✅' : '❌'}</td>
                                                     <td>{iter.metrics.win_rate?.toFixed(1) || '-'}%</td>
                                                     <td>{iter.metrics.avg_r?.toFixed(2) || '-'}</td>
-                                                    <td>{((iter.evaluation.improvement_score || 0) * 100).toFixed(1)}%</td>
+                                                    <td title="Relative improvement">{((iter.evaluation.improvement_score || 0) * 100).toFixed(1)}%</td>
+                                                    <td title="Absolute performance">{((iter.evaluation.absolute_score || 0) * 100).toFixed(1)}%</td>
                                                     <td className={styles[iter.recommendation]}>
                                                         {iter.recommendation}
                                                     </td>
