@@ -634,6 +634,91 @@ async def check_micro_pullback_entry(
 
 
 # =============================================================================
+# SCALING INTO EXISTING POSITION (MICRO-PULLBACK RE-ENTRIES)
+# =============================================================================
+
+
+async def _scale_into_existing_position(
+    engine: "WarriorEngine",
+    watched: WatchedCandidate,
+    entry_price: Decimal,
+    trigger_type: EntryTriggerType,
+) -> None:
+    """
+    Scale into an existing position (Ross Cameron averaging-in methodology).
+    
+    Called when micro-pullback triggers on a symbol we already hold.
+    Uses the monitor's scaling infrastructure for proper DB tracking.
+    
+    Args:
+        engine: The WarriorEngine instance
+        watched: The watched candidate triggering the scale
+        entry_price: Price to add at
+        trigger_type: Entry trigger type (for logging)
+    """
+    symbol = watched.candidate.symbol
+    
+    # Get the existing position from monitor
+    existing_position = None
+    for pos_id, pos in engine.monitor._positions.items():
+        if pos.symbol == symbol:
+            existing_position = pos
+            break
+    
+    if not existing_position:
+        logger.warning(
+            f"[Warrior Entry] {symbol}: Scale requested but no position in monitor - "
+            f"trying DB lookup"
+        )
+        # Try DB lookup as fallback
+        from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+        trade = get_warrior_trade_by_symbol(symbol)
+        if not trade:
+            logger.error(f"[Warrior Entry] {symbol}: No position found in DB either, cannot scale")
+            return
+        # Position exists in DB but not in monitor's memory - skip for now
+        logger.warning(f"[Warrior Entry] {symbol}: Position in DB but not monitor, skipping scale")
+        return
+    
+    # Calculate add shares (same sizing as initial entry)
+    add_shares = engine.config.position_size
+    
+    # Create scale signal matching what warrior_monitor_scale expects
+    scale_signal = {
+        "position_id": existing_position.position_id,
+        "symbol": symbol,
+        "add_shares": add_shares,
+        "price": float(entry_price),
+        "support": float(existing_position.current_stop or existing_position.mental_stop or 0),
+        "scale_count": existing_position.scale_count + 1,
+    }
+    
+    logger.info(
+        f"[Warrior Entry] {symbol}: MICRO_PULLBACK SCALE - adding {add_shares} shares "
+        f"@ ${entry_price:.2f} to existing position "
+        f"(entry=${existing_position.entry_price:.2f}, shares={existing_position.shares})"
+    )
+    
+    # Use monitor's execute_scale_in for proper DB tracking
+    from nexus2.domain.automation.warrior_monitor_scale import execute_scale_in
+    success = await execute_scale_in(engine.monitor, existing_position, scale_signal)
+    
+    if success:
+        # Calculate new average entry price
+        old_shares = existing_position.shares - add_shares  # shares before add
+        old_cost = float(existing_position.entry_price) * old_shares
+        new_cost = float(entry_price) * add_shares
+        new_avg = (old_cost + new_cost) / existing_position.shares
+        
+        logger.info(
+            f"[Warrior Entry] {symbol}: Scale complete - "
+            f"now {existing_position.shares} shares, avg=${new_avg:.2f}"
+        )
+    else:
+        logger.warning(f"[Warrior Entry] {symbol}: Scale-in failed")
+
+
+# =============================================================================
 # ENTRY EXECUTION
 # =============================================================================
 
@@ -741,15 +826,30 @@ async def enter_position(
         except Exception as e:
             logger.debug(f"[Warrior Entry] {symbol}: MACD check failed: {e} - proceeding without gate")
     
-    # Check if we already hold this symbol (prevents double-buying after restart)
+    # Check if we already hold this symbol
+    # - For regular entries: Block re-entry (prevents double-buying)
+    # - For MICRO_PULLBACK: Scale into existing position (Ross averaging-in methodology)
     if engine._get_positions:
         try:
             positions = await engine._get_positions()
             held_symbols = {p.get("symbol") or p.symbol for p in positions if p}
             if symbol in held_symbols:
-                logger.info(f"[Warrior Entry] {symbol}: Already holding position, skipping")
-                watched.entry_triggered = True  # Mark as triggered to prevent retries
-                return
+                # MICRO_PULLBACK: Scale into existing position instead of blocking
+                if trigger_type == EntryTriggerType.MICRO_PULLBACK:
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Already holding - triggering SCALE-IN "
+                        f"(micro-pullback re-entry at ${entry_price:.2f})"
+                    )
+                    await _scale_into_existing_position(
+                        engine, watched, entry_price, trigger_type
+                    )
+                    watched.entry_triggered = True
+                    return
+                else:
+                    # Regular entry: block (prevents double-buying after restart)
+                    logger.info(f"[Warrior Entry] {symbol}: Already holding position, skipping")
+                    watched.entry_triggered = True  # Mark as triggered to prevent retries
+                    return
         except Exception as e:
             logger.warning(f"[Warrior Entry] {symbol}: Position check failed: {e}")
     
