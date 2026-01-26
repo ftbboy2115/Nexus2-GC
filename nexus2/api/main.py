@@ -393,6 +393,29 @@ def create_app() -> FastAPI:
     app.include_router(lab_routes.router)
     app.include_router(audit_routes.router, prefix="/audit", tags=["audit"])
     
+    # Custom OpenAPI schema with sorted endpoints for Swagger readability
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        
+        from fastapi.openapi.utils import get_openapi
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        
+        # Sort paths alphabetically
+        if "paths" in openapi_schema:
+            sorted_paths = dict(sorted(openapi_schema["paths"].items()))
+            openapi_schema["paths"] = sorted_paths
+        
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+    
+    app.openapi = custom_openapi
+    
     return app
 
 

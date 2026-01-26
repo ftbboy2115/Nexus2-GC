@@ -47,8 +47,8 @@ Last updated: 2026-01-22
   - MarketAux: 5000+ sources, 100 req/day free tier, built-in sentiment
   - Fallback when FMP headline doesn't contain the actual catalyst
   - Add `MARKETAUX_API_KEY` to config
-- [ ] **Sort API Endpoints by Name** — Swagger docs currently show endpoints in random order
-  - Add `sorted_endpoints` parameter to FastAPI app or use tags ordering
+- [x] **Sort API Endpoints by Name** — Swagger docs now sorted alphabetically (Jan 26)
+  - Custom OpenAPI schema generator in `main.py` sorts paths
 - [x] **MockMarket Playback Timing Bug** — Play button shows pulsing green but time doesn't advance at 1x
   - **Root Cause:** `setInterval` fired before previous API call completed
   - **Fix:** Replaced with async `setTimeout` chain that awaits `onStep()` completion
@@ -248,6 +248,12 @@ Last updated: 2026-01-22
   - Usage: Adding to existing positions (not initial entry)
   - Evidence: Ross Cameron Jan 14 2026: "Add on VWAP reclaims"
   - Requires: Track "was above VWAP before" state per watched candidate
+- [ ] **Level 2 / Tape Reading** — Entry confirmation via order flow analysis
+  - Track bid/ask changes over time to detect absorption patterns
+  - Requires data upgrade: Alpaca L2 ($99/mo) or Polygon Pro
+  - Ross Cameron methodology: "When I see green on tape, I buy"
+  - Potential signals: ask being absorbed, burst of red on tape, big seller appearing
+  - Evidence: Ross Cameron Mar 14 2024 "How to use Level 2" deep-dive transcript
 - [x] **Spread Management** — Bid/ask spread considerations for cleaner execution (Jan 12)
   - [x] Spread exit trigger (exit if spread > 3% after grace period)
   - [x] Bid-based limit exits for illiquid stocks

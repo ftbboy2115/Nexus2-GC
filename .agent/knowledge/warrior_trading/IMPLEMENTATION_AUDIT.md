@@ -83,7 +83,8 @@
 | ETFs | `get_etf_symbols()` exclusion | ✅ |
 | REIT sector | ❌ No REIT filter | 🔴 GAP |
 | Wide spreads | `max_entry_spread_percent=3.0` | ✅ |
-| Jack knife candles | ❌ No detection | 🔴 GAP |
+| Falling knife (downtrend) | Below 20 EMA + MACD negative → blocks entry | ✅ Lines 120-153 |
+| Jack knife (V-reversal candle) | Sharp spike up → immediate reversal (e.g., $2.45→$3.00→$2.45) | 🔴 GAP |
 | Extended stocks (>20-30% above MAs) | ❌ No check | 🔴 GAP |
 
 ---
