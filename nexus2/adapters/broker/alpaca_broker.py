@@ -25,9 +25,35 @@ class AlpacaBrokerError(Exception):
     pass
 
 
+class MockMarketActiveError(AlpacaBrokerError):
+    """Raised when attempting real orders while MockMarket is active."""
+    pass
+
+
 class OrderNotFoundError(AlpacaBrokerError):
     """Order not found."""
     pass
+
+
+def _is_mock_market_active() -> bool:
+    """
+    SAFETY INTERLOCK: Check if MockMarket/HistoricalBarLoader is active.
+    
+    When historical replay data is loaded, we're in simulation mode and
+    MUST NOT place real orders to Alpaca.
+    
+    Returns:
+        True if mock market data is loaded (block real orders)
+    """
+    try:
+        from nexus2.adapters.simulation import get_historical_bar_loader
+        loader = get_historical_bar_loader()
+        # If loader has any symbols loaded, we're in mock mode
+        if loader and loader.get_loaded_symbols():
+            return True
+    except ImportError:
+        pass
+    return False
 
 
 @dataclass
@@ -196,6 +222,16 @@ class AlpacaBroker:
     ) -> BrokerOrder:
         """Submit order to Alpaca."""
         
+        # 🛑 CRITICAL SAFETY INTERLOCK: Block orders when MockMarket is active
+        # Prevents simulation orders from leaking to real broker
+        if _is_mock_market_active():
+            error_msg = (
+                f"🛑 [SAFETY INTERLOCK] BLOCKED real order: {side} {quantity}x {symbol} @ ${limit_price or 'market'} - "
+                f"MockMarket data is loaded. Use MockBroker for simulation trades."
+            )
+            print(error_msg)
+            raise MockMarketActiveError(error_msg)
+        
         # CRITICAL SAFETY CHECK: Prevent selling without existing long position
         # KK-style trading is LONG ONLY - never short
         if side.lower() == "sell":
@@ -267,6 +303,16 @@ class AlpacaBroker:
         Returns:
             BrokerOrder for the entry leg
         """
+        # 🛑 CRITICAL SAFETY INTERLOCK: Block orders when MockMarket is active
+        # Prevents simulation orders from leaking to real broker
+        if _is_mock_market_active():
+            error_msg = (
+                f"🛑 [SAFETY INTERLOCK] BLOCKED real bracket order: BUY {quantity}x {symbol} @ ${limit_price or 'market'} "
+                f"(stop=${stop_loss_price}) - MockMarket data is loaded. Use MockBroker for simulation trades."
+            )
+            print(error_msg)
+            raise MockMarketActiveError(error_msg)
+        
         # Build order class - OTO (one-triggers-other) for bracket
         order_class = "bracket" if take_profit_price else "oto"
         order_type = "limit" if limit_price else "market"
