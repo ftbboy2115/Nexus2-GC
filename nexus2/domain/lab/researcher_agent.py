@@ -190,7 +190,12 @@ class ResearcherAgent:
                 if not api_key:
                     raise ValueError("GEMINI_LAB_KEY or GEMINI_API_KEY not set")
                 
-                self._client = genai.Client(api_key=api_key)
+                # Add timeout to prevent hanging requests (60 seconds)
+                from google.genai import types
+                self._client = genai.Client(
+                    api_key=api_key,
+                    http_options=types.HttpOptions(timeout=60000)  # 60 second timeout
+                )
                 logger.info(f"[ResearcherAgent] Using {'GEMINI_LAB_KEY' if os.environ.get('GEMINI_LAB_KEY') else 'GEMINI_API_KEY'}")
             except Exception as e:
                 logger.error(f"[ResearcherAgent] Failed to init Gemini client: {e}")
