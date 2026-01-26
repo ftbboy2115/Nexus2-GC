@@ -332,6 +332,14 @@ class LabOrchestrator:
                     logger.info(f"[Orchestrator] Promotion threshold met! Score: {evaluation.improvement_score:.2f}")
                     result.promoted_strategy = variant_name
                     result.final_recommendation = "promote"
+                    
+                    # PERSIST the winning strategy to registry
+                    try:
+                        self.registry.save_strategy(variant_strategy)
+                        logger.info(f"[Orchestrator] 💾 Saved promoted strategy: {variant_strategy.name} v{variant_strategy.version}")
+                    except Exception as e:
+                        logger.warning(f"[Orchestrator] Failed to save strategy: {e}")
+                    
                     iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
                     result.iterations.append(iter_result)
                     break
@@ -376,6 +384,14 @@ class LabOrchestrator:
                 result.final_recommendation = "iterate"
             else:
                 result.final_recommendation = "reject"
+        
+        # Save champion if it improved over baseline (even if didn't hit promotion threshold)
+        if champion_score > 0 and current_champion != baseline:
+            try:
+                self.registry.save_strategy(current_champion)
+                logger.info(f"[Orchestrator] 💾 Saved best champion: {current_champion.name} v{current_champion.version} (score {champion_score:.2f})")
+            except Exception as e:
+                logger.warning(f"[Orchestrator] Failed to save champion: {e}")
         
         logger.info(f"[Orchestrator] Experiment complete: {result.final_recommendation}")
         return result
