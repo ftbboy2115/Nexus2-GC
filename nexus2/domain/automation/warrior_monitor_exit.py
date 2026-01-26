@@ -937,14 +937,14 @@ async def handle_exit(
     else:
         logger.warning("[Warrior] No execute_exit callback - signal not acted on")
     
-    # CRITICAL: Always remove position on FULL exit, even if order fails!
+    # Only remove position if exit order succeeded - prevents orphaned shares
     if signal.reason != WarriorExitReason.PARTIAL_EXIT:
-        # Track as recently exited
-        monitor._recently_exited[signal.symbol] = now_utc()
-        monitor._save_recently_exited()
-        
-        # 2-Strike Rule: only count if order was successful
         if order_success:
+            # Track as recently exited
+            monitor._recently_exited[signal.symbol] = now_utc()
+            monitor._save_recently_exited()
+            
+            # 2-Strike Rule: count stop-outs
             stop_reasons = {
                 WarriorExitReason.MENTAL_STOP,
                 WarriorExitReason.TECHNICAL_STOP,
@@ -952,6 +952,11 @@ async def handle_exit(
             }
             if signal.reason in stop_reasons and monitor._record_symbol_fail:
                 monitor._record_symbol_fail(signal.symbol)
-        
-        monitor.remove_position(signal.position_id)
-        logger.info(f"[Warrior] {signal.symbol}: Removed from monitor (order_success={order_success})")
+            
+            monitor.remove_position(signal.position_id)
+            logger.info(f"[Warrior] {signal.symbol}: Removed from monitor (exit successful)")
+        else:
+            # Order failed - keep position in monitor for retry on next tick
+            # Also clear pending_exit to allow retry
+            monitor._clear_pending_exit(signal.symbol, to_closed=False)
+            logger.warning(f"[Warrior] {signal.symbol}: Exit order failed - keeping position for retry")
