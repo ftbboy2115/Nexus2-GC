@@ -829,6 +829,25 @@ async def enter_position(
     # Check if we already hold this symbol
     # - For regular entries: Block re-entry (prevents double-buying)
     # - For MICRO_PULLBACK: Scale into existing position (Ross averaging-in methodology)
+    
+    # FIRST: Check MONITOR positions for max_scale enforcement
+    # This prevents submitting orders that would be rejected by add_position()
+    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
+    monitor = get_warrior_monitor()
+    for pos in monitor.get_positions():
+        if pos.symbol == symbol:
+            max_scales = monitor._settings.max_scale_count
+            if pos.scale_count >= max_scales:
+                logger.warning(
+                    f"[Warrior Entry] {symbol}: BLOCKED - already at max scale #{pos.scale_count} "
+                    f"(limit={max_scales})"
+                )
+                watched.entry_triggered = True
+                return
+            # Allow if under max_scale (will consolidate in add_position)
+            break
+    
+    # SECOND: Check BROKER positions for double-buy prevention
     if engine._get_positions:
         try:
             positions = await engine._get_positions()
