@@ -963,7 +963,7 @@ async def enter_position(
             quality_score = getattr(watched.candidate, 'quality_score', 0) or 0
             gap_percent = float(watched.candidate.gap_percent or 0)
             high_quality_threshold = 10  # TODO: Pull from scanner settings
-            extension_threshold = 100  # Gap >100% = already extended, force base hit
+            extension_threshold = engine.config.extension_threshold  # Use config value (was hardcoded 100)
             
             # EXTENSION-BASED EXIT MODE SELECTION:
             # Per Ross's pattern: extended stocks (e.g., VERO at 375%) get quick scalps
