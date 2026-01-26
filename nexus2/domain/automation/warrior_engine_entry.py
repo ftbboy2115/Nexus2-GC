@@ -105,9 +105,9 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             is_extended = gap_percent > engine.config.extension_threshold
             
             if is_extended and engine.config.micro_pullback_enabled:
-                logger.debug(
-                    f"[Warrior Entry] {symbol}: Extended stock ({gap_percent:.0f}% gap > "
-                    f"{engine.config.extension_threshold}% threshold) - using MICRO_PULLBACK mode"
+                logger.info(
+                    f"[Warrior Entry] {symbol}: EXTENDED STOCK detected ({gap_percent:.0f}% gap > "
+                    f"{engine.config.extension_threshold}% threshold) - routing to MICRO_PULLBACK"
                 )
                 await check_micro_pullback_entry(engine, watched, current_price)
                 continue  # Skip PMH break logic for extended stocks
