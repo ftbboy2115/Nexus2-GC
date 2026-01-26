@@ -515,12 +515,16 @@ async def check_micro_pullback_entry(
     current_bar_volume = 0
     prior_bar_volume = 0
     is_macd_bullish = False
+    macd_val = 0  # Initialize before use
     macd_debug_info = ""
     
     if engine._get_intraday_bars:
         try:
             candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-            if candles and len(candles) >= 20:
+            if not candles or len(candles) < 20:
+                logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - not enough candles ({len(candles) if candles else 0} < 20)")
+                return
+            if True:  # candles check passed
                 from nexus2.domain.indicators import get_technical_service
                 tech = get_technical_service()
                 candle_dicts = [
@@ -544,7 +548,7 @@ async def check_micro_pullback_entry(
                 current_bar_volume = candles[-1].volume if candles else 0
                 prior_bar_volume = candles[-2].volume if len(candles) >= 2 else 0
         except Exception as e:
-            logger.debug(f"[Warrior Entry] {symbol}: MACD/volume check failed: {e}")
+            logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD/volume error: {e}")
             return
     
     # MACD check (Ross relaxes for scalps - allow near-zero)
