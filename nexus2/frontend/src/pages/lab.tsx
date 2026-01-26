@@ -107,24 +107,26 @@ export default function Lab() {
         setEventLog(prev => [`[${timestamp}] ${msg}`, ...prev.slice(0, 49)])
     }, [])
 
+    // Fetch strategies - as useCallback so we can call it on demand
+    const fetchStrategies = useCallback(async () => {
+        try {
+            const data = await fetchAPI('/lab/strategies')
+            setStrategies(data.strategies || [])
+            if (data.strategies?.length > 0 && !selectedStrategy) {
+                setSelectedStrategy(data.strategies[0].name)
+            }
+            setLoading(false)
+        } catch (err) {
+            console.error('Failed to fetch strategies:', err)
+            addToLog('❌ Failed to fetch strategies')
+            setLoading(false)
+        }
+    }, [addToLog, selectedStrategy])
+
     // Fetch strategies on mount
     useEffect(() => {
-        const fetchStrategies = async () => {
-            try {
-                const data = await fetchAPI('/lab/strategies')
-                setStrategies(data.strategies || [])
-                if (data.strategies?.length > 0) {
-                    setSelectedStrategy(data.strategies[0].name)
-                }
-                setLoading(false)
-            } catch (err) {
-                console.error('Failed to fetch strategies:', err)
-                addToLog('❌ Failed to fetch strategies')
-                setLoading(false)
-            }
-        }
         fetchStrategies()
-    }, [addToLog])
+    }, [fetchStrategies])
 
     // Run experiment
     const runExperiment = async () => {
@@ -245,7 +247,16 @@ export default function Lab() {
                         <div className={styles.grid}>
                             {/* Strategy Selection Card */}
                             <div className={styles.card}>
-                                <h2>📋 Strategies</h2>
+                                <div className={styles.cardHeader}>
+                                    <h2>📋 Strategies</h2>
+                                    <button
+                                        className={styles.refreshButton}
+                                        onClick={() => { addToLog('🔄 Refreshing strategies...'); fetchStrategies(); }}
+                                        title="Refresh strategies list"
+                                    >
+                                        🔄
+                                    </button>
+                                </div>
                                 <div className={styles.cardContent}>
                                     <select
                                         value={selectedStrategy}

@@ -90,6 +90,36 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cardHeader h2 {
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+}
+
+.refreshButton {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.2s;
+}
+
+.refreshButton:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
 .cardContent {
     padding: 1rem;
 }
