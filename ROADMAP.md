@@ -83,6 +83,10 @@ Last updated: 2026-01-22
     6. Update tests to use async fixtures
   - **Estimated Effort:** 3-4 hours
   - **Priority:** Medium (quick fix deployed, but proper async is cleaner)
+- [ ] **Large File Audit** — Find files >600 lines and plan refactoring
+  - `warrior_engine_entry.py` is now ~1180 lines after micro-pullback additions
+  - Look for extraction opportunities (functions → modules)
+  - Target: No file >600 lines for maintainability
 
 ---
 
@@ -328,6 +332,12 @@ Last updated: 2026-01-22
   - Go long on short positions (shorting individual stocks) with weak RS
   - Market condition detection: SPY below 20/50 EMA, VIX > 20, breadth indicators
   - Use R&D Lab to backtest and compare vs cash/sideline approach
+- [ ] **Range Trading Mode** — "Trading the range" pattern for choppy/consolidating stocks
+  - Pattern: Buy near support, sell near resistance, repeat as price oscillates
+  - Requires: Range detection (upper/lower boundaries), mean-reversion entries
+  - Use case: Extended gap stocks that consolidate instead of trending (e.g., TNMG)
+  - Ross Cameron reference: "trading the range" when stock oscillates between levels
+  - Different from momentum breakouts — requires profit targets at range extremes
 
 ---
 
