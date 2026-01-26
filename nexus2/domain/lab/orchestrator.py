@@ -23,7 +23,9 @@ from .researcher_agent import get_researcher_agent, ResearchContext, Hypothesis
 from .coder_agent import get_coder_agent, GeneratedCode
 from .backtest_runner import get_backtest_runner, BacktestResult
 from .evaluator_agent import get_evaluator_agent, EvaluationResult
+from .strategy_schema import StrategySpec, ScannerConfig, EngineConfig, MonitorConfig
 from .lab_logger import configure_lab_logging
+import yaml
 
 
 logger = logging.getLogger(__name__)
@@ -211,7 +213,6 @@ class LabOrchestrator:
                 logger.info(f"[Orchestrator] Hypothesis [{hypothesis.category}]: {hypothesis.hypothesis[:100]}...")
                 
                 # 2. Code: Generate strategy
-                import yaml
                 base_config = yaml.dump(baseline.model_dump(mode="json"), default_flow_style=False)
                 
                 variant_name = f"lab_{baseline.name}_v{iteration}"
@@ -234,10 +235,26 @@ class LabOrchestrator:
                     continue
                 
                 # 3. Backtest: Test the variant
-                # For now, we use the baseline with modified config
-                # In production, we'd execute the generated code
+                # Parse the generated config_yaml into a StrategySpec
+                try:
+                    variant_config = yaml.safe_load(code.config_yaml)
+                    variant_strategy = StrategySpec(
+                        name=variant_name,
+                        version=variant_version,
+                        description=hypothesis.hypothesis[:200],
+                        based_on=baseline.name,
+                        based_on_version=baseline.version,
+                        scanner=ScannerConfig(**variant_config.get("scanner", {})),
+                        engine=EngineConfig(**variant_config.get("engine", {})),
+                        monitor=MonitorConfig(**variant_config.get("monitor", {})),
+                    )
+                    logger.info(f"[Orchestrator] Using variant strategy: {variant_strategy.name}")
+                except Exception as e:
+                    logger.warning(f"[Orchestrator] Failed to parse variant config, using baseline: {e}")
+                    variant_strategy = baseline
+                
                 variant_result = self.runner.run(
-                    baseline,  # TODO: Use generated strategy
+                    variant_strategy,
                     config.start_date,
                     config.end_date,
                     config.initial_capital,
