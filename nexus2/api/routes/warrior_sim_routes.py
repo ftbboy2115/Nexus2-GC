@@ -623,14 +623,23 @@ async def load_historical_test_case(case_id: str):
     entry_price = data.bars[0].open if data.bars else 10.0
     broker.set_price(symbol, entry_price)
     
-    # Load synthetic historical data for VWAP/EMA calculation
-    mock_data.load_synthetic_data(
-        symbol=symbol,
-        start_price=entry_price * 0.9,
-        days=30,
-        volatility=0.03,
-        trend=0.005,
-    )
+    # Load historical bars from test case for VWAP/EMA calculation
+    # Previously used synthetic data which gave wrong VWAP values
+    # Now we convert the test case's intraday bars to daily format for historical data
+    if data.bars:
+        # Convert intraday bars (t/o/h/l/c/v format) to daily bars for mock market data
+        # Group bars by date and aggregate to daily OHLCV
+        date_str = data.date  # e.g., "2026-01-16"
+        daily_bars = [{
+            "date": date_str,
+            "open": float(data.bars[0].open),
+            "high": max(b.high for b in data.bars),
+            "low": min(b.low for b in data.bars),
+            "close": float(data.bars[-1].close),
+            "volume": sum(b.volume for b in data.bars)
+        }]
+        mock_data.load_data(symbol, daily_bars)
+        print(f"[Historical Replay] Loaded real historical data: {len(daily_bars)} daily bars for {symbol}")
     
     # Extract premarket data
     premarket = data.premarket

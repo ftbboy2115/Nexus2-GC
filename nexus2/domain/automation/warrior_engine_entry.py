@@ -508,6 +508,7 @@ async def check_micro_pullback_entry(
     symbol = watched.candidate.symbol
     
     # REQUIREMENT 1: Above VWAP (confirm uptrend)
+    # Note: sim_get_intraday_bars uses real test case bars from historical bar loader
     if not watched.is_above_vwap:
         logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - below VWAP (vwap=${watched.current_vwap}, price=${current_price})")
         return
