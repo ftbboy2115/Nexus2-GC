@@ -183,11 +183,11 @@ export function TradingModeCard({
                         </button>
                         <button
                             onClick={enableBroker}
-                            className={styles.btnSuccess}
-                            disabled={actionLoading !== null}
-                            title="Enable Alpaca Paper for live trading"
+                            className={brokerStatus?.broker_enabled ? styles.btnSecondary : styles.btnSuccess}
+                            disabled={actionLoading !== null || brokerStatus?.broker_enabled}
+                            title={brokerStatus?.broker_enabled ? "Alpaca Paper broker connected" : "Enable Alpaca Paper for live trading"}
                         >
-                            {actionLoading === 'Enable Broker' ? '...' : '📈 Enable Broker'}
+                            {actionLoading === 'Enable Broker' ? '...' : (brokerStatus?.broker_enabled ? '✅ Broker Connected' : '📈 Enable Broker')}
                         </button>
                     </>
                 ) : (
