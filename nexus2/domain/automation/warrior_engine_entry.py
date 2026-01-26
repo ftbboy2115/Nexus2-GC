@@ -570,6 +570,34 @@ async def check_micro_pullback_entry(
         f"pullback_low=${watched.pullback_low}, ready={watched.micro_pullback_ready}, price=${current_price}"
     )
     
+    # ENTRY TRIGGER: Check FIRST - if ready and price breaks above swing high, ENTER
+    # This must happen BEFORE the "new swing high" check below
+    if watched.micro_pullback_ready and watched.swing_high and current_price > watched.swing_high:
+        # VOLUME CONFIRMATION: Break bar must have higher volume than prior bar
+        if current_bar_volume <= prior_bar_volume:
+            logger.info(
+                f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - volume not confirming "
+                f"({current_bar_volume:,} <= {prior_bar_volume:,})"
+            )
+            # Reset for next setup
+            watched.swing_high = current_price
+            watched.micro_pullback_ready = False
+            return
+        
+        logger.info(
+            f"[Warrior Entry] {symbol}: MICRO_PULLBACK ENTRY "
+            f"(${current_price:.2f} breaks ${watched.swing_high:.2f}, "
+            f"vol {current_bar_volume:,} > {prior_bar_volume:,})"
+        )
+        await enter_position(
+            engine, watched, current_price, EntryTriggerType.MICRO_PULLBACK
+        )
+        # Reset state after entry
+        watched.swing_high = current_price
+        watched.micro_pullback_ready = False
+        return
+    
+    # TRACK SWING HIGHS (only if not ready or first high)
     if watched.swing_high is None or current_price > watched.swing_high:
         watched.swing_high = current_price
         watched.swing_high_time = datetime.now(timezone.utc).strftime("%H:%M")
@@ -602,30 +630,7 @@ async def check_micro_pullback_entry(
             logger.info(f"[Warrior Entry] {symbol}: Pullback too deep ({pullback_pct:.1f}%) - reset")
         return
     
-    # ENTRY TRIGGER: Price breaks back above swing high after pullback
-    if watched.micro_pullback_ready and current_price > watched.swing_high:
-        # VOLUME CONFIRMATION: Break bar must have higher volume than prior bar
-        if current_bar_volume <= prior_bar_volume:
-            logger.info(
-                f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - volume not confirming "
-                f"({current_bar_volume:,} <= {prior_bar_volume:,})"
-            )
-            return
-        
-        logger.info(
-            f"[Warrior Entry] {symbol}: MICRO_PULLBACK ENTRY "
-            f"(${current_price:.2f} breaks ${watched.swing_high:.2f}, "
-            f"vol {current_bar_volume:,} > {prior_bar_volume:,})"
-        )
-        await enter_position(
-            engine,
-            watched,
-            current_price,
-            EntryTriggerType.MICRO_PULLBACK
-        )
-        # SINGLE ENTRY: Reset state (no re-entry on same pullback)
-        watched.swing_high = current_price
-        watched.micro_pullback_ready = False
+    # If we reach here, price == swing_high (rare edge case, do nothing)
 
 
 # =============================================================================
