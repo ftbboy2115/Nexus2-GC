@@ -180,9 +180,30 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
             print("[Sim] No broker for exit execution")
             return False
         
-        success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
+        # For FULL exits: sell ALL broker shares (prevents orphaned shares from multiple positions)
+        # For PARTIAL exits: sell signal.shares_to_exit only
+        from nexus2.domain.automation.warrior_types import WarriorExitReason
+        is_partial = signal.reason == WarriorExitReason.PARTIAL_EXIT
+        
+        if is_partial:
+            shares_to_sell = signal.shares_to_exit
+        else:
+            # FULL EXIT: Check broker position and sell ALL shares
+            broker_position = sim_broker.get_position(signal.symbol)
+            if broker_position:
+                broker_shares = broker_position.get("qty", 0) or broker_position.get("shares", 0)
+                if broker_shares > signal.shares_to_exit:
+                    print(
+                        f"[Sim] {signal.symbol}: Broker has {broker_shares} shares, "
+                        f"signal has {signal.shares_to_exit} - selling ALL to prevent orphan"
+                    )
+                shares_to_sell = broker_shares if broker_shares > 0 else signal.shares_to_exit
+            else:
+                shares_to_sell = signal.shares_to_exit
+        
+        success = sim_broker.sell_position(signal.symbol, shares_to_sell)
         if success:
-            print(f"[Sim] Executed exit: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+            print(f"[Sim] Executed exit: {signal.symbol} x{shares_to_sell} @ ${signal.exit_price}")
             from nexus2.domain.automation.trade_event_service import trade_event_service
             exit_reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
             trade_event_service.log_warrior_exit(
@@ -727,9 +748,29 @@ async def load_historical_test_case(case_id: str):
                 print("[Historical Replay] No broker for exit execution")
                 return False
             
-            success = sim_broker.sell_position(signal.symbol, signal.shares_to_exit)
+            # For FULL exits: sell ALL broker shares (prevents orphaned shares)
+            from nexus2.domain.automation.warrior_types import WarriorExitReason
+            is_partial = signal.reason == WarriorExitReason.PARTIAL_EXIT
+            
+            if is_partial:
+                shares_to_sell = signal.shares_to_exit
+            else:
+                # FULL EXIT: Check broker position and sell ALL shares
+                broker_position = sim_broker.get_position(signal.symbol)
+                if broker_position:
+                    broker_shares = broker_position.get("qty", 0) or broker_position.get("shares", 0)
+                    if broker_shares > signal.shares_to_exit:
+                        print(
+                            f"[Historical Replay] {signal.symbol}: Broker has {broker_shares} shares, "
+                            f"signal has {signal.shares_to_exit} - selling ALL"
+                        )
+                    shares_to_sell = broker_shares if broker_shares > 0 else signal.shares_to_exit
+                else:
+                    shares_to_sell = signal.shares_to_exit
+            
+            success = sim_broker.sell_position(signal.symbol, shares_to_sell)
             if success:
-                print(f"[Historical Replay] EXIT: {signal.symbol} x{signal.shares_to_exit} @ ${signal.exit_price}")
+                print(f"[Historical Replay] EXIT: {signal.symbol} x{shares_to_sell} @ ${signal.exit_price}")
             return success
         
         async def sim_update_stop(position_id: str, new_stop_price):
