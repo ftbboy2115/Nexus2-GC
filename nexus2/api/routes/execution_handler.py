@@ -377,7 +377,7 @@ def create_execute_callback(
                         
                         # Also log to NAC-specific DB for PSM tracking
                         try:
-                            from nexus2.db.nac_db import log_nac_entry, set_entry_order_id
+                            from nexus2.db.nac_db import log_nac_entry, set_entry_order_id, confirm_fill
                             log_nac_entry(
                                 trade_id=position.id,
                                 symbol=signal.symbol,
@@ -389,6 +389,9 @@ def create_execute_callback(
                             # Store broker order ID for reconciliation
                             if result.broker_order_id:
                                 set_entry_order_id(position.id, str(result.broker_order_id))
+                            # If order already filled, transition PSM to OPEN
+                            if is_filled:
+                                confirm_fill(position.id, fill_price=float(result.avg_fill_price or signal.entry_price), filled_shares=shares)
                         except Exception as nac_db_error:
                             logger.warning(f"[NAC DB] Secondary nac_db log failed: {nac_db_error}")
                             # Non-fatal - primary DB already has the record
