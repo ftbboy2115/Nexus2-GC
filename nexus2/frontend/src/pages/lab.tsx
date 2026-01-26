@@ -135,7 +135,8 @@ export default function Lab() {
         addToLog(`🚀 Starting experiment for ${selectedStrategy}...`)
 
         try {
-            const data = await fetchAPI('/lab/experiment', {
+            // Start the experiment (returns immediately with experiment_id)
+            const startData = await fetchAPI('/lab/experiment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -146,13 +147,48 @@ export default function Lab() {
                     max_iterations: maxIterations,
                     promotion_threshold: 0.6,
                 }),
-            }, 300000)  // 5-minute timeout for long-running experiments
+            }, 30000)  // 30 second timeout for the initial request
 
-            setExperimentResult(data)
-            addToLog(`✅ Experiment complete: ${data.final_recommendation}`)
+            const experimentId = startData.experiment_id
+            addToLog(`📋 Experiment ID: ${experimentId} - polling for status...`)
+
+            // Poll for status until complete
+            let attempts = 0
+            const maxAttempts = 120  // 6 minutes max (120 * 3 seconds)
+
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 3000))  // Wait 3 seconds
+
+                try {
+                    const status = await fetchAPI(`/lab/experiment/${experimentId}/status`, {}, 10000)
+
+                    if (status.status === 'completed') {
+                        setExperimentResult(status.result)
+                        addToLog(`✅ Experiment complete: ${status.result.final_recommendation}`)
+                        break
+                    } else if (status.status === 'failed') {
+                        addToLog(`❌ Experiment failed: ${status.error}`)
+                        break
+                    } else {
+                        // Still running - update progress
+                        if (attempts % 5 === 0) {
+                            addToLog(`⏳ Still running... (iteration ${status.current_iteration}/${status.max_iterations})`)
+                        }
+                    }
+                } catch (pollErr) {
+                    console.warn('Poll error:', pollErr)
+                    // Continue polling even if one poll fails
+                }
+
+                attempts++
+            }
+
+            if (attempts >= maxAttempts) {
+                addToLog('⚠️ Experiment timed out - check lab.log for results')
+            }
         } catch (err) {
             console.error('Experiment failed:', err)
-            addToLog('❌ Experiment failed')
+            addToLog('❌ Failed to start experiment')
         } finally {
             setExperimentRunning(false)
         }

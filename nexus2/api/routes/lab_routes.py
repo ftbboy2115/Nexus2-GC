@@ -8,16 +8,41 @@ Provides REST API for the R&D Lab:
 """
 
 import logging
-from typing import Optional
-from fastapi import APIRouter, HTTPException
+import threading
+import uuid
+from datetime import datetime
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from nexus2.domain.lab import StrategySpec
 from nexus2.domain.lab.strategy_registry import get_registry
 
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/lab", tags=["lab"])
+
+
+# =============================================================================
+# EXPERIMENT STATE TRACKING (for async experiments)
+# =============================================================================
+
+# Global dict to track running/completed experiments
+_experiments: Dict[str, Dict[str, Any]] = {}
+_experiments_lock = threading.Lock()
+
+
+def _get_experiment(experiment_id: str) -> Optional[Dict[str, Any]]:
+    """Get experiment state by ID."""
+    with _experiments_lock:
+        return _experiments.get(experiment_id)
+
+
+def _set_experiment(experiment_id: str, state: Dict[str, Any]) -> None:
+    """Set experiment state."""
+    with _experiments_lock:
+        _experiments[experiment_id] = state
 
 
 # =============================================================================
@@ -392,14 +417,14 @@ class ExperimentRequest(BaseModel):
 
 @router.post("/experiment")
 async def run_experiment(request: ExperimentRequest):
-    """Run a full experiment loop.
+    """Run a full experiment loop asynchronously.
     
+    Returns an experiment_id immediately. Poll /experiment/{id}/status for results.
     Orchestrates: Researcher → Coder → Backtest → Evaluator
     Loops until promotion or max_iterations.
     """
     from datetime import date as dt_date
     from decimal import Decimal
-    from nexus2.domain.lab.orchestrator import get_orchestrator, ExperimentConfig
     
     try:
         start = dt_date.fromisoformat(request.start_date)
@@ -407,21 +432,87 @@ async def run_experiment(request: ExperimentRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
     
-    config = ExperimentConfig(
-        base_strategy_name=request.base_strategy_name,
-        base_strategy_version=request.base_strategy_version,
-        start_date=start,
-        end_date=end,
-        initial_capital=Decimal(str(request.initial_capital)),
-        max_iterations=request.max_iterations,
-        promotion_threshold=request.promotion_threshold,
-        transcript_insights=request.transcript_insights,
-    )
+    # Generate experiment ID
+    experiment_id = str(uuid.uuid4())[:8]
     
-    orchestrator = get_orchestrator()
-    result = orchestrator.run_experiment(config)
+    # Store initial state
+    _set_experiment(experiment_id, {
+        "status": "running",
+        "started_at": datetime.utcnow().isoformat(),
+        "strategy": request.base_strategy_name,
+        "current_iteration": 0,
+        "max_iterations": request.max_iterations,
+        "result": None,
+        "error": None,
+    })
     
-    return result.model_dump(mode="json")
+    # Run experiment in background thread
+    def run_in_background():
+        from nexus2.domain.lab.orchestrator import get_orchestrator, ExperimentConfig
+        
+        try:
+            config = ExperimentConfig(
+                base_strategy_name=request.base_strategy_name,
+                base_strategy_version=request.base_strategy_version,
+                start_date=start,
+                end_date=end,
+                initial_capital=Decimal(str(request.initial_capital)),
+                max_iterations=request.max_iterations,
+                promotion_threshold=request.promotion_threshold,
+                transcript_insights=request.transcript_insights,
+            )
+            
+            orchestrator = get_orchestrator()
+            result = orchestrator.run_experiment(config)
+            
+            # Update state with result
+            _set_experiment(experiment_id, {
+                "status": "completed",
+                "started_at": _get_experiment(experiment_id)["started_at"],
+                "completed_at": datetime.utcnow().isoformat(),
+                "strategy": request.base_strategy_name,
+                "current_iteration": request.max_iterations,
+                "max_iterations": request.max_iterations,
+                "result": result.model_dump(mode="json"),
+                "error": None,
+            })
+        except Exception as e:
+            logger.error(f"[Lab] Experiment {experiment_id} failed: {e}")
+            _set_experiment(experiment_id, {
+                "status": "failed",
+                "started_at": _get_experiment(experiment_id)["started_at"],
+                "completed_at": datetime.utcnow().isoformat(),
+                "strategy": request.base_strategy_name,
+                "current_iteration": 0,
+                "max_iterations": request.max_iterations,
+                "result": None,
+                "error": str(e),
+            })
+    
+    # Start background thread
+    thread = threading.Thread(target=run_in_background, daemon=True)
+    thread.start()
+    
+    # Return immediately with experiment ID
+    return {
+        "experiment_id": experiment_id,
+        "status": "running",
+        "message": f"Experiment started. Poll /lab/experiment/{experiment_id}/status for results.",
+    }
+
+
+@router.get("/experiment/{experiment_id}/status")
+async def get_experiment_status(experiment_id: str):
+    """Get the status of a running or completed experiment.
+    
+    Poll this endpoint until status is 'completed' or 'failed'.
+    """
+    state = _get_experiment(experiment_id)
+    
+    if not state:
+        raise HTTPException(status_code=404, detail=f"Experiment not found: {experiment_id}")
+    
+    return state
 
 
 @router.get("/cache/status")
