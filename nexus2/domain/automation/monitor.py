@@ -78,6 +78,12 @@ class PositionMonitor:
         kk_style_partials: bool = True,  # Use day-based instead of R-based
         partial_exit_days: int = 3,  # Days before partial (KK: 3-5)
         partial_exit_fraction: float = 0.5,  # Sell 50% (KK: 1/3 to 1/2)
+        # EOD window (KK-style: exits only in EOD window)
+        eod_window_start_hour: int = 15,  # 3:45 PM ET = 15:45
+        eod_window_start_minute: int = 45,
+        eod_window_end_hour: int = 15,  # 3:55 PM ET = 15:55
+        eod_window_end_minute: int = 55,
+        eod_only_mode: bool = True,  # If True, only check exits during EOD window
     ):
         self.check_interval = check_interval_seconds
         self.enable_trailing_stops = enable_trailing_stops
@@ -90,6 +96,12 @@ class PositionMonitor:
         self.kk_style_partials = kk_style_partials
         self.partial_exit_days = partial_exit_days
         self.partial_exit_fraction = partial_exit_fraction
+        # EOD window configuration
+        self.eod_window_start_hour = eod_window_start_hour
+        self.eod_window_start_minute = eod_window_start_minute
+        self.eod_window_end_hour = eod_window_end_hour
+        self.eod_window_end_minute = eod_window_end_minute
+        self.eod_only_mode = eod_only_mode
         
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -196,6 +208,19 @@ class PositionMonitor:
                 logger.error(f"Monitor error: {e}")
                 await asyncio.sleep(30)  # Wait before retry
     
+    def _is_in_eod_window(self) -> bool:
+        """
+        Check if current time is within the EOD window (3:45-3:55 PM ET).
+        
+        Per KK strategy: Trailing and Trend-Break exits are executed between
+        3:45 PM and 3:55 PM ET to ensure execution before the 4:00 PM close.
+        """
+        current_et = now_et()
+        current_minutes = current_et.hour * 60 + current_et.minute
+        start_minutes = self.eod_window_start_hour * 60 + self.eod_window_start_minute
+        end_minutes = self.eod_window_end_hour * 60 + self.eod_window_end_minute
+        return start_minutes <= current_minutes <= end_minutes
+    
     async def _check_positions(self):
         """Check all open positions for exit conditions."""
         self.last_check = now_utc()
@@ -209,7 +234,16 @@ class PositionMonitor:
         if not positions:
             return
         
-        logger.debug(f"Checking {len(positions)} positions")
+        # KK-style: Only check exits during EOD window (3:45-3:55 PM ET)
+        if self.eod_only_mode and not self._is_in_eod_window():
+            current_et = now_et()
+            logger.debug(
+                f"Outside EOD window ({current_et.strftime('%H:%M')} ET) - "
+                f"skipping exit checks for {len(positions)} positions"
+            )
+            return
+        
+        logger.info(f"[EOD Window] Checking {len(positions)} positions for exit conditions")
         
         for position in positions:
             try:
@@ -529,8 +563,11 @@ class PositionMonitor:
                 "kk_style_partials": self.kk_style_partials,
                 "partial_exit_days": self.partial_exit_days,
                 "partial_exit_fraction": self.partial_exit_fraction,
+                "eod_only_mode": self.eod_only_mode,
+                "eod_window": f"{self.eod_window_start_hour}:{self.eod_window_start_minute:02d}-{self.eod_window_end_hour}:{self.eod_window_end_minute:02d} ET",
             },
             "partials_triggered": self.partials_triggered,
+            "in_eod_window": self._is_in_eod_window() if self._running else None,
         }
     
     # =========================================================================
