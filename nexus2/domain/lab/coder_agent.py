@@ -66,6 +66,50 @@ Nexus2 strategies follow a 3-tier architecture:
 2. Engine: Entry detection (watches candidates, triggers entries)
 3. Monitor: Position management (stops, exits, scales)
 
+ACTIONABLE PARAMETERS (the backtest runner uses ONLY these):
+When modifying the config.yaml, you MUST change one or more of these specific parameters.
+Other conceptual changes will NOT affect backtest results.
+
+Scanner Config (scanner:):
+- min_price (Decimal): Minimum stock price, default 2.00
+- max_price (Decimal): Maximum stock price, default 20.00
+- min_volume (int): Minimum avg daily volume, default 500000
+- min_rvol (float): Minimum relative volume, default 2.0
+- min_gap_percent (float): Minimum gap %, default 5.0
+- max_gap_percent (float): Maximum gap %, default null
+- min_float (int): Minimum shares float, default null
+- max_float (int): Maximum shares float, default 50000000
+- require_catalyst (bool): Require news catalyst, default true
+
+Engine Config (engine:):
+- entry_triggers (list): Entry types ["ORB", "PMH_BREAK"]
+- trading_start (str): Start time "09:30" ET
+- trading_end (str): End time "11:30" ET
+- max_positions (int): Max concurrent positions, default 3
+- max_daily_trades (int): Max trades/day, default 6
+- risk_per_trade (Decimal): Fixed $ risk, default 100.00
+- max_position_size (Decimal): Max position $, default 5000.00
+- min_consolidation_bars (int): Bars before entry, default 3
+- confirmation_threshold (float): Entry confirm %, default 0.02
+
+Monitor Config (monitor:):
+- stop_mode (str): "mental" | "technical" | "hard", default "mental"
+- stop_cents (int): Mental stop in cents, default 15
+- stop_atr_multiplier (float): ATR stop multiplier, default null
+- target_r (float): Target in R multiples, default 2.0
+- partial_at_target (float): Sell portion at target, default 0.5
+- trailing_stop_enabled (bool): Enable trailing, default true
+- trailing_stop_activation_r (float): R to activate trail, default 1.5
+- scaling_enabled (bool): Enable scaling, default true
+- max_scales (int): Max scale-ins, default 2
+- eod_exit (bool): Exit at EOD, default true
+- max_hold_minutes (int): Max hold time, default null
+
+CRITICAL: For experiments to show different backtest results, you MUST:
+1. Pick specific parameters from the lists above
+2. Change them to concrete values (numbers, not formulas)
+3. The backtest uses stop_cents, target_r, min_rvol, etc. directly
+
 OUTPUT FORMAT:
 Always respond with valid JSON containing these keys:
 {
@@ -109,7 +153,16 @@ def build_coder_prompt(
     prompt_parts.extend([
         "TASK:",
         "Generate a complete strategy implementation based on the hypothesis.",
-        "Apply the parameter_changes to the config.",
+        "Apply the parameter_changes to the config YAML using ONLY the actionable parameters listed in the system prompt.",
+        "",
+        "CRITICAL REQUIREMENTS FOR THE CONFIG:",
+        "1. The config YAML MUST change specific numeric parameters (stop_cents, target_r, min_rvol, etc.)",
+        "2. Use CONCRETE numbers, not formulas or concepts",
+        "3. Example: To tighten stops, change 'stop_cents: 15' to 'stop_cents: 10' (not 'ATR-based stop')",
+        "4. Example: To increase RVOL filter, change 'min_rvol: 2.0' to 'min_rvol: 3.0'",
+        "",
+        "The backtest runner reads these values directly - conceptual changes that don't map to specific parameters will have NO EFFECT on results.",
+        "",
         "Generate scanner, engine, and monitor code that enforces these changes.",
         "Include unit tests that verify the changes work correctly.",
         "",
