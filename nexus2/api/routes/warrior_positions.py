@@ -68,12 +68,13 @@ async def get_warrior_positions():
             pass  # Continue without current prices if broker unavailable
         
         # Fetch quotes for any positions missing current_price
-        from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-        alpaca = AlpacaAdapter()
+        # Use UnifiedMarketData for fallback (Alpaca -> FMP -> Schwab) + cross-validation
+        from nexus2.adapters.market_data.unified import UnifiedMarketData
+        umd = UnifiedMarketData()
         for p in positions:
             if p.symbol not in current_prices:
                 try:
-                    quote = alpaca.get_quote(p.symbol)
+                    quote = umd.get_quote(p.symbol)
                     if quote and quote.price > 0:
                         current_prices[p.symbol] = float(quote.price)
                 except Exception:
