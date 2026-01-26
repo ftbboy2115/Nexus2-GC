@@ -175,6 +175,9 @@ class LabOrchestrator:
         evaluator_feedback: Optional[str] = None
         best_score = 0.0
         best_iteration = None
+        tried_approaches: list = []  # Track what was already tried for diversity
+        stagnant_count = 0  # Track how many iterations with no improvement
+        last_score = 0.0
         
         for iteration in range(1, config.max_iterations + 1):
             logger.info(f"[Orchestrator] === Iteration {iteration}/{config.max_iterations} ===")
@@ -183,6 +186,11 @@ class LabOrchestrator:
             iter_result = IterationResult(iteration=iteration)
             
             try:
+                # Detect if stuck (no improvement for 2+ iterations)
+                exploration_mode = stagnant_count >= 2
+                if exploration_mode:
+                    logger.info(f"[Orchestrator] Exploration mode activated after {stagnant_count} stagnant iterations")
+                
                 # 1. Research: Generate hypothesis
                 context = ResearchContext(
                     strategy_name=baseline.name,
@@ -194,11 +202,13 @@ class LabOrchestrator:
                     rules_summary=baseline.description,
                     evaluator_feedback=evaluator_feedback,
                     transcript_insights=config.transcript_insights,
+                    tried_approaches=tried_approaches,  # Pass history for diversity
+                    exploration_mode=exploration_mode,  # Enable bold suggestions when stuck
                 )
                 
                 hypothesis = self.researcher.propose(context)
                 iter_result.hypothesis = hypothesis.model_dump(mode="json")
-                logger.info(f"[Orchestrator] Hypothesis: {hypothesis.hypothesis[:100]}...")
+                logger.info(f"[Orchestrator] Hypothesis [{hypothesis.category}]: {hypothesis.hypothesis[:100]}...")
                 
                 # 2. Code: Generate strategy
                 import yaml
@@ -263,6 +273,21 @@ class LabOrchestrator:
                 
                 # Feed back for next iteration
                 evaluator_feedback = evaluation.feedback
+                
+                # Track this approach for diversity
+                tried_approaches.append({
+                    "iteration": iteration,
+                    "category": hypothesis.category,
+                    "description": hypothesis.hypothesis[:100],
+                })
+                
+                # Detect stagnation (no meaningful improvement)
+                current_score = evaluation.improvement_score
+                if abs(current_score - last_score) < 0.05:  # Less than 5% change
+                    stagnant_count += 1
+                else:
+                    stagnant_count = 0  # Reset if we see change
+                last_score = current_score
                 
             except Exception as e:
                 logger.error(f"[Orchestrator] Iteration {iteration} error: {e}")

@@ -28,6 +28,7 @@ class Hypothesis(BaseModel):
     expected_impact: str = Field(default="", description="Expected improvement")
     risk: str = Field(default="", description="What could go wrong")
     confidence: float = Field(default=0.5, description="Agent confidence 0-1")
+    category: str = Field(default="unknown", description="Change category for diversity tracking")
     
     # Metadata
     generated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -58,6 +59,10 @@ class ResearchContext(BaseModel):
     
     # Strategy rules summary
     rules_summary: str = Field(default="")
+    
+    # Diversity tracking - what was already tried
+    tried_approaches: List[Dict[str, Any]] = Field(default_factory=list)
+    exploration_mode: bool = Field(default=False)
 
 
 # =============================================================================
@@ -78,8 +83,17 @@ YOUR ROLE:
 - Analyze trade history and identify patterns in wins/losses
 - Study transcript insights from successful traders
 - Propose specific, testable improvements to existing strategies
-- Be conservative - small parameter tweaks preferred over major restructuring
 - Always explain your rationale and potential risks
+
+DIVERSITY REQUIREMENT:
+When previous attempts are listed, you MUST propose a DIFFERENT category of change.
+Change categories (rotate through these):
+1. entry_criteria - Entry triggers, breakout thresholds, confirmation requirements
+2. exit_logic - Profit targets, trailing stops, time-based exits
+3. stop_placement - Stop distance, ATR multiples, technical levels
+4. position_sizing - Risk per trade, scaling rules, max position
+5. time_filters - Time-of-day restrictions, session focus
+6. symbol_filters - Volume, price, float, sector requirements
 
 OUTPUT FORMAT:
 Always respond with valid JSON matching this schema:
@@ -89,7 +103,8 @@ Always respond with valid JSON matching this schema:
   "parameter_changes": {"param_name": "new_value"},
   "expected_impact": "+X% win rate or +Y avg R",
   "risk": "what could go wrong",
-  "confidence": 0.0-1.0
+  "confidence": 0.0-1.0,
+  "category": "one of: entry_criteria, exit_logic, stop_placement, position_sizing, time_filters, symbol_filters"
 }"""
 
 
@@ -146,6 +161,28 @@ def build_researcher_prompt(context: ResearchContext) -> str:
         prompt_parts.extend([
             "PREVIOUS ITERATION FEEDBACK:",
             context.evaluator_feedback,
+            "",
+        ])
+    
+    # Diversity enforcement - show what was already tried
+    if context.tried_approaches:
+        tried_categories = [t.get("category", "unknown") for t in context.tried_approaches]
+        prompt_parts.extend([
+            "⚠️ ALREADY TRIED (you MUST choose a DIFFERENT category):",
+            *[f"- Iter {t.get('iteration', '?')}: [{t.get('category', 'unknown')}] {t.get('description', '')[:80]}" 
+              for t in context.tried_approaches],
+            "",
+            f"Categories already used: {', '.join(set(tried_categories))}",
+            "Pick from UNUSED categories: entry_criteria, exit_logic, stop_placement, position_sizing, time_filters, symbol_filters",
+            "",
+        ])
+    
+    # Exploration mode - when stuck, encourage bold changes
+    if context.exploration_mode:
+        prompt_parts.extend([
+            "🔬 EXPLORATION MODE ACTIVATED:",
+            "Previous approaches haven't worked. Try a FUNDAMENTALLY DIFFERENT approach.",
+            "Consider: different entry type, different exit strategy, time-based rules, or structural changes.",
             "",
         ])
     
@@ -244,6 +281,7 @@ class ResearcherAgent:
                 expected_impact=data.get("expected_impact", ""),
                 risk=data.get("risk", ""),
                 confidence=data.get("confidence", 0.5),
+                category=data.get("category", "unknown"),
                 source="gemini-2.0-flash",
             )
             
