@@ -560,12 +560,18 @@ async def check_micro_pullback_entry(
         return
     
     # TRACK SWING HIGHS
+    # DEBUG: Log current state
+    logger.info(
+        f"[Warrior Entry] {symbol}: MICRO state - swing_high=${watched.swing_high}, "
+        f"pullback_low=${watched.pullback_low}, ready={watched.micro_pullback_ready}, price=${current_price}"
+    )
+    
     if watched.swing_high is None or current_price > watched.swing_high:
         watched.swing_high = current_price
         watched.swing_high_time = datetime.now(timezone.utc).strftime("%H:%M")
         watched.pullback_low = None
         watched.micro_pullback_ready = False
-        logger.debug(f"[Warrior Entry] {symbol}: New swing high ${watched.swing_high:.2f}")
+        logger.info(f"[Warrior Entry] {symbol}: New swing high ${watched.swing_high:.2f}")
         return
     
     # DETECT PULLBACK (price dips from swing high)
