@@ -110,7 +110,7 @@ class WarriorEngineConfig:
     
     # MICRO-PULLBACK settings (for extended stocks)
     micro_pullback_enabled: bool = True  # Enable micro-pullback entries for extended stocks
-    extension_threshold: float = 100.0  # Gap % above which to use micro-pullback instead of PMH
+    extension_threshold: float = 200.0  # Gap % above which to use micro-pullback instead of PMH (was 100, raised to fix PAVM regression)
     micro_pullback_min_dip: float = 1.0  # Minimum pullback % to trigger (too shallow = no setup)
     micro_pullback_max_dip: float = 5.0  # Maximum pullback % (deeper = reversal, not pullback)
     micro_pullback_macd_tolerance: float = -0.10  # Allow MACD slightly negative for scalps (Ross relaxes rule)
