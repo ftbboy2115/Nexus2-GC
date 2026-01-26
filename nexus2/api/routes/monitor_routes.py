@@ -108,6 +108,9 @@ async def start_monitor(
                 
                 position_repo.update(signal.position_id, updates)
             
+            # CRITICAL: Commit the transaction to persist changes
+            db.commit()
+            
             return {"status": "executed", "symbol": signal.symbol}
     
     monitor.set_callbacks(get_positions, get_price, execute_exit)

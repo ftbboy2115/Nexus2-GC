@@ -156,6 +156,9 @@ async def auto_start_checker(
                                             updates["realized_pnl"] = str(signal.pnl_estimate)
                                         position_repo.update(signal.position_id, updates)
                                     
+                                    # CRITICAL: Commit the transaction to persist changes
+                                    db.commit()
+                                    
                                     return {"status": "executed", "symbol": signal.symbol}
                             
                             monitor.set_callbacks(get_positions, get_price, execute_exit)
@@ -481,6 +484,9 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
                 if new_remaining <= 0:
                     update_data["closed_at"] = now_utc()
                 position_repo.update(position_id, update_data)
+                
+                # CRITICAL: Commit the transaction to persist changes
+                db.commit()
                 
                 logger.info(f"[EOD] Exited {position.symbol}: {shares} shares ({reason})")
         
