@@ -1085,8 +1085,8 @@ async def set_playback_speed(speed: float = 1.0):
     """
     from nexus2.adapters.simulation import get_simulation_clock
     
-    if speed not in [1.0, 2.0, 5.0, 10.0, 20.0, 30.0]:
-        raise HTTPException(status_code=400, detail="Speed must be 1, 2, 5, 10, 20, or 30")
+    if speed not in [1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0]:
+        raise HTTPException(status_code=400, detail="Speed must be 1, 2, 5, 10, 20, 30, 40, or 50")
     
     clock = get_simulation_clock()
     clock.set_playback_speed(speed)

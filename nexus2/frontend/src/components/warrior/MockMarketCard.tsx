@@ -55,7 +55,7 @@ interface MockMarketCardProps {
     orders?: MockOrder[]
 }
 
-const SPEEDS = [1, 2, 5, 10, 20, 30]
+const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50]
 
 export function MockMarketCard({
     testCases,
