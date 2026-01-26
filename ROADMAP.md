@@ -160,6 +160,14 @@ Last updated: 2026-01-22
   - Load real intraday data from JSON test case files
   - Playback controls: step, play, pause, speed (1x/2x/5x/10x)
   - Price updates tied to SimulationClock
+- [ ] **Low-Float Intraday Bars Gap** — Alpaca/FMP return no bars for illiquid stocks in pre-market (Jan 26)
+  - **Observed:** LRHC, CISS (810%+ gap, 65x+ RVOL) passed scanner but entry logic stuck on "not enough candles"
+  - **Root Cause:** Both Alpaca and FMP return `null`/empty for intraday bars on ultra-low-float stocks
+  - **Impact:** VWAP, MACD, micro-pullback patterns cannot be calculated → entry blocked
+  - **Workaround Options:**
+    1. Polygon.io (paid) - better pre-market coverage for illiquid stocks
+    2. Quote-only entry mode - PMH breakout without VWAP confirmation
+    3. Wait for post-open bars (accept 9:30+ entries only for illiquid stocks)
 - [ ] **FMP Test Case Capture** — Fetch real intraday data to save as test cases
   - `POST /warrior/sim/capture?symbol=X&date=YYYY-MM-DD` → saves JSON
   - Turn real trading sessions into replayable test cases
