@@ -5,7 +5,8 @@
 export interface WarriorStatus {
     state: string
     trading_window: boolean
-    market_hours: boolean
+    market_hours: boolean       // True during regular market hours (9:30 AM - 4:00 PM ET)
+    extended_hours: boolean     // True during extended hours (4 AM - 8 PM ET) or sim mode
     watchlist_count: number
     watchlist: WatchedCandidate[]
     stats: {

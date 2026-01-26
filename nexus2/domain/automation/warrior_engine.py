@@ -623,7 +623,8 @@ class WarriorEngine:
         return {
             "state": self.state.value,
             "trading_window": self.is_trading_window(),
-            "market_hours": self.is_extended_hours() or self.config.sim_only,  # True during extended hours or sim
+            "market_hours": self.is_market_hours(),  # True during regular market hours (9:30 AM - 4:00 PM)
+            "extended_hours": self.is_extended_hours() or self.config.sim_only,  # True during extended hours (4 AM - 8 PM) or sim
             "watchlist_count": len(self._watchlist),
             "watchlist": [
                 {
