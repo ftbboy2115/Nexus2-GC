@@ -537,7 +537,7 @@ async def check_micro_pullback_entry(
                 # DEBUG: Log MACD details
                 first_time = getattr(candles[0], 'timestamp', getattr(candles[0], 't', 'N/A'))
                 last_time = getattr(candles[-1], 'timestamp', getattr(candles[-1], 't', 'N/A'))
-                macd_val = snapshot.macd if snapshot.macd else 0
+                macd_val = snapshot.macd_line if snapshot.macd_line else 0
                 signal_val = snapshot.macd_signal if snapshot.macd_signal else 0
                 macd_debug_info = (
                     f"candles={len(candles)}, range={first_time}->{last_time}, "
