@@ -49,7 +49,7 @@ class ExperimentConfig(BaseModel):
     initial_capital: Decimal = Decimal("25000")
     
     # Loop control
-    max_iterations: int = Field(default=5, ge=1, le=20)
+    max_iterations: int = Field(default=10, ge=1, le=20)
     promotion_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
     
     # External context
