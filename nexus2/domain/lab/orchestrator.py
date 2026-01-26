@@ -236,17 +236,41 @@ class LabOrchestrator:
                 
                 # 3. Backtest: Test the variant
                 # Parse the generated config_yaml into a StrategySpec
+                # Merge with baseline defaults to handle missing/None fields
                 try:
-                    variant_config = yaml.safe_load(code.config_yaml)
+                    variant_config = yaml.safe_load(code.config_yaml) or {}
+                    
+                    # Helper to merge config dicts, filtering out None values
+                    def merge_config(base_dict: dict, variant_dict: dict) -> dict:
+                        result = base_dict.copy()
+                        for key, value in variant_dict.items():
+                            if value is not None:  # Only override if not None
+                                result[key] = value
+                        return result
+                    
+                    # Merge each config section with baseline
+                    scanner_merged = merge_config(
+                        baseline.scanner.model_dump(), 
+                        variant_config.get("scanner", {})
+                    )
+                    engine_merged = merge_config(
+                        baseline.engine.model_dump(), 
+                        variant_config.get("engine", {})
+                    )
+                    monitor_merged = merge_config(
+                        baseline.monitor.model_dump(), 
+                        variant_config.get("monitor", {})
+                    )
+                    
                     variant_strategy = StrategySpec(
                         name=variant_name,
                         version=variant_version,
                         description=hypothesis.hypothesis[:200],
                         based_on=baseline.name,
                         based_on_version=baseline.version,
-                        scanner=ScannerConfig(**variant_config.get("scanner", {})),
-                        engine=EngineConfig(**variant_config.get("engine", {})),
-                        monitor=MonitorConfig(**variant_config.get("monitor", {})),
+                        scanner=ScannerConfig(**scanner_merged),
+                        engine=EngineConfig(**engine_merged),
+                        monitor=MonitorConfig(**monitor_merged),
                     )
                     logger.info(f"[Orchestrator] Using variant strategy: {variant_strategy.name}")
                 except Exception as e:
