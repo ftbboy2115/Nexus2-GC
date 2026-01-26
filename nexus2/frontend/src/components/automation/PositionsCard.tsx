@@ -94,7 +94,17 @@ export default function PositionsCard({
             case 'current_price':
                 return <td key={colId}>${pos.current_price?.toFixed(2) || '-'}</td>
             case 'stop_price':
-                return <td key={colId} style={{ color: '#f59e0b' }}>${pos.stop_price?.toFixed(2) || '-'}</td>
+                // Red if stop hit (current price at or below stop), orange otherwise
+                const stopHit = pos.current_price && pos.stop_price && pos.current_price <= pos.stop_price
+                return (
+                    <td
+                        key={colId}
+                        style={{ color: stopHit ? '#ef4444' : '#f59e0b' }}
+                        title={stopHit ? '⚠️ Stop hit - will close at EoD' : undefined}
+                    >
+                        ${pos.stop_price?.toFixed(2) || '-'}
+                    </td>
+                )
             case 'market_value':
                 return <td key={colId}>${pos.market_value.toFixed(0)}</td>
             case 'unrealized_pnl':
