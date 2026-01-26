@@ -173,6 +173,12 @@ class LabOrchestrator:
         logger.info(f"[Orchestrator] Baseline: {baseline_result.metrics.total_trades} trades, "
                    f"{baseline_result.metrics.win_rate:.1f}% win rate")
         
+        # Champion Evolution: Track the current best strategy
+        # This gets promoted when a variant beats it
+        current_champion = baseline
+        champion_metrics = baseline_metrics.copy()
+        champion_score = 0.0  # Baseline starts at score 0
+        
         # Iteration loop
         evaluator_feedback: Optional[str] = None
         best_score = 0.0
@@ -193,15 +199,15 @@ class LabOrchestrator:
                 if exploration_mode:
                     logger.info(f"[Orchestrator] Exploration mode activated after {stagnant_count} stagnant iterations")
                 
-                # 1. Research: Generate hypothesis
+                # 1. Research: Generate hypothesis based on CURRENT CHAMPION (not fixed baseline)
                 context = ResearchContext(
-                    strategy_name=baseline.name,
-                    strategy_version=baseline.version,
-                    win_rate=baseline_result.metrics.win_rate,
-                    avg_r=baseline_result.metrics.avg_r,
-                    max_drawdown=baseline_result.metrics.max_drawdown,
-                    total_trades=baseline_result.metrics.total_trades,
-                    rules_summary=baseline.description,
+                    strategy_name=current_champion.name,
+                    strategy_version=current_champion.version,
+                    win_rate=champion_metrics.get("win_rate", 0),
+                    avg_r=champion_metrics.get("avg_r", 0),
+                    max_drawdown=champion_metrics.get("max_drawdown", 0),
+                    total_trades=champion_metrics.get("total_trades", 0),
+                    rules_summary=current_champion.description,
                     evaluator_feedback=evaluator_feedback,
                     transcript_insights=config.transcript_insights,
                     tried_approaches=tried_approaches,  # Pass history for diversity
@@ -212,10 +218,10 @@ class LabOrchestrator:
                 iter_result.hypothesis = hypothesis.model_dump(mode="json")
                 logger.info(f"[Orchestrator] Hypothesis [{hypothesis.category}]: {hypothesis.hypothesis[:100]}...")
                 
-                # 2. Code: Generate strategy
-                base_config = yaml.dump(baseline.model_dump(mode="json"), default_flow_style=False)
+                # 2. Code: Generate strategy based on CURRENT CHAMPION
+                base_config = yaml.dump(current_champion.model_dump(mode="json"), default_flow_style=False)
                 
-                variant_name = f"lab_{baseline.name}_v{iteration}"
+                variant_name = f"lab_{current_champion.name}_v{iteration}"
                 variant_version = f"{iteration}.0.0"
                 
                 code = self.coder.generate(
@@ -236,7 +242,7 @@ class LabOrchestrator:
                 
                 # 3. Backtest: Test the variant
                 # Parse the generated config_yaml into a StrategySpec
-                # Merge with baseline defaults to handle missing/None fields
+                # Merge with current champion defaults to handle missing/None fields
                 try:
                     variant_config = yaml.safe_load(code.config_yaml) or {}
                     
@@ -248,17 +254,17 @@ class LabOrchestrator:
                                 result[key] = value
                         return result
                     
-                    # Merge each config section with baseline
+                    # Merge each config section with CURRENT CHAMPION (not fixed baseline)
                     scanner_merged = merge_config(
-                        baseline.scanner.model_dump(), 
+                        current_champion.scanner.model_dump(), 
                         variant_config.get("scanner", {})
                     )
                     engine_merged = merge_config(
-                        baseline.engine.model_dump(), 
+                        current_champion.engine.model_dump(), 
                         variant_config.get("engine", {})
                     )
                     monitor_merged = merge_config(
-                        baseline.monitor.model_dump(), 
+                        current_champion.monitor.model_dump(), 
                         variant_config.get("monitor", {})
                     )
                     
@@ -266,8 +272,8 @@ class LabOrchestrator:
                         name=variant_name,
                         version=variant_version,
                         description=hypothesis.hypothesis[:200],
-                        based_on=baseline.name,
-                        based_on_version=baseline.version,
+                        based_on=current_champion.name,
+                        based_on_version=current_champion.version,
                         scanner=ScannerConfig(**scanner_merged),
                         engine=EngineConfig(**engine_merged),
                         monitor=MonitorConfig(**monitor_merged),
@@ -291,7 +297,7 @@ class LabOrchestrator:
                 logger.info(f"[Orchestrator] Variant: {variant_result.metrics.total_trades} trades, "
                            f"{variant_result.metrics.win_rate:.1f}% win rate")
                 
-                # 4. Evaluate: Score and get feedback
+                # 4. Evaluate: Score and get feedback (compare vs original baseline for consistency)
                 evaluation = self.evaluator.evaluate(baseline_metrics, iter_result.metrics)
                 iter_result.evaluation = evaluation.model_dump()
                 iter_result.recommendation = evaluation.recommendation
@@ -303,7 +309,15 @@ class LabOrchestrator:
                     best_score = evaluation.improvement_score
                     best_iteration = iteration
                 
-                # Check promotion
+                # CHAMPION EVOLUTION: Promote variant to champion if it beats current champion
+                if evaluation.improvement_score > champion_score:
+                    logger.info(f"[Orchestrator] 🏆 New champion! {variant_strategy.name} beats previous with score {evaluation.improvement_score:.2f} > {champion_score:.2f}")
+                    current_champion = variant_strategy
+                    champion_metrics = iter_result.metrics.copy()
+                    champion_score = evaluation.improvement_score
+                    stagnant_count = 0  # Reset stagnation since we improved
+                
+                # Check final promotion threshold
                 if evaluation.improvement_score >= config.promotion_threshold:
                     logger.info(f"[Orchestrator] Promotion threshold met! Score: {evaluation.improvement_score:.2f}")
                     result.promoted_strategy = variant_name
