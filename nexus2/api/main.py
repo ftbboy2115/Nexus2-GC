@@ -69,6 +69,10 @@ async def lifespan(app: FastAPI):
     # Initialize database
     init_db()
     
+    # Initialize NAC PSM database (separate from main Nexus DB)
+    from nexus2.db.nac_db import init_nac_db
+    init_nac_db()
+    
     # Register signal handler for graceful shutdown
     # Only works in main thread (skip in TestClient which runs in threads)
     import threading

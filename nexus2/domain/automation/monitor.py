@@ -449,7 +449,7 @@ class PositionMonitor:
             from nexus2.db.nac_db import set_pending_exit, set_exit_order_id, confirm_exit
             set_pending_exit(signal.position_id)
         except Exception as psm_err:
-            logger.debug(f"[NAC PSM] set_pending_exit failed (may not be in nac_db): {psm_err}")
+            logger.warning(f"[NAC PSM] set_pending_exit failed: {psm_err}")
         
         if self._execute_exit:
             try:
@@ -471,7 +471,7 @@ class PositionMonitor:
                         quantity_exited=signal.shares_to_exit if is_partial else None,
                     )
                 except Exception as psm_confirm_err:
-                    logger.debug(f"[NAC PSM] confirm_exit skipped: {psm_confirm_err}")
+                    logger.warning(f"[NAC PSM] confirm_exit failed: {psm_confirm_err}")
                 
                 # Log trade event
                 if signal.reason == ExitReason.PARTIAL_EXIT:
