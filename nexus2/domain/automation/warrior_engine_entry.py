@@ -458,33 +458,62 @@ async def check_orb_setup(
     """
     Check for Opening Range Breakout setup.
     
-    Establishes the ORB high/low from the first 1-minute candle after 9:31 AM ET.
+    Establishes the ORB high/low from the first 1-minute candle after 9:30 AM ET.
     
     Args:
         engine: The WarriorEngine instance
         watched: The watched candidate to check
         current_price: Current price of the symbol
     """
+    from datetime import datetime, timezone
+    
     # Get first 1-minute candle
     et_now = engine._get_eastern_time()
     
-    # Only establish ORB in first minute after open
-    if et_now.time() > dt_time(9, 31):
+    # Only establish ORB after market opens (9:30 AM)
+    if et_now.time() > dt_time(9, 30):
         if engine._get_intraday_bars:
+            # Fetch multiple bars to find the 9:30 opening bar
+            # The 9:30 bar should be in the history
             bars = await engine._get_intraday_bars(
                 watched.candidate.symbol, 
                 timeframe="1min",
-                limit=1
+                limit=30  # Fetch enough bars to find the 9:30 bar
             )
             if bars and len(bars) > 0:
-                first_bar = bars[0]
-                watched.orb_high = first_bar.high
-                watched.orb_low = first_bar.low
-                watched.orb_established = True
-                logger.info(
-                    f"[Warrior ORB] {watched.candidate.symbol}: "
-                    f"High=${watched.orb_high}, Low=${watched.orb_low}"
-                )
+                # Find the 9:30 bar specifically
+                orb_bar = None
+                for bar in bars:
+                    bar_time = getattr(bar, 'timestamp', None) or getattr(bar, 't', None)
+                    if bar_time:
+                        # Handle both datetime and string formats
+                        if isinstance(bar_time, str):
+                            bar_time = datetime.fromisoformat(bar_time.replace('Z', '+00:00'))
+                        # Convert to ET for comparison
+                        from zoneinfo import ZoneInfo
+                        if bar_time.tzinfo is None:
+                            bar_time = bar_time.replace(tzinfo=timezone.utc)
+                        bar_time_et = bar_time.astimezone(ZoneInfo("America/New_York"))
+                        
+                        # The 9:30 bar represents the 9:30:00 - 9:30:59 range
+                        if bar_time_et.hour == 9 and bar_time_et.minute == 30:
+                            orb_bar = bar
+                            break
+                
+                if orb_bar:
+                    watched.orb_high = Decimal(str(orb_bar.high))
+                    watched.orb_low = Decimal(str(orb_bar.low))
+                    watched.orb_established = True
+                    logger.info(
+                        f"[Warrior ORB] {watched.candidate.symbol}: "
+                        f"High=${watched.orb_high}, Low=${watched.orb_low}"
+                    )
+                else:
+                    # 9:30 bar not found yet - may be data delay
+                    logger.debug(
+                        f"[Warrior ORB] {watched.candidate.symbol}: "
+                        f"9:30 bar not found in {len(bars)} bars - waiting for data"
+                    )
 
 
 async def check_micro_pullback_entry(
