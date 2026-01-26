@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from pathlib import Path
 from pydantic import BaseModel, Field
 
@@ -124,11 +124,16 @@ class LabOrchestrator:
         self.runner = get_backtest_runner()
         self.evaluator = get_evaluator_agent()
     
-    def run_experiment(self, config: ExperimentConfig) -> ExperimentResult:
+    def run_experiment(
+        self,
+        config: ExperimentConfig,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> ExperimentResult:
         """Run a full experiment loop.
         
         Args:
             config: Experiment configuration
+            progress_callback: Optional callback(current_iteration, max_iterations) called after each iteration
             
         Returns:
             ExperimentResult with all iterations and final recommendation
@@ -265,6 +270,10 @@ class LabOrchestrator:
             
             iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
             result.iterations.append(iter_result)
+            
+            # Call progress callback
+            if progress_callback:
+                progress_callback(iteration, config.max_iterations)
         
         # Finalize result
         result.completed_at = datetime.utcnow()

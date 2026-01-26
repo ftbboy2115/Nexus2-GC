@@ -463,7 +463,15 @@ async def run_experiment(request: ExperimentRequest):
             )
             
             orchestrator = get_orchestrator()
-            result = orchestrator.run_experiment(config)
+            
+            # Progress callback to update current_iteration
+            def on_progress(current: int, total: int):
+                state = _get_experiment(experiment_id)
+                if state:
+                    state["current_iteration"] = current
+                    _set_experiment(experiment_id, state)
+            
+            result = orchestrator.run_experiment(config, progress_callback=on_progress)
             
             # Update state with result
             _set_experiment(experiment_id, {
