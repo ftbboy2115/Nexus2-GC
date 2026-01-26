@@ -247,14 +247,84 @@ class WarriorMonitor:
         exit_mode_override: Optional[str] = None,  # Auto-selected based on quality score
     ) -> WarriorPosition:
         """
-        Add a new position to monitor.
+        Add a new position or consolidate with existing position for same symbol.
         
-        Calculates stops and targets based on Ross Cameron rules.
+        SINGLE POSITION PER SYMBOL: If we already have a position for this symbol,
+        add shares and update average entry price (Ross Cameron averaging-in methodology).
+        This prevents orphaned shares from multiple position objects.
         
         Args:
             exit_mode_override: If provided, overrides session exit mode ("base_hit" or "home_run")
         """
         s = self.settings
+        
+        # =========================================================================
+        # CONSOLIDATION: Check if we already have a position for this symbol
+        # =========================================================================
+        existing_position = None
+        for pos_id, pos in self._positions.items():
+            if pos.symbol == symbol:
+                existing_position = pos
+                break
+        
+        if existing_position:
+            # CONSOLIDATE: Add shares and update average entry price
+            old_shares = existing_position.shares
+            old_entry = existing_position.entry_price
+            new_total_shares = old_shares + shares
+            
+            # Calculate weighted average entry price
+            old_cost = old_entry * old_shares
+            new_cost = entry_price * shares
+            new_avg_entry = (old_cost + new_cost) / new_total_shares
+            
+            # Update existing position
+            existing_position.shares = new_total_shares
+            existing_position.entry_price = new_avg_entry
+            existing_position.scale_count += 1
+            
+            # Update high-water mark if new entry is higher
+            if entry_price > existing_position.high_since_entry:
+                existing_position.high_since_entry = entry_price
+            
+            # Recalculate risk and target based on new average entry
+            risk_per_share = new_avg_entry - existing_position.current_stop
+            existing_position.risk_per_share = risk_per_share
+            
+            if s.profit_target_cents > 0:
+                existing_position.profit_target = new_avg_entry + s.profit_target_cents / 100
+            else:
+                existing_position.profit_target = new_avg_entry + (risk_per_share * Decimal(str(s.profit_target_r)))
+            
+            logger.info(
+                f"[Warrior] CONSOLIDATED {symbol}: +{shares} shares @ ${entry_price:.2f} → "
+                f"now {new_total_shares} shares @ ${new_avg_entry:.2f} avg, scale #{existing_position.scale_count}"
+            )
+            
+            # Log as scale event (TML)
+            trade_event_service.log_warrior_scale_in(
+                position_id=existing_position.position_id,
+                symbol=symbol,
+                add_price=entry_price,
+                shares_added=shares,
+            )
+            
+            # Sync DB record with new quantity and avg_price (PSM integration)
+            try:
+                from nexus2.db.warrior_db import complete_scaling
+                complete_scaling(
+                    trade_id=existing_position.position_id,
+                    new_quantity=new_total_shares,
+                    new_avg_price=float(new_avg_entry),
+                )
+            except Exception as e:
+                logger.warning(f"[Warrior] {symbol}: DB sync failed on consolidation: {e}")
+            
+            return existing_position
+        
+        # =========================================================================
+        # NEW POSITION: No existing position for this symbol
+        # =========================================================================
         
         # Clear any pending_exit status for this symbol from previous positions
         # This prevents the new position from being skipped in monitor tick
