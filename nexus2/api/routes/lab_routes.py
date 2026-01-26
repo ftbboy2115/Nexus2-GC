@@ -410,7 +410,7 @@ class ExperimentRequest(BaseModel):
     start_date: str  # YYYY-MM-DD
     end_date: str
     initial_capital: float = 25000.0
-    max_iterations: int = 5
+    max_iterations: int = 10
     promotion_threshold: float = 0.6
     transcript_insights: list[str] = []
 
