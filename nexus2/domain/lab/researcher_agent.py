@@ -63,6 +63,9 @@ class ResearchContext(BaseModel):
     # Diversity tracking - what was already tried
     tried_approaches: List[Dict[str, Any]] = Field(default_factory=list)
     exploration_mode: bool = Field(default=False)
+    
+    # Real trade data from warrior.db
+    real_trades: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -161,6 +164,30 @@ def build_researcher_prompt(context: ResearchContext) -> str:
         prompt_parts.extend([
             "PREVIOUS ITERATION FEEDBACK:",
             context.evaluator_feedback,
+            "",
+        ])
+    
+    # Real trade data - this is the most valuable data for analysis!
+    if context.real_trades:
+        prompt_parts.extend([
+            "📊 REAL TRADE DATA (analyze these actual outcomes!):",
+            "| Symbol | Trigger | Exit Reason | P&L | Entry | Exit |",
+            "|--------|---------|-------------|-----|-------|------|",
+        ])
+        for t in context.real_trades[:20]:  # Limit to 20 most recent
+            pnl = t.get('realized_pnl', 0)
+            pnl_str = f"${pnl:+.2f}" if pnl else "$0"
+            prompt_parts.append(
+                f"| {t.get('symbol', '?')} | {t.get('trigger_type', '?')} | "
+                f"{t.get('exit_reason', '?')} | {pnl_str} | "
+                f"{t.get('entry_price', '?')} | {t.get('exit_price', '?')} |"
+            )
+        prompt_parts.extend([
+            "",
+            "ANALYZE THE ABOVE TRADES TO FIND:",
+            "1. Which trigger_types have the best P&L?",
+            "2. Which exit_reasons indicate problems?",
+            "3. What patterns exist in losing trades?",
             "",
         ])
     

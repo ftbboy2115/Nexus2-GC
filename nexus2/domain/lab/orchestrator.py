@@ -25,6 +25,7 @@ from .backtest_runner import get_backtest_runner, BacktestResult
 from .evaluator_agent import get_evaluator_agent, EvaluationResult
 from .strategy_schema import StrategySpec, ScannerConfig, EngineConfig, MonitorConfig
 from .lab_logger import configure_lab_logging
+from nexus2.db.warrior_db import get_recent_closed_trades
 import yaml
 
 
@@ -187,6 +188,14 @@ class LabOrchestrator:
         stagnant_count = 0  # Track how many iterations with no improvement
         last_score = 0.0
         
+        # Load real trade data for Researcher analysis
+        real_trades = []
+        try:
+            real_trades = get_recent_closed_trades(limit=30)
+            logger.info(f"[Orchestrator] Loaded {len(real_trades)} real trades for analysis")
+        except Exception as e:
+            logger.warning(f"[Orchestrator] Could not load real trades: {e}")
+        
         for iteration in range(1, config.max_iterations + 1):
             logger.info(f"[Orchestrator] === Iteration {iteration}/{config.max_iterations} ===")
             iter_start = datetime.utcnow()
@@ -212,6 +221,7 @@ class LabOrchestrator:
                     transcript_insights=config.transcript_insights,
                     tried_approaches=tried_approaches,  # Pass history for diversity
                     exploration_mode=exploration_mode,  # Enable bold suggestions when stuck
+                    real_trades=real_trades,  # Pass real trade data for analysis
                 )
                 
                 hypothesis = self.researcher.propose(context)

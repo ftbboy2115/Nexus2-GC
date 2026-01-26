@@ -678,3 +678,41 @@ def get_trade_by_id(trade_id: str):
         trade = db.query(WarriorTradeModel).filter_by(id=trade_id).first()
         return trade.to_dict() if trade else None
 
+
+def get_recent_closed_trades(limit: int = 30) -> list:
+    """
+    Get recent closed trades for R&D Lab analysis.
+    
+    Returns trades with complete exit data for performance analysis.
+    
+    Args:
+        limit: Maximum trades to return (default 30)
+    
+    Returns:
+        List of trade dicts with key fields for analysis
+    """
+    with get_warrior_session() as db:
+        trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.status == PositionStatus.CLOSED.value,
+            WarriorTradeModel.exit_price.isnot(None),  # Must have exit price
+            WarriorTradeModel.realized_pnl.isnot(None),  # Must have P&L
+        ).order_by(WarriorTradeModel.entry_time.desc()).limit(limit).all()
+        
+        # Return simplified dict for Lab analysis
+        return [
+            {
+                "symbol": t.symbol,
+                "trigger_type": t.trigger_type,
+                "exit_reason": t.exit_reason,
+                "entry_price": t.entry_price,
+                "exit_price": t.exit_price,
+                "stop_price": t.stop_price,
+                "stop_method": t.stop_method,
+                "realized_pnl": float(t.realized_pnl) if t.realized_pnl else 0,
+                "quantity": t.quantity,
+                "entry_time": t.entry_time.isoformat() if t.entry_time else None,
+                "exit_time": t.exit_time.isoformat() if t.exit_time else None,
+            }
+            for t in trades
+        ]
+
