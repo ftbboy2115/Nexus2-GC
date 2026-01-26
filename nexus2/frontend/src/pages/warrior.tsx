@@ -160,9 +160,13 @@ export default function Warrior() {
         return () => clearInterval(interval)
     }, [status?.state, status?.stats?.next_scan, status?.market_hours])
 
-    // Open TradingView chart in new tab
+    // Open TradingView chart in new window (not tab)
     const openChart = (symbol: string) => {
-        window.open(`https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`, '_blank')
+        window.open(
+            `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`,
+            '_blank',
+            'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no'
+        )
     }
 
     // Use relative URLs - Next.js rewrites proxy to backend
