@@ -424,9 +424,9 @@ async def run_experiment(request: ExperimentRequest):
     return result.model_dump(mode="json")
 
 
-@router.get("/health")
-async def lab_health():
-    """Health check for Lab API."""
+@router.get("/cache/status")
+async def lab_cache_status():
+    """Get cache status for Lab API."""
     from nexus2.domain.lab.historical_loader import get_historical_loader
     
     loader = get_historical_loader()
