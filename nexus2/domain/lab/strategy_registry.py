@@ -154,6 +154,26 @@ class StrategyRegistry:
     def strategy_exists(self, name: str, version: str) -> bool:
         """Check if a specific strategy version exists."""
         return self.get_strategy_path(name, version).exists()
+    
+    def get_next_version(self, name: str) -> str:
+        """Get the next version number for a strategy.
+        
+        If strategy doesn't exist, returns "1.0.0".
+        If latest is "1.0.0", returns "2.0.0".
+        """
+        strategy_dir = self.base_dir / name
+        if not strategy_dir.exists():
+            return "1.0.0"
+        
+        versions = list(strategy_dir.glob("v*.yaml"))
+        if not versions:
+            return "1.0.0"
+        
+        # Get highest version
+        versions.sort(key=lambda p: [int(x) for x in p.stem[1:].split(".")])
+        latest = versions[-1].stem[1:]  # e.g., "1.0.0"
+        major = int(latest.split(".")[0])
+        return f"{major + 1}.0.0"
 
 
 # Singleton instance

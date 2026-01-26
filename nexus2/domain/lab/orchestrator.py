@@ -180,6 +180,11 @@ class LabOrchestrator:
         champion_metrics = baseline_metrics.copy()
         champion_score = 0.0  # Baseline starts at score 0
         
+        # Clean naming: lab_{base} with auto-incrementing versions
+        # Strip any existing lab_ prefix to prevent nesting
+        base_name = baseline.name.replace("lab_", "") if baseline.name.startswith("lab_") else baseline.name
+        lab_strategy_name = f"lab_{base_name}"
+        
         # Iteration loop
         evaluator_feedback: Optional[str] = None
         best_score = 0.0
@@ -231,8 +236,9 @@ class LabOrchestrator:
                 # 2. Code: Generate strategy based on CURRENT CHAMPION
                 base_config = yaml.dump(current_champion.model_dump(mode="json"), default_flow_style=False)
                 
-                variant_name = f"lab_{current_champion.name}_v{iteration}"
-                variant_version = f"{iteration}.0.0"
+                # Clean naming: use fixed lab_strategy_name with iteration-based version
+                variant_name = lab_strategy_name
+                variant_version = f"0.{iteration}.0"  # Temp version; incremented on save
                 
                 code = self.coder.generate(
                     hypothesis=iter_result.hypothesis,
@@ -333,8 +339,12 @@ class LabOrchestrator:
                     result.promoted_strategy = variant_name
                     result.final_recommendation = "promote"
                     
-                    # PERSIST the winning strategy to registry
+                    # PERSIST the winning strategy to registry with auto-incrementing version
                     try:
+                        next_version = self.registry.get_next_version(lab_strategy_name)
+                        variant_strategy.name = lab_strategy_name
+                        variant_strategy.version = next_version
+                        
                         self.registry.save_strategy(variant_strategy)
                         logger.info(f"[Orchestrator] 💾 Saved promoted strategy: {variant_strategy.name} v{variant_strategy.version}")
                     except Exception as e:
@@ -388,6 +398,13 @@ class LabOrchestrator:
         # Save champion if it improved over baseline (even if didn't hit promotion threshold)
         if champion_score > 0 and current_champion != baseline:
             try:
+                # Get next version number for this strategy (auto-increments)
+                next_version = self.registry.get_next_version(lab_strategy_name)
+                
+                # Update champion with clean naming before save
+                current_champion.name = lab_strategy_name
+                current_champion.version = next_version
+                
                 self.registry.save_strategy(current_champion)
                 logger.info(f"[Orchestrator] 💾 Saved best champion: {current_champion.name} v{current_champion.version} (score {champion_score:.2f})")
             except Exception as e:
