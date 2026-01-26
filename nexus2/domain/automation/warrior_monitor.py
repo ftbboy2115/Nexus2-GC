@@ -268,6 +268,15 @@ class WarriorMonitor:
                 break
         
         if existing_position:
+            # ENFORCE MAX SCALE COUNT - reject further adds once limit reached
+            max_scales = s.max_scale_count  # Default 2 = starter + 2 adds
+            if existing_position.scale_count >= max_scales:
+                logger.warning(
+                    f"[Warrior] {symbol}: Rejecting add - already at max scale #{existing_position.scale_count} "
+                    f"(limit={max_scales})"
+                )
+                return existing_position  # Return existing without adding
+            
             # CONSOLIDATE: Add shares and update average entry price
             old_shares = existing_position.shares
             old_entry = existing_position.entry_price
