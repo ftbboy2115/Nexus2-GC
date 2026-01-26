@@ -509,7 +509,7 @@ async def check_micro_pullback_entry(
     
     # REQUIREMENT 1: Above VWAP (confirm uptrend)
     if not watched.is_above_vwap:
-        logger.debug(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - below VWAP")
+        logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - below VWAP (vwap=${watched.current_vwap}, price=${current_price})")
         return
     
     # REQUIREMENT 2: Get MACD and volume data
