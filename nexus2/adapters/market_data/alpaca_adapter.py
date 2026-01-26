@@ -235,7 +235,8 @@ class AlpacaAdapter:
             limit: Max bars to return
         
         Note: Returns today's bars in chronological order (oldest first).
-        Without start parameter, Alpaca returns OLD historical bars, not today's.
+        Uses sort=desc + limit to get the MOST RECENT N bars, then re-sorts to chronological.
+        This fixes the issue where limit=5 with sort=asc returns the OLDEST 5 bars (e.g., 4 AM gap candle).
         """
         from datetime import timezone, timedelta
         
@@ -252,7 +253,7 @@ class AlpacaAdapter:
                 "limit": str(limit),
                 "adjustment": "raw",
                 "start": today_4am_et.isoformat(),
-                "sort": "asc",  # Chronological order (oldest first, newest last)
+                "sort": "desc",  # Get NEWEST bars first (so limit=5 returns most recent 5)
             }
         )
         
@@ -277,6 +278,7 @@ class AlpacaAdapter:
             except (KeyError, ValueError, TypeError):
                 continue
         
+        # Re-sort to chronological order (oldest first, newest last) for downstream use
         return sorted(bars, key=lambda b: b.timestamp) if bars else None
     
     def get_stock_info(self, symbol: str) -> Optional[StockInfo]:
