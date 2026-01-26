@@ -759,7 +759,10 @@ async def load_historical_test_case(case_id: str):
                 shares_to_sell = signal.shares_to_exit
             else:
                 # FULL EXIT: Check broker position and sell ALL shares
-                broker_position = sim_broker.get_position(signal.symbol)
+                positions = sim_broker.get_positions()
+                broker_position = next(
+                    (p for p in positions if p.get("symbol") == signal.symbol), None
+                )
                 if broker_position:
                     broker_shares = broker_position.get("qty", 0) or broker_position.get("shares", 0)
                     if broker_shares > signal.shares_to_exit:
