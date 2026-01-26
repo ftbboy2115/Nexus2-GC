@@ -98,7 +98,7 @@ export default function Lab() {
         return d.toISOString().split('T')[0]
     })
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
-    const [maxIterations, setMaxIterations] = useState(5)
+    const [maxIterations, setMaxIterations] = useState(10)
     const [initialCapital, setInitialCapital] = useState(25000)
 
     // Add to log
