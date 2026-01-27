@@ -96,6 +96,21 @@ class CatalystClassifier:
                 r"\b(ipo|initial\s+public\s+offering|newly\s+listed|begins\s+trading|starts\s+trading|debut|goes\s+public)\b",
                 re.IGNORECASE,
             ),
+            # Analyst valuations & price targets (HIND missed: "Analyst Values...at USD 1 Billion")
+            "analyst_valuation": re.compile(
+                r"\b(analyst\s+values?|price\s+target|price\s+objectiv|valuati?on\s+(of|at)|valued\s+at|worth\s+(?:\$|USD)?\s*[\d.]+\s*(?:billion|million)|rating\s+upgrade|initiates?\s+(?:buy|outperform)|upgrade[sd]?\s+to\s+(?:buy|strong\s+buy|outperform))\b",
+                re.IGNORECASE,
+            ),
+            # Clinical trial advancement (HIND missed: "Phase 3 Study" advancement)
+            "clinical_advance": re.compile(
+                r"\b(advance[sd]?\s+(?:into|to)\s+(?:phase|pivotal)|phase\s+(?:3|iii|three)\s+(?:study|trial|program)|pivotal\s+(?:study|trial)|phase\s+[1-3]\s+(?:initiation|enrollment|dosing|completion)|first\s+patient\s+(?:dosed|enrolled)|topline\s+(?:data|results))\b",
+                re.IGNORECASE,
+            ),
+            # Significant monetary valuations (HIND missed: "USD 1 Billion")
+            "significant_value": re.compile(
+                r"\b(?:\$|USD|EUR|GBP)\s*[\d.]+\s*(?:billion|bn|b)\b|\b[\d.]+\s*(?:billion|bn)\s*(?:dollar|usd|valuation|deal|agreement|contract)\b",
+                re.IGNORECASE,
+            ),
         }
         
         # Negative catalyst patterns (avoid these)
