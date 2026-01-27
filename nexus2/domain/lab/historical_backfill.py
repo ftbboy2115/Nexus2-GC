@@ -158,10 +158,10 @@ async def _get_historical_gainers(
         for symbol in seed_symbols[:50]:  # Limit to avoid too many API calls
             try:
                 # Get daily bar for target_date and previous day
-                bars = fmp.get_historical_daily_bars(
+                bars = fmp.get_daily_bars(
                     symbol=symbol,
-                    start_date=target_date - timedelta(days=5),
-                    end_date=target_date,
+                    from_date=str(target_date - timedelta(days=5)),
+                    to_date=str(target_date),
                 )
                 
                 if len(bars) < 2:
