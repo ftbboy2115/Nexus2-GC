@@ -542,24 +542,24 @@ async def get_catalyst_audit_entries(limit: int = 50):
     """
     Get recent catalyst audit entries for regex training.
     
-    Returns headlines that were rejected during catalyst evaluation,
+    Returns headlines that were evaluated during catalyst classification,
     allowing review of false negatives where regex may be missing patterns.
     
     Args:
-        limit: Number of entries to return (default 50, max 200)
+        limit: Number of symbol evaluations to return (default 50, max 200)
     """
     from pathlib import Path
     import re
     
     limit = max(1, min(limit, 200))
     
-    # Read from startup.log (where catalyst audit entries are written)
-    log_path = Path.home() / "Nexus2" / "startup.log"
+    # Read from dedicated catalyst_audit.log
+    log_path = Path("data") / "catalyst_audit.log"
     if not log_path.exists():
-        # Fallback for local dev
-        log_path = Path("startup.log")
+        # Fallback for VPS
+        log_path = Path.home() / "Nexus2" / "data" / "catalyst_audit.log"
     if not log_path.exists():
-        return {"entries": [], "count": 0, "message": "No startup log found"}
+        return {"entries": [], "count": 0, "message": "No catalyst audit log found"}
     
     try:
         with open(log_path, "r", encoding="utf-8") as f:
@@ -568,43 +568,53 @@ async def get_catalyst_audit_entries(limit: int = 50):
         from fastapi import HTTPException
         raise HTTPException(500, f"Failed to read log: {e}")
     
-    # Pattern: [Catalyst Audit] SYMBOL rejected headline [N]: headline text
-    audit_pattern = re.compile(
-        r"\[Catalyst Audit\] (\w+) rejected headline \[(\d+)\]: (.+)$"
+    # Pattern for header: === SYMBOL | Result: PASS/FAIL | Type: xxx ===
+    header_pattern = re.compile(
+        r"=== (\w+) \| Result: (\w+) \| Type: (\w+|none) ==="
+    )
+    # Pattern for headline: [N] ✓/✗ type (conf=X.XX): headline text
+    headline_pattern = re.compile(
+        r"\[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)$"
     )
     
     entries = []
-    grouped = {}  # Group by symbol
+    current_entry = None
     
     for line in reversed(lines):
-        match = audit_pattern.search(line)
-        if match:
-            symbol = match.group(1)
-            headline_num = int(match.group(2))
-            headline_text = match.group(3).strip()
-            
-            if symbol not in grouped:
-                grouped[symbol] = {
-                    "symbol": symbol,
-                    "headlines": [],
-                    "timestamp": line.split("|")[0].strip() if "|" in line else None,
-                }
-            grouped[symbol]["headlines"].append({
-                "index": headline_num,
-                "text": headline_text,
+        header_match = header_pattern.search(line)
+        if header_match:
+            if current_entry:
+                entries.append(current_entry)
+                if len(entries) >= limit:
+                    break
+            current_entry = {
+                "symbol": header_match.group(1),
+                "result": header_match.group(2),
+                "catalyst_type": header_match.group(3) if header_match.group(3) != "none" else None,
+                "headlines": [],
+                "timestamp": line.split("|")[0].strip() if "|" in line else None,
+            }
+            continue
+        
+        headline_match = headline_pattern.search(line)
+        if headline_match and current_entry:
+            current_entry["headlines"].append({
+                "index": int(headline_match.group(1)),
+                "matched": headline_match.group(2) == "✓",
+                "type": headline_match.group(3),
+                "confidence": float(headline_match.group(4)),
+                "text": headline_match.group(5).strip(),
             })
-            
-            if len(grouped) >= limit:
-                break
     
-    # Sort by most recently seen
-    entries = list(grouped.values())
+    # Add last entry
+    if current_entry and len(entries) < limit:
+        entries.append(current_entry)
     
     return {
         "entries": entries,
         "count": len(entries),
         "limit": limit,
-        "description": "Headlines rejected by catalyst classifier - review for regex gaps",
+        "description": "Headlines evaluated by catalyst classifier with match/no-match status",
     }
 
 
