@@ -66,6 +66,17 @@ def _get_warrior_scan_logger() -> logging.Logger:
 scan_logger = _get_warrior_scan_logger()
 
 
+def _format_float(value: int) -> str:
+    """Format float shares as #.#M, #.#K, or raw number for readability."""
+    if value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.1f}B"
+    elif value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}K"
+    return str(value)
+
+
 # =============================================================================
 # SETTINGS
 # =============================================================================
@@ -628,7 +639,7 @@ class WarriorScannerService:
                 reason=RejectionReason.FLOAT_TOO_HIGH,
                 values={"float": float_shares, "max": s.max_float},
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: float_too_high | Float: {float_shares:,} > {s.max_float:,}")
+            scan_logger.info(f"FAIL | {symbol} | Reason: float_too_high | Float: {_format_float(float_shares)} > {_format_float(s.max_float)}")
             if verbose:
                 print(f"{symbol}: Rejected - Float {float_shares:,} > {s.max_float:,}")
             return None
@@ -1105,7 +1116,7 @@ class WarriorScannerService:
         # Log to scan file with freshness info
         scan_logger.info(
             f"PASS | {symbol} | Score: {candidate.quality_score}{freshness_note} | "
-            f"Catalyst: {catalyst_type} | Float: {float_shares or 'N/A'} | RVOL: {rvol:.1f}x"
+            f"Catalyst: {catalyst_type} | Float: {_format_float(float_shares) if float_shares else 'N/A'} | RVOL: {rvol:.1f}x"
         )
         
         return candidate
