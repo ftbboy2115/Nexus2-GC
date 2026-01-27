@@ -785,10 +785,19 @@ async def get_trade_analytics():
         ).all()
         
         pnl_by_reason = {}
+        stop_method_breakdown = {}
         for t in all_trades:
             reason = t.exit_reason or "unknown"
             pnl = float(t.realized_pnl or 0)
             pnl_by_reason[reason] = pnl_by_reason.get(reason, 0) + pnl
+            
+            # Track stop_method for stop exits
+            if t.exit_reason in ("mental_stop", "technical_stop"):
+                method = t.stop_method or "fallback_15c"
+                if method not in stop_method_breakdown:
+                    stop_method_breakdown[method] = {"count": 0, "pnl": 0}
+                stop_method_breakdown[method]["count"] += 1
+                stop_method_breakdown[method]["pnl"] += pnl
         
         breakdown = [
             {
@@ -799,7 +808,15 @@ async def get_trade_analytics():
             for r in results
         ]
         
-        return {"breakdown": sorted(breakdown, key=lambda x: -x["count"])}
+        stop_methods = [
+            {"stop_method": k, "count": v["count"], "total_pnl": round(v["pnl"], 2)}
+            for k, v in sorted(stop_method_breakdown.items(), key=lambda x: -x[1]["count"])
+        ]
+        
+        return {
+            "breakdown": sorted(breakdown, key=lambda x: -x["count"]),
+            "stop_methods": stop_methods,
+        }
 
 
 # =============================================================================
