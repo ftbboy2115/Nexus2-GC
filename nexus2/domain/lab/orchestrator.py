@@ -642,31 +642,81 @@ class LabOrchestrator:
         return result
     
     def _spec_from_generated(self, gen_spec: Dict[str, Any], iteration: int, idx: int) -> StrategySpec:
-        """Convert a generated strategy dict to a StrategySpec."""
+        """Convert a generated strategy dict to a StrategySpec.
+        
+        Uses forgiving validation - if LLM generates invalid configs, 
+        falls back to sensible defaults instead of failing.
+        """
+        strategy_name = gen_spec.get("name", f"gen_{iteration}_{idx}")
         scanner_config = gen_spec.get("scanner", {})
         engine_config = gen_spec.get("engine", {})
         monitor_config = gen_spec.get("monitor", {})
         
-        return StrategySpec(
-            name=gen_spec.get("name", f"gen_{iteration}_{idx}"),
-            version="v0.1",
-            scanner=ScannerConfig(
-                min_price=scanner_config.get("min_price", 1.0),
-                max_price=scanner_config.get("max_price"),
-                min_gap_percent=scanner_config.get("min_gap_percent", 5.0),
-                min_rvol=scanner_config.get("min_rvol", 2.0),
-            ),
-            engine=EngineConfig(
-                risk_per_trade=engine_config.get("risk_per_trade", 250),
-                max_positions=engine_config.get("max_positions", 3),
-                scaling_enabled=engine_config.get("scaling_enabled", False),
-            ),
-            # Only extract known MonitorConfig fields to avoid validation errors
-            monitor=MonitorConfig(
-                stop_mode=str(monitor_config.get("stop_mode", "fixed")),
+        # Build ScannerConfig with fallback defaults
+        try:
+            scanner = ScannerConfig(
+                min_price=float(scanner_config.get("min_price", 1.0)),
+                max_price=float(scanner_config.get("max_price", 50.0)) if scanner_config.get("max_price") else None,
+                min_gap_percent=float(scanner_config.get("min_gap_percent", 5.0)),
+                min_rvol=float(scanner_config.get("min_rvol", 2.0)),
+            )
+        except Exception as e:
+            logger.warning(f"[Orchestrator] {strategy_name}: ScannerConfig validation failed ({e}), using defaults")
+            scanner = ScannerConfig(
+                min_price=1.0,
+                max_price=50.0,
+                min_gap_percent=5.0,
+                min_rvol=2.0,
+            )
+        
+        # Build EngineConfig with fallback defaults
+        try:
+            engine = EngineConfig(
+                risk_per_trade=int(engine_config.get("risk_per_trade", 250)),
+                max_positions=int(engine_config.get("max_positions", 3)),
+                scaling_enabled=bool(engine_config.get("scaling_enabled", False)),
+            )
+        except Exception as e:
+            logger.warning(f"[Orchestrator] {strategy_name}: EngineConfig validation failed ({e}), using defaults")
+            engine = EngineConfig(
+                risk_per_trade=250,
+                max_positions=3,
+                scaling_enabled=False,
+            )
+        
+        # Build MonitorConfig with fallback defaults
+        try:
+            # Handle various stop_mode formats the LLM might generate
+            stop_mode_raw = monitor_config.get("stop_mode", "fixed")
+            if isinstance(stop_mode_raw, str):
+                # Normalize common variations
+                stop_mode_raw = stop_mode_raw.lower().strip()
+                if stop_mode_raw in ("fixed", "technical", "atr", "trailing"):
+                    stop_mode = stop_mode_raw
+                else:
+                    stop_mode = "fixed"
+            else:
+                stop_mode = "fixed"
+            
+            monitor = MonitorConfig(
+                stop_mode=stop_mode,
                 stop_cents=float(monitor_config.get("stop_cents", 0.15)),
                 target_r=float(monitor_config.get("target_r", 2.0)),
-            ),
+            )
+        except Exception as e:
+            logger.warning(f"[Orchestrator] {strategy_name}: MonitorConfig validation failed ({e}), using defaults")
+            monitor = MonitorConfig(
+                stop_mode="fixed",
+                stop_cents=0.15,
+                target_r=2.0,
+            )
+        
+        return StrategySpec(
+            name=strategy_name,
+            version="v0.1",
+            scanner=scanner,
+            engine=engine,
+            monitor=monitor,
         )
     
     def _calculate_strategy_score(self, metrics: Dict[str, Any]) -> float:
