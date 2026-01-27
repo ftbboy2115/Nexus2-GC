@@ -809,6 +809,9 @@ Is this a valid Qullamaggie EP catalyst?"""
         )
         self._log_comparison(comparison)
         
+        # Debug logging for tracing catalyst decisions
+        logger.info(f"[validate_sync] {symbol}: regex={regex_passed}, flash={flash_passed}, final={final_valid}, method={method}")
+        
         return (final_valid, final_type, regex_passed, flash_passed, method)
     
     def get_stats(self) -> dict:

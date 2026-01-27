@@ -77,11 +77,11 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "fda": re.compile(
-                r"\b(fda\s+approv\w*|fda\s+clear\w*|fda\s+(lifts?|removes?|clears?)\s+(clinical\s+)?hold|clinical\s+hold\s+(lifted|removed|resolved|cleared)|phase\s+[1-3]\s+(success|positive|met)|clinical\s+(trial\s+)?(success|positive|results?|data)|breakthrough\s+designation|drug\s+approv\w*|complete\s+resol\w*|complete\s+response|interim\s+safety|promising\s+(early\s+)?clinical)\b",
+                r"\b(fda\s+approv\w*|fda\s+clear\w*|fda\s+(lifts?|removes?|clears?)\s+(clinical\s+)?hold|clinical\s+hold\s+(lifted|removed|resolved|cleared)|phase\s+[1-3]\s+(success|positive|met)|clinical\s+(trial\s+)?(success|positive|results?|data)|breakthrough\s+designation|drug\s+approv\w*|complete\s+resol\w*|complete\s+response|interim\s+safety|promising\s+(early\s+)?clinical|grants?\s+(accelerated\s+)?approval)\b",
                 re.IGNORECASE,
             ),
             "contract": re.compile(
-                r"\b(contract|award|major\s+order|partnership|collaboration|strategic\s+alliance|multi-year\s+deal|purchase\s+orders?|receives?\s+\$?\d+\s*(m|million|b|billion)|supplies?\s+\w+\s+(to|for)|government\s+(order|contract)|announces?\s+agreement|signs?\s+agreement|agreement\s+with\s+\w+)\b",
+                r"\b(contract|awarded?|major\s+order|partnership|collaboration|strategic\s+(alliance|investment|partnership)|multi-year\s+deal|purchase\s+orders?|receives?\s+\$?\d+\s*(m|million|b|billion)|supplies?\s+\w+\s+(to|for)|government\s+(order|contract)|announces?\s+agreement|signs?\s+agreement|agreement\s+with\s+\w+|partners?\s+with|integration\s+with|project\s+wins?)\b",
                 re.IGNORECASE,
             ),
             "guidance_raise": re.compile(
