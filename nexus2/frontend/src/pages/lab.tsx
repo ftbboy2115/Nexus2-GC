@@ -389,7 +389,7 @@ export default function Lab() {
                                                         {iter.hypothesis.hypothesis.slice(0, 50)}...
                                                     </td>
                                                     <td>{iter.code_valid ? '✅' : '❌'}</td>
-                                                    <td>{iter.metrics.win_rate?.toFixed(1) || '-'}%</td>
+                                                    <td>{((iter.metrics.win_rate || 0) * 100).toFixed(1)}%</td>
                                                     <td>{iter.metrics.avg_r?.toFixed(2) || '-'}</td>
                                                     <td title="Relative improvement">{((iter.evaluation.improvement_score || 0) * 100).toFixed(1)}%</td>
                                                     <td title="Absolute performance">{((iter.evaluation.absolute_score || 0) * 100).toFixed(1)}%</td>
