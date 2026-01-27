@@ -554,3 +554,85 @@ async def clear_cache():
         "status": "cleared",
         "files_deleted": count,
     }
+
+
+# =============================================================================
+# HISTORICAL BACKFILL ENDPOINT
+# =============================================================================
+
+class BackfillRequest(BaseModel):
+    """Request for backfilling historical gappers."""
+    days_back: int = Field(default=60, ge=7, le=180, description="Number of days to backfill")
+    min_gap_percent: float = Field(default=5.0, ge=1.0, le=50.0, description="Minimum gap percentage")
+    min_price: float = Field(default=1.0, ge=0.5, le=10.0, description="Minimum stock price")
+    max_price: float = Field(default=20.0, ge=5.0, le=100.0, description="Maximum stock price")
+
+
+@router.post("/history/backfill")
+async def backfill_historical_gappers(request: BackfillRequest = None):
+    """Backfill scan_history with historical gappers from FMP.
+    
+    Uses FMP API to find stocks that gapped significantly on past dates.
+    Entries are tagged with source='backfill' to distinguish from real scans.
+    
+    This expands the Lab's backtest universe, allowing more meaningful experiments.
+    """
+    from datetime import date, timedelta
+    from nexus2.domain.lab.historical_backfill import backfill_historical_gappers as do_backfill
+    
+    if request is None:
+        request = BackfillRequest()
+    
+    end_date = date.today() - timedelta(days=1)
+    start_date = end_date - timedelta(days=request.days_back)
+    
+    logger.info(f"[Lab] Starting backfill from {start_date} to {end_date}")
+    
+    try:
+        stats = await do_backfill(
+            start_date=start_date,
+            end_date=end_date,
+            min_gap_percent=request.min_gap_percent,
+            min_price=request.min_price,
+            max_price=request.max_price,
+        )
+        
+        logger.info(f"[Lab] Backfill complete: {stats}")
+        
+        return {
+            "status": "complete",
+            **stats,
+        }
+        
+    except Exception as e:
+        logger.exception(f"[Lab] Backfill failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history/stats")
+async def get_scan_history_stats():
+    """Get statistics about the scan history.
+    
+    Shows how many dates/symbols are available for backtesting.
+    """
+    from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+    
+    history = get_scan_history_logger()
+    stats = history.get_stats()
+    
+    # Count by source
+    backfill_count = 0
+    scan_count = 0
+    for date_entries in history._history.values():
+        for entry in date_entries:
+            source = entry.get("source", "scan")
+            if source == "backfill":
+                backfill_count += 1
+            else:
+                scan_count += 1
+    
+    stats["backfill_entries"] = backfill_count
+    stats["scan_entries"] = scan_count
+    
+    return stats
+

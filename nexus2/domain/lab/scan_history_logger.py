@@ -55,6 +55,7 @@ class ScanHistoryLogger:
         rvol: float,
         score: int,
         catalyst: Optional[str] = None,
+        source: str = "scan",  # "scan" for real scanner, "backfill" for historical data
     ) -> None:
         """Log a symbol that passed the Warrior scanner.
         
@@ -65,6 +66,7 @@ class ScanHistoryLogger:
             rvol: Relative volume
             score: Quality score
             catalyst: Catalyst type if any
+            source: Origin of data - "scan" for real, "backfill" for historical
         """
         date_key = scan_date.isoformat()
         
@@ -83,12 +85,13 @@ class ScanHistoryLogger:
                 "rvol": rvol,
                 "score": score,
                 "catalyst": catalyst,
+                "source": source,
                 "logged_at": datetime.utcnow().isoformat(),
             }
             
             self._history[date_key].append(entry)
             self._save()
-            logger.debug(f"[ScanHistory] Logged {symbol} for {scan_date}")
+            logger.debug(f"[ScanHistory] Logged {symbol} for {scan_date} (source={source})")
     
     def get_symbols_for_date(self, target_date: date) -> List[Dict[str, Any]]:
         """Get all passed symbols for a specific date.
