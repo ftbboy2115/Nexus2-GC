@@ -587,9 +587,10 @@ class LabOrchestrator:
                         
                         # Calculate score
                         metrics = backtest_result.metrics
-                        score = self._calculate_strategy_score(metrics)
+                        metrics_dict = metrics.model_dump() if hasattr(metrics, 'model_dump') else vars(metrics)
+                        score = self._calculate_strategy_score(metrics_dict)
                         
-                        logger.info(f"[Orchestrator] {strategy_name}: WR={metrics.get('win_rate', 0):.1%}, AvgR={metrics.get('avg_r', 0):.2f}, Score={score:.2f}")
+                        logger.info(f"[Orchestrator] {strategy_name}: WR={getattr(metrics, 'win_rate', 0):.1%}, AvgR={getattr(metrics, 'avg_r', 0):.2f}, Score={score:.2f}")
                         
                         if score > best_score:
                             best_score = score
@@ -599,7 +600,7 @@ class LabOrchestrator:
                             
                             iter_result.code_valid = True
                             iter_result.backtest_ran = True
-                            iter_result.metrics = metrics
+                            iter_result.metrics = metrics_dict
                     
                     except Exception as e:
                         logger.error(f"[Orchestrator] Error testing {strategy_name}: {e}")
