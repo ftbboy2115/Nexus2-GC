@@ -106,6 +106,8 @@ export default function Lab() {
     const [experimentMode, setExperimentMode] = useState<'iterate' | 'explore' | 'generate'>('iterate')
     const [methodology, setMethodology] = useState('warrior')
     const [userIdea, setUserIdea] = useState('')
+    const [strategiesPerIteration, setStrategiesPerIteration] = useState(2)
+    const [minTrades, setMinTrades] = useState(5)
     const [guardrails, setGuardrails] = useState({
         maxRisk: 500,
         maxPositions: 5,
@@ -171,8 +173,8 @@ export default function Lab() {
                 requestBody.generate_config = {
                     methodology: methodology,
                     user_idea: userIdea || null,
-                    strategies_per_iteration: 3,
-                    min_trades_per_strategy: 30,
+                    strategies_per_iteration: strategiesPerIteration,
+                    min_trades_per_strategy: minTrades,
                 }
             }
 
