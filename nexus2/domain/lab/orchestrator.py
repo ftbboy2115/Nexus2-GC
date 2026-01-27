@@ -55,7 +55,7 @@ class GenerateConfig(BaseModel):
     
     # Strategy generation settings
     strategies_per_iteration: int = Field(
-        default=3,
+        default=2,
         ge=1,
         le=10,
         description="How many strategies to generate per iteration"
@@ -63,8 +63,8 @@ class GenerateConfig(BaseModel):
     
     # Statistical significance
     min_trades_per_strategy: int = Field(
-        default=10,
-        ge=5,
+        default=5,
+        ge=1,
         le=100,
         description="Minimum trades for statistical significance"
     )
