@@ -736,6 +736,27 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
 
 
 # =============================================================================
+# TRADE LOG
+# =============================================================================
+
+@router.get("/trades")
+async def get_warrior_trades(limit: int = 50, status: str = None):
+    """
+    Get trade management log with summary statistics.
+    
+    Args:
+        limit: Maximum trades to return (default 50)
+        status: Optional filter - 'open', 'closed', or None for all
+    
+    Returns:
+        trades: List of trades ordered by entry time (newest first)
+        summary: Win rate, total P&L, trade counts
+    """
+    from nexus2.db.warrior_db import get_all_warrior_trades
+    return get_all_warrior_trades(limit=limit, status_filter=status)
+
+
+# =============================================================================
 # INCLUDE SUB-ROUTERS
 # =============================================================================
 
