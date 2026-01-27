@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from nexus2.domain.lab import StrategySpec
 from nexus2.domain.lab.strategy_registry import get_registry
