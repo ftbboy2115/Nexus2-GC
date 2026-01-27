@@ -63,8 +63,8 @@ class GenerateConfig(BaseModel):
     
     # Statistical significance
     min_trades_per_strategy: int = Field(
-        default=30,
-        ge=10,
+        default=10,
+        ge=5,
         le=100,
         description="Minimum trades for statistical significance"
     )
@@ -659,10 +659,11 @@ class LabOrchestrator:
                 max_positions=engine_config.get("max_positions", 3),
                 scaling_enabled=engine_config.get("scaling_enabled", False),
             ),
+            # Only extract known MonitorConfig fields to avoid validation errors
             monitor=MonitorConfig(
-                stop_mode=monitor_config.get("stop_mode", "fixed"),
-                stop_cents=monitor_config.get("stop_cents", 0.15),
-                target_r=monitor_config.get("target_r", 2.0),
+                stop_mode=str(monitor_config.get("stop_mode", "fixed")),
+                stop_cents=float(monitor_config.get("stop_cents", 0.15)),
+                target_r=float(monitor_config.get("target_r", 2.0)),
             ),
         )
     

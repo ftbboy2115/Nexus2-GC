@@ -408,7 +408,7 @@ class GenerateConfigRequest(BaseModel):
     methodology: str = "warrior"
     user_idea: Optional[str] = None
     strategies_per_iteration: int = 3
-    min_trades_per_strategy: int = 30
+    min_trades_per_strategy: int = 10
 
 
 class ExperimentRequest(BaseModel):
