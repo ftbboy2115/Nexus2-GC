@@ -70,8 +70,60 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
         feed="sip",  # SIP feed includes extended hours data
     )
     
-    bars_data = client.get_stock_bars(request)
-    bars = bars_data[symbol]
+    try:
+        bars_data = client.get_stock_bars(request)
+        bars = bars_data[symbol]
+    except Exception as e:
+        # Fallback to FMP for recent data (Alpaca SIP doesn't allow same-day)
+        print(f"  Alpaca SIP failed: {e}")
+        print(f"  Trying FMP fallback...")
+        import httpx
+        fmp_key = os.getenv("FMP_API_KEY")
+        url = f"https://financialmodelingprep.com/api/v3/historical-chart/1min/{symbol}?from={date_str}&to={date_str}&apikey={fmp_key}"
+        resp = httpx.get(url, timeout=30)
+        raw = resp.json()
+        
+        if not isinstance(raw, list) or len(raw) == 0:
+            raise Exception(f"FMP also failed: {raw}")
+        
+        candles = list(reversed(raw))  # Chronological order
+        print(f"  Got {len(candles)} bars from FMP")
+        
+        # Convert FMP format to our format
+        premarket_bars = []
+        market_bars = []
+        for c in candles:
+            time_str = c["date"].split()[1][:5]  # HH:MM
+            bar_dict = {
+                "t": time_str,
+                "o": c["open"],
+                "h": c["high"],
+                "l": c["low"],
+                "c": c["close"],
+                "v": c["volume"]
+            }
+            hour = int(time_str[:2])
+            minute = int(time_str[3:5])
+            if hour < 9 or (hour == 9 and minute < 30):
+                premarket_bars.append(bar_dict)
+            else:
+                market_bars.append(bar_dict)
+        
+        pmh = max([b["h"] for b in premarket_bars]) if premarket_bars else None
+        first_bar = premarket_bars[0] if premarket_bars else market_bars[0]
+        prev_close = first_bar["o"]
+        first_market_open = market_bars[0]["o"] if market_bars else premarket_bars[-1]["c"]
+        gap_percent = ((first_market_open - prev_close) / prev_close) * 100 if prev_close else 0
+        
+        return {
+            "symbol": symbol,
+            "date": date_str,
+            "premarket_bars": premarket_bars,
+            "market_bars": market_bars,
+            "pmh": pmh,
+            "prev_close": prev_close,
+            "gap_percent": gap_percent,
+        }
     
     print(f"  Got {len(bars)} bars")
     
@@ -167,6 +219,7 @@ if __name__ == "__main__":
         {"symbol": "TNMG", "date": "2026-01-16", "catalyst": "momentum"},  # Chinese stock, dip buy
         {"symbol": "GWAV", "date": "2026-01-16", "catalyst": "momentum"},  # No news momentum scalp
         {"symbol": "VERO", "date": "2026-01-16", "catalyst": "after_hours"},  # After-hours mover
+        {"symbol": "BATL", "date": "2026-01-27", "catalyst": "natural_gas_prices"},  # Natural gas surge
     ]
     
     created_files = []

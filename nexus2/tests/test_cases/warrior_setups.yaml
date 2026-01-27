@@ -420,6 +420,27 @@ test_cases:
       stop_near: 7.00
     notes: "Ross Cameron transcript Jan 16 - 4 Base Hit Winners"
 
+  - id: ross_batl_20260126
+    symbol: BATL
+    setup_type: pmh
+    outcome: missed
+    ross_traded: false
+    synthetic: false
+    status: MISSED_OPPORTUNITY
+    description: "BATL Jan 26 - Natural gas price surge, 243% gap. Ross missed (wasn't at PC)"
+    trade_date: "2026-01-26"
+    intraday_file: "intraday/ross_batl_20260126.json"
+    premarket_data:
+      gap_percent: 243.7
+      premarket_high: 6.80
+      previous_close: 1.98
+      float_shares: 5000000
+      catalyst: "natural_gas_prices"
+    expected:
+      entry_near: null  # PMH $6.80 was HOD, never revisited during market hours
+      stop_near: null
+    notes: "Battalion Oil - natural gas surge. PMH $6.80 was the high of day (hit at 04:50 AM), stock opened at $5.44 and faded all day. No viable PMH breakout entry."
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
