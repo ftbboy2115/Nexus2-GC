@@ -537,6 +537,77 @@ async def get_warrior_scanner_logs(limit: int = 20):
     }
 
 
+@router.get("/scanner/catalyst-audit")
+async def get_catalyst_audit_entries(limit: int = 50):
+    """
+    Get recent catalyst audit entries for regex training.
+    
+    Returns headlines that were rejected during catalyst evaluation,
+    allowing review of false negatives where regex may be missing patterns.
+    
+    Args:
+        limit: Number of entries to return (default 50, max 200)
+    """
+    from pathlib import Path
+    import re
+    
+    limit = max(1, min(limit, 200))
+    
+    # Read from startup.log (where catalyst audit entries are written)
+    log_path = Path.home() / "Nexus2" / "startup.log"
+    if not log_path.exists():
+        # Fallback for local dev
+        log_path = Path("startup.log")
+    if not log_path.exists():
+        return {"entries": [], "count": 0, "message": "No startup log found"}
+    
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(500, f"Failed to read log: {e}")
+    
+    # Pattern: [Catalyst Audit] SYMBOL rejected headline [N]: headline text
+    audit_pattern = re.compile(
+        r"\[Catalyst Audit\] (\w+) rejected headline \[(\d+)\]: (.+)$"
+    )
+    
+    entries = []
+    grouped = {}  # Group by symbol
+    
+    for line in reversed(lines):
+        match = audit_pattern.search(line)
+        if match:
+            symbol = match.group(1)
+            headline_num = int(match.group(2))
+            headline_text = match.group(3).strip()
+            
+            if symbol not in grouped:
+                grouped[symbol] = {
+                    "symbol": symbol,
+                    "headlines": [],
+                    "timestamp": line.split("|")[0].strip() if "|" in line else None,
+                }
+            grouped[symbol]["headlines"].append({
+                "index": headline_num,
+                "text": headline_text,
+            })
+            
+            if len(grouped) >= limit:
+                break
+    
+    # Sort by most recently seen
+    entries = list(grouped.values())
+    
+    return {
+        "entries": entries,
+        "count": len(entries),
+        "limit": limit,
+        "description": "Headlines rejected by catalyst classifier - review for regex gaps",
+    }
+
+
 @router.get("/scanner/settings")
 async def get_warrior_scanner_settings():
     """Get current Warrior scanner settings."""
