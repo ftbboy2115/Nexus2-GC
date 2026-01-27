@@ -18,7 +18,7 @@ async def backfill_historical_gappers(
     end_date: date,
     min_gap_percent: float = 5.0,
     min_price: float = 1.0,
-    max_price: float = 20.0,
+    max_price: Optional[float] = None,  # No limit by default - strategies filter at runtime
     max_symbols_per_day: int = 20,
     delay_between_days: float = 0.5,
 ) -> Dict[str, Any]:
@@ -189,9 +189,9 @@ async def _get_historical_gainers(
                     
                 gap_percent = ((current_open - prev_close) / prev_close) * 100
                 
-                # Check criteria
-                if (gap_percent >= min_gap_percent and 
-                    min_price <= current_open <= max_price):
+                # Check criteria (max_price=None means no upper limit)
+                price_ok = current_open >= min_price and (max_price is None or current_open <= max_price)
+                if gap_percent >= min_gap_percent and price_ok:
                     gainers.append({
                         "symbol": symbol,
                         "gap_percent": round(gap_percent, 2),

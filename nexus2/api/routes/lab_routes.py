@@ -565,7 +565,7 @@ class BackfillRequest(BaseModel):
     days_back: int = Field(default=60, ge=7, le=180, description="Number of days to backfill")
     min_gap_percent: float = Field(default=5.0, ge=1.0, le=50.0, description="Minimum gap percentage")
     min_price: float = Field(default=1.0, ge=0.5, le=10.0, description="Minimum stock price")
-    max_price: float = Field(default=20.0, ge=5.0, le=100.0, description="Maximum stock price")
+    max_price: Optional[float] = Field(default=None, description="Maximum stock price (None = no limit)")
 
 
 @router.post("/history/backfill")
