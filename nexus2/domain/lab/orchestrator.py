@@ -687,27 +687,39 @@ class LabOrchestrator:
         # Build MonitorConfig with fallback defaults
         try:
             # Handle various stop_mode formats the LLM might generate
-            stop_mode_raw = monitor_config.get("stop_mode", "fixed")
+            stop_mode_raw = monitor_config.get("stop_mode", "mental")
             if isinstance(stop_mode_raw, str):
                 # Normalize common variations
                 stop_mode_raw = stop_mode_raw.lower().strip()
-                if stop_mode_raw in ("fixed", "technical", "atr", "trailing"):
-                    stop_mode = stop_mode_raw
+                if stop_mode_raw in ("mental", "technical", "hard", "fixed", "atr", "trailing"):
+                    # Map 'fixed' to 'hard' for compatibility
+                    stop_mode = "hard" if stop_mode_raw == "fixed" else stop_mode_raw
                 else:
-                    stop_mode = "fixed"
+                    stop_mode = "mental"
             else:
-                stop_mode = "fixed"
+                stop_mode = "mental"
+            
+            # stop_cents is Optional[int] in cents, not dollars!
+            stop_cents_raw = monitor_config.get("stop_cents", 15)
+            if isinstance(stop_cents_raw, (int, float)):
+                # If value looks like dollars (< 1), convert to cents
+                if stop_cents_raw < 1:
+                    stop_cents = int(stop_cents_raw * 100)
+                else:
+                    stop_cents = int(stop_cents_raw)
+            else:
+                stop_cents = 15
             
             monitor = MonitorConfig(
                 stop_mode=stop_mode,
-                stop_cents=float(monitor_config.get("stop_cents", 0.15)),
+                stop_cents=stop_cents,
                 target_r=float(monitor_config.get("target_r", 2.0)),
             )
         except Exception as e:
             logger.warning(f"[Orchestrator] {strategy_name}: MonitorConfig validation failed ({e}), using defaults")
             monitor = MonitorConfig(
-                stop_mode="fixed",
-                stop_cents=0.15,
+                stop_mode="mental",
+                stop_cents=15,
                 target_r=2.0,
             )
         
