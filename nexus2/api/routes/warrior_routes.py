@@ -756,6 +756,42 @@ async def get_warrior_trades(limit: int = 50, status: str = None):
     return get_all_warrior_trades(limit=limit, status_filter=status)
 
 
+@router.get("/trades/analytics")
+async def get_trade_analytics():
+    """
+    Get trade analytics breakdown by exit reason.
+    
+    Returns P&L and count grouped by exit_reason for understanding
+    which exit types are profitable vs losing.
+    """
+    from nexus2.db.warrior_db import get_warrior_session, WarriorTradeModel
+    from nexus2.domain.positions.position_state_machine import PositionStatus
+    from sqlalchemy import func
+    
+    with get_warrior_session() as db:
+        # Group by exit reason
+        results = db.query(
+            WarriorTradeModel.exit_reason,
+            func.count().label('count'),
+            func.sum(func.cast(WarriorTradeModel.realized_pnl, db.bind.dialect.type_descriptor(type(1.0)))).label('total_pnl')
+        ).filter(
+            WarriorTradeModel.status == PositionStatus.CLOSED.value
+        ).group_by(
+            WarriorTradeModel.exit_reason
+        ).all()
+        
+        breakdown = [
+            {
+                "exit_reason": r.exit_reason or "unknown",
+                "count": r.count,
+                "total_pnl": round(float(r.total_pnl or 0), 2)
+            }
+            for r in results
+        ]
+        
+        return {"breakdown": sorted(breakdown, key=lambda x: -x["count"])}
+
+
 # =============================================================================
 # INCLUDE SUB-ROUTERS
 # =============================================================================
