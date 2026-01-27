@@ -72,7 +72,7 @@ export default function Warrior() {
     } = useWarriorActions({ addToLog, refetch, status })
 
     // Mock Market state
-    const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string }[]>([])
+    const [testCases, setTestCases] = useState<{ id: string, symbol: string, description: string, ross_traded?: boolean, notes?: string, trade_date?: string }[]>([])
     const [selectedTestCase, setSelectedTestCase] = useState<string>('')
     const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
     const [clockState, setClockState] = useState<{ time_string: string, is_market_hours: boolean, speed: number } | null>(null)

@@ -399,6 +399,15 @@ async def list_warrior_test_cases():
     summary = []
     json_symbols = set()  # Track symbols loaded from JSON to avoid duplicates
     
+    # Pre-load YAML to cross-reference metadata for JSON test cases
+    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
+    yaml_cases = {}  # id -> case dict
+    if os.path.exists(yaml_path):
+        with open(yaml_path, "r") as f:
+            yaml_data = yaml.safe_load(f)
+        for tc in yaml_data.get("test_cases", []):
+            yaml_cases[tc.get("id")] = tc
+    
     # 1. First, scan intraday directory for JSON files (preferred - has bar data)
     intraday_path = os.path.join(base_path, "intraday")
     if os.path.exists(intraday_path):
@@ -418,24 +427,34 @@ async def list_warrior_test_cases():
                     gap_pct = premarket.get("gap_percent", 0)
                     bar_count = len(tc_data.get("bars", []))
                     
-                    # Create description from available data
-                    description = f"{date} - {catalyst}" if catalyst else date
-                    if bar_count > 0:
-                        description += f" ({bar_count} bars)"
-                    
                     # Use filename without extension as ID
                     case_id = filename.replace(".json", "")
+                    
+                    # Look up YAML metadata for ross_traded, notes, outcome
+                    yaml_meta = yaml_cases.get(case_id, {})
+                    ross_traded = yaml_meta.get("ross_traded", True)  # Default True for legacy
+                    outcome = yaml_meta.get("outcome", "unknown")
+                    notes = yaml_meta.get("notes", "")
+                    yaml_desc = yaml_meta.get("description", "")
+                    
+                    # Build description: prefer YAML description, fall back to JSON-derived
+                    if yaml_desc:
+                        description = yaml_desc
+                    else:
+                        description = f"{date} - {catalyst}" if catalyst else date
                     
                     summary.append({
                         "id": case_id,
                         "symbol": symbol,
-                        "setup_type": "historical_replay",
-                        "outcome": "real_data",
+                        "setup_type": yaml_meta.get("setup_type", "historical_replay"),
+                        "outcome": outcome,
                         "description": description,
                         "trade_date": date,
                         "synthetic": False,
                         "has_bars": bar_count > 0,
                         "gap_percent": gap_pct,
+                        "ross_traded": ross_traded,
+                        "notes": notes,
                     })
                 except Exception as e:
                     print(f"[Test Cases] Error loading {filename}: {e}")

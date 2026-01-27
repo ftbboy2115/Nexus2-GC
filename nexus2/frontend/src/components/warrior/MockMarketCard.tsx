@@ -11,6 +11,9 @@ interface TestCase {
     id: string
     symbol: string
     description: string
+    ross_traded?: boolean
+    notes?: string
+    trade_date?: string
 }
 
 interface ClockState {
@@ -147,11 +150,15 @@ export function MockMarketCard({
                         title={testCases.find(tc => tc.id === selectedTestCase)?.description || ''}
                     >
                         <option value="">Select a test case...</option>
-                        {testCases.map((tc) => (
-                            <option key={tc.id} value={tc.id}>
-                                {tc.symbol} - {tc.description.length > 40 ? tc.description.slice(0, 40) + '...' : tc.description}
-                            </option>
-                        ))}
+                        {testCases.map((tc) => {
+                            const statusIcon = tc.ross_traded === false ? '❌' : '✅'
+                            const dateDisplay = tc.trade_date ? tc.trade_date.slice(5) : ''  // MM-DD
+                            return (
+                                <option key={tc.id} value={tc.id}>
+                                    {statusIcon} {tc.symbol} ({dateDisplay})
+                                </option>
+                            )
+                        })}
                     </select>
                     <button
                         onClick={loadTestCase}
@@ -173,6 +180,21 @@ export function MockMarketCard({
                         </button>
                     )}
                 </div>
+
+                {/* Test Case Description - Shows full description with word wrap */}
+                {selectedTestCase && (() => {
+                    const tc = testCases.find(c => c.id === selectedTestCase)
+                    if (!tc) return null
+                    return (
+                        <div className={styles.testCaseDescription}>
+                            <span className={tc.ross_traded === false ? styles.missedTrade : styles.rossTrade}>
+                                {tc.ross_traded === false ? '❌ Ross MISSED' : '✅ Ross traded'}
+                            </span>
+                            <span className={styles.descriptionText}>{tc.description}</span>
+                            {tc.notes && <span className={styles.notesText}>{tc.notes}</span>}
+                        </div>
+                    )
+                })()}
 
                 {/* Playback Controls - Only show when historical bars loaded */}
                 {clockState && isHistoricalMode && (
