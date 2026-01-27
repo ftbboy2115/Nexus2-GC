@@ -907,6 +907,10 @@ class WarriorScannerService:
                 details=catalyst_desc,
             )
             scan_logger.info(f"FAIL | {symbol} | Reason: no_catalyst | {catalyst_desc}")
+            # Log rejected headlines for regex audit (top 3)
+            if headlines:
+                for i, h in enumerate(headlines[:3]):
+                    scan_logger.info(f"[Catalyst Audit] {symbol} rejected headline [{i+1}]: {h[:100]}")
             if verbose:
                 print(f"{symbol}: Rejected - {catalyst_desc}")
             return None
