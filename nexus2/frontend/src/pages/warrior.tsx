@@ -431,6 +431,19 @@ export default function Warrior() {
         }
     }
 
+    // Clear sim orders (reset mock broker state)
+    const clearSimOrders = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/warrior/sim/reset`, { method: 'POST' })
+            if (res.ok) {
+                setSimOrders([])
+                addToLog('🗑️ Cleared mock orders')
+            }
+        } catch (err) {
+            console.error('Failed to clear sim orders:', err)
+        }
+    }
+
     // ========================================================================
     // Render
     // ========================================================================
@@ -521,6 +534,7 @@ export default function Warrior() {
                                 onResetClock={resetClock}
                                 onSetSpeed={setPlaybackSpeed}
                                 orders={simOrders}
+                                onClearOrders={clearSimOrders}
                             />
 
                             {/* Exit Rules Card */}

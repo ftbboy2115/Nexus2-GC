@@ -1089,6 +1089,8 @@
 }
 
 .ordersPanelHeader {
+    display: flex;
+    align-items: center;
     font-size: 0.85rem;
     font-weight: 600;
     color: #999;

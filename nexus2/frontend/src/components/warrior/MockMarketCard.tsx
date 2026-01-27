@@ -53,6 +53,7 @@ interface MockMarketCardProps {
     onSetSpeed?: (speed: number) => void
     // Orders visibility
     orders?: MockOrder[]
+    onClearOrders?: () => void
 }
 
 const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50]
@@ -72,6 +73,7 @@ export function MockMarketCard({
     onResetClock,
     onSetSpeed,
     orders = [],
+    onClearOrders,
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
@@ -247,7 +249,19 @@ export function MockMarketCard({
                 {/* Orders Panel - Show when in historical mode and orders exist */}
                 {isHistoricalMode && orders.length > 0 && (
                     <div className={styles.ordersPanel}>
-                        <div className={styles.ordersPanelHeader}>📋 Orders</div>
+                        <div className={styles.ordersPanelHeader}>
+                            <span>📋 Orders</span>
+                            {onClearOrders && (
+                                <button
+                                    onClick={onClearOrders}
+                                    className={styles.btnSmall}
+                                    title="Clear all orders"
+                                    style={{ marginLeft: 'auto', fontSize: '0.75rem' }}
+                                >
+                                    🗑️ Reset
+                                </button>
+                            )}
+                        </div>
                         <div className={styles.ordersList}>
                             {orders.map(order => (
                                 <div key={order.id} className={styles.orderRow}>
