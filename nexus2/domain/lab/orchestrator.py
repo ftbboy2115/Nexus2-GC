@@ -27,9 +27,65 @@ from .strategy_schema import StrategySpec, ScannerConfig, EngineConfig, MonitorC
 from .lab_logger import configure_lab_logging
 from nexus2.db.warrior_db import get_recent_closed_trades
 import yaml
+from enum import Enum
 
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# EXPERIMENT MODE
+# =============================================================================
+
+class ExperimentMode(str, Enum):
+    """Mode for experiment execution."""
+    ITERATE = "iterate"    # Incremental improvements to existing strategy
+    EXPLORE = "explore"    # Bold variations on existing strategy
+    GENERATE = "generate"  # Create entirely new strategies from scratch
+
+
+class GenerateConfig(BaseModel):
+    """Configuration for GENERATE mode experiments."""
+    
+    # Methodology to use
+    methodology: str = Field(
+        default="warrior",
+        description="Trading methodology (warrior, kk_ep, kk_breakout, etc.)"
+    )
+    
+    # Strategy generation settings
+    strategies_per_iteration: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="How many strategies to generate per iteration"
+    )
+    
+    # Statistical significance
+    min_trades_per_strategy: int = Field(
+        default=30,
+        ge=10,
+        le=100,
+        description="Minimum trades for statistical significance"
+    )
+    
+    auto_extend_if_insufficient: bool = Field(
+        default=True,
+        description="Extend date range if not enough trades"
+    )
+    
+    max_date_range_days: int = Field(
+        default=180,
+        ge=30,
+        le=365,
+        description="Maximum date range for backtesting"
+    )
+    
+    # User input
+    user_idea: Optional[str] = Field(
+        default=None,
+        description="Optional user-provided strategy idea"
+    )
 
 
 # =============================================================================
@@ -39,9 +95,18 @@ logger = logging.getLogger(__name__)
 class ExperimentConfig(BaseModel):
     """Configuration for an experiment run."""
     
-    # Base strategy
-    base_strategy_name: str
+    # Experiment mode (iterate, explore, generate)
+    mode: ExperimentMode = Field(
+        default=ExperimentMode.ITERATE,
+        description="Experiment mode"
+    )
+    
+    # Base strategy (required for ITERATE/EXPLORE, optional for GENERATE)
+    base_strategy_name: Optional[str] = None
     base_strategy_version: Optional[str] = None
+    
+    # GENERATE mode settings
+    generate_config: Optional[GenerateConfig] = None
     
     # Backtest parameters
     start_date: date
@@ -142,11 +207,16 @@ class LabOrchestrator:
             ExperimentResult with all iterations and final recommendation
         """
         experiment_id = str(uuid.uuid4())[:8]
-        logger.info(f"[Orchestrator] Starting experiment {experiment_id}")
+        logger.info(f"[Orchestrator] Starting {config.mode.value} experiment {experiment_id}")
         
+        # Dispatch based on mode
+        if config.mode == ExperimentMode.GENERATE:
+            return self._run_generate_experiment(config, experiment_id, progress_callback)
+        
+        # ITERATE / EXPLORE mode - need baseline strategy
         result = ExperimentResult(
             experiment_id=experiment_id,
-            base_strategy=config.base_strategy_name,
+            base_strategy=config.base_strategy_name or "unknown",
             base_version=config.base_strategy_version or "latest",
         )
         
@@ -416,6 +486,204 @@ class LabOrchestrator:
         
         logger.info(f"[Orchestrator] Experiment complete: {result.final_recommendation}")
         return result
+    
+    def _run_generate_experiment(
+        self,
+        config: ExperimentConfig,
+        experiment_id: str,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> ExperimentResult:
+        """Run GENERATE mode experiment.
+        
+        Generates entirely new strategies from the pattern library,
+        validates them against guardrails, backtests, and evaluates.
+        """
+        from .strategy_validator import validate_strategy, is_valid, GuardrailConfig
+        
+        gen_config = config.generate_config
+        if not gen_config:
+            # Use defaults if not provided
+            gen_config = GenerateConfig()
+        
+        result = ExperimentResult(
+            experiment_id=experiment_id,
+            base_strategy=f"generated_{gen_config.methodology}",
+            base_version="v0.1",
+        )
+        
+        logger.info(f"[Orchestrator] GENERATE mode: methodology={gen_config.methodology}")
+        if gen_config.user_idea:
+            logger.info(f"[Orchestrator] User idea: {gen_config.user_idea[:100]}...")
+        
+        best_score = 0.0
+        best_strategy = None
+        
+        # Main generation loop
+        for iteration in range(1, config.max_iterations + 1):
+            iter_start = datetime.utcnow()
+            
+            iter_result = IterationResult(iteration=iteration)
+            
+            logger.info(f"[Orchestrator] Generation iteration {iteration}/{config.max_iterations}")
+            
+            try:
+                # Generate strategies using researcher
+                generated = self.researcher.generate_strategies(
+                    count=gen_config.strategies_per_iteration,
+                    methodology=gen_config.methodology,
+                    user_idea=gen_config.user_idea,
+                    guardrails=None,  # TODO: Pass guardrails from UI
+                )
+                
+                if not generated:
+                    logger.warning("[Orchestrator] No strategies generated this iteration")
+                    iter_result.recommendation = "no strategies generated"
+                    iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+                    result.iterations.append(iter_result)
+                    
+                    if progress_callback:
+                        progress_callback(iteration, config.max_iterations)
+                    continue
+                
+                iter_result.hypothesis = {
+                    "hypothesis": f"Generated {len(generated)} new strategies",
+                    "rationale": f"Using {gen_config.methodology} methodology",
+                    "confidence": 0.7,
+                }
+                
+                # Evaluate each generated strategy
+                for idx, strategy_spec in enumerate(generated):
+                    strategy_name = strategy_spec.get("name", f"gen_{iteration}_{idx}")
+                    
+                    logger.info(f"[Orchestrator] Testing generated strategy: {strategy_name}")
+                    
+                    # Validate against guardrails
+                    errors = validate_strategy(strategy_spec, GuardrailConfig())
+                    if not is_valid(errors):
+                        logger.warning(f"[Orchestrator] Strategy {strategy_name} failed validation")
+                        continue
+                    
+                    # Convert to StrategySpec for backtest
+                    try:
+                        test_strategy = self._spec_from_generated(strategy_spec, iteration, idx)
+                        
+                        # Run backtest
+                        backtest_result = self.runner.run(
+                            strategy=test_strategy,
+                            start_date=config.start_date,
+                            end_date=config.end_date,
+                            initial_capital=config.initial_capital,
+                        )
+                        
+                        if not backtest_result.trades:
+                            logger.info(f"[Orchestrator] {strategy_name} had no trades")
+                            continue
+                        
+                        # Check minimum trades
+                        if len(backtest_result.trades) < gen_config.min_trades_per_strategy:
+                            logger.info(f"[Orchestrator] {strategy_name} only had {len(backtest_result.trades)} trades (< {gen_config.min_trades_per_strategy})")
+                            continue
+                        
+                        # Calculate score
+                        metrics = backtest_result.metrics
+                        score = self._calculate_strategy_score(metrics)
+                        
+                        logger.info(f"[Orchestrator] {strategy_name}: WR={metrics.get('win_rate', 0):.1%}, AvgR={metrics.get('avg_r', 0):.2f}, Score={score:.2f}")
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_strategy = test_strategy
+                            result.best_score = score
+                            result.best_iteration = iteration
+                            
+                            iter_result.code_valid = True
+                            iter_result.backtest_ran = True
+                            iter_result.metrics = metrics
+                    
+                    except Exception as e:
+                        logger.error(f"[Orchestrator] Error testing {strategy_name}: {e}")
+                        continue
+                
+            except Exception as e:
+                logger.error(f"[Orchestrator] Generation iteration {iteration} error: {e}")
+                iter_result.recommendation = f"error: {str(e)}"
+            
+            iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+            result.iterations.append(iter_result)
+            
+            if progress_callback:
+                progress_callback(iteration, config.max_iterations)
+        
+        # Finalize
+        result.completed_at = datetime.utcnow()
+        result.total_iterations = len(result.iterations)
+        
+        if best_strategy:
+            # Save the best generated strategy
+            try:
+                strategy_name = f"lab_generated_{gen_config.methodology}"
+                next_version = self.registry.get_next_version(strategy_name)
+                best_strategy.name = strategy_name
+                best_strategy.version = next_version
+                
+                self.registry.save_strategy(best_strategy)
+                result.promoted_strategy = f"{strategy_name}_v{next_version}"
+                result.final_recommendation = "promote"
+                logger.info(f"[Orchestrator] 💾 Saved best generated strategy: {result.promoted_strategy}")
+            except Exception as e:
+                logger.warning(f"[Orchestrator] Failed to save generated strategy: {e}")
+                result.final_recommendation = "iterate"
+        else:
+            result.final_recommendation = "no viable strategies"
+        
+        logger.info(f"[Orchestrator] GENERATE experiment complete: {result.final_recommendation}")
+        return result
+    
+    def _spec_from_generated(self, gen_spec: Dict[str, Any], iteration: int, idx: int) -> StrategySpec:
+        """Convert a generated strategy dict to a StrategySpec."""
+        scanner_config = gen_spec.get("scanner", {})
+        engine_config = gen_spec.get("engine", {})
+        monitor_config = gen_spec.get("monitor", {})
+        
+        return StrategySpec(
+            name=gen_spec.get("name", f"gen_{iteration}_{idx}"),
+            version="v0.1",
+            scanner=ScannerConfig(
+                min_price=scanner_config.get("min_price", 1.0),
+                max_price=scanner_config.get("max_price"),
+                min_gap_percent=scanner_config.get("min_gap_percent", 5.0),
+                min_rvol=scanner_config.get("min_rvol", 2.0),
+            ),
+            engine=EngineConfig(
+                risk_per_trade=engine_config.get("risk_per_trade", 250),
+                max_positions=engine_config.get("max_positions", 3),
+                scaling_enabled=engine_config.get("scaling_enabled", False),
+            ),
+            monitor=MonitorConfig(
+                stop_mode=monitor_config.get("stop_mode", "fixed"),
+                stop_cents=monitor_config.get("stop_cents", 0.15),
+                target_r=monitor_config.get("target_r", 2.0),
+            ),
+        )
+    
+    def _calculate_strategy_score(self, metrics: Dict[str, Any]) -> float:
+        """Calculate a composite score for a strategy based on backtest metrics."""
+        win_rate = metrics.get("win_rate", 0)
+        avg_r = metrics.get("avg_r", 0)
+        profit_factor = metrics.get("profit_factor", 0)
+        total_trades = metrics.get("total_trades", 0)
+        
+        # Composite score: weight win rate, avg R, and profit factor
+        # Penalize very few trades
+        trade_penalty = min(1.0, total_trades / 30)  # Full credit at 30+ trades
+        
+        score = (
+            (win_rate * 0.3) +
+            (min(avg_r, 3.0) / 3.0 * 0.4) +  # Cap at 3R for scoring
+            (min(profit_factor, 4.0) / 4.0 * 0.3)  # Cap at 4 for scoring
+        ) * trade_penalty
+        
+        return score
 
 
 # Singleton

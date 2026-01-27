@@ -403,10 +403,27 @@ async def evaluate_results(request: EvaluateRequest):
 # ORCHESTRATOR ENDPOINT (Phase 4)
 # =============================================================================
 
+class GenerateConfigRequest(BaseModel):
+    """Configuration for GENERATE mode experiments."""
+    methodology: str = "warrior"
+    user_idea: Optional[str] = None
+    strategies_per_iteration: int = 3
+    min_trades_per_strategy: int = 30
+
+
 class ExperimentRequest(BaseModel):
     """Request for running a full experiment."""
-    base_strategy_name: str
+    # Mode: iterate, explore, or generate
+    mode: str = "iterate"
+    
+    # Base strategy (required for iterate/explore, optional for generate)
+    base_strategy_name: Optional[str] = None
     base_strategy_version: Optional[str] = None
+    
+    # GENERATE mode settings
+    generate_config: Optional[GenerateConfigRequest] = None
+    
+    # Backtest parameters
     start_date: str  # YYYY-MM-DD
     end_date: str
     initial_capital: float = 25000.0
@@ -420,11 +437,22 @@ async def run_experiment(request: ExperimentRequest):
     """Run a full experiment loop asynchronously.
     
     Returns an experiment_id immediately. Poll /experiment/{id}/status for results.
-    Orchestrates: Researcher → Coder → Backtest → Evaluator
-    Loops until promotion or max_iterations.
+    
+    Modes:
+    - iterate: Incremental improvements to existing strategy
+    - explore: Bold variations on existing strategy
+    - generate: Create entirely new strategies from scratch
     """
     from datetime import date as dt_date
     from decimal import Decimal
+    
+    # Validate mode
+    if request.mode not in ("iterate", "explore", "generate"):
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {request.mode}")
+    
+    # Validate base strategy required for iterate/explore
+    if request.mode != "generate" and not request.base_strategy_name:
+        raise HTTPException(status_code=400, detail="base_strategy_name required for iterate/explore modes")
     
     try:
         start = dt_date.fromisoformat(request.start_date)
@@ -435,11 +463,17 @@ async def run_experiment(request: ExperimentRequest):
     # Generate experiment ID
     experiment_id = str(uuid.uuid4())[:8]
     
+    # Determine target label for status
+    target_label = request.base_strategy_name if request.mode != "generate" else (
+        request.generate_config.methodology if request.generate_config else "warrior"
+    )
+    
     # Store initial state
     _set_experiment(experiment_id, {
         "status": "running",
         "started_at": datetime.utcnow().isoformat(),
-        "strategy": request.base_strategy_name,
+        "mode": request.mode,
+        "strategy": target_label,
         "current_iteration": 0,
         "max_iterations": request.max_iterations,
         "result": None,
@@ -448,12 +482,26 @@ async def run_experiment(request: ExperimentRequest):
     
     # Run experiment in background thread
     def run_in_background():
-        from nexus2.domain.lab.orchestrator import get_orchestrator, ExperimentConfig
+        from nexus2.domain.lab.orchestrator import (
+            get_orchestrator, ExperimentConfig, ExperimentMode, GenerateConfig
+        )
         
         try:
+            # Build GenerateConfig if in generate mode
+            gen_config = None
+            if request.mode == "generate" and request.generate_config:
+                gen_config = GenerateConfig(
+                    methodology=request.generate_config.methodology,
+                    user_idea=request.generate_config.user_idea,
+                    strategies_per_iteration=request.generate_config.strategies_per_iteration,
+                    min_trades_per_strategy=request.generate_config.min_trades_per_strategy,
+                )
+            
             config = ExperimentConfig(
+                mode=ExperimentMode(request.mode),
                 base_strategy_name=request.base_strategy_name,
                 base_strategy_version=request.base_strategy_version,
+                generate_config=gen_config,
                 start_date=start,
                 end_date=end,
                 initial_capital=Decimal(str(request.initial_capital)),
@@ -478,7 +526,8 @@ async def run_experiment(request: ExperimentRequest):
                 "status": "completed",
                 "started_at": _get_experiment(experiment_id)["started_at"],
                 "completed_at": datetime.utcnow().isoformat(),
-                "strategy": request.base_strategy_name,
+                "mode": request.mode,
+                "strategy": target_label,
                 "current_iteration": request.max_iterations,
                 "max_iterations": request.max_iterations,
                 "result": result.model_dump(mode="json"),
@@ -490,7 +539,8 @@ async def run_experiment(request: ExperimentRequest):
                 "status": "failed",
                 "started_at": _get_experiment(experiment_id)["started_at"],
                 "completed_at": datetime.utcnow().isoformat(),
-                "strategy": request.base_strategy_name,
+                "mode": request.mode,
+                "strategy": target_label,
                 "current_iteration": 0,
                 "max_iterations": request.max_iterations,
                 "result": None,
@@ -505,6 +555,7 @@ async def run_experiment(request: ExperimentRequest):
     return {
         "experiment_id": experiment_id,
         "status": "running",
+        "mode": request.mode,
         "message": f"Experiment started. Poll /lab/experiment/{experiment_id}/status for results.",
     }
 

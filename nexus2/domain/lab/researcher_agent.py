@@ -114,6 +114,82 @@ Always respond with valid JSON matching this schema:
 }"""
 
 
+# Generator prompt for creating NEW strategies from scratch
+GENERATOR_SYSTEM_PROMPT = """You are a trading strategy designer for the Nexus 2 automated trading platform.
+
+YOUR TASK: Create an ENTIRELY NEW trading strategy from the available building blocks.
+
+{user_idea_section}
+
+AVAILABLE METHODOLOGIES:
+{methodologies}
+
+AVAILABLE ENTRY PATTERNS:
+{entry_patterns}
+
+AVAILABLE STOP STRATEGIES:
+{stop_strategies}
+
+AVAILABLE TARGET STRATEGIES:
+{target_strategies}
+
+GUARDRAILS (your strategy must satisfy these):
+- Max risk per trade: ${max_risk}
+- Max positions: {max_positions}
+- Must include a stop loss
+- Price range: ${min_price} - {max_price}
+- Trading hours: {trading_start} - {trading_end} ET
+
+GENERATE a complete strategy specification with:
+1. name: A descriptive name (e.g., "PMH_Momentum_Scalper")
+2. entry_pattern: Which pattern to use and its parameters
+3. stop_strategy: How to manage risk
+4. target_strategy: When to take profits
+5. scanner_config: Symbol filtering criteria
+6. engine_config: Position sizing and risk rules
+
+OUTPUT FORMAT - respond with valid JSON:
+{{
+  "name": "strategy_name",
+  "description": "What this strategy does",
+  "methodology": "which methodology this follows",
+  "scanner": {{
+    "min_price": 1.0,
+    "max_price": 20.0,
+    "min_gap_percent": 5.0,
+    "min_rvol": 2.0,
+    "min_float": 1000000,
+    "max_float": 50000000
+  }},
+  "engine": {{
+    "risk_per_trade": 250,
+    "max_positions": 3,
+    "scaling_enabled": false
+  }},
+  "monitor": {{
+    "stop_mode": "technical",
+    "stop_cents": 0.15,
+    "target_r": 2.0,
+    "trailing_enabled": false
+  }},
+  "entry_pattern": "PATTERN_NAME",
+  "entry_params": {{}},
+  "rationale": "Why this combination should work"
+}}"""
+
+
+def build_user_idea_section(user_idea: Optional[str]) -> str:
+    """Format user's strategy idea for the prompt."""
+    if user_idea:
+        return f'''USER'S STRATEGY IDEA:
+"{user_idea}"
+
+Use this idea as the foundation for generating the strategy.
+Translate the user's concept into a concrete, backtestable configuration.
+'''
+    return ""
+
+
 def build_researcher_prompt(context: ResearchContext) -> str:
     """Build the full prompt for the Researcher Agent."""
     
@@ -385,6 +461,102 @@ class ResearcherAgent:
             evaluator_feedback=feedback,
         )
         return self.propose(context)
+    
+    def generate_strategies(
+        self,
+        count: int,
+        methodology: str,
+        user_idea: Optional[str] = None,
+        guardrails: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Generate entirely new strategies from pattern building blocks.
+        
+        Used for GENERATE mode experiments.
+        
+        Args:
+            count: Number of strategies to generate
+            methodology: Trading methodology (warrior, kk_ep, etc.)
+            user_idea: Optional user-provided strategy idea
+            guardrails: Optional guardrail configuration
+            
+        Returns:
+            List of generated strategy specifications
+        """
+        from .methodologies import format_methodologies_for_prompt
+        from .strategy_patterns import format_patterns_for_prompt
+        
+        # Build the prompt
+        user_idea_section = build_user_idea_section(user_idea)
+        
+        # Get pattern library
+        patterns_text = format_patterns_for_prompt()
+        methodologies_text = format_methodologies_for_prompt()
+        
+        # Default guardrails
+        if guardrails is None:
+            guardrails = {}
+        
+        max_risk = guardrails.get("max_risk_per_trade", 500)
+        max_positions = guardrails.get("max_positions", 5)
+        min_price = guardrails.get("min_price", 1.0)
+        max_price = guardrails.get("max_price", "No limit")
+        trading_start = guardrails.get("trading_start_time", "09:30")
+        trading_end = guardrails.get("trading_end_time", "15:50")
+        
+        prompt = GENERATOR_SYSTEM_PROMPT.format(
+            user_idea_section=user_idea_section,
+            methodologies=methodologies_text,
+            entry_patterns=patterns_text.split("STOP STRATEGIES:")[0],
+            stop_strategies=patterns_text.split("STOP STRATEGIES:")[1].split("TARGET STRATEGIES:")[0] if "STOP STRATEGIES:" in patterns_text else "",
+            target_strategies=patterns_text.split("TARGET STRATEGIES:")[1] if "TARGET STRATEGIES:" in patterns_text else "",
+            max_risk=max_risk,
+            max_positions=max_positions,
+            min_price=min_price,
+            max_price=max_price,
+            trading_start=trading_start,
+            trading_end=trading_end,
+        )
+        
+        # Add instruction for multiple strategies
+        if count > 1:
+            prompt += f"\n\nGenerate {count} DIFFERENT strategies. Return a JSON array of strategy objects."
+        
+        try:
+            client = self._get_client()
+            
+            logger.info(f"[Researcher] Generating {count} new strategies for {methodology}")
+            
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config={
+                    "temperature": 0.8,  # Higher for creativity
+                    "max_output_tokens": 4096,
+                },
+            )
+            
+            response_text = response.text.strip()
+            
+            # Extract JSON
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+            parsed = json.loads(response_text)
+            
+            # Normalize to list
+            if isinstance(parsed, dict):
+                strategies = [parsed]
+            else:
+                strategies = parsed
+            
+            logger.info(f"[Researcher] Generated {len(strategies)} strategies")
+            return strategies
+            
+        except Exception as e:
+            logger.error(f"[Researcher] Strategy generation failed: {e}")
+            return []
 
 
 # Singleton

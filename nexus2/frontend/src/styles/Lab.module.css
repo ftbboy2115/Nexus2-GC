@@ -146,6 +146,23 @@
     font-size: 0.875rem;
 }
 
+.textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: #e0e0e0;
+    font-size: 0.875rem;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+.textarea::placeholder {
+    color: #666;
+}
+
 .formRow {
     display: flex;
     flex-direction: column;
