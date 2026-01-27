@@ -621,11 +621,11 @@ class LabOrchestrator:
         result.total_iterations = len(result.iterations)
         
         if best_strategy:
-            # Save the best generated strategy
+            # Save the best generated strategy using its actual name
             try:
-                strategy_name = f"lab_generated_{gen_config.methodology}"
+                # Use the LLM-generated name (e.g., "TQQQ_SQQQ_Trend_Breakout")
+                strategy_name = best_strategy.name
                 next_version = self.registry.get_next_version(strategy_name)
-                best_strategy.name = strategy_name
                 best_strategy.version = next_version
                 
                 self.registry.save_strategy(best_strategy)
