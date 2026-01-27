@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-22
+Last updated: 2026-01-27
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -330,10 +330,41 @@ Last updated: 2026-01-22
 
 ---
 
-## 🧪 R&D Labs (Low Priority)
+## 🧪 R&D Labs
 
 > Experimental multi-agent AI system for autonomous strategy discovery and optimization.
 
+### ✅ Completed
+- [x] **Phase 1: Foundation** — Strategy schema, registry, API endpoints (Jan 21)
+- [x] **Phase 3: Researcher Agent** — LLM-powered hypothesis generation (Jan 22)
+- [x] **Phase 5: Orchestrator** — Full experiment loop with GENERATE/ITERATE/EXPLORE modes (Jan 26)
+- [x] **GENERATE Mode Debugging** — Forgiving validation, proper stop_cents handling, descriptive strategy naming (Jan 27)
+
+### 🔧 In Progress: Semantic Loop Refinements
+> Making hypotheses translate to measurable trading behavior changes.
+
+- [ ] **Backtest Engine Respects All Config Fields** (Priority: HIGH)
+  - Scanner config should filter candidates (min_price, max_price, min_gap, min_rvol)
+  - Engine config should control position sizing (risk_per_trade, max_positions)
+  - Monitor config should drive exits (stop_mode, stop_cents, target_r, eod_exit)
+  - Currently: Backtest uses simplified entry/exit regardless of config values
+  
+- [ ] **Strategy Universe Selection** (Priority: HIGH)
+  - Allow strategy to specify explicit symbols: `["TQQQ", "SQQQ"]`
+  - Allow strategy to define scanner criteria for dynamic universe
+  - Currently: All strategies use Warrior `scan_history.json` (gapper universe only)
+  
+- [ ] **Phase 4: Coder Agent (Full)** (Priority: MEDIUM)
+  - Generate actual Python files: scanner.py, engine.py, monitor.py
+  - Currently: Only generates StrategySpec config, not executable code
+  - Hypothesis → real code changes → measurable behavior difference
+  
+- [ ] **Hypothesis Variance Improvement** (Priority: LOW)
+  - Guide researcher to test fundamentally different approaches
+  - Currently: Similar hypotheses ("add filter X") produce identical results
+  - Test: entry triggers, stop strategies, scaling approaches, time windows
+
+### 📋 Backlog
 - [ ] **Strategy Discovery Engine** — Multi-Agent AI system with feedback loop
   - Autonomous exploration of alternative scan modes and strategies
   - Self-evaluating agents that test, score, and iterate on trading patterns
