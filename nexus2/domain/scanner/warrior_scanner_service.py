@@ -1114,15 +1114,25 @@ class WarriorScannerService:
         """
         Get float shares for a symbol.
         
-        Uses FMP's shares-float endpoint if available.
+        Uses FMP's stable/shares-float endpoint if available.
         Returns None if data unavailable (skip float check).
         """
         try:
-            # Try to get float from FMP
-            # FMP endpoint: /api/v4/shares_float?symbol=AAPL
-            data = self.market_data.fmp._get(f"shares_float", params={"symbol": symbol})
+            import httpx
+            from nexus2 import config as app_config
+            
+            # FMP stable endpoint: https://financialmodelingprep.com/stable/shares-float?symbol=X
+            response = httpx.get(
+                "https://financialmodelingprep.com/stable/shares-float",
+                params={"symbol": symbol, "apikey": app_config.FMP_API_KEY},
+                timeout=5.0,
+            )
+            response.raise_for_status()
+            data = response.json()
             if data and len(data) > 0:
-                return int(data[0].get("floatShares", 0))
+                float_val = data[0].get("floatShares")
+                if float_val:
+                    return int(float_val)
         except Exception:
             pass
         
