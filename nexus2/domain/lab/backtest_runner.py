@@ -121,6 +121,18 @@ class BacktestRunner:
         
         total_return = float((equity - initial_capital) / initial_capital * 100) if initial_capital > 0 else 0
         
+        # Log individual trades to lab.log
+        for trade in trades:
+            log_backtest_trade(
+                symbol=trade.symbol,
+                entry_price=float(trade.entry_price),
+                exit_price=float(trade.exit_price) if trade.exit_price else 0,
+                shares=trade.entry_shares,
+                pnl=float(trade.realized_pnl),
+                outcome=trade.outcome.value if trade.outcome else "unknown",
+                exit_reason=trade.exit_reason or "unknown",
+            )
+        
         # Log completion to lab.log
         log_backtest_complete(
             strategy_name=strategy.name,
