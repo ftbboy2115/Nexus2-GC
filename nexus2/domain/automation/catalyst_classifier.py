@@ -45,7 +45,7 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "fda": re.compile(
-                r"\b(fda\s+approv\w*|fda\s+clear\w*|phase\s+[1-3]\s+(success|positive|met)|clinical\s+(trial\s+)?(success|positive|results?|data)|breakthrough\s+designation|drug\s+approv\w*|complete\s+resol\w*|complete\s+response|interim\s+safety|promising\s+(early\s+)?clinical)\b",
+                r"\b(fda\s+approv\w*|fda\s+clear\w*|fda\s+(lifts?|removes?|clears?)\s+(clinical\s+)?hold|clinical\s+hold\s+(lifted|removed|resolved|cleared)|phase\s+[1-3]\s+(success|positive|met)|clinical\s+(trial\s+)?(success|positive|results?|data)|breakthrough\s+designation|drug\s+approv\w*|complete\s+resol\w*|complete\s+response|interim\s+safety|promising\s+(early\s+)?clinical)\b",
                 re.IGNORECASE,
             ),
             "contract": re.compile(
