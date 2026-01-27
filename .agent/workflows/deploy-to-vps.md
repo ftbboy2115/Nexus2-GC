@@ -14,7 +14,12 @@ description: Deploy code changes to VPS using git (never use scp)
 ssh root@100.113.178.7 "cd ~/Nexus2 && git pull"
 ```
 
-### 2. Rebuild if Needed
+### 2. Clear Python Cache (prevents stale bytecode)
+```bash
+ssh root@100.113.178.7 "find ~/Nexus2 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null; echo 'pycache cleared'"
+```
+
+### 3. Rebuild if Needed
 
 **Frontend changes:**
 ```bash
@@ -23,7 +28,7 @@ ssh root@100.113.178.7 "cd ~/Nexus2/nexus2/frontend && npm run build"
 
 **Backend changes:** No build step required (Python).
 
-### 3. Restart Services (tmux)
+### 4. Restart Services (tmux)
 
 **Session names:** `nexus` (backend), `frontend` (frontend)
 
@@ -41,7 +46,7 @@ ssh root@100.113.178.7 "tmux send-keys -t frontend C-c C-c C-c"
 ssh root@100.113.178.7 "tmux send-keys -t frontend 'cd ~/Nexus2/nexus2/frontend && npm start' Enter"
 ```
 
-### 4. Verify Deployment
+### 5. Verify Deployment
 ```bash
 ssh root@100.113.178.7 "curl -s http://localhost:8000/health"
 ```

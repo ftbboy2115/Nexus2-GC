@@ -512,6 +512,7 @@ class LabOrchestrator:
         )
         
         logger.info(f"[Orchestrator] GENERATE mode: methodology={gen_config.methodology}")
+        logger.info(f"[Orchestrator] GENERATE config: min_trades={gen_config.min_trades_per_strategy}, strategies_per_iter={gen_config.strategies_per_iteration}")
         if gen_config.user_idea:
             logger.info(f"[Orchestrator] User idea: {gen_config.user_idea[:100]}...")
         
