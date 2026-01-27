@@ -33,3 +33,7 @@ mypy>=1.7.0
 # Utilities
 python-dotenv>=1.0.0
 structlog>=23.2.0
+
+# News Sources
+yfinance>=0.2.30
+finvizfinance>=0.14.0

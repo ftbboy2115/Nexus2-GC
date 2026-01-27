@@ -774,4 +774,27 @@ class UnifiedMarketData:
             except Exception as e:
                 print(f"[Unified] Alpaca headlines error for {symbol}: {e}")
         
+        # 3. Yahoo Finance headlines (broad coverage)
+        try:
+            from nexus2.adapters.market_data.news_sources import get_yahoo_headlines
+            for headline in get_yahoo_headlines(symbol, days=days):
+                normalized = headline.strip().lower()
+                if normalized and normalized not in headlines_set:
+                    headlines_set.add(normalized)
+                    headlines_list.append(headline.strip())
+        except Exception as e:
+            print(f"[Unified] Yahoo headlines error for {symbol}: {e}")
+        
+        # 4. Finviz headlines (strong micro-cap coverage)
+        try:
+            from nexus2.adapters.market_data.news_sources import get_finviz_headlines
+            for headline in get_finviz_headlines(symbol, limit=5):
+                normalized = headline.strip().lower()
+                if normalized and normalized not in headlines_set:
+                    headlines_set.add(normalized)
+                    headlines_list.append(headline.strip())
+        except Exception as e:
+            print(f"[Unified] Finviz headlines error for {symbol}: {e}")
+        
         return headlines_list
+
