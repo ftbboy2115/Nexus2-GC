@@ -66,6 +66,9 @@ class ResearchContext(BaseModel):
     
     # Real trade data from warrior.db
     real_trades: List[Dict[str, Any]] = Field(default_factory=list)
+    
+    # Backtest trades from baseline simulation (most important for targeted hypotheses!)
+    backtest_trades: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -188,6 +191,38 @@ def build_researcher_prompt(context: ResearchContext) -> str:
             "1. Which trigger_types have the best P&L?",
             "2. Which exit_reasons indicate problems?",
             "3. What patterns exist in losing trades?",
+            "",
+        ])
+    
+    # Backtest trades - THE MOST IMPORTANT DATA! These are the trades being simulated
+    if context.backtest_trades:
+        prompt_parts.extend([
+            "🎯 BACKTEST TRADES (from the strategy simulation - analyze these to propose improvements!):",
+            "| Symbol | Date | Trigger | Outcome | R | P&L | Exit Reason |",
+            "|--------|------|---------|---------|---|-----|-------------|",
+        ])
+        for t in context.backtest_trades:
+            pnl = t.get('realized_pnl', 0)
+            pnl_str = f"${float(pnl):+.2f}" if pnl else "$0"
+            r_val = t.get('realized_r', 0) or 0
+            outcome = t.get('outcome', 'unknown')
+            date_str = str(t.get('entry_time', ''))[:10]
+            prompt_parts.append(
+                f"| {t.get('symbol', '?')} | {date_str} | {t.get('entry_trigger', '?')} | "
+                f"{outcome} | {r_val:.2f}R | {pnl_str} | {t.get('exit_reason', '?')} |"
+            )
+        
+        # Add analysis hints
+        wins = [t for t in context.backtest_trades if t.get('outcome') == 'win']
+        losses = [t for t in context.backtest_trades if t.get('outcome') == 'loss']
+        prompt_parts.extend([
+            "",
+            f"BACKTEST SUMMARY: {len(wins)} wins, {len(losses)} losses out of {len(context.backtest_trades)} trades",
+            "",
+            "CRITICAL: Base your hypothesis on THESE backtest trades. Identify:",
+            "- What triggers led to wins vs losses?",
+            "- What exit reasons caused losses?",
+            "- What specific filter could have avoided the losing trades?",
             "",
         ])
     

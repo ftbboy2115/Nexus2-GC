@@ -214,6 +214,9 @@ class LabOrchestrator:
                     logger.info(f"[Orchestrator] Exploration mode activated after {stagnant_count} stagnant iterations")
                 
                 # 1. Research: Generate hypothesis based on CURRENT CHAMPION (not fixed baseline)
+                # Convert baseline trades to dicts for the researcher
+                backtest_trades_data = [t.model_dump(mode="json") for t in baseline_result.trades]
+                
                 context = ResearchContext(
                     strategy_name=current_champion.name,
                     strategy_version=current_champion.version,
@@ -227,6 +230,7 @@ class LabOrchestrator:
                     tried_approaches=tried_approaches,  # Pass history for diversity
                     exploration_mode=exploration_mode,  # Enable bold suggestions when stuck
                     real_trades=real_trades,  # Pass real trade data for analysis
+                    backtest_trades=backtest_trades_data,  # Pass baseline backtest trades
                 )
                 
                 hypothesis = self.researcher.propose(context)
