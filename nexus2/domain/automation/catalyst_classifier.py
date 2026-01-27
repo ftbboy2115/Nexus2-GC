@@ -9,8 +9,40 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional, Dict
 import logging
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger(__name__)
+
+
+def _get_catalyst_audit_logger() -> logging.Logger:
+    """Get or create the dedicated catalyst audit file logger."""
+    audit_logger = logging.getLogger("catalyst_audit")
+    
+    if not audit_logger.handlers:
+        # Create data directory if needed
+        log_dir = Path("data")
+        log_dir.mkdir(exist_ok=True)
+        
+        # Rotating file handler: 1MB max, keep 7 files
+        handler = RotatingFileHandler(
+            log_dir / "catalyst_audit.log",
+            maxBytes=1_000_000,
+            backupCount=7,
+            encoding="utf-8",
+        )
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        )
+        audit_logger.addHandler(handler)
+        audit_logger.setLevel(logging.INFO)
+        # Don't propagate to root logger (avoid duplication in console)
+        audit_logger.propagate = False
+    
+    return audit_logger
+
+
+catalyst_audit_logger = _get_catalyst_audit_logger()
 
 
 @dataclass
@@ -207,3 +239,26 @@ def get_classifier() -> CatalystClassifier:
     if _classifier is None:
         _classifier = CatalystClassifier()
     return _classifier
+
+
+def log_headline_evaluation(symbol: str, headlines: List[str], final_result: str, final_type: Optional[str] = None):
+    """
+    Log all headline evaluations for a symbol to the catalyst audit log.
+    
+    Args:
+        symbol: Stock symbol
+        headlines: List of headlines that were evaluated
+        final_result: "PASS" or "FAIL"
+        final_type: The catalyst type that matched, or None if no match
+    """
+    classifier = get_classifier()
+    
+    catalyst_audit_logger.info(f"=== {symbol} | Result: {final_result} | Type: {final_type or 'none'} ===")
+    
+    for i, headline in enumerate(headlines[:5], 1):  # Log top 5 headlines
+        match = classifier.classify(headline)
+        status = "✓" if match.is_positive and match.confidence >= 0.6 else "✗"
+        type_str = match.catalyst_type or "no_match"
+        catalyst_audit_logger.info(
+            f"  [{i}] {status} {type_str} (conf={match.confidence:.2f}): {headline[:100]}"
+        )
