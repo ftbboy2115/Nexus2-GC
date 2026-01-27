@@ -99,7 +99,7 @@ export default function Lab() {
         return d.toISOString().split('T')[0]
     })
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
-    const [maxIterations, setMaxIterations] = useState(10)
+    const [maxIterations, setMaxIterations] = useState(3)
     const [initialCapital, setInitialCapital] = useState(25000)
 
     // GENERATE mode state
