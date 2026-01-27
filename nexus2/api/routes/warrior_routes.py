@@ -439,6 +439,104 @@ async def run_warrior_scan():
     )
 
 
+@router.get("/scanner/logs")
+async def get_warrior_scanner_logs(limit: int = 20):
+    """
+    Get recent Warrior scanner log entries.
+    
+    Returns parsed scan history including PASS/FAIL symbols with rejection reasons.
+    
+    Args:
+        limit: Number of scan entries to return (default 20, max 500)
+    """
+    from pathlib import Path
+    import re
+    
+    # Clamp limit to 1-500 (covers ~4 days at 5-min intervals)
+    limit = max(1, min(limit, 500))
+    
+    log_path = Path("data") / "warrior_scan.log"
+    if not log_path.exists():
+        return {"entries": [], "count": 0, "message": "No scan log file found"}
+    
+    # Read last N lines efficiently (read in reverse)
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to read scan log: {e}")
+    
+    # Parse log entries (most recent first)
+    entries = []
+    scans = []
+    current_scan = None
+    
+    # Pattern matching for log lines
+    pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
+    fail_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (\w+)")
+    scan_start_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| SCAN START \| Total: (\d+) \| Pre-filtered: (\d+)")
+    scan_end_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| SCAN END \| Processed: (\d+) \| Passed: (\d+)")
+    
+    # Process lines in reverse to get most recent first
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check for SCAN END (marks start of a scan block when reading in reverse)
+        match = scan_end_pattern.match(line)
+        if match:
+            current_scan = {
+                "timestamp": match.group(1),
+                "processed": int(match.group(2)),
+                "passed": int(match.group(3)),
+                "pass_entries": [],
+                "fail_entries": [],
+            }
+            continue
+        
+        # Check for SCAN START (marks end of a scan block when reading in reverse)
+        match = scan_start_pattern.match(line)
+        if match and current_scan:
+            current_scan["total_movers"] = int(match.group(2))
+            current_scan["pre_filtered"] = int(match.group(3))
+            scans.append(current_scan)
+            current_scan = None
+            if len(scans) >= limit:
+                break
+            continue
+        
+        # Check for PASS entry
+        match = pass_pattern.match(line)
+        if match and current_scan:
+            current_scan["pass_entries"].append({
+                "symbol": match.group(2),
+                "gap_pct": float(match.group(3)),
+                "rvol": float(match.group(4)),
+                "score": int(match.group(5)),
+            })
+            continue
+        
+        # Check for FAIL entry
+        match = fail_pattern.match(line)
+        if match and current_scan:
+            current_scan["fail_entries"].append({
+                "symbol": match.group(2),
+                "reason": match.group(3),
+            })
+            continue
+    
+    # If we have an incomplete scan at the end, include it
+    if current_scan and len(scans) < limit:
+        scans.append(current_scan)
+    
+    return {
+        "scans": scans,
+        "count": len(scans),
+        "limit": limit,
+    }
+
+
 @router.get("/scanner/settings")
 async def get_warrior_scanner_settings():
     """Get current Warrior scanner settings."""
