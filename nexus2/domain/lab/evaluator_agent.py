@@ -121,8 +121,8 @@ class EvaluatorAgent:
         # Check hard rejection criteria
         rejection_reasons = []
         
-        if v_win < self.MIN_WIN_RATE * 100:
-            rejection_reasons.append(f"Win rate {v_win:.1f}% below {self.MIN_WIN_RATE*100}% threshold")
+        if v_win < self.MIN_WIN_RATE:
+            rejection_reasons.append(f"Win rate {v_win*100:.1f}% below {self.MIN_WIN_RATE*100}% threshold")
         
         if v_trades < self.MIN_TRADES:
             rejection_reasons.append(f"Only {v_trades} trades - need {self.MIN_TRADES} for significance")

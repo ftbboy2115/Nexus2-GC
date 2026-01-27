@@ -311,7 +311,7 @@ class LabOrchestrator:
                 iter_result.metrics["total_return"] = variant_result.total_return
                 
                 logger.info(f"[Orchestrator] Variant: {variant_result.metrics.total_trades} trades, "
-                           f"{variant_result.metrics.win_rate:.1f}% win rate")
+                           f"{variant_result.metrics.win_rate*100:.1f}% win rate")
                 
                 # 4. Evaluate: Score and get feedback (compare vs original baseline for consistency)
                 evaluation = self.evaluator.evaluate(baseline_metrics, iter_result.metrics)
