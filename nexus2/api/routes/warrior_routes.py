@@ -773,18 +773,28 @@ async def get_trade_analytics():
         results = db.query(
             WarriorTradeModel.exit_reason,
             func.count().label('count'),
-            func.sum(func.cast(WarriorTradeModel.realized_pnl, db.bind.dialect.type_descriptor(type(1.0)))).label('total_pnl')
         ).filter(
             WarriorTradeModel.status == PositionStatus.CLOSED.value
         ).group_by(
             WarriorTradeModel.exit_reason
         ).all()
         
+        # Calculate P&L per exit reason manually (SQLite cast is tricky)
+        all_trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.status == PositionStatus.CLOSED.value
+        ).all()
+        
+        pnl_by_reason = {}
+        for t in all_trades:
+            reason = t.exit_reason or "unknown"
+            pnl = float(t.realized_pnl or 0)
+            pnl_by_reason[reason] = pnl_by_reason.get(reason, 0) + pnl
+        
         breakdown = [
             {
                 "exit_reason": r.exit_reason or "unknown",
                 "count": r.count,
-                "total_pnl": round(float(r.total_pnl or 0), 2)
+                "total_pnl": round(pnl_by_reason.get(r.exit_reason or "unknown", 0), 2)
             }
             for r in results
         ]
