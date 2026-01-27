@@ -139,7 +139,8 @@ class WatchedCandidate:
     orb_high: Optional[Decimal] = None  # Opening range high
     orb_low: Optional[Decimal] = None  # Opening range low
     orb_established: bool = False
-    entry_triggered: bool = False
+    entry_triggered: bool = False  # Entry was ATTEMPTED (may be blocked by guards)
+    position_opened: bool = False  # Order was actually submitted (use this for UI "Entered")
     entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
     last_below_vwap: bool = False  # True if price was below VWAP (for VWAP break detection)

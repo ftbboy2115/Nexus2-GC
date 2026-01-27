@@ -1162,6 +1162,7 @@ async def enter_position(
                 return
             
             engine.stats.orders_submitted += 1
+            watched.position_opened = True  # Mark as actually entered (for UI "Entered" status)
             
             # Add to monitor
             support_level = watched.orb_low or watched.candidate.session_low or entry_price * Decimal("0.95")

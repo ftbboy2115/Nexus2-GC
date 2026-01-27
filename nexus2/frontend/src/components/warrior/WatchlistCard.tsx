@@ -12,7 +12,8 @@ interface WatchlistItem {
     rvol: number
     pmh: number
     orb_high?: number | null
-    entry_triggered?: boolean
+    entry_triggered?: boolean  // Entry was attempted (may be blocked)
+    position_opened?: boolean  // Order was actually submitted (use this for "Entered")
     orb_established?: boolean
     catalyst_type?: string
     catalyst_description?: string
@@ -56,7 +57,7 @@ export function WatchlistCard({
                             </thead>
                             <tbody>
                                 {sortData(watchlist, watchlistSort).map((w) => (
-                                    <tr key={w.symbol} className={w.entry_triggered ? styles.triggered : ''}>
+                                    <tr key={w.symbol} className={w.position_opened ? styles.triggered : ''}>
                                         <td className={styles.symbol}>
                                             <span
                                                 className={styles.clickableSymbol}
@@ -78,14 +79,14 @@ export function WatchlistCard({
                                             <div className={styles.indicatorRow}>
                                                 <span className={`${styles.indicatorDot} ${w.gap_percent >= 15 ? styles.dotGreen : w.gap_percent >= 10 ? styles.dotYellow : styles.dotRed}`} title={`Gap: +${w.gap_percent.toFixed(1)}%`}>●</span>
                                                 <span className={`${styles.indicatorDot} ${w.rvol >= 3 ? styles.dotGreen : w.rvol >= 2 ? styles.dotYellow : styles.dotRed}`} title={`RVol: ${w.rvol.toFixed(1)}x`}>●</span>
-                                                <span className={`${styles.indicatorDot} ${w.entry_triggered ? styles.dotGreen : w.orb_established ? styles.dotYellow : styles.dotRed}`} title={w.entry_triggered ? 'Entered' : w.orb_established ? 'Watching' : 'Setup'}>●</span>
+                                                <span className={`${styles.indicatorDot} ${w.position_opened ? styles.dotGreen : w.orb_established ? styles.dotYellow : styles.dotRed}`} title={w.position_opened ? 'Entered' : w.orb_established ? 'Watching' : 'Setup'}>●</span>
                                             </div>
                                         </td>
                                         <td>{w.rvol.toFixed(1)}x</td>
                                         <td>${w.pmh.toFixed(2)}</td>
                                         <td>{w.orb_high ? `$${w.orb_high.toFixed(2)}` : '-'}</td>
                                         <td>
-                                            {w.entry_triggered ? '✅ Entered' :
+                                            {w.position_opened ? '✅ Entered' :
                                                 w.orb_established ? '⏳ Watching' : '📊 Setup'}
                                         </td>
                                     </tr>

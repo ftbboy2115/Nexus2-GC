@@ -635,6 +635,7 @@ class WarriorEngine:
                     "orb_high": float(w.orb_high) if w.orb_high else None,
                     "orb_established": w.orb_established,
                     "entry_triggered": w.entry_triggered,
+                    "position_opened": w.position_opened,  # True only when order submitted
                     "catalyst_type": w.candidate.catalyst_type,
                     "catalyst_description": w.candidate.catalyst_description,
                 }
