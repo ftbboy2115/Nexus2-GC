@@ -462,6 +462,61 @@ class AlpacaBroker:
         
         return Decimal(str(data.get("equity", 0)))
     
+    def get_filled_orders(self, side: str = None, limit: int = 20) -> list:
+        """Get recent filled orders, optionally filtered by side.
+        
+        Used by orphan cleanup to find exit prices from recent sell orders.
+        
+        Args:
+            side: Optional filter for "buy" or "sell" orders
+            limit: Maximum orders to return (default 20)
+            
+        Returns:
+            List of order objects with symbol, filled_avg_price, etc.
+        """
+        from dataclasses import dataclass
+        
+        @dataclass
+        class FilledOrder:
+            symbol: str
+            side: str
+            filled_avg_price: float
+            filled_qty: int
+            filled_at: str
+        
+        endpoint = f"orders?status=filled&limit={limit}"
+        if side:
+            # Alpaca doesn't filter by side directly, we'll filter in Python
+            pass
+        
+        try:
+            data = self._request("GET", endpoint)
+            if not data:
+                return []
+            
+            orders = []
+            for order in data:
+                order_side = order.get("side", "").lower()
+                if side and order_side != side.lower():
+                    continue
+                
+                filled_price_str = order.get("filled_avg_price")
+                if not filled_price_str:
+                    continue
+                    
+                orders.append(FilledOrder(
+                    symbol=order.get("symbol", ""),
+                    side=order_side,
+                    filled_avg_price=float(filled_price_str),
+                    filled_qty=int(float(order.get("filled_qty", 0))),
+                    filled_at=order.get("filled_at", ""),
+                ))
+            
+            return orders
+        except Exception as e:
+            print(f"[AlpacaBroker] Failed to get filled orders: {e}")
+            return []
+    
     def get_asset_info(self, symbol: str) -> dict:
         """Get asset information including shortable and easy_to_borrow status.
         

@@ -350,9 +350,23 @@ async def wire_warrior_callbacks(broker) -> dict:
                 revert_scaling(pos["id"])
     
     # Close orphaned trades - positions marked 'open' in DB but not at broker
+    # First, fetch recent sell orders to get actual exit prices
     broker_positions = broker.get_positions()
     active_symbols = set(broker_positions.keys())
-    orphaned = close_orphaned_trades(active_symbols)
+    
+    # Get exit prices from Alpaca's recent closed orders
+    exit_prices = {}
+    try:
+        recent_orders = broker.get_filled_orders(side="sell", limit=20)
+        for order in recent_orders:
+            symbol = order.symbol
+            if symbol not in exit_prices and hasattr(order, 'filled_avg_price') and order.filled_avg_price:
+                exit_prices[symbol] = float(order.filled_avg_price)
+                print(f"[Warrior] Found exit price for {symbol}: ${exit_prices[symbol]:.2f}")
+    except Exception as e:
+        print(f"[Warrior] Could not fetch recent sell orders: {e}")
+    
+    orphaned = close_orphaned_trades(active_symbols, exit_prices)
     if orphaned:
         print(f"[Warrior] Closed {len(orphaned)} orphaned trades: {orphaned}")
     

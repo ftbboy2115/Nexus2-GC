@@ -655,7 +655,7 @@ def get_warrior_trades_by_status(status: str) -> list:
         return [t.to_dict() for t in trades]
 
 
-def close_orphaned_trades(active_symbols: set):
+def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
     """
     Close trades in DB that are marked 'open' but not in the active broker positions.
     
@@ -663,10 +663,13 @@ def close_orphaned_trades(active_symbols: set):
     
     Args:
         active_symbols: Set of symbols currently held on broker (e.g., from Alpaca)
+        exit_prices: Optional dict of {symbol: exit_price} from broker sell orders.
+                     If provided, sets exit_price and calculates realized_pnl.
     
     Returns:
         List of symbols that were closed as orphans
     """
+    exit_prices = exit_prices or {}
     closed = []
     with get_warrior_session() as db:
         # Check both 'open' (legacy) and PositionStatus.OPEN.value
@@ -676,7 +679,18 @@ def close_orphaned_trades(active_symbols: set):
         
         for trade in open_trades:
             if trade.symbol not in active_symbols:
-                print(f"[Warrior DB] Closing orphan: {trade.symbol} (not on broker)")
+                exit_price = exit_prices.get(trade.symbol)
+                if exit_price:
+                    print(f"[Warrior DB] Closing orphan: {trade.symbol} @ ${exit_price:.2f}")
+                    trade.exit_price = str(exit_price)
+                    # Calculate P&L: (exit - entry) * quantity
+                    entry = float(trade.entry_price) if trade.entry_price else 0
+                    qty = trade.quantity or 0
+                    pnl = (exit_price - entry) * qty
+                    trade.realized_pnl = str(round(pnl, 2))
+                else:
+                    print(f"[Warrior DB] Closing orphan: {trade.symbol} (no exit price)")
+                
                 trade.status = PositionStatus.CLOSED.value
                 trade.exit_reason = "orphan_cleanup"
                 trade.exit_time = now_utc()
