@@ -1231,12 +1231,76 @@ async def enter_position(
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
             
-            # If order is not filled yet, skip monitor add - DB has intent, sync will match it
+            # =================================================================
+            # FILL CONFIRMATION: Poll for actual fill price before proceeding
+            # Most orders fill quickly but response has status="accepted" not "filled"
+            # =================================================================
+            actual_fill_price = entry_price  # Default to quote price
+            broker_order_id = None
+            
+            # Get broker order ID for polling
+            if hasattr(order_result, 'id'):
+                broker_order_id = str(order_result.id)
+            elif hasattr(order_result, 'broker_order_id'):
+                broker_order_id = order_result.broker_order_id
+            elif isinstance(order_result, dict):
+                broker_order_id = order_result.get("id") or order_result.get("broker_order_id")
+            
+            # Poll for fill (up to 2.5 seconds) - most fills happen in <1s
+            if broker_order_id and engine._get_order_status:
+                import asyncio
+                for attempt in range(5):  # 5 attempts x 500ms = 2.5s
+                    await asyncio.sleep(0.5)
+                    try:
+                        order_detail = await engine._get_order_status(broker_order_id)
+                        if order_detail:
+                            status = getattr(order_detail, 'status', None)
+                            if status:
+                                status_str = status.value if hasattr(status, 'value') else str(status)
+                                if status_str.lower() in ("filled", "partially_filled"):
+                                    fill_price = getattr(order_detail, 'filled_avg_price', None)
+                                    if fill_price and float(fill_price) > 0:
+                                        actual_fill_price = Decimal(str(fill_price))
+                                        filled_qty = getattr(order_detail, 'filled_qty', filled_qty) or filled_qty
+                                        order_status = status_str  # Update status for below
+                                        logger.info(
+                                            f"[Warrior Entry] {symbol}: Filled @ ${actual_fill_price:.2f} "
+                                            f"(polled attempt {attempt+1})"
+                                        )
+                                        break
+                    except Exception as poll_err:
+                        logger.debug(f"[Warrior Entry] {symbol}: Poll attempt {attempt+1} failed: {poll_err}")
+                else:
+                    if order_status and order_status.lower() not in ("filled", "partially_filled"):
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: Order still pending after poll - "
+                            f"intent recorded, sync will update fill price"
+                        )
+            
+            # Update DB with actual fill price (even if still quote price)
+            if actual_fill_price != entry_price or order_status and order_status.lower() in ("filled", "partially_filled"):
+                try:
+                    from nexus2.db.warrior_db import update_warrior_fill
+                    mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
+                    actual_fill_decimal = Decimal(str(actual_fill_price))
+                    actual_stop = actual_fill_decimal - mental_stop_cents / 100
+                    update_warrior_fill(
+                        trade_id=order_id,
+                        actual_entry_price=float(actual_fill_price),
+                        actual_stop_price=float(actual_stop),
+                        actual_quantity=int(filled_qty) if filled_qty else shares,
+                    )
+                    slippage = (float(actual_fill_price) - float(entry_price)) * 100
+                    if abs(slippage) > 0.5:  # Log slippage > 0.5 cents
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: Fill ${actual_fill_price:.2f} vs quote ${entry_price:.2f} "
+                            f"= {slippage:+.1f}¢ slippage"
+                        )
+                except Exception as e:
+                    logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
+            
+            # If order is not filled yet, skip monitor add - DB has intent + any fill update
             if order_status and order_status.lower() not in ("filled", "partially_filled"):
-                logger.info(
-                    f"[Warrior Entry] {symbol}: Order pending (status={order_status}) - "
-                    f"intent recorded, will update on fill"
-                )
                 return
             
             # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
