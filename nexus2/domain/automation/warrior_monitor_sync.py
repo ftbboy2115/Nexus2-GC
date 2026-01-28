@@ -218,7 +218,7 @@ async def _recover_position(
     
     Returns the recovered position or None if recovery should be skipped.
     """
-    from nexus2.db.warrior_db import get_warrior_trade_by_symbol, log_warrior_entry
+    from nexus2.db.warrior_db import get_warrior_trade_for_recovery, log_warrior_entry
     from nexus2.domain.automation.trade_event_service import trade_event_service
     
     entry_price = _get_entry_price(broker_pos)
@@ -248,12 +248,13 @@ async def _recover_position(
     target_price = entry_price + (monitor.settings.mental_stop_cents / 100 * profit_target_r)
     
     # Try to recover existing trade (preserves original position_id and trigger_type)
+    # Uses robust lookup that matches by symbol + entry price, regardless of status
     existing_trade = None
     recovered_position_id = None
     recovered_trigger_type = "synced"  # Default for truly external positions
     
     try:
-        existing_trade = get_warrior_trade_by_symbol(symbol)
+        existing_trade = get_warrior_trade_for_recovery(symbol, float(entry_price))
         if existing_trade:
             recovered_position_id = existing_trade["id"]
             recovered_trigger_type = existing_trade.get("trigger_type", "recovered")

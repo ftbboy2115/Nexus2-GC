@@ -384,6 +384,15 @@ Last updated: 2026-01-27
   - Ross Cameron reference: "trading the range" when stock oscillates between levels
   - Different from momentum breakouts — requires profit targets at range extremes
 
+### 🤖 Algo Lab Initiative (Approved Jan 27, 2026)
+> Systematic algorithmic trading infrastructure extending R&D Lab. [Master Plan](file:///C:/Users/ftbbo/.gemini/antigravity/brain/45980930-4979-4d8a-8736-922a7dcf11c5/implementation_plan.md)
+
+- [ ] **Phase 1: Infrastructure** — Handwritten strategy loader, Alpaca C config, hybrid support
+- [ ] **Phase 2: Execution Engine** — Real-time scanner, live paper trading on Alpaca C
+- [ ] **Phase 3: Dynamic Universe** — Custom symbol lists, scanner-based discovery
+- [ ] **Phase 4: Mean Reversion** — Bollinger, pairs trading, cointegration (Ernest Chan style)
+- [ ] **Phase 5: ML/Advanced** — Feature engineering, model serving, sentiment
+
 ---
 
 ## 🔮 Future / Low Priority

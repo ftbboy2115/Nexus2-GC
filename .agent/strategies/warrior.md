@@ -45,6 +45,7 @@ Ross explicitly states: "Use the low of the entry candle as your stop."
 
 - Scale out on strength (1/2 at first target)
 - Trail remaining with candle lows
+- **Candle Under Candle**: Exit when candle makes new low below prior candle (inverse of Candle Over Candle pattern). Requires confirmation: **high volume (>1.5x avg)** OR 5m candle also red. Volume distinguishes this from a healthy pullback.
 - Exit all on MACD cross negative
 
 ---
@@ -93,6 +94,12 @@ From transcripts:
 ### 4. ABCD Pattern
 - A-B leg, consolidation, C-D continuation
 - Entry at D breakout
+
+### 5. Dip for Level (Psychological Break)
+- Buy dip near round number (whole dollar or half dollar)
+- Target break of the psychological level
+- Example: TNMG - buy at $3.93, target $4.00 break
+- Source: 2026-01-16 transcript, line 94
 
 ---
 

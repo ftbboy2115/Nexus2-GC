@@ -364,6 +364,52 @@ def get_warrior_trade_by_symbol(symbol: str, status: str = None):
         return trade.to_dict() if trade else None
 
 
+def get_warrior_trade_for_recovery(symbol: str, broker_entry_price: float):
+    """Get a trade for broker sync recovery, matching by symbol + entry price.
+    
+    This function is used during broker sync to find existing trades regardless
+    of status. It prevents duplicate "external" records from being created when
+    the position already exists in the DB (even if status is 'closed').
+    
+    Args:
+        symbol: Stock symbol to look up
+        broker_entry_price: Entry price from broker to match
+        
+    Returns:
+        Trade dict if found (prioritizing active status, then recent), else None
+    """
+    with get_warrior_session() as db:
+        # First try: find by symbol with active status (most reliable)
+        active_statuses = [
+            PositionStatus.OPEN.value,
+            PositionStatus.PENDING_FILL.value,
+            PositionStatus.PENDING_EXIT.value,
+            PositionStatus.PARTIAL.value,
+            PositionStatus.SCALING.value,
+        ]
+        trade = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.symbol == symbol,
+            WarriorTradeModel.status.in_(active_statuses)
+        ).first()
+        
+        if trade:
+            return trade.to_dict()
+        
+        # Second try: find by symbol + entry price (within $0.05 tolerance)
+        # This catches trades that exist but have a different status
+        price_tolerance = 0.05
+        trade = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.symbol == symbol,
+            WarriorTradeModel.entry_price >= broker_entry_price - price_tolerance,
+            WarriorTradeModel.entry_price <= broker_entry_price + price_tolerance,
+        ).order_by(WarriorTradeModel.entry_time.desc()).first()
+        
+        if trade:
+            return trade.to_dict()
+        
+        return None
+
+
 def update_warrior_status(trade_id: str, new_status: str):
     """
     Update a warrior trade's status using PSM values.
