@@ -917,6 +917,63 @@ async def sync_positions_from_broker(request: SyncPositionsRequest = SyncPositio
 # MA check endpoints have been moved to ma_check_routes.py
 # See: nexus2/api/routes/ma_check_routes.py
 
+
+@router.post("/nac-sync", response_model=dict)
+async def sync_nac_with_broker(request: Request):
+    """
+    Sync NAC positions with Alpaca broker.
+    
+    Detects positions that are open in NAC DB but closed at broker
+    (stopped out by Alpaca-held stop orders). Updates the database
+    with the actual fill price from order history.
+    
+    This runs automatically at 3:45 PM during EOD check, but can
+    be called manually any time to detect broker stop-outs.
+    
+    Returns:
+        closed_count: Number of positions closed by sync
+        symbols: List of closed position symbols
+    """
+    broker = getattr(request.app.state, 'broker', None)
+    
+    if broker is None:
+        return {
+            "status": "no_broker",
+            "message": "No broker configured",
+            "closed_count": 0,
+            "symbols": [],
+        }
+    
+    try:
+        # Get current broker positions
+        broker_positions = broker.get_positions()
+        active_symbols = {pos.symbol for pos in broker_positions}
+        
+        # Get recent filled sell orders for fill prices
+        filled_orders = broker.get_filled_orders(side="sell", limit=50)
+        
+        # Sync NAC trades - closes orphans with fill prices
+        from nexus2.db.nac_db import close_orphaned_nac_trades
+        closed_symbols = close_orphaned_nac_trades(active_symbols, filled_orders)
+        
+        return {
+            "status": "success",
+            "closed_count": len(closed_symbols),
+            "symbols": closed_symbols,
+            "broker_positions": len(active_symbols),
+            "filled_orders_checked": len(filled_orders) if filled_orders else 0,
+        }
+        
+    except Exception as e:
+        logger.error(f"[NAC Sync] Error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "closed_count": 0,
+            "symbols": [],
+        }
+
+
 # ==================== SIMULATION ENDPOINTS ====================
 # Simulation endpoints have been moved to automation_simulation.py
 # See: nexus2/api/routes/automation_simulation.py

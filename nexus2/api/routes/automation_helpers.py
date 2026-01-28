@@ -503,10 +503,40 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
         
         result = await job.run(dry_run=False)  # Execute real exits
         
+        # === NAC Broker Sync: Detect broker stop-outs ===
+        # This syncs the NAC DB with Alpaca to detect positions closed by broker stops
+        nac_sync_result = {"closed_count": 0, "symbols": []}
+        try:
+            if broker and not sim_mode:
+                logger.info(f"{mode_indicator} Running NAC broker sync...")
+                
+                # Get broker positions and filled orders
+                broker_positions = broker.get_positions()
+                active_symbols = {pos.symbol for pos in broker_positions}
+                filled_orders = broker.get_filled_orders(side="sell", limit=50)
+                
+                # Sync NAC trades
+                from nexus2.db.nac_db import close_orphaned_nac_trades
+                closed_symbols = close_orphaned_nac_trades(active_symbols, filled_orders)
+                
+                nac_sync_result = {
+                    "closed_count": len(closed_symbols),
+                    "symbols": closed_symbols,
+                }
+                
+                if closed_symbols:
+                    logger.info(f"{mode_indicator} NAC sync closed: {closed_symbols}")
+                else:
+                    logger.debug(f"{mode_indicator} NAC sync: no orphaned positions")
+        except Exception as e:
+            logger.error(f"{mode_indicator} NAC broker sync failed: {e}")
+            nac_sync_result["error"] = str(e)
+        
         return {
             "positions_checked": result.positions_checked,
             "exit_signals": len(result.exit_signals),
             "errors": len(result.errors),
+            "nac_sync": nac_sync_result,
         }
     
     return eod_callback

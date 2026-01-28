@@ -369,21 +369,80 @@ def get_nac_trade_by_symbol(symbol: str):
         return trade.to_dict() if trade else None
 
 
-def close_orphaned_nac_trades(active_symbols: set) -> list:
-    """Close trades in DB that are not on broker."""
+def close_orphaned_nac_trades(
+    active_symbols: set, 
+    filled_orders: list = None,
+) -> list:
+    """
+    Close trades in DB that are not on broker.
+    
+    Enhanced: If filled_orders is provided (from broker.get_filled_orders()),
+    matches fill prices to closed positions for accurate P&L tracking.
+    
+    Args:
+        active_symbols: Set of symbols currently held at broker
+        filled_orders: Optional list of FilledOrder objects from broker
+                       Each has: symbol, side, filled_avg_price, filled_qty, filled_at
+    
+    Returns:
+        List of closed symbol names
+    """
     closed = []
+    
+    # Build lookup: symbol -> most recent sell fill price
+    fill_prices = {}
+    if filled_orders:
+        for order in filled_orders:
+            if order.side == "sell":
+                # Use most recent fill for each symbol
+                if order.symbol not in fill_prices:
+                    fill_prices[order.symbol] = order.filled_avg_price
+    
     with get_nac_session() as db:
+        # Include both OPEN and PARTIAL statuses for orphan cleanup
+        active_statuses = [PositionStatus.OPEN.value, PositionStatus.PARTIAL.value]
         open_trades = db.query(NACTradeModel).filter(
-            NACTradeModel.status == PositionStatus.OPEN.value
+            NACTradeModel.status.in_(active_statuses)
         ).all()
         
         for trade in open_trades:
             if trade.symbol not in active_symbols:
-                print(f"[NAC DB] Closing orphan: {trade.symbol}")
+                symbol = trade.symbol
+                entry_price = float(trade.entry_price)
+                qty = trade.remaining_quantity or trade.quantity
+                
+                # Try to get fill price from broker order history
+                exit_price = fill_prices.get(symbol)
+                
+                if exit_price:
+                    # Calculate P&L with actual fill price
+                    pnl = (exit_price - entry_price) * qty
+                    trade.exit_price = str(exit_price)
+                    trade.realized_pnl = str(round(pnl, 2))
+                    trade.exit_reason = "broker_stop"
+                    print(f"[NAC DB] Closing {symbol}: stop filled @ ${exit_price:.2f} (P&L: ${pnl:+.2f})")
+                else:
+                    # No fill found - close as orphan without P&L
+                    trade.exit_reason = "orphan_cleanup"
+                    print(f"[NAC DB] Closing orphan: {symbol} (no fill price found)")
+                
                 trade.status = PositionStatus.CLOSED.value
-                trade.exit_reason = "orphan_cleanup"
                 trade.exit_time = now_utc()
-                closed.append(trade.symbol)
+                closed.append(symbol)
+                
+                # Log trade event
+                try:
+                    from nexus2.domain.automation.trade_event_service import trade_event_service
+                    trade_event_service.log_nac_exit(
+                        position_id=trade.id,
+                        symbol=symbol,
+                        exit_price=exit_price or 0,
+                        exit_type=trade.exit_reason,
+                        pnl=float(trade.realized_pnl or 0),
+                        reason="Broker stop-out detected via sync",
+                    )
+                except Exception as e:
+                    print(f"[NAC DB] Trade event log failed: {e}")
         
         db.commit()
     
