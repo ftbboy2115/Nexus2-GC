@@ -69,14 +69,8 @@ export function TradeHistoryCard({
         })
     }
 
-    // Get source icon based on trigger_type
-    // - 'external' = Mock Market (sim) trades
-    // - anything else = real LIVE trades
-    const getSourceIcon = (trade: Trade): string => {
-        const triggerType = (trade as any).trigger_type
-        if (triggerType === 'external') return '🧪'
-        return '📈'
-    }
+    // NOTE: Source column removed - data integrity issue prevents reliable detection
+    // TODO: Add explicit is_sim flag to warrior_trades table for reliable tracking
 
     return (
         <div className={styles.card} style={{ marginTop: '1rem' }}>
@@ -101,7 +95,7 @@ export function TradeHistoryCard({
                                     <thead style={{ position: 'sticky', top: 0, background: '#1a1a2e', zIndex: 1 }}>
                                         <tr>
                                             <th>Symbol</th>
-                                            <th>Source</th>
+
                                             <th>Entry $</th>
                                             <th>Exit $</th>
                                             <th>P&L</th>
@@ -116,9 +110,7 @@ export function TradeHistoryCard({
                                             .map((trade) => (
                                                 <tr key={trade.id}>
                                                     <td><strong>{trade.symbol}</strong></td>
-                                                    <td style={{ textAlign: 'center' }} title={(trade as any).trigger_type || 'live'}>
-                                                        {getSourceIcon(trade)}
-                                                    </td>
+
                                                     <td>${parseFloat(String(trade.entry_price || 0)).toFixed(2)}</td>
                                                     <td>${parseFloat(String(trade.exit_price || 0)).toFixed(2)}</td>
                                                     <td style={{
