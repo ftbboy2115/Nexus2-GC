@@ -55,7 +55,7 @@ export function TradeHistoryCard({
         return '#ef4444'
     }
 
-    // Format datetime for display
+    // Format datetime for display - convert UTC to Eastern Time
     const formatDateTime = (isoString?: string): string => {
         if (!isoString) return '--'
         const date = new Date(isoString)
@@ -65,15 +65,17 @@ export function TradeHistoryCard({
             hour: 'numeric',
             minute: '2-digit',
             hour12: true,
+            timeZone: 'America/New_York',  // Force Eastern Time
         })
     }
 
-    // Get source icon
-    const getSourceIcon = (source?: string): string => {
-        if (source === 'sim' || source === 'mock') return '🧪'
-        if (source === 'live') return '📈'
-        // Default to sim if not specified
-        return '🧪'
+    // Get source icon based on trigger_type
+    // - 'external' = Mock Market (sim) trades
+    // - anything else = real LIVE trades
+    const getSourceIcon = (trade: Trade): string => {
+        const triggerType = (trade as any).trigger_type
+        if (triggerType === 'external') return '🧪'
+        return '📈'
     }
 
     return (
@@ -114,8 +116,8 @@ export function TradeHistoryCard({
                                             .map((trade) => (
                                                 <tr key={trade.id}>
                                                     <td><strong>{trade.symbol}</strong></td>
-                                                    <td style={{ textAlign: 'center' }} title={trade.source || 'sim'}>
-                                                        {getSourceIcon(trade.source)}
+                                                    <td style={{ textAlign: 'center' }} title={(trade as any).trigger_type || 'live'}>
+                                                        {getSourceIcon(trade)}
                                                     </td>
                                                     <td>${parseFloat(String(trade.entry_price || 0)).toFixed(2)}</td>
                                                     <td>${parseFloat(String(trade.exit_price || 0)).toFixed(2)}</td>
