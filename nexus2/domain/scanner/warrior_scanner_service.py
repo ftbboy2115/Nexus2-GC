@@ -101,6 +101,11 @@ class WarriorScanSettings:
     # "Easy to borrow + 35M float = choppy, fake-outs, shorts will flush it"
     etb_high_float_threshold: int = 10_000_000  # Reject ETB stocks with float > 10M
     
+    # Pure High Float Disqualifier (does NOT rely on broker ETB data)
+    # Ross Cameron prefers sub-20M float; anything >30M is choppy/institutionally-held
+    # This triggers REGARDLESS of borrow status since Alpaca ETB data is unreliable
+    high_float_threshold: int = 30_000_000  # Hard reject if float > 30M
+    
     # Pillar 2: Relative Volume
     min_rvol: Decimal = Decimal("2.0")  # 2x minimum
     ideal_rvol: Decimal = Decimal("3.0")  # 3-5x ideal
@@ -1058,14 +1063,32 @@ class WarriorScannerService:
         else:
             scan_logger.debug(f"BROKER MISSING | {symbol} | No alpaca_broker wired")
         
-        # ETB + High Float Disqualifier - Ross Cameron methodology
-        # "Easy to borrow + high float = choppy, fake-outs, shorts will flush it"
+        # Pure High Float Disqualifier - Ross Cameron methodology (does NOT rely on broker)
+        # "30M+ float = choppy, institutionally-held, lots of shorts ready to flush it"
+        # This is the primary gate since Alpaca ETB data is unreliable
+        if float_shares and float_shares > s.high_float_threshold:
+            tracker.record(
+                symbol=symbol,
+                scanner="warrior",
+                reason=RejectionReason.ETB_HIGH_FLOAT,  # Reuse reason code
+                values={"float": float_shares, "threshold": s.high_float_threshold},
+            )
+            scan_logger.info(
+                f"FAIL | {symbol} | Reason: high_float | "
+                f"{format_float_shares(float_shares)} float > {format_float_shares(s.high_float_threshold)} threshold"
+            )
+            if verbose:
+                print(f"{symbol}: Rejected - High Float ({format_float_shares(float_shares)} > {format_float_shares(s.high_float_threshold)})")
+            return None
+        
+        # ETB + Medium-High Float Disqualifier (secondary check when broker data available)
+        # This catches stocks 10-30M that are also ETB
         if easy_to_borrow and float_shares and float_shares > s.etb_high_float_threshold:
             tracker.record(
                 symbol=symbol,
                 scanner="warrior",
                 reason=RejectionReason.ETB_HIGH_FLOAT,
-                values={"float": float_shares, "threshold": s.etb_high_float_threshold},
+                values={"float": float_shares, "threshold": s.etb_high_float_threshold, "etb": True},
             )
             scan_logger.info(
                 f"FAIL | {symbol} | Reason: etb_high_float | "
