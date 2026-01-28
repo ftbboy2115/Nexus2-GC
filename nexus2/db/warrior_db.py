@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 # PSM integration
 from nexus2.domain.positions.position_state_machine import PositionStatus
-from nexus2.utils.time_utils import now_utc
+from nexus2.utils.time_utils import now_utc, format_iso_utc
 
 # Database path
 DB_DIR = Path(__file__).parent.parent.parent / "data"
@@ -96,14 +96,14 @@ class WarriorTradeModel(WarriorBase):
             "status": self.status,
             "entry_price": self.entry_price,
             "quantity": self.quantity,
-            "entry_time": self.entry_time.isoformat() if self.entry_time else None,
+            "entry_time": format_iso_utc(self.entry_time),
             "trigger_type": self.trigger_type,
             "stop_price": self.stop_price,
             "stop_method": self.stop_method,
             "target_price": self.target_price,
             "support_level": self.support_level,
             "exit_price": self.exit_price,
-            "exit_time": self.exit_time.isoformat() if self.exit_time else None,
+            "exit_time": format_iso_utc(self.exit_time),
             "exit_reason": self.exit_reason,
             "realized_pnl": self.realized_pnl,
             "partial_taken": self.partial_taken,
@@ -117,8 +117,8 @@ class WarriorTradeModel(WarriorBase):
             "slippage_cents": self.slippage_cents,
             "quote_source": self.quote_source,
             "exit_mode": self.exit_mode,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": format_iso_utc(self.created_at),
+            "updated_at": format_iso_utc(self.updated_at),
         }
 
 
@@ -756,8 +756,8 @@ def get_recent_closed_trades(limit: int = 30) -> list:
                 "stop_method": t.stop_method,
                 "realized_pnl": float(t.realized_pnl) if t.realized_pnl else 0,
                 "quantity": t.quantity,
-                "entry_time": t.entry_time.isoformat() if t.entry_time else None,
-                "exit_time": t.exit_time.isoformat() if t.exit_time else None,
+                "entry_time": format_iso_utc(t.entry_time),
+                "exit_time": format_iso_utc(t.exit_time),
             }
             for t in trades
         ]
