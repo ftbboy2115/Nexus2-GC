@@ -7,6 +7,7 @@ Ported from: core/scan_ep.py
 
 import os
 import time
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone, date
 from decimal import Decimal
@@ -24,6 +25,9 @@ from nexus2.adapters.market_data.protocol import (
 # Import centralized config (auto-loads .env)
 from nexus2 import config as app_config
 
+# Import shared rate limiter from FMP adapter
+from nexus2.adapters.market_data.fmp_adapter import RateLimitTracker
+
 
 @dataclass
 class AlpacaConfig:
@@ -32,6 +36,7 @@ class AlpacaConfig:
     api_secret: str
     base_url: str = "https://data.alpaca.markets"
     timeout: float = 10.0
+    rate_limit_per_minute: int = 200  # Alpaca free tier limit
 
 
 class AlpacaAdapter:
@@ -63,6 +68,10 @@ class AlpacaAdapter:
             }
         )
         
+        # Rate limiter (200/min for free tier)
+        self.rate_limiter = RateLimitTracker(self.config.rate_limit_per_minute)
+        self._shutdown = False
+        
         # Quote cache with 2-second TTL to reduce rate limits
         # Format: {symbol: (quote, timestamp)}
         self._quote_cache: Dict[str, Tuple[Quote, float]] = {}
@@ -72,14 +81,63 @@ class AlpacaAdapter:
         if hasattr(self, '_client'):
             self._client.close()
     
+    def get_rate_stats(self) -> Dict:
+        """Get current rate limit stats."""
+        return self.rate_limiter.get_stats()
+    
     def _get(self, endpoint: str, params: Optional[dict] = None) -> Optional[dict]:
-        """Make GET request to Alpaca API."""
+        """Make GET request to Alpaca API with rate limiting."""
         url = f"{self.config.base_url}/{endpoint}"
         
         try:
+            # Rate limiting check (under lock)
+            with self.rate_limiter._lock:
+                # Throttle if approaching limit
+                while self.rate_limiter.remaining < 20 and not self._shutdown:
+                    wait_time = 5
+                    print(f"[Alpaca] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
+                    self.rate_limiter._lock.release()
+                    try:
+                        for _ in range(10):  # 10 x 0.5s = 5s
+                            if self._shutdown:
+                                return None
+                            time.sleep(0.5)
+                    finally:
+                        self.rate_limiter._lock.acquire()
+                
+                # Hard stop if at limit
+                if self.rate_limiter.remaining <= 0 and not self._shutdown:
+                    print("[Alpaca] Rate limit reached! Waiting 60s...")
+                    self.rate_limiter._lock.release()
+                    try:
+                        for _ in range(120):  # 60s
+                            if self._shutdown:
+                                return None
+                            time.sleep(0.5)
+                    finally:
+                        self.rate_limiter._lock.acquire()
+                
+                if self._shutdown:
+                    return None
+                
+                # Record call before making request
+                self.rate_limiter.record_call()
+            
+            # Make request outside lock
             response = self._client.get(url, params=params)
             response.raise_for_status()
             return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                # Sync rate limiter to exhausted state
+                self.rate_limiter.mark_exhausted()
+                print("[Alpaca] 429 received, backing off 60s...")
+                for _ in range(120):
+                    if self._shutdown:
+                        return None
+                    time.sleep(0.5)
+            print(f"[Alpaca] Request error: {e}")
+            return None
         except Exception as e:
             print(f"[Alpaca] Request error: {e}")
             return None
