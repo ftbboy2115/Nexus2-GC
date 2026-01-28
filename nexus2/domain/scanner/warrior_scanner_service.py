@@ -1049,10 +1049,14 @@ class WarriorScannerService:
                 asset_info = self.alpaca_broker.get_asset_info(symbol)
                 hard_to_borrow = asset_info.get("hard_to_borrow", False)
                 easy_to_borrow = asset_info.get("easy_to_borrow", True)
+                # Debug: log borrow status for all stocks
+                scan_logger.debug(f"BORROW CHECK | {symbol} | HTB={hard_to_borrow}, ETB={easy_to_borrow}")
                 if hard_to_borrow:
                     scan_logger.info(f"HTB BONUS | {symbol} is Hard-to-Borrow (+1 score)")
             except Exception as e:
                 scan_logger.debug(f"Could not get HTB status for {symbol}: {e}")
+        else:
+            scan_logger.debug(f"BROKER MISSING | {symbol} | No alpaca_broker wired")
         
         # ETB + High Float Disqualifier - Ross Cameron methodology
         # "Easy to borrow + high float = choppy, fake-outs, shorts will flush it"
