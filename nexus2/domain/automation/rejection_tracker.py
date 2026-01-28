@@ -44,6 +44,7 @@ class RejectionReason(Enum):
     COUNTRY_EXCLUDED = "country_excluded"
     GAP_TOO_LOW = "gap_too_low"  # Recalculated gap below threshold
     CATALYST_DILUTION = "catalyst_dilution"  # Dilution-related catalyst (private placement, etc.)
+    ETB_HIGH_FLOAT = "etb_high_float"  # Easy to borrow + high float = shorts flush it
     
     # Common
     PRICE_TOO_LOW = "price_too_low"

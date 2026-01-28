@@ -97,6 +97,10 @@ class WarriorScanSettings:
     max_float: int = 100_000_000  # 100M shares max
     ideal_float: int = 20_000_000  # 20M shares ideal
     
+    # ETB + High Float Disqualifier (Ross Cameron methodology)
+    # "Easy to borrow + 35M float = choppy, fake-outs, shorts will flush it"
+    etb_high_float_threshold: int = 10_000_000  # Reject ETB stocks with float > 10M
+    
     # Pillar 2: Relative Volume
     min_rvol: Decimal = Decimal("2.0")  # 2x minimum
     ideal_rvol: Decimal = Decimal("3.0")  # 3-5x ideal
@@ -1049,6 +1053,23 @@ class WarriorScannerService:
                     scan_logger.info(f"HTB BONUS | {symbol} is Hard-to-Borrow (+1 score)")
             except Exception as e:
                 scan_logger.debug(f"Could not get HTB status for {symbol}: {e}")
+        
+        # ETB + High Float Disqualifier - Ross Cameron methodology
+        # "Easy to borrow + high float = choppy, fake-outs, shorts will flush it"
+        if easy_to_borrow and float_shares and float_shares > s.etb_high_float_threshold:
+            tracker.record(
+                symbol=symbol,
+                scanner="warrior",
+                reason=RejectionReason.ETB_HIGH_FLOAT,
+                values={"float": float_shares, "threshold": s.etb_high_float_threshold},
+            )
+            scan_logger.info(
+                f"FAIL | {symbol} | Reason: etb_high_float | "
+                f"ETB with {format_float_shares(float_shares)} float > {format_float_shares(s.etb_high_float_threshold)}"
+            )
+            if verbose:
+                print(f"{symbol}: Rejected - ETB + High Float ({format_float_shares(float_shares)} > {format_float_shares(s.etb_high_float_threshold)})")
+            return None
         
         # Check Reverse Split status - Ross Cameron Jan 21, 2026
         # "Some of the biggest winners in the last 6 weeks were stocks that recently did reverse splits"
