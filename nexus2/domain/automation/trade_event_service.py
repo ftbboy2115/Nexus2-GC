@@ -53,6 +53,7 @@ class TradeEventService:
     WARRIOR_SPREAD_EXIT = "SPREAD_EXIT"  # Liquidity protection
     WARRIOR_FULL_EXIT = "FULL_EXIT"
     WARRIOR_BROKER_SYNC_CLOSE = "BROKER_SYNC_CLOSE"  # Orphan auto-closed by sync
+    WARRIOR_EXIT_FAILED = "EXIT_FAILED"  # Exit callback error (diagnostic)
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -613,6 +614,44 @@ class TradeEventService:
             event_type=self.WARRIOR_BROKER_SYNC_CLOSE,
             new_value=str(exit_price),
             reason=f"Orphan auto-closed by broker sync @ ${exit_price:.2f}, P&L: ${pnl:.2f}",
+            metadata=metadata,
+        )
+    
+    def log_warrior_exit_failed(
+        self,
+        trade_id: str,
+        symbol: str,
+        error_message: str,
+        error_type: str = "unknown",
+        exit_price: float = None,
+        shares: int = None,
+    ) -> Optional[int]:
+        """Log Warrior exit failure for diagnosis (callback threw exception)."""
+        metadata = {
+            "error_message": error_message,
+            "error_type": error_type,
+        }
+        if exit_price:
+            metadata["intended_exit_price"] = str(exit_price)
+        if shares:
+            metadata["intended_shares"] = shares
+        metadata.update(self._get_market_context())
+        
+        # TML: Write to persistent file log for forensics
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_EXIT_FAILED,
+            details=f"EXIT FAILED: {error_type} | {error_message}",
+        )
+        
+        return self._log_event(
+            strategy="WARRIOR",
+            position_id=trade_id,
+            symbol=symbol,
+            event_type=self.WARRIOR_EXIT_FAILED,
+            new_value=error_type,
+            reason=f"Exit callback failed: {error_message}",
             metadata=metadata,
         )
     

@@ -6,10 +6,14 @@ Factory functions create configured callbacks for a given broker instance.
 """
 
 import asyncio
+import logging
+import traceback
 from decimal import Decimal
 from uuid import uuid4
 from typing import Optional, Callable, Any
 from functools import partial
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -429,11 +433,45 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
                 from nexus2.db.warrior_db import log_warrior_exit
                 log_warrior_exit(position_id, exit_price, reason, shares)
             except Exception as e:
-                print(f"[Warrior] Exit DB log failed: {e}")
+                # Log to server.log with full traceback
+                logger.error(
+                    f"[Warrior] Exit DB log failed for {symbol}: {e}\n"
+                    f"{traceback.format_exc()}"
+                )
+                # Log to Trade Event Service for UI visibility
+                try:
+                    from nexus2.domain.automation.trade_event_service import trade_event_service
+                    trade_event_service.log_warrior_exit_failed(
+                        trade_id=position_id,
+                        symbol=symbol,
+                        error_message=str(e),
+                        error_type="db_log_failed",
+                        exit_price=exit_price,
+                        shares=shares,
+                    )
+                except Exception:
+                    pass  # Don't let event logging failure mask original error
             
             return {"order": order, "actual_exit_price": exit_price}
         except Exception as e:
-            print(f"[Warrior] Exit order failed: {e}")
+            # Log full traceback for order submission failures
+            logger.error(
+                f"[Warrior] Exit order failed for {symbol}: {e}\n"
+                f"{traceback.format_exc()}"
+            )
+            # Log to Trade Event Service for UI visibility
+            try:
+                from nexus2.domain.automation.trade_event_service import trade_event_service
+                trade_event_service.log_warrior_exit_failed(
+                    trade_id=position_id,
+                    symbol=symbol,
+                    error_message=str(e),
+                    error_type="order_failed",
+                    exit_price=limit_price,
+                    shares=shares,
+                )
+            except Exception:
+                pass
             return None
     
     return execute_exit

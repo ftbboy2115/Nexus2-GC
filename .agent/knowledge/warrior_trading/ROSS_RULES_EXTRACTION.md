@@ -3,7 +3,7 @@
 
 **Source:** 60+ video transcripts (Nov 2025 - Jan 2026)  
 **Purpose:** Verify Warrior bot implementation matches Ross's actual methodology  
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-28
 
 ---
 
@@ -87,6 +87,7 @@
 | **Break of Resistance** | Clear trend line or level break | [ ] Breakout detection |
 | **VWAP Break** | Stock consolidates below VWAP, then breaks above with momentum (Jan 20 2026: "I took this trade for the break through VWAP") | [x] Implemented |
 | **MACD Gating** | Only enter when MACD positive | [ ] MACD > 0 |
+| **Half-Dollar/Whole-Dollar** | Buy for break of round numbers ($6, $7, etc.) - best entry on fast moving stocks (Jan 28 GRI) | [ ] Round number breakout |
 
 ### Entry Timing
 | Rule | Specification |
@@ -157,6 +158,8 @@
 | Add only on strength | Never add to losers |
 | "Pulling away" pattern | Add when stock separates from entry |
 | Scale in small account | Can't - one shot with cash account |
+| **Add every 50 cents** | During parabolic moves, add at $7.50, $8, $8.50, $9, etc. (Jan 28 GRI) |
+| **Add on micro pullback holds** | Wait for dip, if it holds, add for next breakout |
 
 ### Session Management
 | Rule | Details |
@@ -164,6 +167,8 @@
 | One trade per day (cash) | Preserve buying power for best setup |
 | Done after recovery | If recovered from red, stop trading |
 | Week declining pattern | Mon $65k → Tue $20k → Wed $10k → Thu $2k → Consider reducing risk |
+| **25% giveback = hard stop** | Walk away green, don't give back 30-50% (Jan 28) |
+| **Failed curl = stop trying** | If multiple pops don't work, stop buying dips |
 
 ---
 
@@ -186,6 +191,8 @@
 | **Jack knife candles** | Stock is untradeable after | Nov 26 CLSK |
 | **Hidden sellers not breaking** | Wait for resolution | Nov 10 |
 | **Big red candles on resume** | Shorts in control | Multiple |
+| **11+ green candles without pullback** | Too extended, false breakout risk | Jan 28 MRNO |
+| **Easy to borrow + high float** | Shorts make it choppy, fake-outs | Jan 28 BDYN |
 | **Grinding price action** | Not worth fighting | Nov 16 |
 
 ### Behavioral Disqualifiers
