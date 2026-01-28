@@ -407,6 +407,19 @@ def get_warrior_trade_for_recovery(symbol: str, broker_entry_price: float):
         if trade:
             return trade.to_dict()
         
+        # Third fallback: find most recent trade on same symbol within 15 minutes
+        # This catches re-entries where price changed (e.g., exit then re-entry)
+        # The trigger_type from the recent trade is inherited to prevent "external"
+        from datetime import timedelta
+        recent_cutoff = now_utc() - timedelta(minutes=15)
+        trade = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.symbol == symbol,
+            WarriorTradeModel.entry_time >= recent_cutoff,
+        ).order_by(WarriorTradeModel.entry_time.desc()).first()
+        
+        if trade:
+            return trade.to_dict()
+        
         return None
 
 
