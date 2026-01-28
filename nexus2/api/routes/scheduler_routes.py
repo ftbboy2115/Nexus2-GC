@@ -340,6 +340,7 @@ async def start_scheduler(
         get_price=get_monitor_price,
         update_stop=update_stop,
         execute_exit=execute_monitor_exit,
+        broker=broker,  # Enable periodic NAC broker sync
     )
     
     await _monitor.start()

@@ -118,10 +118,16 @@ class PositionMonitor:
         # Deduplication: track positions with pending exits
         self._pending_exits: set = set()
         
+        # Broker sync: track last sync time to avoid excessive API calls
+        self._last_broker_sync: Optional[datetime] = None
+        self._broker_sync_interval = 300  # Sync every 5 minutes
+        self._broker = None  # Set via set_broker()
+        
         # Stats
         self.checks_run = 0
         self.exits_triggered = 0
         self.partials_triggered = 0  # Track partial exits
+        self.broker_syncs_run = 0  # Track broker sync calls
         self.last_check: Optional[datetime] = None
         self.last_error: Optional[str] = None
     
@@ -132,6 +138,7 @@ class PositionMonitor:
         execute_exit: Callable = None,
         update_stop: Callable = None,
         streaming_client = None,  # AlpacaStreamingClient instance
+        broker = None,  # AlpacaBroker for broker sync
     ):
         """Set the callbacks for position data and execution."""
         self._get_positions = get_positions
@@ -139,6 +146,12 @@ class PositionMonitor:
         self._execute_exit = execute_exit
         self._update_stop = update_stop
         self._streaming_client = streaming_client
+        if broker:
+            self._broker = broker
+    
+    def set_broker(self, broker):
+        """Set broker for periodic NAC sync."""
+        self._broker = broker
     
     async def start(self) -> dict:
         """Start monitoring positions."""
@@ -225,6 +238,35 @@ class PositionMonitor:
         """Check all open positions for exit conditions."""
         self.last_check = now_utc()
         self.checks_run += 1
+        
+        # === NAC Broker Sync: Run every 5 minutes ===
+        # Syncs NAC DB with Alpaca to detect broker stop-outs
+        should_sync = False
+        if self._broker:
+            if self._last_broker_sync is None:
+                should_sync = True
+            else:
+                elapsed = (now_utc() - self._last_broker_sync).total_seconds()
+                should_sync = elapsed >= self._broker_sync_interval
+        
+        if should_sync and self._broker:
+            try:
+                broker_positions = self._broker.get_positions()
+                active_symbols = {pos.symbol for pos in broker_positions}
+                filled_orders = self._broker.get_filled_orders(side="sell", limit=50)
+                
+                from nexus2.db.nac_db import close_orphaned_nac_trades
+                closed = close_orphaned_nac_trades(active_symbols, filled_orders)
+                
+                self._last_broker_sync = now_utc()
+                self.broker_syncs_run += 1
+                
+                if closed:
+                    logger.info(f"[Monitor Sync] Closed {len(closed)} positions: {closed}")
+                else:
+                    logger.debug("[Monitor Sync] No orphaned NAC positions")
+            except Exception as sync_err:
+                logger.warning(f"[Monitor Sync] Error: {sync_err}")
         
         if not self._get_positions:
             logger.warning("No get_positions callback")
