@@ -21,13 +21,39 @@ from nexus2.api.routes import health, orders, positions, scanner, trade, setting
 from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
-# Configure logging with timestamps
+# Configure logging with timestamps - both console AND file
 import logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(message)s',
-    datefmt='%H:%M:%S'
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+# Ensure data directory exists
+log_dir = Path(__file__).parent.parent.parent / "data"
+log_dir.mkdir(exist_ok=True)
+
+# Create formatters
+log_format = '%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(message)s'
+date_format = '%H:%M:%S'
+formatter = logging.Formatter(log_format, datefmt=date_format)
+
+# Root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Console handler (original behavior)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+root_logger.addHandler(console_handler)
+
+# File handler - auto-rotates at 10MB, keeps 5 backups
+file_handler = RotatingFileHandler(
+    log_dir / "server.log",
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
 )
+file_handler.setFormatter(formatter)
+root_logger.addHandler(file_handler)
+
 # Suppress httpx INFO logs to prevent API key exposure in URLs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
