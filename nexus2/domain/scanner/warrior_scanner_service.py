@@ -124,6 +124,11 @@ class WarriorScanSettings:
     use_ai_catalyst_fallback: bool = True  # Use AI when regex fails
     debug_ai_comparison: bool = False  # Disabled: replaced by multi-model comparison
     
+    # Reverse Split + Offering Bypass (Ross Cameron Jan 21, 2026)
+    # "Can't exclude all stocks with shelf registrations - that would exclude the most volatile movers"
+    # If stock is on RS watchlist AND has fresh positive catalyst → bypass offering rejection
+    allow_offering_for_reverse_splits: bool = True  # Configurable for risk management
+    
     # Multi-Model Comparison (for training regex patterns)
     enable_multi_model_comparison: bool = True  # Queue headlines for AI comparison
     comparison_models: list = None  # Default: ["flash_lite", "pro"] - set in __post_init__
@@ -771,16 +776,43 @@ class WarriorScannerService:
             # Also check for negative catalysts (offering, sec, miss) - reject these
             has_negative, neg_type, neg_headline = classifier.has_negative_catalyst(headlines)
             if has_negative:
-                tracker.record(
-                    symbol=symbol,
-                    scanner="warrior",
-                    reason=RejectionReason.CATALYST_DILUTION,
-                    details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
-                )
-                scan_logger.info(f"FAIL | {symbol} | Reason: negative_catalyst | Type: {neg_type}")
-                if verbose:
-                    print(f"{symbol}: Rejected - Negative catalyst: {neg_type}")
-                return None
+                # REVERSE SPLIT BYPASS: Ross trades offerings if stock is RS + fresh positive catalyst
+                # "Can't exclude all stocks with shelf registrations - that would exclude the most volatile movers"
+                should_bypass = False
+                is_reverse_split = False
+                
+                if s.allow_offering_for_reverse_splits and neg_type == "offering":
+                    # Check if stock is on reverse split watchlist
+                    try:
+                        from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+                        rs_service = get_reverse_split_service()
+                        rs_record = rs_service.is_recent_reverse_split(symbol)
+                        if rs_record:
+                            is_reverse_split = True
+                            # Only bypass if we found a positive catalyst (news/earnings)
+                            if has_catalyst and catalyst_type not in ("none", "", None):
+                                should_bypass = True
+                                scan_logger.info(
+                                    f"🔄 BYPASS | {symbol} | RS+Offering allowed | "
+                                    f"RS: {rs_record.date} ({rs_record.ratio}) | "
+                                    f"Catalyst: {catalyst_type} | Offering: {neg_headline[:40]}"
+                                )
+                                if verbose:
+                                    print(f"[RS Bypass] {symbol}: Offering bypassed (RS + {catalyst_type})")
+                    except Exception as e:
+                        scan_logger.debug(f"[RS Check] {symbol}: Error - {e}")
+                
+                if not should_bypass:
+                    tracker.record(
+                        symbol=symbol,
+                        scanner="warrior",
+                        reason=RejectionReason.CATALYST_DILUTION,
+                        details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
+                    )
+                    scan_logger.info(f"FAIL | {symbol} | Reason: negative_catalyst | Type: {neg_type}")
+                    if verbose:
+                        print(f"{symbol}: Rejected - Negative catalyst: {neg_type}")
+                    return None
         
         # Check for recent earnings as backup (strongest catalyst)
         if not has_catalyst:
