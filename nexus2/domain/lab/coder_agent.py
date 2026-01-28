@@ -321,6 +321,13 @@ class CoderAgent:
         matches = re.findall(code_block_pattern, text)
         
         for i, match in enumerate(matches):
+            # Try raw first (before sanitization which can introduce issues)
+            try:
+                return json.loads(match.strip())
+            except json.JSONDecodeError:
+                pass
+            
+            # Try sanitized
             cleaned = self._sanitize_json(match.strip())
             try:
                 return json.loads(cleaned)
@@ -329,16 +336,34 @@ class CoderAgent:
                 continue
         
         # Method 3: Find JSON object in text
-        # Look for { ... } pattern
+        # Look for { ... } pattern (greedy to find largest JSON)
         brace_pattern = r'\{[\s\S]*\}'
         brace_match = re.search(brace_pattern, text)
         
         if brace_match:
-            cleaned = self._sanitize_json(brace_match.group())
+            raw_json = brace_match.group()
+            
+            # Try raw first
+            try:
+                return json.loads(raw_json)
+            except json.JSONDecodeError:
+                pass
+            
+            # Try sanitized
+            cleaned = self._sanitize_json(raw_json)
             try:
                 return json.loads(cleaned)
             except json.JSONDecodeError as e:
                 logger.debug(f"[CoderAgent] Brace extraction failed: {e}")
+        
+        # Method 4: Try with strict=False (allows some invalid escapes)
+        if brace_match:
+            try:
+                import json as json_module
+                decoder = json_module.JSONDecoder(strict=False)
+                return decoder.decode(brace_match.group())
+            except json.JSONDecodeError as e:
+                logger.debug(f"[CoderAgent] Non-strict parse failed: {e}")
         
         # All methods failed - log the response for debugging
         logger.warning(f"[CoderAgent] All JSON extraction methods failed. Response length: {len(text)} chars")
@@ -364,8 +389,8 @@ class CoderAgent:
         
         Fixes:
         - Python hex escapes (\\xNN) to JSON unicode (\\u00NN)
-        - Invalid escape sequences like \\e, \\s, \\d, etc.
-        - Raw unicode characters that may cause issues
+        - Control characters that break JSON parsing
+        - Preserves regex patterns in generated Python code strings
         
         Args:
             text: Raw JSON string
@@ -375,6 +400,10 @@ class CoderAgent:
         """
         import re
         
+        # Strategy: Try multiple parsing approaches rather than aggressive substitution.
+        # The key insight is that LLM-generated JSON containing Python code will have
+        # backslashes that are VALID within JSON strings (like r'\d+' in Python code).
+        
         # Fix 1: Convert Python hex escapes (\xNN) to JSON unicode escapes (\u00NN)
         # e.g., \xE4 -> \u00E4
         def hex_to_unicode(match):
@@ -383,11 +412,36 @@ class CoderAgent:
         
         text = re.sub(r'\\x([0-9a-fA-F]{2})', hex_to_unicode, text)
         
-        # Fix 2: Replace invalid escape sequences
-        # JSON only allows: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
-        # Replace other escapes with double backslash
-        invalid_escapes = re.compile(r'\\(?!["\\/bfnrtu])')
-        text = invalid_escapes.sub(r'\\\\', text)
+        # Fix 2: Remove or replace control characters (ASCII 0-31 except allowed ones)
+        # JSON allows \n, \r, \t but not raw control chars
+        def replace_control_char(match):
+            char = match.group(0)
+            code = ord(char)
+            if code == 9:  # tab
+                return '\\t'
+            elif code == 10:  # newline
+                return '\\n'
+            elif code == 13:  # carriage return
+                return '\\r'
+            else:
+                return ''  # Remove other control characters
+        
+        # Replace raw control characters (not escaped ones)
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', replace_control_char, text)
+        
+        # Fix 3: Handle unescaped backslashes only at JSON structure level
+        # This is tricky - we DON'T want to break regex patterns in string values.
+        # Only fix escapes that would cause JSON.parse to fail.
+        # The pattern \\e, \\a, \\v etc. are invalid JSON escapes.
+        # But \\d, \\s, \\w inside a JSON string VALUE are fine (they're just \\d etc.)
+        
+        # Rather than aggressive replacement, let the JSON parser try first.
+        # Only apply minimal fixes for specific known-bad patterns.
+        
+        # Fix common Gemini issue: literal \e (ESC) which is invalid
+        text = text.replace('\\e', '\\\\e')
+        text = text.replace('\\a', '\\\\a')  # alert/bell
+        text = text.replace('\\v', '\\\\v')  # vertical tab
         
         return text
     
