@@ -1278,5 +1278,11 @@ def get_warrior_scanner_service() -> WarriorScannerService:
     """Get singleton Warrior scanner service."""
     global _warrior_scanner_service
     if _warrior_scanner_service is None:
-        _warrior_scanner_service = WarriorScannerService()
+        # Wire Alpaca broker for HTB/ETB lookups
+        try:
+            from nexus2.adapters.broker.alpaca_broker import get_alpaca_broker
+            alpaca_broker = get_alpaca_broker()
+        except Exception:
+            alpaca_broker = None
+        _warrior_scanner_service = WarriorScannerService(alpaca_broker=alpaca_broker)
     return _warrior_scanner_service
