@@ -401,7 +401,8 @@ class TradeEventModel(Base):
     def to_dict(self):
         """Convert to dictionary."""
         import json
-        return {
+        metadata = json.loads(self.metadata_json) if self.metadata_json else {}
+        result = {
             "id": self.id,
             "strategy": self.strategy,
             "position_id": self.position_id,
@@ -410,9 +411,13 @@ class TradeEventModel(Base):
             "old_value": self.old_value,
             "new_value": self.new_value,
             "reason": self.reason,
-            "metadata": json.loads(self.metadata_json) if self.metadata_json else None,
+            "metadata": metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+        # Flatten exit_mode from metadata for Entry Type column display
+        if metadata.get("exit_mode"):
+            result["exit_mode"] = metadata["exit_mode"]
+        return result
 
 
 class TradeAnalysisModel(Base):

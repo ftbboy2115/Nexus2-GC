@@ -394,6 +394,7 @@ class WarriorMonitor:
             stop_price=current_stop,
             shares=shares,
             trigger_type=trigger_type,
+            exit_mode=exit_mode_override,  # For Entry Type column display
         )
         
         exit_mode_str = f", mode={exit_mode_override}" if exit_mode_override else ""

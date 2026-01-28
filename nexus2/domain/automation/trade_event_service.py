@@ -397,6 +397,7 @@ class TradeEventService:
         trigger_type: str = "ORB",
         intended_price: Decimal = None,
         slippage_cents: Decimal = None,
+        exit_mode: str = None,  # home_run or base_hit
     ) -> Optional[int]:
         """Log Warrior position entry with optional slippage tracking."""
         metadata = {
@@ -405,6 +406,10 @@ class TradeEventService:
             "shares": shares,
             "trigger_type": trigger_type,
         }
+        
+        # Include exit_mode for Entry Type column display
+        if exit_mode:
+            metadata["exit_mode"] = exit_mode
         
         # Track slippage if provided
         if intended_price and slippage_cents is not None:
