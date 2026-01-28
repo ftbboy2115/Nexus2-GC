@@ -320,6 +320,7 @@ async def wire_warrior_callbacks(broker) -> dict:
         get_order_status=broker_get_order_status,
     )
     monitor._execute_exit = broker_execute_exit
+    monitor._broker = broker  # For periodic sync to access get_filled_orders()
     
     # Sync broker positions
     print("[Warrior] Syncing positions from Alpaca...")

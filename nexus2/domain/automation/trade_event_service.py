@@ -52,6 +52,7 @@ class TradeEventService:
     WARRIOR_AFTER_HOURS_EXIT = "AFTER_HOURS_EXIT"
     WARRIOR_SPREAD_EXIT = "SPREAD_EXIT"  # Liquidity protection
     WARRIOR_FULL_EXIT = "FULL_EXIT"
+    WARRIOR_BROKER_SYNC_CLOSE = "BROKER_SYNC_CLOSE"  # Orphan auto-closed by sync
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -577,6 +578,41 @@ class TradeEventService:
             event_type=event_type,
             new_value=str(exit_price),
             reason=f"Exit ({exit_reason}) @ ${exit_price}, P&L: ${pnl}",
+            metadata=metadata,
+        )
+    
+    def log_warrior_broker_sync_close(
+        self,
+        trade_id: str,
+        symbol: str,
+        exit_price: float,
+        pnl: float,
+    ) -> Optional[int]:
+        """Log Warrior trade auto-closed by broker sync (orphan recovery)."""
+        metadata = {
+            "exit_price": str(exit_price),
+            "exit_reason": "broker_sync",
+            "pnl": str(pnl),
+            "sync_type": "orphan_recovery",
+        }
+        metadata.update(self._get_market_context())
+        
+        # TML: Write to persistent file log
+        pnl_str = f"+${pnl:.2f}" if pnl >= 0 else f"-${abs(pnl):.2f}"
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_BROKER_SYNC_CLOSE,
+            details=f"ORPHAN SYNC @ ${exit_price:.2f} | P&L={pnl_str}",
+        )
+        
+        return self._log_event(
+            strategy="WARRIOR",
+            position_id=trade_id,
+            symbol=symbol,
+            event_type=self.WARRIOR_BROKER_SYNC_CLOSE,
+            new_value=str(exit_price),
+            reason=f"Orphan auto-closed by broker sync @ ${exit_price:.2f}, P&L: ${pnl:.2f}",
             metadata=metadata,
         )
     

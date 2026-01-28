@@ -477,6 +477,49 @@ async def _confirm_completed_exits(
             logger.info(f"[Warrior Sync] {symbol}: Exit confirmed by broker")
 
 
+async def _close_orphaned_db_trades(
+    monitor: "WarriorMonitor",
+    broker_map: Dict[str, int],
+) -> None:
+    """
+    Close trades in warrior_trades DB that are 'open' but not at broker.
+    
+    This is a defensive sync that catches cases where the exit callback
+    failed to update the DB (e.g., exception during log_warrior_exit).
+    
+    Gets actual exit price from Alpaca's recent filled sell orders.
+    """
+    from nexus2.db.warrior_db import close_orphaned_trades
+    
+    active_symbols = set(broker_map.keys())
+    
+    # Get exit prices from Alpaca's recent sell orders
+    exit_prices = {}
+    if monitor._broker:
+        try:
+            recent_orders = monitor._broker.get_filled_orders(side="sell", limit=20)
+            for order in recent_orders:
+                symbol = order.symbol
+                if symbol not in exit_prices and hasattr(order, 'filled_avg_price') and order.filled_avg_price:
+                    exit_prices[symbol] = float(order.filled_avg_price)
+        except Exception as e:
+            logger.debug(f"[Warrior Sync] Could not fetch recent sell orders: {e}")
+    
+    orphaned = close_orphaned_trades(active_symbols, exit_prices)
+    if orphaned:
+        logger.info(f"[Warrior Sync] Closed {len(orphaned)} orphaned DB trades: {orphaned}")
+        
+        # Log to Trade Event Service for audit trail (visible in Trade Events UI)
+        from nexus2.domain.automation.trade_event_service import trade_event_service
+        for trade in orphaned:
+            trade_event_service.log_warrior_broker_sync_close(
+                trade_id=trade.get("id", "unknown"),
+                symbol=trade.get("symbol", "UNKNOWN"),
+                exit_price=trade.get("exit_price", 0.0),
+                pnl=trade.get("realized_pnl", 0.0),
+            )
+
+
 # =============================================================================
 # MAIN SYNC FUNCTION
 # =============================================================================
@@ -490,6 +533,7 @@ async def sync_with_broker(monitor: "WarriorMonitor") -> None:
     - Partial orders submitted but not filled
     - Positions closed manually at broker
     - Shares differ between monitor and broker
+    - DB shows 'open' but broker has no position (orphaned trades)
     
     Args:
         monitor: The WarriorMonitor instance to sync
@@ -516,6 +560,9 @@ async def sync_with_broker(monitor: "WarriorMonitor") -> None:
         
         # Confirm pending exits that are now fully closed at broker
         await _confirm_completed_exits(monitor, broker_map)
+        
+        # DEFENSIVE: Close trades in DB that are 'open' but not at broker
+        await _close_orphaned_db_trades(monitor, broker_map)
         
     except Exception as e:
         logger.error(f"[Warrior Sync] Error syncing with broker: {e}")
