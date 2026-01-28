@@ -945,9 +945,9 @@ async def sync_nac_with_broker(request: Request):
         }
     
     try:
-        # Get current broker positions
+        # Get current broker positions (returns dict {symbol: Position})
         broker_positions = broker.get_positions()
-        active_symbols = {pos.symbol for pos in broker_positions}
+        active_symbols = set(broker_positions.keys())
         
         # Get recent filled sell orders for fill prices
         filled_orders = broker.get_filled_orders(side="sell", limit=50)

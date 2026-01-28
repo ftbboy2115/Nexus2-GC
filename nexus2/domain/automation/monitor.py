@@ -252,7 +252,8 @@ class PositionMonitor:
         if should_sync and self._broker:
             try:
                 broker_positions = self._broker.get_positions()
-                active_symbols = {pos.symbol for pos in broker_positions}
+                # broker.get_positions() returns dict {symbol: Position}, so keys are symbols
+                active_symbols = set(broker_positions.keys())
                 filled_orders = self._broker.get_filled_orders(side="sell", limit=50)
                 
                 from nexus2.db.nac_db import close_orphaned_nac_trades

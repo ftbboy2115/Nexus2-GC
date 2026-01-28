@@ -510,9 +510,9 @@ def create_eod_callback(market_data, broker, sim_mode: bool = False):
             if broker and not sim_mode:
                 logger.info(f"{mode_indicator} Running NAC broker sync...")
                 
-                # Get broker positions and filled orders
+                # Get broker positions and filled orders (returns dict {symbol: Position})
                 broker_positions = broker.get_positions()
-                active_symbols = {pos.symbol for pos in broker_positions}
+                active_symbols = set(broker_positions.keys())
                 filled_orders = broker.get_filled_orders(side="sell", limit=50)
                 
                 # Sync NAC trades
