@@ -445,6 +445,60 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                 current_price,
                                 EntryTriggerType.VWAP_BREAK
                             )
+            
+            # INVERTED HEAD & SHOULDERS - Ross Cameron (Jan 28 2026): SXTP for +$1,900
+            # Pattern: Left Shoulder → Head (lowest) → Right Shoulder → Neckline break
+            # Entry: When price breaks above neckline with volume confirmation
+            if engine.config.inverted_hs_enabled and not watched.entry_triggered:
+                if engine._get_intraday_bars:
+                    try:
+                        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+                        if candles and len(candles) >= 15:
+                            from nexus2.domain.indicators.pattern_service import get_pattern_service
+                            pattern_svc = get_pattern_service()
+                            
+                            candle_dicts = [
+                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                                for c in candles
+                            ]
+                            
+                            # Detect pattern
+                            pattern = pattern_svc.detect_inverted_hs(candle_dicts, lookback=20)
+                            
+                            if pattern:
+                                watched.inverted_hs_pattern = pattern
+                                from datetime import datetime, timezone
+                                watched.inverted_hs_detected_at = datetime.now(timezone.utc)
+                                
+                                # Check for neckline breakout with volume
+                                if pattern.is_breakout(current_price, buffer_cents=5):
+                                    # Volume confirmation: current bar should have higher volume
+                                    current_bar_vol = candles[-1].volume if candles else 0
+                                    prior_bar_vol = candles[-2].volume if len(candles) >= 2 else 0
+                                    avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else prior_bar_vol
+                                    
+                                    # Require volume above average or higher than prior bar
+                                    vol_confirmed = current_bar_vol >= avg_vol or current_bar_vol > prior_bar_vol
+                                    
+                                    if vol_confirmed:
+                                        logger.info(
+                                            f"[Warrior Entry] {symbol}: INVERTED H&S BREAKOUT at ${current_price:.2f} "
+                                            f"(neckline=${pattern.neckline:.2f}, head=${pattern.head_low:.2f}, "
+                                            f"confidence={pattern.confidence:.2f}, vol={current_bar_vol:,})"
+                                        )
+                                        await enter_position(
+                                            engine,
+                                            watched,
+                                            current_price,
+                                            EntryTriggerType.INVERTED_HS
+                                        )
+                                    else:
+                                        logger.debug(
+                                            f"[Warrior Entry] {symbol}: Inverted H&S neckline break "
+                                            f"but volume not confirmed ({current_bar_vol:,} < avg {avg_vol:,.0f})"
+                                        )
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: Inverted H&S check failed: {e}")
                     
         except Exception as e:
             logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")

@@ -38,6 +38,7 @@ class EntryTriggerType(Enum):
     DIP_FOR_LEVEL = "dip_for_level"  # Dip + level break (Ross: TNMG $3.93 → $4.00)
     PULLBACK = "pullback"  # General pullback entry (first candle new high)
     MICRO_PULLBACK = "micro_pullback"  # For extended stocks (>100% gap): swing high break
+    INVERTED_HS = "inverted_hs"  # Inverted Head & Shoulders (Ross: SXTP Jan 28 2026)
 
 
 # =============================================================================
@@ -114,6 +115,9 @@ class WarriorEngineConfig:
     micro_pullback_min_dip: float = 1.0  # Minimum pullback % to trigger (too shallow = no setup)
     micro_pullback_max_dip: float = 5.0  # Maximum pullback % (deeper = reversal, not pullback)
     micro_pullback_macd_tolerance: float = -0.10  # Allow MACD slightly negative for scalps (Ross relaxes rule)
+    
+    # INVERTED H&S (Ross Cameron: SXTP Jan 28 2026)
+    inverted_hs_enabled: bool = True  # Enable inverted head & shoulders pattern detection
 
 
 @dataclass
@@ -175,6 +179,10 @@ class WatchedCandidate:
     swing_high_time: Optional[str] = None  # When swing high was set
     pullback_low: Optional[Decimal] = None  # Low after swing high (pullback depth)
     micro_pullback_ready: bool = False  # Pullback detected, ready for entry on break
+    
+    # INVERTED H&S tracking (Ross: SXTP Jan 28 2026)
+    inverted_hs_pattern: Optional["InvertedHSPattern"] = None  # Detected pattern, if any
+    inverted_hs_detected_at: Optional[datetime] = None  # When pattern was detected
     
     @property
     def dynamic_score(self) -> int:

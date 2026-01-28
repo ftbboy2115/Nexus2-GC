@@ -1,0 +1,397 @@
+{
+    "description": "Test fixtures for inverted head & shoulders pattern detection",
+    "patterns": {
+        "valid_inverted_hs": {
+            "description": "Classic inverted H&S with symmetric shoulders and clear neckline break",
+            "candles": [
+                {
+                    "high": 5.50,
+                    "low": 5.30,
+                    "close": 5.40,
+                    "volume": 10000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.25,
+                    "close": 5.35,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.35,
+                    "low": 5.10,
+                    "close": 5.15,
+                    "volume": 15000
+                },
+                {
+                    "high": 5.30,
+                    "low": 5.05,
+                    "close": 5.25,
+                    "volume": 18000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.20,
+                    "close": 5.35,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.50,
+                    "volume": 11000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.20,
+                    "close": 5.25,
+                    "volume": 16000
+                },
+                {
+                    "high": 5.25,
+                    "low": 4.90,
+                    "close": 4.95,
+                    "volume": 25000
+                },
+                {
+                    "high": 5.15,
+                    "low": 4.85,
+                    "close": 5.10,
+                    "volume": 22000
+                },
+                {
+                    "high": 5.35,
+                    "low": 5.05,
+                    "close": 5.30,
+                    "volume": 17000
+                },
+                {
+                    "high": 5.50,
+                    "low": 5.25,
+                    "close": 5.45,
+                    "volume": 13000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.35,
+                    "volume": 15000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.15,
+                    "close": 5.18,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.30,
+                    "low": 5.00,
+                    "close": 5.05,
+                    "volume": 19000
+                },
+                {
+                    "high": 5.20,
+                    "low": 4.95,
+                    "close": 5.15,
+                    "volume": 16000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.10,
+                    "close": 5.35,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.50,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.65,
+                    "low": 5.45,
+                    "close": 5.60,
+                    "volume": 25000
+                },
+                {
+                    "high": 5.80,
+                    "low": 5.55,
+                    "close": 5.75,
+                    "volume": 35000
+                }
+            ],
+            "expected": {
+                "has_pattern": true,
+                "breakout_price": 5.75,
+                "notes": "LS at candle 3, Head at candle 8, RS at candle 13, neckline ~5.50"
+            }
+        },
+        "no_pattern_ascending": {
+            "description": "Ascending lows - no inverted H&S (head not lowest)",
+            "candles": [
+                {
+                    "high": 5.50,
+                    "low": 5.30,
+                    "close": 5.40,
+                    "volume": 10000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.35,
+                    "close": 5.45,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.60,
+                    "low": 5.40,
+                    "close": 5.55,
+                    "volume": 15000
+                },
+                {
+                    "high": 5.65,
+                    "low": 5.45,
+                    "close": 5.60,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.70,
+                    "low": 5.50,
+                    "close": 5.65,
+                    "volume": 13000
+                },
+                {
+                    "high": 5.75,
+                    "low": 5.55,
+                    "close": 5.70,
+                    "volume": 11000
+                },
+                {
+                    "high": 5.80,
+                    "low": 5.60,
+                    "close": 5.75,
+                    "volume": 16000
+                },
+                {
+                    "high": 5.85,
+                    "low": 5.65,
+                    "close": 5.80,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.90,
+                    "low": 5.70,
+                    "close": 5.85,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.95,
+                    "low": 5.75,
+                    "close": 5.90,
+                    "volume": 15000
+                }
+            ],
+            "expected": {
+                "has_pattern": false,
+                "notes": "Continuous uptrend with no reversal pattern"
+            }
+        },
+        "asymmetric_shoulders": {
+            "description": "Asymmetric shoulders - RS too shallow compared to LS",
+            "candles": [
+                {
+                    "high": 5.50,
+                    "low": 5.30,
+                    "close": 5.40,
+                    "volume": 10000
+                },
+                {
+                    "high": 5.35,
+                    "low": 5.00,
+                    "close": 5.10,
+                    "volume": 18000
+                },
+                {
+                    "high": 5.20,
+                    "low": 4.80,
+                    "close": 4.90,
+                    "volume": 20000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.10,
+                    "close": 5.35,
+                    "volume": 15000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.50,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.20,
+                    "close": 5.25,
+                    "volume": 16000
+                },
+                {
+                    "high": 5.20,
+                    "low": 4.50,
+                    "close": 4.60,
+                    "volume": 30000
+                },
+                {
+                    "high": 5.35,
+                    "low": 5.05,
+                    "close": 5.30,
+                    "volume": 17000
+                },
+                {
+                    "high": 5.50,
+                    "low": 5.25,
+                    "close": 5.45,
+                    "volume": 13000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.20,
+                    "close": 5.25,
+                    "volume": 14000
+                },
+                {
+                    "high": 5.35,
+                    "low": 5.15,
+                    "close": 5.20,
+                    "volume": 11000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.20,
+                    "close": 5.35,
+                    "volume": 12000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.50,
+                    "volume": 14000
+                }
+            ],
+            "expected": {
+                "has_pattern": false,
+                "notes": "LS at $4.80, Head at $4.50, but RS only at $5.15 - too asymmetric"
+            }
+        },
+        "sxtp_inspired": {
+            "description": "Based on Ross Cameron's SXTP trade Jan 28 2026 (entry $5.80, +$1,900)",
+            "candles": [
+                {
+                    "high": 5.70,
+                    "low": 5.50,
+                    "close": 5.60,
+                    "volume": 50000
+                },
+                {
+                    "high": 5.65,
+                    "low": 5.45,
+                    "close": 5.50,
+                    "volume": 45000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.35,
+                    "volume": 60000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.20,
+                    "close": 5.40,
+                    "volume": 55000
+                },
+                {
+                    "high": 5.60,
+                    "low": 5.35,
+                    "close": 5.55,
+                    "volume": 48000
+                },
+                {
+                    "high": 5.70,
+                    "low": 5.50,
+                    "close": 5.65,
+                    "volume": 42000
+                },
+                {
+                    "high": 5.60,
+                    "low": 5.35,
+                    "close": 5.40,
+                    "volume": 58000
+                },
+                {
+                    "high": 5.40,
+                    "low": 5.10,
+                    "close": 5.15,
+                    "volume": 75000
+                },
+                {
+                    "high": 5.30,
+                    "low": 5.05,
+                    "close": 5.25,
+                    "volume": 70000
+                },
+                {
+                    "high": 5.50,
+                    "low": 5.20,
+                    "close": 5.45,
+                    "volume": 52000
+                },
+                {
+                    "high": 5.65,
+                    "low": 5.40,
+                    "close": 5.60,
+                    "volume": 46000
+                },
+                {
+                    "high": 5.60,
+                    "low": 5.35,
+                    "close": 5.40,
+                    "volume": 55000
+                },
+                {
+                    "high": 5.45,
+                    "low": 5.25,
+                    "close": 5.30,
+                    "volume": 50000
+                },
+                {
+                    "high": 5.55,
+                    "low": 5.30,
+                    "close": 5.50,
+                    "volume": 48000
+                },
+                {
+                    "high": 5.70,
+                    "low": 5.45,
+                    "close": 5.65,
+                    "volume": 54000
+                },
+                {
+                    "high": 5.85,
+                    "low": 5.60,
+                    "close": 5.80,
+                    "volume": 85000
+                },
+                {
+                    "high": 6.00,
+                    "low": 5.75,
+                    "close": 5.95,
+                    "volume": 120000
+                }
+            ],
+            "expected": {
+                "has_pattern": true,
+                "breakout_price": 5.95,
+                "notes": "Pattern inspired by Ross's SXTP trade - bullish reversal with volume confirmation on breakout"
+            }
+        }
+    }
+}
