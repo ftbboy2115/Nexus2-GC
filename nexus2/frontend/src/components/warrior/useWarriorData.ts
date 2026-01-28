@@ -1,7 +1,7 @@
 /**
  * useWarriorData - Custom hook for Warrior page data fetching
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type {
     WarriorStatus,
     WarriorPosition,
@@ -53,6 +53,9 @@ export function useWarriorData(): UseWarriorDataReturn {
     const [tradeEvents, setTradeEvents] = useState<any[]>([])
     const [eventLog, setEventLog] = useState<string[]>([])
 
+    // Track connection state to prevent error spam
+    const wasConnectedRef = useRef<boolean>(true)
+
     const addToLog = useCallback((message: string) => {
         const timestamp = new Date().toLocaleTimeString()
         setEventLog(prev => [`[${timestamp}] ${message}`, ...prev.slice(0, 99)])
@@ -102,9 +105,19 @@ export function useWarriorData(): UseWarriorDataReturn {
             } catch (err) {
                 console.error('Error fetching Warrior trade events:', err)
             }
+
+            // Connection succeeded - mark as connected
+            if (!wasConnectedRef.current) {
+                addToLog('✅ Reconnected to backend')
+            }
+            wasConnectedRef.current = true
         } catch (err) {
             console.error('Error fetching Warrior status:', err)
-            addToLog('❌ Failed to connect to backend')
+            // Only log error if we were previously connected (state change)
+            if (wasConnectedRef.current) {
+                addToLog('❌ Failed to connect to backend')
+                wasConnectedRef.current = false
+            }
         } finally {
             setLoading(false)
         }

@@ -120,7 +120,7 @@ async def lifespan(app: FastAPI):
     # Auto-enable Warrior Alpaca broker (Account B) and wire callbacks
     # Can be disabled via: 1) GUI toggle, 2) WARRIOR_AUTO_ENABLE=false in .env
     import os
-    from nexus2.db.warrior_settings import get_auto_enable
+    from nexus2.db.warrior_settings import get_auto_enable, get_engine_enabled
     
     # Env var takes precedence (for emergency override), otherwise use persisted setting
     env_override = os.getenv("WARRIOR_AUTO_ENABLE", "").lower()
@@ -131,6 +131,12 @@ async def lifespan(app: FastAPI):
         warrior_auto_enable = get_auto_enable()
         if not warrior_auto_enable:
             print("[Startup] Warrior auto-enable disabled via settings")
+    
+    # Check engine_enabled - tracks whether engine was manually stopped
+    engine_enabled = get_engine_enabled() if warrior_auto_enable else False
+    if warrior_auto_enable and not engine_enabled:
+        print("[Startup] Warrior engine was manually stopped - not auto-starting (engine_enabled=false)")
+        warrior_auto_enable = False  # Don't auto-start if manually stopped
     
     if warrior_auto_enable:
         try:

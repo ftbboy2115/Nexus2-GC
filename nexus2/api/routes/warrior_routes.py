@@ -268,6 +268,11 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
         )
     
     result = await engine.start()
+    
+    # Persist engine_enabled state so engine stays running after reboot
+    from nexus2.db.warrior_settings import set_engine_enabled
+    set_engine_enabled(True)
+    
     return result
 
 
@@ -280,6 +285,11 @@ async def stop_warrior_engine():
     """
     engine = get_engine()
     result = await engine.stop()
+    
+    # Persist engine_enabled=false so engine stays stopped after reboot
+    from nexus2.db.warrior_settings import set_engine_enabled
+    set_engine_enabled(False)
+    
     return result
 
 

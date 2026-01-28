@@ -11,6 +11,7 @@ interface TradeEvent {
     event_type?: string
     reason?: string
     new_value?: number
+    exit_mode?: string
 }
 
 interface TradeEventsCardProps {
@@ -28,6 +29,14 @@ export function TradeEventsCard({
         const next = !showTradeEvents
         setShowTradeEvents(next)
         localStorage.setItem('warrior_showTradeEvents', String(next))
+    }
+
+    // Get entry type icon from exit_mode
+    const getEntryTypeIcon = (exitMode?: string): string => {
+        if (!exitMode) return '--'
+        if (exitMode === 'home_run') return '🚀'
+        if (exitMode === 'base_hit') return '⚾'
+        return '--'
     }
 
     return (
@@ -52,6 +61,7 @@ export function TradeEventsCard({
                                 <tr>
                                     <th>Time (ET)</th>
                                     <th>Symbol</th>
+                                    <th>Entry Type</th>
                                     <th>Event</th>
                                     <th>Details</th>
                                 </tr>
@@ -63,6 +73,9 @@ export function TradeEventsCard({
                                             {formatTime(event.created_at)}
                                         </td>
                                         <td><strong>{event.symbol}</strong></td>
+                                        <td style={{ textAlign: 'center' }} title={event.exit_mode || 'N/A'}>
+                                            {getEntryTypeIcon(event.exit_mode)}
+                                        </td>
                                         <td>
                                             <span style={{
                                                 padding: '2px 6px',
@@ -93,3 +106,4 @@ export function TradeEventsCard({
         </div>
     )
 }
+

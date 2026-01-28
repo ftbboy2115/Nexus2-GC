@@ -99,6 +99,37 @@ def set_auto_enable(enabled: bool) -> bool:
     return save_warrior_settings(settings)
 
 
+def get_engine_enabled() -> bool:
+    """Get Warrior engine_enabled setting.
+    
+    This tracks whether the engine was manually stopped via the GUI.
+    Different from auto_enable - this persists the last running state.
+    
+    Returns:
+        True if engine should be running (default), False if manually stopped
+    """
+    settings = load_warrior_settings()
+    if settings is None:
+        return True  # Default: enabled (assume should start)
+    return settings.get("engine_enabled", True)
+
+
+def set_engine_enabled(enabled: bool) -> bool:
+    """Set Warrior engine_enabled setting.
+    
+    Called when user starts/stops the engine via the GUI to persist state.
+    
+    Args:
+        enabled: True when starting engine, False when stopping
+        
+    Returns:
+        True if saved successfully
+    """
+    settings = load_warrior_settings() or {}
+    settings["engine_enabled"] = enabled
+    return save_warrior_settings(settings)
+
+
 def get_config_dict(config) -> dict:
     """Convert WarriorEngineConfig to a saveable dictionary.
     

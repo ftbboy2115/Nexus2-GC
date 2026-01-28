@@ -11,6 +11,7 @@ interface Trade {
     realized_pnl?: number | string
     entry_time?: string
     exit_time?: string
+    source?: string  // 'sim' or 'live'
 }
 
 interface TradeAnalysis {
@@ -54,6 +55,27 @@ export function TradeHistoryCard({
         return '#ef4444'
     }
 
+    // Format datetime for display
+    const formatDateTime = (isoString?: string): string => {
+        if (!isoString) return '--'
+        const date = new Date(isoString)
+        return date.toLocaleString('en-US', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        })
+    }
+
+    // Get source icon
+    const getSourceIcon = (source?: string): string => {
+        if (source === 'sim' || source === 'mock') return '🧪'
+        if (source === 'live') return '📈'
+        // Default to sim if not specified
+        return '🧪'
+    }
+
     return (
         <div className={styles.card} style={{ marginTop: '1rem' }}>
             <div
@@ -74,14 +96,15 @@ export function TradeHistoryCard({
                         <>
                             <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                 <table className={styles.positionsTable} style={{ fontSize: '0.85rem' }}>
-                                    <thead>
+                                    <thead style={{ position: 'sticky', top: 0, background: '#1a1a2e', zIndex: 1 }}>
                                         <tr>
                                             <th>Symbol</th>
+                                            <th>Source</th>
                                             <th>Entry $</th>
                                             <th>Exit $</th>
                                             <th>P&L</th>
-                                            <th>Entered</th>
-                                            <th>Closed</th>
+                                            <th>Entry Time</th>
+                                            <th>Exit Time</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -91,6 +114,9 @@ export function TradeHistoryCard({
                                             .map((trade) => (
                                                 <tr key={trade.id}>
                                                     <td><strong>{trade.symbol}</strong></td>
+                                                    <td style={{ textAlign: 'center' }} title={trade.source || 'sim'}>
+                                                        {getSourceIcon(trade.source)}
+                                                    </td>
                                                     <td>${parseFloat(String(trade.entry_price || 0)).toFixed(2)}</td>
                                                     <td>${parseFloat(String(trade.exit_price || 0)).toFixed(2)}</td>
                                                     <td style={{
@@ -99,10 +125,10 @@ export function TradeHistoryCard({
                                                         ${parseFloat(String(trade.realized_pnl || 0)).toFixed(2)}
                                                     </td>
                                                     <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: '#888' }}>
-                                                        {trade.entry_time ? new Date(trade.entry_time).toLocaleDateString() : '--'}
+                                                        {formatDateTime(trade.entry_time)}
                                                     </td>
                                                     <td style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                                                        {trade.exit_time ? new Date(trade.exit_time).toLocaleDateString() : '--'}
+                                                        {formatDateTime(trade.exit_time)}
                                                     </td>
                                                     <td>
                                                         <button

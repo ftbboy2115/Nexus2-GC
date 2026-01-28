@@ -485,9 +485,9 @@ export default function Warrior() {
                     <div className={styles.loading}>Loading Warrior status...</div>
                 ) : (
                     <>
-                        {/* Main Grid */}
+                        {/* Main Grid - Ordered by priority: active trading views first, config/testing last */}
                         <div className={styles.grid}>
-                            {/* Engine Control Card */}
+                            {/* 1. Engine Control Card */}
                             <EngineControlCard
                                 state={status?.state}
                                 stats={status?.stats || {}}
@@ -505,7 +505,63 @@ export default function Warrior() {
                                 updateMonitorSettings={updateMonitorSettings}
                             />
 
-                            {/* Trading Mode Card */}
+                            {/* 2. Watchlist Card */}
+                            <WatchlistCard
+                                watchlist={status?.watchlist}
+                                watchlistCount={status?.watchlist_count || 0}
+                                watchlistSort={watchlistSort}
+                                setWatchlistSort={setWatchlistSort}
+                                openChart={openChart}
+                            />
+                        </div>
+
+                        {/* 3. Open Positions Table */}
+                        <OpenPositionsCard
+                            positions={positions}
+                            positionHealth={positionHealth}
+                            openChart={openChart}
+                        />
+
+                        {/* 4. Trade Events Log - Collapsible */}
+                        <TradeEventsCard
+                            tradeEvents={tradeEvents}
+                            showTradeEvents={showTradeEvents}
+                            setShowTradeEvents={setShowTradeEvents}
+                        />
+
+                        {/* 5. Trade History - Closed Trades with AI Analysis */}
+                        <TradeHistoryCard
+                            tradeHistory={tradeHistory}
+                            showTradeHistory={showTradeHistory}
+                            setShowTradeHistory={setShowTradeHistory}
+                            analyzeTradeWithAI={analyzeTradeWithAI}
+                            analyzingTrade={analyzingTrade}
+                            tradeAnalysis={tradeAnalysis}
+                            setTradeAnalysis={setTradeAnalysis}
+                        />
+
+                        {/* 6. Event Log */}
+                        <EventLogCard eventLog={eventLog} onClear={() => setEventLog([])} />
+
+                        {/* Secondary Grid - Less frequently used cards */}
+                        <div className={styles.grid} style={{ marginTop: '1.25rem' }}>
+                            {/* 7. Last Engine Scan Card */}
+                            <EngineCard
+                                lastScanResult={status?.last_scan_result}
+                                engineScanSort={engineScanSort}
+                                setEngineScanSort={setEngineScanSort}
+                                openChart={openChart}
+                            />
+
+                            {/* 8. Scanner Card (Manual Scan) */}
+                            <ScannerCard
+                                scanResult={scanResult}
+                                runScan={runScan}
+                                openChart={openChart}
+                                actionLoading={actionLoading}
+                            />
+
+                            {/* 9. Trading Mode Card */}
                             <TradingModeCard
                                 simStatus={simStatus}
                                 brokerStatus={brokerStatus}
@@ -518,7 +574,7 @@ export default function Warrior() {
                                 toggleAutoEnable={toggleAutoEnable}
                             />
 
-                            {/* Mock Market Card */}
+                            {/* 10. Mock Market Card */}
                             <MockMarketCard
                                 testCases={testCases}
                                 selectedTestCase={selectedTestCase}
@@ -537,66 +593,12 @@ export default function Warrior() {
                                 onClearOrders={clearSimOrders}
                             />
 
-                            {/* Exit Rules Card */}
+                            {/* 11. Exit Rules Card */}
                             <ExitRulesCard monitor={status?.monitor} />
 
-                            {/* Settings Card */}
+                            {/* 12. Settings Card */}
                             <SettingsCard config={status?.config} updateConfig={updateConfig} />
-
-                            {/* Note: Main Open Positions table with Health/Current/P&L is below in the positions section */}
-                            {/* Scanner Card */}
-                            <ScannerCard
-                                scanResult={scanResult}
-                                runScan={runScan}
-                                openChart={openChart}
-                                actionLoading={actionLoading}
-                            />
-
-                            {/* Last Engine Scan Card */}
-                            <EngineCard
-                                lastScanResult={status?.last_scan_result}
-                                engineScanSort={engineScanSort}
-                                setEngineScanSort={setEngineScanSort}
-                                openChart={openChart}
-                            />
-
-                            {/* Watchlist Card */}
-                            <WatchlistCard
-                                watchlist={status?.watchlist}
-                                watchlistCount={status?.watchlist_count || 0}
-                                watchlistSort={watchlistSort}
-                                setWatchlistSort={setWatchlistSort}
-                                openChart={openChart}
-                            />
                         </div>
-
-                        {/* Positions Table */}
-                        <OpenPositionsCard
-                            positions={positions}
-                            positionHealth={positionHealth}
-                            openChart={openChart}
-                        />
-
-                        {/* Trade Events Log - Collapsible */}
-                        <TradeEventsCard
-                            tradeEvents={tradeEvents}
-                            showTradeEvents={showTradeEvents}
-                            setShowTradeEvents={setShowTradeEvents}
-                        />
-
-                        {/* Trade History - Closed Trades with AI Analysis */}
-                        <TradeHistoryCard
-                            tradeHistory={tradeHistory}
-                            showTradeHistory={showTradeHistory}
-                            setShowTradeHistory={setShowTradeHistory}
-                            analyzeTradeWithAI={analyzeTradeWithAI}
-                            analyzingTrade={analyzingTrade}
-                            tradeAnalysis={tradeAnalysis}
-                            setTradeAnalysis={setTradeAnalysis}
-                        />
-
-                        {/* Event Log */}
-                        <EventLogCard eventLog={eventLog} onClear={() => setEventLog([])} />
                     </>
                 )
                 }
