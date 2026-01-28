@@ -1284,9 +1284,10 @@ def get_warrior_scanner_service() -> WarriorScannerService:
     if _warrior_scanner_service is None:
         # Wire Alpaca broker for HTB/ETB lookups
         try:
-            from nexus2.adapters.broker.alpaca_broker import get_alpaca_broker
-            alpaca_broker = get_alpaca_broker()
-        except Exception:
+            from nexus2.adapters.broker.alpaca_broker import AlpacaBroker
+            alpaca_broker = AlpacaBroker()
+        except Exception as e:
+            scan_logger.warning(f"Could not create AlpacaBroker for ETB checks: {e}")
             alpaca_broker = None
         _warrior_scanner_service = WarriorScannerService(alpaca_broker=alpaca_broker)
     return _warrior_scanner_service
