@@ -270,6 +270,18 @@ async def _recover_position(
     
     # Use DB values if we recovered an existing trade
     if existing_trade:
+        # CRITICAL: If the trade is closed in DB but still exists at broker, reopen it
+        if existing_trade.get("status") == "closed":
+            try:
+                from nexus2.db.warrior_db import update_warrior_status
+                update_warrior_status(recovered_position_id, "open")
+                logger.info(
+                    f"[Warrior Sync] {symbol}: Reopened closed trade in DB "
+                    f"(broker still has position)"
+                )
+            except Exception as reopen_err:
+                logger.warning(f"[Warrior Sync] {symbol}: Failed to reopen trade: {reopen_err}")
+        
         # CRITICAL: Use broker's actual fill price, not DB quote price
         # The DB entry_price is the quote at intent time, broker entry_price is actual fill
         recovered_entry_price = entry_price  # From broker's avg_entry_price
