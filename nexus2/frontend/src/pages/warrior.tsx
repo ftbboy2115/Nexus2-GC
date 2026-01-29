@@ -611,9 +611,9 @@ export default function Warrior() {
                                 currentBarIndex={currentBarIndex}
                                 chartSymbol={chartSymbol}
                                 simPositions={(simStatus?.positions || []).map((p: any) => ({
-                                    symbol: p.symbol,
-                                    qty: p.qty,
-                                    avg: p.avg_entry || p.avg,
+                                    symbol: p.symbol || '',
+                                    qty: p.qty || 0,
+                                    avg: p.avg_entry || p.avg || 0,
                                     pnl: p.unrealized_pnl || 0,
                                 }))}
                             />
