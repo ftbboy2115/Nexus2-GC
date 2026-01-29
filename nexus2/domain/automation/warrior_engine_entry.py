@@ -56,6 +56,26 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             
             current_price = Decimal(str(current_price))
             
+            # SANITY CHECK: Validate quote against last candle close
+            # Catches phantom inflated quotes (e.g., BATL $5.14 vs actual $4.80)
+            # that cause bad limit prices and immediate losses
+            if engine._get_intraday_bars:
+                try:
+                    sanity_candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
+                    if sanity_candles and len(sanity_candles) >= 1:
+                        last_close = Decimal(str(sanity_candles[-1].close))
+                        if last_close > 0:
+                            deviation_pct = abs((current_price - last_close) / last_close * 100)
+                            if deviation_pct > 5:
+                                logger.warning(
+                                    f"[Warrior Entry] {symbol}: PHANTOM QUOTE DETECTED! "
+                                    f"Quote ${current_price:.2f} vs candle close ${last_close:.2f} "
+                                    f"({deviation_pct:.1f}% deviation) - using candle close"
+                                )
+                                current_price = last_close
+                except Exception as e:
+                    logger.debug(f"[Warrior Entry] {symbol}: Candle sanity check failed: {e}")
+            
             # Track intraday high for pullback detection
             if watched.recent_high is None or current_price > watched.recent_high:
                 watched.recent_high = current_price
