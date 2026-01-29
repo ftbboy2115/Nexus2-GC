@@ -58,7 +58,7 @@ class WarriorExitSignal:
 class WarriorMonitorSettings:
     """Settings for Warrior position monitoring."""
     # Mental Stop (fallback only - Ross uses low of entry candle)
-    mental_stop_cents: Decimal = Decimal("15")  # Fallback if no candle data
+    mental_stop_cents: Decimal = Decimal("50")  # FALLBACK ONLY - set high (50¢) to rarely trigger
     use_candle_low_stop: bool = True  # Ross's actual method: low of entry candle
     use_technical_stop: bool = True  # Also use support levels
     technical_stop_buffer_cents: Decimal = Decimal("5")  # 2-5 cents below support

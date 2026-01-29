@@ -68,7 +68,9 @@ class WarriorSimOrderRequest(BaseModel):
 
 @sim_router.get("/sim/status")
 async def get_warrior_sim_status():
-    """Get Warrior simulation status."""
+    """Get Warrior simulation status including visible bars for chart rendering."""
+    from nexus2.adapters.simulation import get_simulation_clock, get_historical_bar_loader
+    
     broker = get_warrior_sim_broker()
     
     if broker is None:
@@ -80,6 +82,35 @@ async def get_warrior_sim_status():
     account = broker.get_account()
     positions = broker.get_positions()
     orders = broker.get_orders()
+    
+    # Get visible bars for chart rendering
+    visible_bars = []
+    current_bar_index = 0
+    chart_symbol = None
+    
+    clock = get_simulation_clock()
+    loader = get_historical_bar_loader()
+    
+    if clock and loader:
+        time_str = clock.get_time_string()
+        loaded_symbols = loader.get_loaded_symbols()
+        if loaded_symbols:
+            chart_symbol = loaded_symbols[0]  # Primary symbol for chart
+            bars = loader.get_bars_up_to(chart_symbol, time_str, "1min")
+            if bars:
+                # Convert bar objects to dict format for JSON serialization
+                visible_bars = [
+                    {
+                        "time": bar.get("time", bar.get("t", "")),
+                        "open": float(bar.get("open", bar.get("o", 0))),
+                        "high": float(bar.get("high", bar.get("h", 0))),
+                        "low": float(bar.get("low", bar.get("l", 0))),
+                        "close": float(bar.get("close", bar.get("c", 0))),
+                        "volume": int(bar.get("volume", bar.get("v", 0))),
+                    }
+                    for bar in bars
+                ]
+                current_bar_index = len(visible_bars) - 1
     
     return {
         "sim_enabled": True,
@@ -94,6 +125,10 @@ async def get_warrior_sim_status():
         "positions": positions,
         "position_count": len(positions),
         "orders": orders,
+        # Chart data for candlestick visualization
+        "visible_bars": visible_bars,
+        "current_bar_index": current_bar_index,
+        "chart_symbol": chart_symbol,
     }
 
 
@@ -1003,6 +1038,29 @@ async def step_clock(minutes: int = 1):
     if broker:
         orders = broker.get_orders()
     
+    # Get visible bars for chart rendering
+    visible_bars = []
+    current_bar_index = 0
+    chart_symbol = None
+    
+    loaded_symbols = loader.get_loaded_symbols()
+    if loaded_symbols:
+        chart_symbol = loaded_symbols[0]
+        bars = loader.get_bars_up_to(chart_symbol, time_str, "1min")
+        if bars:
+            visible_bars = [
+                {
+                    "time": bar.get("time", bar.get("t", "")),
+                    "open": float(bar.get("open", bar.get("o", 0))),
+                    "high": float(bar.get("high", bar.get("h", 0))),
+                    "low": float(bar.get("low", bar.get("l", 0))),
+                    "close": float(bar.get("close", bar.get("c", 0))),
+                    "volume": int(bar.get("volume", bar.get("v", 0))),
+                }
+                for bar in bars
+            ]
+            current_bar_index = len(visible_bars) - 1
+    
     return {
         "status": "stepped",
         "minutes": minutes,
@@ -1010,6 +1068,10 @@ async def step_clock(minutes: int = 1):
         "prices": prices,
         "entry_triggered": entry_triggered,
         "orders": orders,
+        # Chart data for candlestick visualization
+        "visible_bars": visible_bars,
+        "current_bar_index": current_bar_index,
+        "chart_symbol": chart_symbol,
     }
 
 

@@ -69,6 +69,10 @@ The `test_cases/` folder contains **Mock Market scenarios**:
 
 **Utility**: Use `fetch_historical_bars.py` to pull new intraday data.
 
+> [!NOTE]
+> **Ownership**: Mock Market Specialist creates/maintains test cases.
+> Testing Specialist uses them as fixtures but does NOT create new ones.
+
 ### Test Case Fields
 
 ```yaml

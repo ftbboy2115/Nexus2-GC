@@ -441,6 +441,90 @@ test_cases:
       stop_near: null
     notes: "Battalion Oil - natural gas surge. PMH $6.80 was the high of day (hit at 04:50 AM), stock opened at $5.44 and faded all day. No viable PMH breakout entry."
 
+  - id: ross_rolr_20260114
+    symbol: ROLR
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron +$85,000 - Prediction Markets Blue Sky Breakout"
+    trade_date: "2026-01-14"
+    intraday_file: "intraday/ross_rolr_20260114.json"
+    premarket_data:
+      gap_percent: 120.0
+      premarket_high: 15.00
+      previous_close: 6.82
+      float_shares: 5000000
+      catalyst: "theme_momentum"
+    expected:
+      entry_near: 15.00
+      stop_near: 14.00
+    notes: "Prediction Markets theme trade, Blue Sky breakout pattern"
+
+  - id: ross_tnmg_20260116
+    symbol: TNMG
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron - Chinese Stock Dip-Reclaim"
+    trade_date: "2026-01-16"
+    intraday_file: "intraday/ross_tnmg_20260116.json"
+    premarket_data:
+      gap_percent: 50.0
+      premarket_high: 5.00
+      previous_close: 3.33
+      float_shares: 8000000
+      catalyst: "momentum"
+    expected:
+      entry_near: 5.00
+      stop_near: 4.50
+    notes: "Chinese stock dip-reclaim pattern"
+
+  - id: ross_gwav_20260116
+    symbol: GWAV
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron - Pure Momentum Scalp (No News)"
+    trade_date: "2026-01-16"
+    intraday_file: "intraday/ross_gwav_20260116.json"
+    premarket_data:
+      gap_percent: 40.0
+      premarket_high: 3.00
+      previous_close: 2.14
+      float_shares: 10000000
+      catalyst: "momentum"
+    expected:
+      entry_near: 3.00
+      stop_near: 2.75
+    notes: "Pure momentum scalp - no specific catalyst, just volume and price action"
+
+  - id: ross_vero_20260116
+    symbol: VERO
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: REAL_TRADE
+    description: "Ross Cameron - Overnight Gapper (375% move in AH, traded AM continuation)"
+    trade_date: "2026-01-16"
+    intraday_file: "intraday/ross_vero_20260116.json"
+    premarket_data:
+      gap_percent: 375.0
+      premarket_high: 3.50
+      previous_close: 0.74
+      float_shares: 6000000
+      catalyst: "overnight_gapper"
+    expected:
+      entry_near: 3.00
+      stop_near: 2.50
+    notes: "Made massive move after-hours (375%), Ross traded the next morning continuation. High-extension requires Base Hit mode."
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================

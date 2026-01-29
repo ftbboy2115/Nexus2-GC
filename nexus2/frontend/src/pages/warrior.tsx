@@ -77,6 +77,10 @@ export default function Warrior() {
     const [loadedTestCase, setLoadedTestCase] = useState<{ symbol: string, price: number } | null>(null)
     const [clockState, setClockState] = useState<{ time_string: string, is_market_hours: boolean, speed: number } | null>(null)
     const [simOrders, setSimOrders] = useState<any[]>([])
+    // Chart data for candlestick visualization
+    const [visibleBars, setVisibleBars] = useState<any[]>([])
+    const [currentBarIndex, setCurrentBarIndex] = useState(0)
+    const [chartSymbol, setChartSymbol] = useState('')
 
     // Sorting state for tables
     const [watchlistSort, setWatchlistSort] = useState<{ key: string, dir: 'asc' | 'desc' }>({ key: 'gap_percent', dir: 'desc' })
@@ -375,6 +379,12 @@ export default function Warrior() {
                 if (data.orders) {
                     setSimOrders(data.orders)
                 }
+                // Update chart data
+                if (data.visible_bars) {
+                    setVisibleBars(data.visible_bars)
+                    setCurrentBarIndex(data.current_bar_index || 0)
+                    setChartSymbol(data.chart_symbol || '')
+                }
             }
         } catch (err) {
             console.error('Failed to step clock:', err)
@@ -591,6 +601,9 @@ export default function Warrior() {
                                 onSetSpeed={setPlaybackSpeed}
                                 orders={simOrders}
                                 onClearOrders={clearSimOrders}
+                                visibleBars={visibleBars}
+                                currentBarIndex={currentBarIndex}
+                                chartSymbol={chartSymbol}
                             />
 
                             {/* 11. Exit Rules Card */}

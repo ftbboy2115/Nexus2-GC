@@ -32,10 +32,10 @@ ssh root@100.113.178.7 "cd ~/Nexus2/nexus2/frontend && npm run build"
 
 **Session names:** `nexus` (backend), `frontend` (frontend)
 
-**Restart Backend (4x Ctrl+C with pauses + 60s API cooldown):**
+**Restart Backend (6x Ctrl+C with pauses + 60s API cooldown):**
 ```bash
 # All-in-one deploy command with proper shutdown and cooldown:
-ssh root@100.113.178.7 "cd ~/Nexus2 && git pull && tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c && echo 'Waiting 60s for FMP API cooldown...' && sleep 60 && tmux send-keys -t nexus:0 'python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000' Enter"
+ssh root@100.113.178.7 "cd ~/Nexus2 && git pull && tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c && echo 'Waiting 60s for FMP API cooldown...' && sleep 60 && tmux send-keys -t nexus:0 'python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000' Enter"
 ```
 
 **Why 60s cooldown?** FMP API may have been hammered before shutdown. The cooldown prevents rate limit issues on restart.

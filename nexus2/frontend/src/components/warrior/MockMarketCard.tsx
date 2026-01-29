@@ -3,9 +3,10 @@
  * 
  * Includes historical replay with time-based playback controls.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
+import { ChartPanel, BarData, OrderMarker } from './ChartPanel'
 
 interface TestCase {
     id: string
@@ -57,9 +58,13 @@ interface MockMarketCardProps {
     // Orders visibility
     orders?: MockOrder[]
     onClearOrders?: () => void
+    // Chart data
+    visibleBars?: BarData[]
+    currentBarIndex?: number
+    chartSymbol?: string
 }
 
-const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50]
+const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 60]
 
 export function MockMarketCard({
     testCases,
@@ -77,9 +82,24 @@ export function MockMarketCard({
     onSetSpeed,
     orders = [],
     onClearOrders,
+    visibleBars = [],
+    currentBarIndex = 0,
+    chartSymbol = '',
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
+
+    // Convert filled orders to chart markers
+    const orderMarkers: OrderMarker[] = useMemo(() => {
+        return orders
+            .filter(o => o.status === 'filled' && o.sim_time)
+            .map(o => ({
+                time: o.sim_time!,
+                price: o.avg_fill_price || o.limit_price || 0,
+                side: o.side as 'buy' | 'sell',
+                qty: o.qty,
+            }))
+    }, [orders])
 
     // Helper to get status indicator
     const getStatusIcon = (status: string) => {
@@ -266,6 +286,17 @@ export function MockMarketCard({
                             ))}
                         </div>
                     </div>
+                )}
+
+                {/* Candlestick Chart - Show when in historical mode with bars */}
+                {isHistoricalMode && visibleBars.length > 0 && chartSymbol && (
+                    <ChartPanel
+                        bars={visibleBars}
+                        currentBarIndex={currentBarIndex}
+                        symbol={chartSymbol}
+                        orders={orderMarkers}
+                        height={350}
+                    />
                 )}
 
                 {/* Orders Panel - Show when in historical mode and orders exist */}
