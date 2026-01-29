@@ -101,12 +101,12 @@ async def get_warrior_sim_status():
                 # Convert bar objects to dict format for JSON serialization
                 visible_bars = [
                     {
-                        "time": bar.get("time", bar.get("t", "")),
-                        "open": float(bar.get("open", bar.get("o", 0))),
-                        "high": float(bar.get("high", bar.get("h", 0))),
-                        "low": float(bar.get("low", bar.get("l", 0))),
-                        "close": float(bar.get("close", bar.get("c", 0))),
-                        "volume": int(bar.get("volume", bar.get("v", 0))),
+                        "time": bar.time,
+                        "open": float(bar.open),
+                        "high": float(bar.high),
+                        "low": float(bar.low),
+                        "close": float(bar.close),
+                        "volume": int(bar.volume),
                     }
                     for bar in bars
                 ]
@@ -949,12 +949,12 @@ async def load_historical_test_case(case_id: str):
         if bars_up_to:
             visible_bars = [
                 {
-                    "time": bar.get("time", bar.get("t", "")),
-                    "open": float(bar.get("open", bar.get("o", 0))),
-                    "high": float(bar.get("high", bar.get("h", 0))),
-                    "low": float(bar.get("low", bar.get("l", 0))),
-                    "close": float(bar.get("close", bar.get("c", 0))),
-                    "volume": int(bar.get("volume", bar.get("v", 0))),
+                    "time": bar.time,
+                    "open": float(bar.open),
+                    "high": float(bar.high),
+                    "low": float(bar.low),
+                    "close": float(bar.close),
+                    "volume": int(bar.volume),
                 }
                 for bar in bars_up_to
             ]
