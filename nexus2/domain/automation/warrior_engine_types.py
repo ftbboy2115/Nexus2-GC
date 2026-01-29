@@ -76,7 +76,7 @@ class WarriorEngineConfig:
     # Entry Selectivity - Ross Cameron (Jan 20 2026): Only take the "A+ setup"
     # "TWWG was the ONLY trade I took today" - quality over quantity
     # top_x_picks: how many of the highest-scoring candidates can enter (1 = Ross style, 0 = disabled)
-    top_x_picks: int = 1  # Only top X highest-scoring candidates can enter (0 = no limit)
+    top_x_picks: int = 3  # Only top X highest-scoring candidates can enter (0 = no limit)
     min_entry_score: int = 6  # Minimum score to consider for entry (was 0)
     
     # Risk
