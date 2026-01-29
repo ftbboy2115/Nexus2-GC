@@ -270,9 +270,13 @@ async def _recover_position(
     
     # Use DB values if we recovered an existing trade
     if existing_trade:
-        # Prefer DB values for accurate recovery
-        recovered_entry_price = Decimal(str(existing_trade.get("entry_price", entry_price)))
-        recovered_high = Decimal(str(existing_trade.get("high_since_entry", entry_price) or entry_price))
+        # CRITICAL: Use broker's actual fill price, not DB quote price
+        # The DB entry_price is the quote at intent time, broker entry_price is actual fill
+        recovered_entry_price = entry_price  # From broker's avg_entry_price
+        recovered_high = max(
+            entry_price,
+            Decimal(str(existing_trade.get("high_since_entry", entry_price) or entry_price))
+        )
         
         # CRITICAL: Restore original stop and target from DB
         db_stop = existing_trade.get("stop_price")
