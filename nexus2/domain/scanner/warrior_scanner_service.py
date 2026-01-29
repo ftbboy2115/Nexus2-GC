@@ -1077,10 +1077,10 @@ class WarriorScannerService:
             )
             scan_logger.info(
                 f"FAIL | {symbol} | Reason: high_float | "
-                f"{format_float_shares(float_shares)} float > {format_float_shares(s.high_float_threshold)} threshold"
+                f"{_format_float(float_shares)} float > {_format_float(s.high_float_threshold)} threshold"
             )
             if verbose:
-                print(f"{symbol}: Rejected - High Float ({format_float_shares(float_shares)} > {format_float_shares(s.high_float_threshold)})")
+                print(f"{symbol}: Rejected - High Float ({_format_float(float_shares)} > {_format_float(s.high_float_threshold)})")
             return None
         
         # ETB + Medium-High Float Disqualifier (secondary check when broker data available)
@@ -1094,10 +1094,10 @@ class WarriorScannerService:
             )
             scan_logger.info(
                 f"FAIL | {symbol} | Reason: etb_high_float | "
-                f"ETB with {format_float_shares(float_shares)} float > {format_float_shares(s.etb_high_float_threshold)}"
+                f"ETB with {_format_float(float_shares)} float > {_format_float(s.etb_high_float_threshold)}"
             )
             if verbose:
-                print(f"{symbol}: Rejected - ETB + High Float ({format_float_shares(float_shares)} > {format_float_shares(s.etb_high_float_threshold)})")
+                print(f"{symbol}: Rejected - ETB + High Float ({_format_float(float_shares)} > {_format_float(s.etb_high_float_threshold)})")
             return None
         
         # Check Reverse Split status - Ross Cameron Jan 21, 2026
