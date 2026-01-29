@@ -164,12 +164,15 @@ export function ChartPanel({
         const volumeSeries = chart.addHistogramSeries({
             color: '#26a69a',
             priceFormat: { type: 'volume' },
-            priceScaleId: '',
+            priceScaleId: '', // Overlay on main chart
         })
 
         // Configure volume to be 20% of chart height at bottom
         volumeSeries.priceScale().applyOptions({
-            scaleMargins: { top: 0.8, bottom: 0 },
+            scaleMargins: {
+                top: 0.8, // 80% for price chart
+                bottom: 0, // Volume at bottom
+            },
         })
 
         chartRef.current = chart
