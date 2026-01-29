@@ -181,9 +181,12 @@ export default function Warrior() {
         fetchMonitorSettings()
     }, [])
 
-    // Fetch trade history on mount (for Trade History section)
+
+    // Fetch trade history on mount AND every 10 seconds (for Trade History section)
     useEffect(() => {
         fetchTradeHistory()
+        const interval = setInterval(fetchTradeHistory, 10000)  // Refresh every 10s
+        return () => clearInterval(interval)
     }, [])
 
     // Fetch test cases on mount
