@@ -401,7 +401,24 @@ async def _recover_position(
         except Exception as event_err:
             logger.warning(f"[Warrior Sync] {symbol}: Event log failed: {event_err}")
     else:
-        # Recovered existing trade - still need trade_event ENTRY for analytics
+        # Recovered existing trade - update fill_price with actual broker price
+        # This fixes the empty fill_price bug when polling missed the fill
+        try:
+            from nexus2.db.warrior_db import update_warrior_fill
+            # entry_price is the broker's actual avg_entry_price (the fill price)
+            update_warrior_fill(
+                trade_id=recovered_position_id,
+                actual_entry_price=float(entry_price),  # Broker's fill price
+                actual_stop_price=float(stop_price),
+                actual_quantity=qty,
+            )
+            logger.info(
+                f"[Warrior Sync] {symbol}: Updated fill_price=${entry_price:.2f} from broker"
+            )
+        except Exception as fill_err:
+            logger.debug(f"[Warrior Sync] {symbol}: Fill price update failed: {fill_err}")
+        
+        # Also log trade_event ENTRY for analytics
         # The position already exists in warrior_db, but trade_events needs the entry
         try:
             trade_event_service.log_warrior_entry(
