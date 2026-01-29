@@ -1,3 +1,14 @@
+/**
+ * Data Explorer Page
+ * 
+ * Excel-like table viewer for trading data across 4 sources:
+ * - Trade Events (audit log)
+ * - Warrior Trades (PSM)
+ * - NAC Trades (PSM)
+ * - Scan History
+ * 
+ * Features: sortable columns, click-to-filter, pagination, export/copy.
+ */
 import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
