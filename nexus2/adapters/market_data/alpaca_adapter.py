@@ -92,28 +92,30 @@ class AlpacaAdapter:
         try:
             # Rate limiting check (under lock)
             with self.rate_limiter._lock:
-                # Throttle if approaching limit
-                while self.rate_limiter.remaining < 20 and not self._shutdown:
-                    wait_time = 5
-                    print(f"[Alpaca] Rate limit approaching ({self.rate_limiter.remaining} remaining), waiting {wait_time}s...")
+                # Throttle if approaching limit - quick backoff (non-blocking)
+                if self.rate_limiter.remaining < 20 and not self._shutdown:
+                    print(f"[Alpaca] Rate limit approaching ({self.rate_limiter.remaining} remaining), brief pause...")
                     self.rate_limiter._lock.release()
                     try:
-                        for _ in range(10):  # 10 x 0.5s = 5s
+                        # Short sleep - 1s total (10 x 0.1s) instead of 5s
+                        for _ in range(10):
                             if self._shutdown:
                                 return None
-                            time.sleep(0.5)
+                            time.sleep(0.1)
                     finally:
                         self.rate_limiter._lock.acquire()
                 
-                # Hard stop if at limit
+                # Hard stop if at limit - shorter wait to reduce async blocking
                 if self.rate_limiter.remaining <= 0 and not self._shutdown:
-                    print("[Alpaca] Rate limit reached! Waiting 60s...")
+                    print("[Alpaca] Rate limit reached! Waiting 10s...")
                     self.rate_limiter._lock.release()
                     try:
-                        for _ in range(120):  # 60s
+                        # Shorter wait: 10s instead of 60s (100 x 0.1s)
+                        # This reduces async event loop blocking significantly
+                        for _ in range(100):
                             if self._shutdown:
                                 return None
-                            time.sleep(0.5)
+                            time.sleep(0.1)
                     finally:
                         self.rate_limiter._lock.acquire()
                 
@@ -131,11 +133,12 @@ class AlpacaAdapter:
             if e.response.status_code == 429:
                 # Sync rate limiter to exhausted state
                 self.rate_limiter.mark_exhausted()
-                print("[Alpaca] 429 received, backing off 60s...")
-                for _ in range(120):
+                print("[Alpaca] 429 received, backing off 10s...")
+                # Shorter backoff: 10s instead of 60s (100 x 0.1s)
+                for _ in range(100):
                     if self._shutdown:
                         return None
-                    time.sleep(0.5)
+                    time.sleep(0.1)
             print(f"[Alpaca] Request error: {e}")
             return None
         except Exception as e:

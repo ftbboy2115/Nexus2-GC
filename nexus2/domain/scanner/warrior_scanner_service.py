@@ -444,14 +444,16 @@ class WarriorScannerService:
             )
         
         # Recalculate gap with live prices (FMP screener data can be stale)
-        # Use Alpaca real-time price vs FMP previousClose for accurate gap
+        # Use unified cross-validated quote (Alpaca + Schwab + FMP)
+        # This prevents stale phantom prices like BATL $5.38 issue (Jan 29, 2026)
         for mover in all_movers:
             symbol = mover["symbol"]
             try:
-                # Get live price from Alpaca (real-time)
-                alpaca_quote = self.market_data.alpaca.get_quote(symbol)
-                if alpaca_quote and alpaca_quote.price > 0:
-                    live_price = float(alpaca_quote.price)
+                # Get live price using unified cross-validated source
+                # This method checks Alpaca vs Schwab vs FMP and picks best source
+                unified_quote = self.market_data.get_quote(symbol)
+                if unified_quote and unified_quote.price > 0:
+                    live_price = float(unified_quote.price)
                     # Get previousClose from FMP quote (reliable)
                     fmp_data = self.market_data.fmp._get(f"quote/{symbol}")
                     if fmp_data and len(fmp_data) > 0:
