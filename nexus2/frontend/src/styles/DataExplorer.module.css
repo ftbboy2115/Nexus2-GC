@@ -244,3 +244,52 @@
 .negative {
     color: #ff6b6b;
 }
+
+/* Column Menu */
+.columnMenu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.columnMenu strong {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.columnToggle {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #aaa;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.columnToggle:hover {
+    color: #4dabf7;
+}
+
+.columnToggle input[type="checkbox"] {
+    accent-color: #4dabf7;
+}
+
+/* Date Input */
+.dateInput {
+    padding: 0.3rem 0.5rem;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+}
+
+.dateInput::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+}

@@ -130,3 +130,102 @@ async def get_scan_history(
         "limit": limit,
         "offset": offset,
     }
+
+
+# =============================================================================
+# TRADE EVENTS ENDPOINT (with sorting/filtering)
+# =============================================================================
+
+@router.get("/trade-events")
+async def get_trade_events(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    strategy: Optional[str] = Query(None, description="Filter by strategy: NAC or WARRIOR"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    sort_by: str = Query("timestamp", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated trade events with filtering and sorting.
+    """
+    from nexus2.domain.automation.trade_event_service import trade_event_service
+    
+    # Get all events (service returns dicts)
+    all_events = trade_event_service.get_recent_events(strategy, limit=500)
+    
+    # Apply additional filters
+    if symbol:
+        all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
+    if event_type:
+        all_events = [e for e in all_events if e.get("event_type") == event_type]
+    
+    # Get total before pagination
+    total = len(all_events)
+    
+    # Apply sorting
+    reverse = sort_dir.lower() == "desc"
+    all_events.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
+    
+    # Apply pagination
+    events = all_events[offset:offset + limit]
+    
+    return {
+        "events": events,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# =============================================================================
+# WARRIOR TRADES ENDPOINT (with sorting/filtering)
+# =============================================================================
+
+@router.get("/warrior-trades")
+async def get_warrior_trades(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    status: Optional[str] = Query(None, description="Filter by status: open, pending_fill, pending_exit, closed"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    exit_reason: Optional[str] = Query(None, description="Filter by exit reason"),
+    sort_by: str = Query("entry_time", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated Warrior trades with filtering and sorting.
+    """
+    from nexus2.db.warrior_db import get_warrior_session, WarriorTradeModel
+    from sqlalchemy import desc, asc
+    
+    with get_warrior_session() as db:
+        query = db.query(WarriorTradeModel)
+        
+        # Apply filters
+        if status:
+            query = query.filter(WarriorTradeModel.status == status)
+        if symbol:
+            query = query.filter(WarriorTradeModel.symbol == symbol.upper())
+        if exit_reason:
+            query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply sorting
+        sort_column = getattr(WarriorTradeModel, sort_by, WarriorTradeModel.entry_time)
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
+        
+        # Apply pagination
+        trades = query.offset(offset).limit(limit).all()
+        
+        return {
+            "trades": [t.to_dict() for t in trades],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+
