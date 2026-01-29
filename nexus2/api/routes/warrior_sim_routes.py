@@ -768,7 +768,8 @@ async def load_historical_test_case(case_id: str):
         # This prevents old symbols (e.g., PAVM) from trading when loading a new case (e.g., LCFY)
         engine._watchlist.clear()
         engine._pending_entries.clear()
-        print(f"[Historical Replay] Cleared watchlist and pending entries for fresh start")
+        engine._symbol_fails.clear()  # Reset max failures counter for fresh replay
+        print(f"[Historical Replay] Cleared watchlist, pending entries, and fail counters for fresh start")
         
         # Reset the watched candidate (fresh state)
         watched.entry_triggered = False
