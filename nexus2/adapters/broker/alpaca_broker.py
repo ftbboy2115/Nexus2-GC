@@ -245,6 +245,11 @@ class AlpacaBroker:
                 error_msg = f"BLOCKED: Attempted to sell {quantity} shares of {symbol} but only hold {position.quantity}. This would create a short position."
                 print(f"🛑 [SAFETY] {error_msg}")
                 raise AlpacaBrokerError(error_msg)
+            # CRITICAL AUDIT LOG: Track ALL sell orders for forensics
+            import traceback
+            caller_stack = ''.join(traceback.format_stack()[-5:-1])
+            print(f"📊 [BROKER AUDIT] SELL ORDER: {symbol} x{quantity} @ limit ${limit_price or 'market'}")
+            print(f"📊 [BROKER AUDIT] Caller stack:\n{caller_stack}")
         
         payload = {
             "symbol": symbol,
