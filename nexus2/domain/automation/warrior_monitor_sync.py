@@ -559,13 +559,15 @@ async def _close_orphaned_db_trades(
         logger.info(f"[Warrior Sync] Closed {len(orphaned)} orphaned DB trades: {orphaned}")
         
         # Log to Trade Event Service for audit trail (visible in Trade Events UI)
+        # Note: orphaned is a list of symbol strings, not dicts
         from nexus2.domain.automation.trade_event_service import trade_event_service
-        for trade in orphaned:
+        for symbol in orphaned:
+            exit_price = exit_prices.get(symbol, 0.0) if exit_prices else 0.0
             trade_event_service.log_warrior_broker_sync_close(
-                trade_id=trade.get("id", "unknown"),
-                symbol=trade.get("symbol", "UNKNOWN"),
-                exit_price=trade.get("exit_price", 0.0),
-                pnl=trade.get("realized_pnl", 0.0),
+                trade_id=f"orphan_{symbol}",  # Synthetic ID since we only have symbol
+                symbol=symbol,
+                exit_price=exit_price,
+                pnl=0.0,  # Would need full trade info to calculate
             )
 
 
