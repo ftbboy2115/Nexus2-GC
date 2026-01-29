@@ -1381,6 +1381,18 @@ async def enter_position(
                             f"[Warrior Entry] {symbol}: Fill ${actual_fill_price:.2f} vs quote ${entry_price:.2f} "
                             f"= {slippage:+.1f}¢ slippage"
                         )
+                    
+                    # Log FILL_CONFIRMED event for Trade Events UI
+                    from nexus2.domain.automation.trade_event_service import get_trade_event_service
+                    trade_event_service = get_trade_event_service()
+                    trade_event_service.log_warrior_fill_confirmed(
+                        position_id=order_id,
+                        symbol=symbol,
+                        quote_price=entry_price,
+                        fill_price=actual_fill_decimal,
+                        slippage_cents=slippage,
+                        shares=int(filled_qty) if filled_qty else shares,
+                    )
                 except Exception as e:
                     logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
             
@@ -1472,6 +1484,18 @@ async def enter_position(
                     actual_quantity=int(filled_qty) if filled_qty else shares,
                 )
                 logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")
+                
+                # Log FILL_CONFIRMED event for Trade Events UI
+                from nexus2.domain.automation.trade_event_service import get_trade_event_service
+                trade_event_service = get_trade_event_service()
+                trade_event_service.log_warrior_fill_confirmed(
+                    position_id=order_id,
+                    symbol=symbol,
+                    quote_price=entry_decimal,
+                    fill_price=actual_fill_decimal,
+                    slippage_cents=float(slippage_cents),
+                    shares=int(filled_qty) if filled_qty else shares,
+                )
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
             

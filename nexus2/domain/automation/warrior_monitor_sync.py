@@ -408,7 +408,12 @@ async def _recover_position(
         # Recovered existing trade - update fill_price with actual broker price
         # This fixes the empty fill_price bug when polling missed the fill
         try:
-            from nexus2.db.warrior_db import update_warrior_fill
+            from nexus2.db.warrior_db import update_warrior_fill, get_trade_by_id
+            
+            # Get the original quote_price before we update
+            existing = get_trade_by_id(recovered_position_id)
+            quote_price = Decimal(str(existing.get("quote_price", entry_price))) if existing else entry_price
+            
             # entry_price is the broker's actual avg_entry_price (the fill price)
             update_warrior_fill(
                 trade_id=recovered_position_id,
@@ -418,6 +423,17 @@ async def _recover_position(
             )
             logger.info(
                 f"[Warrior Sync] {symbol}: Updated fill_price=${entry_price:.2f} from broker"
+            )
+            
+            # Log FILL_CONFIRMED event for Trade Events UI
+            slippage_cents = float((entry_price - quote_price) * 100)
+            trade_event_service.log_warrior_fill_confirmed(
+                position_id=recovered_position_id,
+                symbol=symbol,
+                quote_price=quote_price,
+                fill_price=entry_price,
+                slippage_cents=slippage_cents,
+                shares=qty,
             )
         except Exception as fill_err:
             logger.debug(f"[Warrior Sync] {symbol}: Fill price update failed: {fill_err}")

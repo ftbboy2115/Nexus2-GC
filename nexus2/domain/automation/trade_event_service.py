@@ -54,6 +54,7 @@ class TradeEventService:
     WARRIOR_FULL_EXIT = "FULL_EXIT"
     WARRIOR_BROKER_SYNC_CLOSE = "BROKER_SYNC_CLOSE"  # Orphan auto-closed by sync
     WARRIOR_EXIT_FAILED = "EXIT_FAILED"  # Exit callback error (diagnostic)
+    WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -444,6 +445,50 @@ class TradeEventService:
             event_type=self.WARRIOR_ENTRY,
             new_value=str(entry_price),
             reason=f"{trigger_type} Entry: {shares} shares @ ${entry_price}",
+            metadata=metadata,
+        )
+    
+    def log_warrior_fill_confirmed(
+        self,
+        position_id: str,
+        symbol: str,
+        quote_price: Decimal,
+        fill_price: Decimal,
+        slippage_cents: float,
+        shares: int,
+    ) -> Optional[int]:
+        """Log when broker confirms actual fill price vs quote."""
+        metadata = {
+            "quote_price": str(quote_price),
+            "fill_price": str(fill_price),
+            "slippage_cents": slippage_cents,
+            "shares": shares,
+        }
+        
+        # Format slippage for display
+        if slippage_cents > 0:
+            slip_str = f"+{slippage_cents:.1f}¢ slippage"
+        elif slippage_cents < 0:
+            slip_str = f"{slippage_cents:.1f}¢ improvement"
+        else:
+            slip_str = "no slippage"
+        
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_FILL_CONFIRMED,
+            details=f"Quote ${quote_price} → Fill ${fill_price} ({slip_str})",
+        )
+        
+        return self._log_event(
+            strategy="WARRIOR",
+            position_id=position_id,
+            symbol=symbol,
+            event_type=self.WARRIOR_FILL_CONFIRMED,
+            old_value=str(quote_price),
+            new_value=str(fill_price),
+            reason=f"Fill confirmed: ${quote_price} → ${fill_price} ({slip_str})",
             metadata=metadata,
         )
     
