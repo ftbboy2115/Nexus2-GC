@@ -54,6 +54,7 @@ interface ChartPanelProps {
     onTogglePlay?: () => void
     simPositions?: SimPosition[]
     currentPrice?: number
+    realizedPnl?: number
 }
 
 const SIZE_HEIGHTS: Record<ChartSizeMode, number> = {
@@ -79,6 +80,7 @@ export function ChartPanel({
     onTogglePlay,
     simPositions = [],
     currentPrice = 0,
+    realizedPnl = 0,
 }: ChartPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<IChartApi | null>(null)
@@ -179,6 +181,7 @@ export function ChartPanel({
         candleSeriesRef.current = candleSeries
         volumeSeriesRef.current = volumeSeries
 
+        // Handle resize
         const handleResize = () => {
             if (containerRef.current && chartRef.current) {
                 const newHeight = sizeMode === 'fullscreen'
@@ -199,7 +202,7 @@ export function ChartPanel({
             candleSeriesRef.current = null
             volumeSeriesRef.current = null
         }
-    }, [height, sizeMode])
+    }, []) // Only initialize chart once on mount
 
     // Update data when bars change
     useEffect(() => {
@@ -208,14 +211,30 @@ export function ChartPanel({
         const volumes = chartData.map(d => d.volume)
         candleSeriesRef.current.setData(candles)
         volumeSeriesRef.current.setData(volumes)
+
+        // Auto-scroll to keep current bar visible
         if (chartRef.current && candles.length > 0) {
             chartRef.current.timeScale().scrollToRealTime()
         }
     }, [chartData])
 
+    // Resize chart when sizeMode changes
+    useEffect(() => {
+        if (!containerRef.current || !chartRef.current) return
+        const newHeight = sizeMode === 'fullscreen'
+            ? window.innerHeight - 180
+            : SIZE_HEIGHTS[sizeMode]
+        chartRef.current.applyOptions({
+            width: containerRef.current.clientWidth,
+            height: newHeight,
+        })
+    }, [sizeMode])
+
     // Add order markers
     useEffect(() => {
         if (!candleSeriesRef.current) return
+
+        // Create markers for buy/sell orders
         const markers = orders.map(order => ({
             time: convertToTimestamp(order.time),
             position: order.side === 'buy' ? 'belowBar' as const : 'aboveBar' as const,
@@ -237,8 +256,8 @@ export function ChartPanel({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [sizeMode])
 
-    // Calculate total P&L from positions
-    const totalPnl = simPositions.reduce((sum, p) => sum + p.pnl, 0)
+    // Calculate total P&L (unrealized from positions + realized)
+    const totalPnl = simPositions.reduce((sum, p) => sum + p.pnl, 0) + realizedPnl
 
     return (
         <div className={`${styles.chartPanel} ${sizeMode === 'fullscreen' ? styles.chartFullscreen : ''}`}>

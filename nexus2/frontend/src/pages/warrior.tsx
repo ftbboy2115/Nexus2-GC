@@ -616,6 +616,7 @@ export default function Warrior() {
                                     avg: p.avg_price || 0,
                                     pnl: p.unrealized_pnl || p.pnl || 0,
                                 }))}
+                                realizedPnl={simStatus?.account?.realized_pnl || 0}
                             />
 
                             {/* 11. Exit Rules Card */}

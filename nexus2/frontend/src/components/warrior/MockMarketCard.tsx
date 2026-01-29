@@ -64,6 +64,8 @@ interface MockMarketCardProps {
     chartSymbol?: string
     // Sim positions for fullscreen overlay
     simPositions?: SimPosition[]
+    // Realized P&L for fullscreen overlay
+    realizedPnl?: number
 }
 
 const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 60]
@@ -88,6 +90,7 @@ export function MockMarketCard({
     currentBarIndex = 0,
     chartSymbol = '',
     simPositions = [],
+    realizedPnl = 0,
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
@@ -307,6 +310,7 @@ export function MockMarketCard({
                         onTogglePlay={() => setIsPlaying(!isPlaying)}
                         simPositions={simPositions}
                         currentPrice={loadedTestCase?.price || 0}
+                        realizedPnl={realizedPnl}
                     />
                 )}
 
