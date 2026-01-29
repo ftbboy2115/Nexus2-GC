@@ -12,6 +12,10 @@ interface Trade {
     entry_time?: string
     exit_time?: string
     source?: string  // 'sim' or 'live'
+    // Slippage tracking
+    quote_price?: number | string
+    fill_price?: number | string
+    slippage_cents?: number | string
 }
 
 interface TradeAnalysis {
@@ -95,8 +99,8 @@ export function TradeHistoryCard({
                                     <thead style={{ position: 'sticky', top: 0, background: '#1a1a2e', zIndex: 1 }}>
                                         <tr>
                                             <th>Symbol</th>
-
                                             <th>Entry $</th>
+                                            <th>Slippage</th>
                                             <th>Exit $</th>
                                             <th>P&L</th>
                                             <th>Entry Time</th>
@@ -110,8 +114,16 @@ export function TradeHistoryCard({
                                             .map((trade) => (
                                                 <tr key={trade.id}>
                                                     <td><strong>{trade.symbol}</strong></td>
-
                                                     <td>${parseFloat(String(trade.entry_price || 0)).toFixed(2)}</td>
+                                                    <td style={{
+                                                        fontSize: '0.75rem',
+                                                        color: parseFloat(String(trade.slippage_cents || 0)) > 0 ? '#ef4444' :
+                                                            parseFloat(String(trade.slippage_cents || 0)) < 0 ? '#22c55e' : '#888'
+                                                    }}>
+                                                        {trade.slippage_cents ? (
+                                                            `${parseFloat(String(trade.slippage_cents)) > 0 ? '+' : ''}${parseFloat(String(trade.slippage_cents)).toFixed(1)}¢`
+                                                        ) : '--'}
+                                                    </td>
                                                     <td>${parseFloat(String(trade.exit_price || 0)).toFixed(2)}</td>
                                                     <td style={{
                                                         color: parseFloat(String(trade.realized_pnl || 0)) >= 0 ? '#22c55e' : '#ef4444'

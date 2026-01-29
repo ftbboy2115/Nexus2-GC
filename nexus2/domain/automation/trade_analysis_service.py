@@ -156,6 +156,9 @@ ANALYSIS_USER_PROMPT = """Analyze this {strategy} trade:
 - P&L: ${pnl}
 - Duration: {duration}
 
+## EXECUTION QUALITY
+{execution_quality}
+
 ## MARKET CONDITIONS
 {market_conditions}
 
@@ -289,6 +292,35 @@ class TradeAnalysisService:
         
         return summary
     
+    def _get_execution_quality(self, position_id: str) -> str:
+        """Get execution quality (slippage) from warrior.db."""
+        try:
+            from nexus2.db.warrior_db import get_trade_by_id
+            trade = get_trade_by_id(position_id)
+            if not trade:
+                return "No execution data available"
+            
+            quote_price = trade.get("quote_price")
+            fill_price = trade.get("fill_price")
+            slippage_cents = trade.get("slippage_cents")
+            
+            if quote_price and fill_price:
+                slip_val = float(slippage_cents) if slippage_cents else 0
+                if slip_val > 0:
+                    quality = f"UNFAVORABLE: Quote ${quote_price}, Filled ${fill_price} (+{slip_val:.1f}¢ slippage)"
+                elif slip_val < 0:
+                    quality = f"FAVORABLE: Quote ${quote_price}, Filled ${fill_price} ({slip_val:.1f}¢ improvement)"
+                else:
+                    quality = f"PERFECT: Quote ${quote_price}, Filled ${fill_price} (no slippage)"
+                return quality
+            elif fill_price:
+                return f"Filled at ${fill_price} (quote price not recorded)"
+            else:
+                return "Fill price not yet recorded"
+        except Exception as e:
+            logger.warning(f"Failed to get execution quality: {e}")
+            return "Execution data unavailable"
+    
     def analyze_trade(self, position_id: str) -> Optional[TradeAnalysis]:
         """Analyze a completed trade using AI."""
         
@@ -315,6 +347,9 @@ class TradeAnalysisService:
         else:
             duration = "?"
         
+        # Get execution quality (slippage) from warrior.db
+        execution_quality = self._get_execution_quality(position_id)
+        
         # 3. Build prompt
         system_prompt = WARRIOR_SYSTEM_PROMPT if strategy == "WARRIOR" else NAC_SYSTEM_PROMPT
         user_prompt = ANALYSIS_USER_PROMPT.format(
@@ -327,6 +362,7 @@ class TradeAnalysisService:
             exit_date=summary["exit_date"],
             pnl=summary["pnl"],
             duration=duration,
+            execution_quality=execution_quality,
             market_conditions=market_context,
         )
         
