@@ -939,6 +939,27 @@ async def load_historical_test_case(case_id: str):
     else:
         print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
     
+    # Build visible bars for chart from initial load
+    visible_bars = []
+    current_bar_index = 0
+    time_str = clock.get_time_string() if clock else None
+    if time_str and data.bars:
+        # Get bars up to current simulated time
+        bars_up_to = loader.get_bars_up_to(symbol, time_str, "1min")
+        if bars_up_to:
+            visible_bars = [
+                {
+                    "time": bar.get("time", bar.get("t", "")),
+                    "open": float(bar.get("open", bar.get("o", 0))),
+                    "high": float(bar.get("high", bar.get("h", 0))),
+                    "low": float(bar.get("low", bar.get("l", 0))),
+                    "close": float(bar.get("close", bar.get("c", 0))),
+                    "volume": int(bar.get("volume", bar.get("v", 0))),
+                }
+                for bar in bars_up_to
+            ]
+            current_bar_index = len(visible_bars) - 1
+    
     return {
         "status": "loaded",
         "case_id": case_id,
@@ -948,6 +969,10 @@ async def load_historical_test_case(case_id: str):
         "premarket": data.premarket,
         "clock": clock.to_dict(),
         "added_to_watchlist": added_to_watchlist,
+        # Chart data for immediate rendering
+        "visible_bars": visible_bars,
+        "current_bar_index": current_bar_index,
+        "chart_symbol": symbol,
     }
 
 

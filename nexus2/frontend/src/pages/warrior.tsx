@@ -351,6 +351,12 @@ export default function Warrior() {
                     price: data.premarket?.pmh || 0
                 })
                 setClockState(data.clock)
+                // Set chart data for immediate rendering
+                if (data.visible_bars) {
+                    setVisibleBars(data.visible_bars)
+                    setCurrentBarIndex(data.current_bar_index || 0)
+                    setChartSymbol(data.chart_symbol || data.symbol || '')
+                }
                 addToLog(`📊 Loaded historical replay: ${data.symbol} (${data.bar_count} bars)`)
                 await refetch()
             }
