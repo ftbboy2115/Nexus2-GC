@@ -95,6 +95,16 @@ class TradeEventService:
             if get_warrior_sim_broker() is not None:
                 return {"market_context": "skipped_sim_mode", "market_snapshot_time": now_utc().isoformat()}
             
+            # Skip when FMP is rate limited to prevent blocking async event loop
+            # (FMP uses sync time.sleep() during rate limiting which blocks everything)
+            try:
+                from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                fmp = get_fmp_adapter()
+                if fmp and fmp.rate_limiter.remaining < 50:
+                    return {"market_context": "skipped_rate_limited", "market_snapshot_time": now_utc().isoformat()}
+            except Exception:
+                pass  # If we can't check, proceed anyway
+            
             from nexus2.adapters.market_data.unified import UnifiedMarketData
             
             umd = UnifiedMarketData()
