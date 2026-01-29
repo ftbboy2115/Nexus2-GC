@@ -610,6 +610,12 @@ export default function Warrior() {
                                 visibleBars={visibleBars}
                                 currentBarIndex={currentBarIndex}
                                 chartSymbol={chartSymbol}
+                                simPositions={(simStatus?.positions || []).map((p: any) => ({
+                                    symbol: p.symbol,
+                                    qty: p.qty,
+                                    avg: p.avg_entry || p.avg,
+                                    pnl: p.unrealized_pnl || 0,
+                                }))}
                             />
 
                             {/* 11. Exit Rules Card */}

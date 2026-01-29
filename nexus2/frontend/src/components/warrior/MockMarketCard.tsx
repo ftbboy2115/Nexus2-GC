@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
-import { ChartPanel, BarData, OrderMarker } from './ChartPanel'
+import { ChartPanel, BarData, OrderMarker, SimPosition } from './ChartPanel'
 
 interface TestCase {
     id: string
@@ -62,6 +62,8 @@ interface MockMarketCardProps {
     visibleBars?: BarData[]
     currentBarIndex?: number
     chartSymbol?: string
+    // Sim positions for fullscreen overlay
+    simPositions?: SimPosition[]
 }
 
 const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 60]
@@ -85,6 +87,7 @@ export function MockMarketCard({
     visibleBars = [],
     currentBarIndex = 0,
     chartSymbol = '',
+    simPositions = [],
 }: MockMarketCardProps) {
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
@@ -295,6 +298,15 @@ export function MockMarketCard({
                         currentBarIndex={currentBarIndex}
                         symbol={chartSymbol}
                         orders={orderMarkers}
+                        clockState={clockState}
+                        isPlaying={isPlaying}
+                        onStep={onStep}
+                        onStepBack={onStepBack}
+                        onResetClock={onResetClock}
+                        onSetSpeed={onSetSpeed}
+                        onTogglePlay={() => setIsPlaying(!isPlaying)}
+                        simPositions={simPositions}
+                        currentPrice={loadedTestCase?.price || 0}
                     />
                 )}
 

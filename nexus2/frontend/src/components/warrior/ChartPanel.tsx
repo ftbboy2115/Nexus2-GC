@@ -24,6 +24,19 @@ export interface OrderMarker {
     qty: number
 }
 
+export interface SimPosition {
+    symbol: string
+    qty: number
+    avg: number
+    pnl: number
+}
+
+export interface ClockState {
+    time_string: string
+    is_market_hours: boolean
+    speed: number
+}
+
 type ChartSizeMode = 'small' | 'theater' | 'fullscreen'
 
 interface ChartPanelProps {
@@ -31,6 +44,16 @@ interface ChartPanelProps {
     currentBarIndex: number      // Index of the current bar
     symbol: string
     orders?: OrderMarker[]       // Entry/exit markers to display
+    // Fullscreen overlay props
+    clockState?: ClockState | null
+    isPlaying?: boolean
+    onStep?: (minutes: number) => void
+    onStepBack?: (minutes: number) => void
+    onResetClock?: () => void
+    onSetSpeed?: (speed: number) => void
+    onTogglePlay?: () => void
+    simPositions?: SimPosition[]
+    currentPrice?: number
 }
 
 const SIZE_HEIGHTS: Record<ChartSizeMode, number> = {
@@ -39,11 +62,23 @@ const SIZE_HEIGHTS: Record<ChartSizeMode, number> = {
     fullscreen: 0, // Calculated dynamically
 }
 
+const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 60]
+
 export function ChartPanel({
     bars,
     currentBarIndex,
     symbol,
     orders = [],
+    // Fullscreen overlay props
+    clockState,
+    isPlaying = false,
+    onStep,
+    onStepBack,
+    onResetClock,
+    onSetSpeed,
+    onTogglePlay,
+    simPositions = [],
+    currentPrice = 0,
 }: ChartPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<IChartApi | null>(null)
@@ -55,17 +90,14 @@ export function ChartPanel({
 
     // Calculate actual height based on mode
     const height = sizeMode === 'fullscreen'
-        ? (typeof window !== 'undefined' ? window.innerHeight - 100 : 700)
+        ? (typeof window !== 'undefined' ? window.innerHeight - 180 : 600)
         : SIZE_HEIGHTS[sizeMode]
 
     // Convert time strings to Unix timestamps for lightweight-charts
-    // Using today's date as base since we only have HH:MM format
     const convertToTimestamp = (timeStr: string): Time => {
         const [hours, minutes] = timeStr.split(':').map(Number)
-        // Create a date object for today with the given time
         const date = new Date()
         date.setHours(hours, minutes, 0, 0)
-        // Return as Unix timestamp (seconds)
         return Math.floor(date.getTime() / 1000) as Time
     }
 
@@ -80,7 +112,6 @@ export function ChartPanel({
                     high: bar.high,
                     low: bar.low,
                     close: bar.close,
-                    // Highlight current candle with different color
                     color: isCurrentBar ? '#ffeb3b' : (bar.close >= bar.open ? '#26a69a' : '#ef5350'),
                     borderColor: isCurrentBar ? '#ffc107' : undefined,
                     wickColor: isCurrentBar ? '#ffc107' : undefined,
@@ -109,12 +140,8 @@ export function ChartPanel({
                 vertLines: { color: '#2a2a4a' },
                 horzLines: { color: '#2a2a4a' },
             },
-            crosshair: {
-                mode: 1, // Normal crosshair
-            },
-            rightPriceScale: {
-                borderColor: '#3a3a5a',
-            },
+            crosshair: { mode: 1 },
+            rightPriceScale: { borderColor: '#3a3a5a' },
             timeScale: {
                 borderColor: '#3a3a5a',
                 timeVisible: true,
@@ -122,7 +149,6 @@ export function ChartPanel({
             },
         })
 
-        // Create price series (candlesticks)
         const candleSeries = chart.addCandlestickSeries({
             upColor: '#26a69a',
             downColor: '#ef5350',
@@ -132,32 +158,24 @@ export function ChartPanel({
             wickDownColor: '#ef5350',
         })
 
-        // Create volume series (histogram at bottom)
         const volumeSeries = chart.addHistogramSeries({
             color: '#26a69a',
-            priceFormat: {
-                type: 'volume',
-            },
-            priceScaleId: '', // Overlay on main chart
+            priceFormat: { type: 'volume' },
+            priceScaleId: '',
         })
 
-        // Configure volume to be 20% of chart height at bottom
         volumeSeries.priceScale().applyOptions({
-            scaleMargins: {
-                top: 0.8, // 80% for price chart
-                bottom: 0, // Volume at bottom
-            },
+            scaleMargins: { top: 0.8, bottom: 0 },
         })
 
         chartRef.current = chart
         candleSeriesRef.current = candleSeries
         volumeSeriesRef.current = volumeSeries
 
-        // Handle resize
         const handleResize = () => {
             if (containerRef.current && chartRef.current) {
                 const newHeight = sizeMode === 'fullscreen'
-                    ? window.innerHeight - 100
+                    ? window.innerHeight - 180
                     : SIZE_HEIGHTS[sizeMode]
                 chartRef.current.applyOptions({
                     width: containerRef.current.clientWidth,
@@ -167,7 +185,6 @@ export function ChartPanel({
         }
 
         window.addEventListener('resize', handleResize)
-
         return () => {
             window.removeEventListener('resize', handleResize)
             chart.remove()
@@ -180,24 +197,18 @@ export function ChartPanel({
     // Update data when bars change
     useEffect(() => {
         if (!candleSeriesRef.current || !volumeSeriesRef.current) return
-
         const candles = chartData.map(d => d.candle)
         const volumes = chartData.map(d => d.volume)
-
         candleSeriesRef.current.setData(candles)
         volumeSeriesRef.current.setData(volumes)
-
-        // Auto-scroll to keep current bar visible
         if (chartRef.current && candles.length > 0) {
             chartRef.current.timeScale().scrollToRealTime()
         }
     }, [chartData])
 
-    // Add order markers when orders change
+    // Add order markers
     useEffect(() => {
         if (!candleSeriesRef.current) return
-
-        // Create markers for buy/sell orders
         const markers = orders.map(order => ({
             time: convertToTimestamp(order.time),
             position: order.side === 'buy' ? 'belowBar' as const : 'aboveBar' as const,
@@ -205,7 +216,6 @@ export function ChartPanel({
             shape: order.side === 'buy' ? 'arrowUp' as const : 'arrowDown' as const,
             text: `${order.side.toUpperCase()} ${order.qty}`,
         }))
-
         candleSeriesRef.current.setMarkers(markers)
     }, [orders])
 
@@ -220,8 +230,80 @@ export function ChartPanel({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [sizeMode])
 
+    // Calculate total P&L from positions
+    const totalPnl = simPositions.reduce((sum, p) => sum + p.pnl, 0)
+
     return (
         <div className={`${styles.chartPanel} ${sizeMode === 'fullscreen' ? styles.chartFullscreen : ''}`}>
+            {/* Fullscreen overlay header with controls */}
+            {sizeMode === 'fullscreen' && clockState && (
+                <div className={styles.fsOverlay}>
+                    <div className={styles.fsControlsRow}>
+                        <div className={styles.fsClockDisplay}>
+                            <span className={styles.fsClockTime}>{clockState.time_string}</span>
+                            <span className={styles.fsClockSpeed}>{clockState.speed}x</span>
+                            {isPlaying && <span className={styles.playingIndicator}>▶</span>}
+                        </div>
+
+                        <div className={styles.fsPlaybackButtons}>
+                            <button className={styles.btnPlayback} onClick={() => onStepBack?.(5)} title="-5 min">⏪</button>
+                            <button className={styles.btnPlayback} onClick={() => onStepBack?.(1)} title="-1 min">◀</button>
+                            <button
+                                className={`${styles.btnPlayback} ${isPlaying ? styles.btnPlaybackActive : ''}`}
+                                onClick={onTogglePlay}
+                                title={isPlaying ? 'Pause' : 'Play'}
+                            >
+                                {isPlaying ? '⏸' : '▶'}
+                            </button>
+                            <button className={styles.btnPlayback} onClick={() => onStep?.(1)} title="+1 min">▶</button>
+                            <button className={styles.btnPlayback} onClick={() => onStep?.(5)} title="+5 min">⏩</button>
+                            <button className={styles.btnPlayback} onClick={onResetClock} title="Reset">↻</button>
+                        </div>
+
+                        <div className={styles.fsSpeedSelector}>
+                            {SPEEDS.filter(s => [1, 5, 10, 20, 50].includes(s)).map(speed => (
+                                <button
+                                    key={speed}
+                                    className={`${styles.btnSpeed} ${clockState.speed === speed ? styles.btnSpeedActive : ''}`}
+                                    onClick={() => onSetSpeed?.(speed)}
+                                >
+                                    {speed}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className={styles.fsPositionRow}>
+                        {simPositions.length > 0 ? (
+                            simPositions.map((pos, idx) => (
+                                <div key={idx} className={styles.fsPositionCard}>
+                                    <span className={styles.fsPositionSymbol}>{pos.symbol}</span>
+                                    <span className={styles.fsPositionQty}>{pos.qty} shs</span>
+                                    <span className={styles.fsPositionAvg}>@ ${pos.avg.toFixed(2)}</span>
+                                    <span className={`${styles.fsPositionPnl} ${pos.pnl >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
+                                        {pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}
+                                    </span>
+                                </div>
+                            ))
+                        ) : (
+                            <div className={styles.fsNoPosition}>No open positions</div>
+                        )}
+
+                        <div className={styles.fsTotalPnl}>
+                            <span className={styles.fsTotalLabel}>Total P&L:</span>
+                            <span className={`${styles.fsTotalValue} ${totalPnl >= 0 ? styles.pnlPositive : styles.pnlNegative}`}>
+                                {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
+                            </span>
+                        </div>
+
+                        <div className={styles.fsPrice}>
+                            <span className={styles.fsPriceLabel}>Price:</span>
+                            <span className={styles.fsPriceValue}>${currentPrice.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className={styles.chartHeader}>
                 <span className={styles.chartSymbol}>{symbol}</span>
                 <span className={styles.chartBarCount}>
@@ -252,7 +334,6 @@ export function ChartPanel({
                 </div>
             </div>
             <div ref={containerRef} className={styles.chartContainer} />
-            {/* TradingView attribution */}
             <div className={styles.chartAttribution}>
                 <span className={styles.tvLogo}>TV</span>
             </div>
