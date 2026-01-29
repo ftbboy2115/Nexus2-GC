@@ -259,7 +259,7 @@ export function ChartPanel({
                             >
                                 {isPlaying ? '⏸' : '▶'}
                             </button>
-                            <button className={styles.btnPlayback} onClick={() => onStep?.(1)} title="+1 min">▶</button>
+                            <button className={styles.btnPlayback} onClick={() => onStep?.(1)} title="+1 min">⏵</button>
                             <button className={styles.btnPlayback} onClick={() => onStep?.(5)} title="+5 min">⏩</button>
                             <button className={styles.btnPlayback} onClick={onResetClock} title="Reset">↻</button>
                         </div>

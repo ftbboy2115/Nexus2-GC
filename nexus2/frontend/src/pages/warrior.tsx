@@ -613,8 +613,8 @@ export default function Warrior() {
                                 simPositions={(simStatus?.positions || []).map((p: any) => ({
                                     symbol: p.symbol || '',
                                     qty: p.qty || 0,
-                                    avg: p.avg_entry || p.avg || 0,
-                                    pnl: p.unrealized_pnl || 0,
+                                    avg: p.avg_price || 0,
+                                    pnl: p.unrealized_pnl || p.pnl || 0,
                                 }))}
                             />
 
