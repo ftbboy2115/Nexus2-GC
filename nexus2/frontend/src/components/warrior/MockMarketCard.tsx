@@ -295,7 +295,6 @@ export function MockMarketCard({
                         currentBarIndex={currentBarIndex}
                         symbol={chartSymbol}
                         orders={orderMarkers}
-                        height={350}
                     />
                 )}
 

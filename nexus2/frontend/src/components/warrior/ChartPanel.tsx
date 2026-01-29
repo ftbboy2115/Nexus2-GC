@@ -4,7 +4,7 @@
  * Uses lightweight-charts (TradingView's open-source library) to display
  * historical price data bar-by-bar as the simulation clock advances.
  */
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, Time } from 'lightweight-charts'
 import styles from '@/styles/Warrior.module.css'
 
@@ -24,12 +24,19 @@ export interface OrderMarker {
     qty: number
 }
 
+type ChartSizeMode = 'small' | 'theater' | 'fullscreen'
+
 interface ChartPanelProps {
     bars: BarData[]              // All visible bars up to current time
     currentBarIndex: number      // Index of the current bar
     symbol: string
     orders?: OrderMarker[]       // Entry/exit markers to display
-    height?: number              // Chart height in pixels (default 350)
+}
+
+const SIZE_HEIGHTS: Record<ChartSizeMode, number> = {
+    small: 250,
+    theater: 450,
+    fullscreen: 0, // Calculated dynamically
 }
 
 export function ChartPanel({
@@ -37,12 +44,19 @@ export function ChartPanel({
     currentBarIndex,
     symbol,
     orders = [],
-    height = 350,
 }: ChartPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<IChartApi | null>(null)
     const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
     const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+
+    // Chart size mode: small (default), theater, fullscreen
+    const [sizeMode, setSizeMode] = useState<ChartSizeMode>('small')
+
+    // Calculate actual height based on mode
+    const height = sizeMode === 'fullscreen'
+        ? (typeof window !== 'undefined' ? window.innerHeight - 100 : 700)
+        : SIZE_HEIGHTS[sizeMode]
 
     // Convert time strings to Unix timestamps for lightweight-charts
     // Using today's date as base since we only have HH:MM format
@@ -142,8 +156,12 @@ export function ChartPanel({
         // Handle resize
         const handleResize = () => {
             if (containerRef.current && chartRef.current) {
+                const newHeight = sizeMode === 'fullscreen'
+                    ? window.innerHeight - 100
+                    : SIZE_HEIGHTS[sizeMode]
                 chartRef.current.applyOptions({
                     width: containerRef.current.clientWidth,
+                    height: newHeight,
                 })
             }
         }
@@ -157,7 +175,7 @@ export function ChartPanel({
             candleSeriesRef.current = null
             volumeSeriesRef.current = null
         }
-    }, [height])
+    }, [height, sizeMode])
 
     // Update data when bars change
     useEffect(() => {
@@ -191,15 +209,53 @@ export function ChartPanel({
         candleSeriesRef.current.setMarkers(markers)
     }, [orders])
 
+    // Handle ESC key to exit fullscreen
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && sizeMode === 'fullscreen') {
+                setSizeMode('theater')
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [sizeMode])
+
     return (
-        <div className={styles.chartPanel}>
+        <div className={`${styles.chartPanel} ${sizeMode === 'fullscreen' ? styles.chartFullscreen : ''}`}>
             <div className={styles.chartHeader}>
                 <span className={styles.chartSymbol}>{symbol}</span>
                 <span className={styles.chartBarCount}>
                     {currentBarIndex + 1} / {bars.length} bars
                 </span>
+                <div className={styles.chartSizeButtons}>
+                    <button
+                        className={`${styles.chartSizeBtn} ${sizeMode === 'small' ? styles.active : ''}`}
+                        onClick={() => setSizeMode('small')}
+                        title="Small view"
+                    >
+                        ▫
+                    </button>
+                    <button
+                        className={`${styles.chartSizeBtn} ${sizeMode === 'theater' ? styles.active : ''}`}
+                        onClick={() => setSizeMode('theater')}
+                        title="Theater mode"
+                    >
+                        ▬
+                    </button>
+                    <button
+                        className={`${styles.chartSizeBtn} ${sizeMode === 'fullscreen' ? styles.active : ''}`}
+                        onClick={() => setSizeMode('fullscreen')}
+                        title="Fullscreen (ESC to exit)"
+                    >
+                        ⛶
+                    </button>
+                </div>
             </div>
             <div ref={containerRef} className={styles.chartContainer} />
+            {/* TradingView attribution */}
+            <div className={styles.chartAttribution}>
+                <span className={styles.tvLogo}>TV</span>
+            </div>
         </div>
     )
 }

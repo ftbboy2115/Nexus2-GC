@@ -1286,5 +1286,67 @@
 
 .chartContainer {
     width: 100%;
-    min-height: 350px;
+    min-height: 250px;
+}
+
+/* Chart Size Buttons */
+.chartSizeButtons {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.chartSizeBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #666;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.chartSizeBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #aaa;
+}
+
+.chartSizeBtn.active {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #6366f1;
+}
+
+/* Fullscreen Mode */
+.chartFullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    margin: 0;
+    border-radius: 0;
+    background: #0f0f1a;
+}
+
+.chartFullscreen .chartContainer {
+    min-height: calc(100vh - 100px);
+}
+
+/* TradingView Attribution */
+.chartAttribution {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tvLogo {
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: #2196f3;
+    opacity: 0.6;
 }
