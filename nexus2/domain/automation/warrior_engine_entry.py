@@ -946,7 +946,7 @@ async def enter_position(
     monitor = get_warrior_monitor()
     for pos in monitor.get_positions():
         if pos.symbol == symbol:
-            max_scales = monitor._settings.max_scale_count
+            max_scales = monitor.settings.max_scale_count
             if pos.scale_count >= max_scales:
                 logger.warning(
                     f"[Warrior Entry] {symbol}: BLOCKED - already at max scale #{pos.scale_count} "

@@ -270,6 +270,15 @@ async def _recover_position(
     
     # Use DB values if we recovered an existing trade
     if existing_trade:
+        # CRITICAL: Skip recovery if trade is pending exit (sell order in flight)
+        # This prevents churning: sync re-adding while sell order is pending
+        if existing_trade.get("status") == "pending_exit":
+            logger.info(
+                f"[Warrior Sync] {symbol}: Skipping recovery - sell order pending, "
+                f"waiting for fill"
+            )
+            return None
+        
         # CRITICAL: If the trade is closed in DB but still exists at broker, reopen it
         if existing_trade.get("status") == "closed":
             try:
