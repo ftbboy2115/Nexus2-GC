@@ -95,12 +95,23 @@ export function ChartPanel({
         ? (typeof window !== 'undefined' ? window.innerHeight - 180 : 600)
         : SIZE_HEIGHTS[sizeMode]
 
-    // Convert time strings to Unix timestamps for lightweight-charts
+    // Convert HH:MM time string (in Eastern Time) to Unix timestamp
+    // The bar.time values from simulation are in ET format
+    // Use UTC methods to avoid local timezone interpretation issues
     const convertToTimestamp = (timeStr: string): Time => {
         const [hours, minutes] = timeStr.split(':').map(Number)
-        const date = new Date()
-        date.setHours(hours, minutes, 0, 0)
-        return Math.floor(date.getTime() / 1000) as Time
+        const today = new Date()
+        // Create UTC timestamp using the ET hours directly
+        // This ensures lightweight-charts displays the intended ET time
+        const utcDate = Date.UTC(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            hours,
+            minutes,
+            0
+        )
+        return Math.floor(utcDate / 1000) as Time
     }
 
     // Memoize converted data to avoid recalculation
