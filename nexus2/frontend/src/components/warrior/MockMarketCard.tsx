@@ -237,7 +237,7 @@ export function MockMarketCard({
                             <button
                                 onClick={() => { onResetClock?.(); setIsPlaying(false) }}
                                 className={styles.btnPlayback}
-                                title="Reset to 9:30 AM"
+                                title="Reset Clock"
                             >
                                 ⏮️
                             </button>
