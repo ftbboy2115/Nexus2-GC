@@ -850,24 +850,31 @@ async def enter_position(
     # ENTRY GUARDS
     # =========================================================================
     
-    # TOP PICK ONLY - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
-    # Only enter the highest-scoring candidate, skip the rest
+    # TOP X PICKS - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
+    # Only enter the top X highest-scoring candidates, skip the rest
     # Uses dynamic_score which includes VWAP/EMA trend bonus (trending > fading)
-    if engine.config.top_pick_only:
-        # Get all watched candidates sorted by dynamic score (includes trend bonus)
-        all_watched = list(engine._watchlist.values())
+    # top_x_picks=0 means no limit, top_x_picks=1 is Ross-style single pick
+    if engine.config.top_x_picks > 0:
+        # Get all watched candidates sorted by dynamic score (highest first)
+        all_watched = sorted(
+            engine._watchlist.values(), 
+            key=lambda w: w.dynamic_score, 
+            reverse=True
+        )
         if all_watched:
-            # Find the top scorer using dynamic_score (quality_score + trend bonus)
-            top_pick = max(all_watched, key=lambda w: w.dynamic_score)
-            if watched.candidate.symbol != top_pick.candidate.symbol:
-                # Not the top pick - mark as triggered to prevent log spam
-                top_dynamic = top_pick.dynamic_score
+            # Check if this candidate is in the top X
+            top_x_symbols = {w.candidate.symbol for w in all_watched[:engine.config.top_x_picks]}
+            if watched.candidate.symbol not in top_x_symbols:
+                # Not in top X - mark as triggered to prevent log spam
+                top_pick = all_watched[0]
                 our_dynamic = watched.dynamic_score
-                top_static = getattr(top_pick.candidate, 'quality_score', 0) or 0
                 our_static = getattr(watched.candidate, 'quality_score', 0) or 0
+                top_dynamic = top_pick.dynamic_score
+                top_static = getattr(top_pick.candidate, 'quality_score', 0) or 0
+                our_rank = next((i+1 for i, w in enumerate(all_watched) if w.candidate.symbol == symbol), len(all_watched))
                 logger.info(
-                    f"[Warrior Entry] {symbol}: TOP_PICK_ONLY - blocked "
-                    f"(dynamic={our_dynamic}, static={our_static}) "
+                    f"[Warrior Entry] {symbol}: TOP_{engine.config.top_x_picks}_ONLY - blocked (rank={our_rank}, "
+                    f"dynamic={our_dynamic}, static={our_static}) "
                     f"top pick is {top_pick.candidate.symbol} (dynamic={top_dynamic}, static={top_static})"
                 )
                 watched.entry_triggered = True
