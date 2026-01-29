@@ -1,0 +1,246 @@
+.main {
+    min-height: 100vh;
+    padding: 1rem 2rem;
+    background: #0a0a0a;
+    color: #e0e0e0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #333;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.headerRight {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.navLink {
+    color: #888;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.navLink:hover {
+    color: #4dabf7;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+    background: #333;
+    border-color: #4dabf7;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px 6px 0 0;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    background: #252525;
+    color: #e0e0e0;
+}
+
+.activeTab {
+    background: #252525;
+    border-bottom-color: #252525;
+    color: #4dabf7;
+    font-weight: 500;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+.controlsLeft {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.controlsRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.controlsRight select {
+    padding: 0.4rem 0.6rem;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.85rem;
+}
+
+.clearBtn {
+    padding: 0.3rem 0.6rem;
+    background: #3d1515;
+    border: 1px solid #5c2020;
+    border-radius: 4px;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.clearBtn:hover {
+    background: #4d1c1c;
+}
+
+.pageBtn {
+    padding: 0.4rem 0.75rem;
+    background: #252525;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.pageBtn:hover:not(:disabled) {
+    background: #333;
+}
+
+.pageBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Table */
+.tableContainer {
+    background: #151515;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: auto;
+    max-height: calc(100vh - 280px);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.table thead {
+    position: sticky;
+    top: 0;
+    background: #1a1a1a;
+    z-index: 1;
+}
+
+.table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 500;
+    color: #aaa;
+    border-bottom: 1px solid #333;
+    white-space: nowrap;
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortable:hover {
+    color: #4dabf7;
+}
+
+.sortIndicator {
+    color: #4dabf7;
+    font-size: 0.7rem;
+}
+
+.table td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid #252525;
+    color: #e0e0e0;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+.clickable:hover {
+    background: #1f1f1f;
+    color: #4dabf7;
+}
+
+.table tbody tr:hover {
+    background: #1a1a1a;
+}
+
+/* States */
+.loading,
+.empty {
+    padding: 3rem;
+    text-align: center;
+    color: #888;
+}
+
+.positive {
+    color: #51cf66;
+}
+
+.negative {
+    color: #ff6b6b;
+}

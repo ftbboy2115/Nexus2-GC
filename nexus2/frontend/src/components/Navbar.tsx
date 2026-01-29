@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
 const secondaryItems: NavItem[] = [
     { label: 'Orders', href: '/orders' },
     { label: 'Closed', href: '/closed' },
+    { label: 'Data', href: '/data-explorer' },
     { label: 'Docs', href: '/docs' },
 ];
 
