@@ -402,11 +402,16 @@ class TradeEventService:
         exit_mode: str = None,  # home_run or base_hit
     ) -> Optional[int]:
         """Log Warrior position entry with optional slippage tracking."""
+        # Check if this is a Mock Market (simulation) trade
+        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+        is_mock_market = get_warrior_sim_broker() is not None
+        
         metadata = {
             "entry_price": str(entry_price),
             "stop_price": str(stop_price),
             "shares": shares,
             "trigger_type": trigger_type,
+            "is_mock_market": is_mock_market,
         }
         
         # Include exit_mode for Entry Type column display
@@ -513,6 +518,8 @@ class TradeEventService:
         shares_added: int,
     ) -> Optional[int]:
         """Log Warrior scale-in (add on strength)."""
+        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+        
         # TML: Write to persistent file log
         self._log_to_file(
             strategy="WARRIOR",
@@ -531,6 +538,7 @@ class TradeEventService:
             metadata={
                 "add_price": str(add_price),
                 "shares_added": shares_added,
+                "is_mock_market": get_warrior_sim_broker() is not None,
             },
         )
     
@@ -555,10 +563,15 @@ class TradeEventService:
         }
         event_type = event_type_map.get(exit_reason, self.WARRIOR_FULL_EXIT)
         
+        # Check if this is a Mock Market (simulation) trade
+        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+        is_mock_market = get_warrior_sim_broker() is not None
+        
         metadata = {
             "exit_price": str(exit_price),
             "exit_reason": exit_reason,
             "pnl": str(pnl),
+            "is_mock_market": is_mock_market,
         }
         # Add market context
         metadata.update(self._get_market_context())
@@ -590,11 +603,13 @@ class TradeEventService:
         pnl: float,
     ) -> Optional[int]:
         """Log Warrior trade auto-closed by broker sync (orphan recovery)."""
+        # Broker sync happens in live mode, not mock market
         metadata = {
             "exit_price": str(exit_price),
             "exit_reason": "broker_sync",
             "pnl": str(pnl),
             "sync_type": "orphan_recovery",
+            "is_mock_market": False,  # Broker sync only happens in live mode
         }
         metadata.update(self._get_market_context())
         
