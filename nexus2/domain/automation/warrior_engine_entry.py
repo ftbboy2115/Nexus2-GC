@@ -1321,7 +1321,7 @@ async def enter_position(
                 broker_order_id = order_result.get("id") or order_result.get("broker_order_id")
             
             # Poll for fill (up to 2.5 seconds) - most fills happen in <1s
-            logger.debug(
+            logger.info(
                 f"[Warrior Entry] {symbol}: Poll setup - broker_order_id={broker_order_id}, "
                 f"has_get_order_status={engine._get_order_status is not None}"
             )
