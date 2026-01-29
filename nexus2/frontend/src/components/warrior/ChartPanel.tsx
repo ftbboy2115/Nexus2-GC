@@ -112,6 +112,7 @@ export function ChartPanel({
                     high: bar.high,
                     low: bar.low,
                     close: bar.close,
+                    // Highlight current candle with different color
                     color: isCurrentBar ? '#ffeb3b' : (bar.close >= bar.open ? '#26a69a' : '#ef5350'),
                     borderColor: isCurrentBar ? '#ffc107' : undefined,
                     wickColor: isCurrentBar ? '#ffc107' : undefined,
@@ -149,6 +150,7 @@ export function ChartPanel({
             },
         })
 
+        // Create price series (candlesticks)
         const candleSeries = chart.addCandlestickSeries({
             upColor: '#26a69a',
             downColor: '#ef5350',
@@ -158,12 +160,14 @@ export function ChartPanel({
             wickDownColor: '#ef5350',
         })
 
+        // Create volume series (histogram at bottom)
         const volumeSeries = chart.addHistogramSeries({
             color: '#26a69a',
             priceFormat: { type: 'volume' },
             priceScaleId: '',
         })
 
+        // Configure volume to be 20% of chart height at bottom
         volumeSeries.priceScale().applyOptions({
             scaleMargins: { top: 0.8, bottom: 0 },
         })
