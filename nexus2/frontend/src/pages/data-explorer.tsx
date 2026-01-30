@@ -157,7 +157,7 @@ export default function DataExplorer() {
         setOffset(0)
     }
 
-    // Time window filter - sets dateFrom to N hours/days ago
+    // Time window filter - sets dateFrom/dateTo AND timeFrom/timeTo
     const handleTimeWindow = (window: string) => {
         setTimeWindow(window)
         if (!window) {
@@ -185,8 +185,17 @@ export default function DataExplorer() {
             default:
                 return
         }
+        // Set both date and time for precise filtering
         setDateFrom(fromDate.toISOString().split('T')[0])
         setDateTo(now.toISOString().split('T')[0])
+        // Extract time in HH:MM format (pad with zeros)
+        const formatTime = (d: Date) => {
+            const h = String(d.getHours()).padStart(2, '0')
+            const m = String(d.getMinutes()).padStart(2, '0')
+            return `${h}:${m}`
+        }
+        setTimeFrom(formatTime(fromDate))
+        setTimeTo(formatTime(now))
         setOffset(0)
     }
 
