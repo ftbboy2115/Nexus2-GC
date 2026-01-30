@@ -10,6 +10,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID, uuid4
+from nexus2.utils.time_utils import now_utc_factory
 
 
 class OrderStatus(Enum):
@@ -85,7 +86,7 @@ class Order:
     parent_order_id: Optional[UUID] = None
     
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_utc_factory)
     submitted_at: Optional[datetime] = None
     filled_at: Optional[datetime] = None
     cancelled_at: Optional[datetime] = None

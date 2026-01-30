@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID, uuid4
+from nexus2.utils.time_utils import now_utc_factory
 
 
 # =============================================================================
@@ -112,7 +113,7 @@ class EPCandidate:
     
     # Status
     status: EPCandidateStatus = EPCandidateStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_utc_factory)
     
     @property
     def tactical_stop(self) -> Optional[Decimal]:
@@ -154,7 +155,7 @@ class EPSetup:
     invalidation_reason: Optional[str] = None
     
     # Timing
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_utc_factory)
     expires_at: Optional[datetime] = None  # EOD by default
     
     @classmethod
@@ -260,4 +261,4 @@ class EntrySignal:
     stop_price: Decimal
     shares: int
     risk_dollars: Decimal
-    signal_time: datetime = field(default_factory=datetime.now)
+    signal_time: datetime = field(default_factory=now_utc_factory)

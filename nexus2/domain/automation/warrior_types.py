@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from nexus2.utils.time_utils import now_utc_factory
 
 
 # =============================================================================
@@ -44,7 +45,7 @@ class WarriorExitSignal:
     shares_to_exit: int
     pnl_estimate: Decimal
     stop_price: Decimal = Decimal("0")
-    generated_at: datetime = field(default_factory=datetime.utcnow)
+    generated_at: datetime = field(default_factory=now_utc_factory)
     
     # Analytics
     r_multiple: float = 0.0

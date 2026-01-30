@@ -26,6 +26,9 @@ def test_no_direct_datetime_now():
     patterns = [
         r'datetime\.now\(\s*\)',  # datetime.now() with no args
         r'datetime\.utcnow\(\)',
+        # default_factory patterns (function references without parentheses)
+        r'default_factory\s*=\s*datetime\.now\b(?!\()',  # default_factory=datetime.now
+        r'default_factory\s*=\s*datetime\.utcnow\b(?!\()',  # default_factory=datetime.utcnow
     ]
     
     # Files/dirs to skip

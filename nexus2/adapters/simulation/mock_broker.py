@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 from uuid import uuid4
 import logging
-from nexus2.utils.time_utils import now_utc
+from nexus2.utils.time_utils import now_utc, now_utc_factory
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class MockOrder:
     stop_price: Optional[float] = None
     avg_fill_price: Optional[float] = None
     filled_qty: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_utc_factory)
     filled_at: Optional[datetime] = None
     
     # For bracket orders

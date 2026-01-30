@@ -16,6 +16,7 @@ from typing import List, Optional
 from enum import Enum
 
 from nexus2.adapters.market_data import UnifiedMarketData
+from nexus2.utils.time_utils import now_utc_factory
 
 
 # =============================================================================
@@ -82,7 +83,7 @@ class HTFCandidate:
     
     # Metadata
     sector: str = "Unknown"
-    detected_at: datetime = field(default_factory=datetime.now)
+    detected_at: datetime = field(default_factory=now_utc_factory)
     
     @property
     def risk_reward_ratio(self) -> Optional[Decimal]:
@@ -102,7 +103,7 @@ class HTFScanResult:
     """Result from HTF scan."""
     candidates: List[HTFCandidate]
     processed_count: int
-    scan_time: datetime = field(default_factory=datetime.now)
+    scan_time: datetime = field(default_factory=now_utc_factory)
 
 
 # =============================================================================

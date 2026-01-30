@@ -89,18 +89,29 @@ def migrate_file(filepath: Path, dry_run: bool = True) -> dict:
         return {"error": str(e)}
     
     original = content
-    stats = {"utcnow_replaced": 0, "now_replaced": 0, "import_added": False}
+    stats = {
+        "utcnow_replaced": 0, 
+        "now_replaced": 0, 
+        "factory_replaced": 0,
+        "import_added": False
+    }
     
     # Check what needs to be done
     has_utcnow = 'datetime.utcnow()' in content
     has_now = bool(re.search(r'datetime\.now\(\s*\)', content))
     
-    if not has_utcnow and not has_now:
+    # NEW: Check for default_factory patterns (function references without parentheses)
+    has_factory_now = bool(re.search(r'default_factory\s*=\s*datetime\.now\b(?!\()', content))
+    has_factory_utcnow = bool(re.search(r'default_factory\s*=\s*datetime\.utcnow\b(?!\()', content))
+    has_any_factory = has_factory_now or has_factory_utcnow
+    
+    if not has_utcnow and not has_now and not has_any_factory:
         return {"skipped": "no violations"}
     
     # Determine which imports to add
     needs_now_utc = has_utcnow
     needs_now_et = has_now
+    needs_factory = has_any_factory
     
     # Build import line
     imports = []
@@ -108,6 +119,8 @@ def migrate_file(filepath: Path, dry_run: bool = True) -> dict:
         imports.append("now_utc")
     if needs_now_et:
         imports.append("now_et")
+    if needs_factory:
+        imports.append("now_utc_factory")
     
     import_line = f"from nexus2.utils.time_utils import {', '.join(imports)}"
     
@@ -145,6 +158,26 @@ def migrate_file(filepath: Path, dry_run: bool = True) -> dict:
         content = new_content
         stats["now_replaced"] = count
     
+    # NEW: Replace default_factory=datetime.now with default_factory=now_utc_factory
+    if has_factory_now:
+        new_content, count = re.subn(
+            r'default_factory\s*=\s*datetime\.now\b(?!\()', 
+            'default_factory=now_utc_factory', 
+            content
+        )
+        content = new_content
+        stats["factory_replaced"] += count
+    
+    # NEW: Replace default_factory=datetime.utcnow with default_factory=now_utc_factory
+    if has_factory_utcnow:
+        new_content, count = re.subn(
+            r'default_factory\s*=\s*datetime\.utcnow\b(?!\()', 
+            'default_factory=now_utc_factory', 
+            content
+        )
+        content = new_content
+        stats["factory_replaced"] += count
+    
     # Skip if no actual changes
     if content == original:
         return {"skipped": "no changes needed"}
@@ -155,10 +188,11 @@ def migrate_file(filepath: Path, dry_run: bool = True) -> dict:
         print(f"FILE: {filepath}")
         print(f"  - UTC replacements: {stats['utcnow_replaced']}")
         print(f"  - ET replacements: {stats['now_replaced']}")
+        print(f"  - Factory replacements: {stats['factory_replaced']}")
         print(f"  - Import added: {stats['import_added']}")
     else:
         filepath.write_text(content, encoding='utf-8')
-        print(f"UPDATED: {filepath.name} ({stats['utcnow_replaced']} utcnow, {stats['now_replaced']} now)")
+        print(f"UPDATED: {filepath.name} ({stats['utcnow_replaced']} utcnow, {stats['now_replaced']} now, {stats['factory_replaced']} factory)")
     
     return stats
 
@@ -181,6 +215,7 @@ def main():
     
     total_utcnow = 0
     total_now = 0
+    total_factory = 0
     files_modified = 0
     
     for py_file in nexus2_path.rglob('*.py'):
@@ -194,6 +229,7 @@ def main():
         elif 'skipped' not in stats:
             total_utcnow += stats.get('utcnow_replaced', 0)
             total_now += stats.get('now_replaced', 0)
+            total_factory += stats.get('factory_replaced', 0)
             files_modified += 1
     
     print(f"\n{'='*60}")
@@ -201,6 +237,7 @@ def main():
     print(f"  Files {'to be ' if dry_run else ''}modified: {files_modified}")
     print(f"  datetime.utcnow() replacements: {total_utcnow}")
     print(f"  datetime.now() replacements: {total_now}")
+    print(f"  default_factory replacements: {total_factory}")
     
     if dry_run:
         print("\nRun with --apply to make these changes.")

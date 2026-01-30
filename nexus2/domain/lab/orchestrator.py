@@ -28,7 +28,7 @@ from .lab_logger import configure_lab_logging
 from nexus2.db.warrior_db import get_recent_closed_trades
 import yaml
 from enum import Enum
-from nexus2.utils.time_utils import now_utc
+from nexus2.utils.time_utils import now_utc, now_utc_factory
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class ExperimentResult(BaseModel):
     """Result of a full experiment run."""
     
     experiment_id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=now_utc_factory)
     completed_at: Optional[datetime] = None
     
     # Config

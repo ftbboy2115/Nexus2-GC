@@ -12,6 +12,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
+from nexus2.utils.time_utils import now_utc_factory
 
 
 class StrategyStatus(str, Enum):
@@ -124,8 +125,8 @@ class StrategySpec(BaseModel):
     
     # Metadata
     author: str = Field(default="Nexus Lab", description="Strategy author")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc_factory)
+    updated_at: datetime = Field(default_factory=now_utc_factory)
     status: StrategyStatus = Field(default=StrategyStatus.DRAFT)
     
     # Based on (for experiments derived from existing strategies)

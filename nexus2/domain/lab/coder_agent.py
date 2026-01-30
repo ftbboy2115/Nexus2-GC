@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
-from nexus2.utils.time_utils import now_utc
+from nexus2.utils.time_utils import now_utc, now_utc_factory
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class GeneratedCode(BaseModel):
     validation_errors: list[str] = Field(default_factory=list)
     
     # Metadata
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=now_utc_factory)
     hypothesis_summary: str = Field(default="")
 
 

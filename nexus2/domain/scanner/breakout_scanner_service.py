@@ -11,7 +11,7 @@ from typing import List, Optional
 from enum import Enum
 
 from nexus2.adapters.market_data import UnifiedMarketData
-from nexus2.utils.time_utils import now_et
+from nexus2.utils.time_utils import now_et, now_utc_factory
 
 
 class BreakoutStatus(Enum):
@@ -72,7 +72,7 @@ class BreakoutCandidate:
     stop_price: Optional[Decimal] = None   # Consolidation low
     
     # Metadata
-    detected_at: datetime = field(default_factory=datetime.now)
+    detected_at: datetime = field(default_factory=now_utc_factory)
 
 
 @dataclass

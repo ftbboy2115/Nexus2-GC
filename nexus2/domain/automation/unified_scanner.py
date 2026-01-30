@@ -27,6 +27,7 @@ from nexus2.domain.scanner.htf_scanner_service import (
     HTFStatus,
     get_htf_scanner_service,
 )
+from nexus2.utils.time_utils import now_utc_factory
 
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ class UnifiedScanResult:
     # Stats
     total_processed: int = 0
     scan_duration_ms: int = 0
-    scanned_at: datetime = field(default_factory=datetime.utcnow)
+    scanned_at: datetime = field(default_factory=now_utc_factory)
     
     # Diagnostics for visibility
     diagnostics: List[ScanDiagnostics] = field(default_factory=list)

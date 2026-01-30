@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID
+from nexus2.utils.time_utils import now_utc_factory
 
 
 # =============================================================================
@@ -126,7 +127,7 @@ class OpenHeat:
     total_heat_pct: Decimal  # % of account
     positions: List[PositionRisk]
     status: HeatStatus
-    updated_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=now_utc_factory)
     
     @classmethod
     def calculate_status(cls, heat_pct: Decimal) -> HeatStatus:

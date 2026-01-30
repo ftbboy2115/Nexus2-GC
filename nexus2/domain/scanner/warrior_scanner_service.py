@@ -31,7 +31,7 @@ from nexus2.domain.automation.ai_catalyst_validator import (
     get_multi_validator,
     get_headline_cache,
 )
-from nexus2.utils.time_utils import now_et
+from nexus2.utils.time_utils import now_et, now_utc_factory
 
 
 # =============================================================================
@@ -285,7 +285,7 @@ class WarriorCandidate:
     atr: Decimal = Decimal("1.0")
     
     # Metadata
-    scanned_at: datetime = field(default_factory=datetime.now)
+    scanned_at: datetime = field(default_factory=now_utc_factory)
     
     @property
     def quality_score(self) -> int:

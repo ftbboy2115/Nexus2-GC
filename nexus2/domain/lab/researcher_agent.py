@@ -10,6 +10,7 @@ import json
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
+from nexus2.utils.time_utils import now_utc_factory
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class Hypothesis(BaseModel):
     category: str = Field(default="unknown", description="Change category for diversity tracking")
     
     # Metadata
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=now_utc_factory)
     source: str = Field(default="researcher_agent", description="Origin of hypothesis")
 
 

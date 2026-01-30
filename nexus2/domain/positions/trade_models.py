@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID, uuid4
+from nexus2.utils.time_utils import now_utc_factory
 
 
 class TradeStatus(Enum):
@@ -125,8 +126,8 @@ class ManagedTrade:
     realized_pnl: Decimal = Decimal("0")
     
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_utc_factory)
+    updated_at: datetime = field(default_factory=now_utc_factory)
     
     def __post_init__(self):
         if self.remaining_shares == 0:

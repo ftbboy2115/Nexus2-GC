@@ -56,6 +56,33 @@ def now_utc() -> datetime:
     return datetime.now(UTC)
 
 
+def now_utc_factory() -> datetime:
+    """
+    Factory function for dataclass default_factory.
+    
+    Use this in dataclasses INSTEAD of datetime.now or datetime.utcnow:
+    
+        # WRONG:
+        created_at: datetime = field(default_factory=datetime.now)
+        
+        # CORRECT:
+        created_at: datetime = field(default_factory=now_utc_factory)
+    
+    Returns timezone-aware UTC datetime.
+    """
+    return datetime.now(UTC)
+
+
+def now_et_factory() -> datetime:
+    """
+    Factory function for dataclass default_factory (Eastern Time).
+    
+    Use this when you specifically need ET timestamps in dataclasses.
+    Most dataclasses should use now_utc_factory() instead.
+    """
+    return datetime.now(EASTERN)
+
+
 def format_et(dt: Optional[datetime] = None, include_date: bool = True) -> str:
     """
     Format datetime as Eastern Time string.

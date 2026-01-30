@@ -11,7 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID
-from nexus2.utils.time_utils import now_et
+from nexus2.utils.time_utils import now_et, now_utc_factory
 
 
 # =============================================================================
@@ -118,7 +118,7 @@ class StockMetrics:
     
     # Calculated
     quality_score: int  # 0-10
-    updated_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=now_utc_factory)
 
 
 @dataclass
@@ -135,7 +135,7 @@ class ScannerResult:
     quality_score: int
     tier_recommendation: WatchlistTier
     patterns_detected: List[PatternType]
-    scanned_at: datetime = field(default_factory=datetime.now)
+    scanned_at: datetime = field(default_factory=now_utc_factory)
     
     @property
     def quality_rating(self) -> QualityRating:
@@ -172,8 +172,8 @@ class Watchlist:
     tier: WatchlistTier
     name: str
     stocks: List[WatchlistEntry]
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_utc_factory)
+    updated_at: datetime = field(default_factory=now_utc_factory)
     
     def __len__(self) -> int:
         return len(self.stocks)

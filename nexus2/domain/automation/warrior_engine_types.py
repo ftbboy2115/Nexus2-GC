@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 # Import for type reference
 from nexus2.domain.scanner.warrior_scanner_service import WarriorCandidate
+from nexus2.utils.time_utils import now_utc_factory
 
 
 # =============================================================================
@@ -157,7 +158,7 @@ class WatchedCandidate:
     entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
     last_below_vwap: bool = False  # True if price was below VWAP (for VWAP break detection)
-    added_at: datetime = field(default_factory=datetime.utcnow)
+    added_at: datetime = field(default_factory=now_utc_factory)
     
     # Level tracking for DIP_FOR_LEVEL pattern (Phase 2 expansion)
     recent_high: Optional[Decimal] = None  # Intraday high for pullback detection
