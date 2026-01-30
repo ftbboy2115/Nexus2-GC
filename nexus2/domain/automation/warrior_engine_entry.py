@@ -102,6 +102,50 @@ def check_falling_knife(
     return False, ""
 
 
+def check_high_volume_red_candle(candles: list, volume_multiplier: float = 1.5) -> tuple[bool, int, float]:
+    """
+    Check if current bar is a high-volume red candle (distribution signal).
+    
+    Ross Cameron (Jul 2024 Volume Tutorial): "this highest volume candle being 
+    red that is a red flag literally" - indicates selling pressure/distribution.
+    
+    Args:
+        candles: List of candle objects with .open, .close, .volume attributes
+        volume_multiplier: How much above average to be "high volume" (default 1.5x)
+    
+    Returns:
+        (is_red_flag, current_volume, avg_volume)
+    """
+    if not candles or len(candles) < 5:
+        return False, 0, 0.0
+    
+    current = candles[-1]
+    
+    # Check if candle is red (close < open)
+    has_open = hasattr(current, 'open') and current.open is not None
+    has_close = hasattr(current, 'close') and current.close is not None
+    
+    if not has_open or not has_close:
+        return False, 0, 0.0
+    
+    is_red = float(current.close) < float(current.open)
+    
+    if not is_red:
+        return False, 0, 0.0  # Green candle, no red flag
+    
+    # Check if volume is significantly above average
+    current_vol = current.volume if hasattr(current, 'volume') else 0
+    lookback = min(10, len(candles) - 1)
+    avg_vol = sum(c.volume for c in candles[-lookback-1:-1]) / lookback if lookback > 0 else 0
+    
+    is_high_volume = current_vol >= avg_vol * volume_multiplier
+    
+    if is_red and is_high_volume:
+        return True, current_vol, avg_vol
+    
+    return False, current_vol, avg_vol
+
+
 # =============================================================================
 # ENTRY TRIGGER DETECTION
 # =============================================================================
@@ -547,6 +591,17 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                     f"bar vol {curr_vol:,} < avg {avg_vol:,.0f}"
                                 )
                                 # Don't reset last_below_vwap - wait for volume on next bar
+                                continue
+                            
+                            # HIGH VOLUME RED CANDLE FILTER: Block on distribution bars
+                            # Ross Cameron: "high volume red candle is a red flag literally"
+                            is_red_flag, red_vol, red_avg = check_high_volume_red_candle(candles)
+                            if is_red_flag:
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: VWAP BREAK blocked (HIGH VOL RED) - "
+                                    f"red bar vol {red_vol:,} >= 1.5x avg {red_avg:,.0f}"
+                                )
+                                watched.last_below_vwap = False
                                 continue
                             
                             logger.info(
