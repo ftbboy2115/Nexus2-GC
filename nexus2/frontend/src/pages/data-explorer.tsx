@@ -82,6 +82,18 @@ export default function DataExplorer() {
         'quote-audits': '/api/data/quote-audits',
     }
 
+    // Preferred column order per tab - ensures stable column positions
+    const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {
+        'warrior-scans': ['timestamp', 'source', 'symbol', 'result', 'gap_pct', 'score', 'rvol', 'float', 'catalyst', 'reason'],
+        'nac-scans': ['timestamp', 'symbol', 'result', 'gap_pct', 'rvol', 'volume', 'catalyst', 'reason'],
+        'catalyst-audits': ['timestamp', 'symbol', 'result', 'match_type', 'headline_num', 'confidence', 'headline', 'source', 'reason'],
+        'ai-comparisons': ['timestamp', 'symbol', 'flash_valid', 'pro_valid', 'tiebreaker_used', 'regex_conf', 'flash_ms', 'reason'],
+        'trade-events': ['created_at', 'strategy', 'symbol', 'event_type', 'shares', 'metadata'],
+        'warrior-trades': ['entry_time', 'symbol', 'status', 'entry_price', 'exit_price', 'stop_price', 'target_price', 'quantity', 'realized_pnl', 'exit_reason', 'trigger_type', 'stop_method', 'is_sim'],
+        'nac-trades': ['entry_time', 'symbol', 'status', 'entry_price', 'exit_price', 'stop_price', 'quantity', 'realized_pnl', 'exit_reason'],
+        'quote-audits': ['timestamp', 'symbol', 'selected_source', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price', 'divergence_pct'],
+    }
+
     const fetchData = useCallback(async () => {
         setLoading(true)
         try {
@@ -293,9 +305,21 @@ export default function DataExplorer() {
     }
 
     // Derive columns from ALL rows (not just first) to avoid missing columns
-    const allColumns = data.length > 0
+    // Then sort by preferred order for this tab - unknown columns go at the end
+    const rawColumns = data.length > 0
         ? Array.from(new Set(data.flatMap(row => Object.keys(row))))
         : []
+    const preferredOrder = PREFERRED_COLUMN_ORDER[activeTab] || []
+    const allColumns = rawColumns.sort((a, b) => {
+        const aIdx = preferredOrder.indexOf(a)
+        const bIdx = preferredOrder.indexOf(b)
+        // Known columns come before unknown
+        if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx
+        if (aIdx >= 0) return -1
+        if (bIdx >= 0) return 1
+        // Both unknown: sort alphabetically
+        return a.localeCompare(b)
+    })
     const columns = allColumns.filter(c => !hiddenColumns.has(c))
     const pageCount = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
