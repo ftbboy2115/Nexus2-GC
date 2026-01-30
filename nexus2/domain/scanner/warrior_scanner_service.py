@@ -176,6 +176,56 @@ DILUTION_KEYWORDS = [
     "atm offering",
 ]
 
+# =============================================================================
+# NON-EQUITY TICKER FILTER
+# =============================================================================
+# Suffixes that indicate non-tradeable or non-equity securities
+# Warrants, units, rights, and some private class shares don't trade intraday
+
+NON_EQUITY_SUFFIXES = {
+    "W",    # Warrants (e.g., GIWWR)
+    "WS",   # Warrants
+    "U",    # Units (e.g., MBAVU)
+    "R",    # Rights (e.g., ALISR, APACR)
+}
+
+# Known non-intraday tickers (private funds, closed-end funds, etc.)
+NON_INTRADAY_TICKERS = {
+    "XSPIX",  # StepStone Private Venture Fund - only D/W/M intervals
+}
+
+
+def is_tradeable_equity(symbol: str) -> bool:
+    """
+    Check if ticker is a tradeable common stock.
+    
+    Filters out:
+    - Warrants (end in W, WS)
+    - Units (end in U)
+    - Rights (end in R)
+    - Known non-intraday tickers (private funds)
+    
+    Returns True if likely tradeable, False if should be skipped.
+    """
+    if not symbol:
+        return False
+    
+    # Check known non-intraday tickers
+    if symbol in NON_INTRADAY_TICKERS:
+        return False
+    
+    # Check suffix patterns (only if symbol is long enough)
+    # Short symbols like "W" or "R" are valid tickers
+    for suffix in NON_EQUITY_SUFFIXES:
+        # Only match if there's a base ticker before the suffix
+        # and the suffix is at the end
+        if len(symbol) > len(suffix) + 2 and symbol.endswith(suffix):
+            # Additional check: the character before suffix should be a letter
+            # This prevents matching things like "TSLAW" where "W" is part of name
+            return False
+    
+    return True
+
 
 # =============================================================================
 # RESULT MODELS
@@ -483,6 +533,13 @@ class WarriorScannerService:
         # Exclude ETFs
         etf_set = self.market_data.fmp.get_etf_symbols()
         filtered_movers = [g for g in filtered_movers if g["symbol"] not in etf_set]
+        
+        # Exclude non-equity tickers (warrants, units, rights, private funds)
+        pre_filter_count = len(filtered_movers)
+        filtered_movers = [g for g in filtered_movers if is_tradeable_equity(g["symbol"])]
+        non_equity_removed = pre_filter_count - len(filtered_movers)
+        if non_equity_removed > 0:
+            scan_logger.debug(f"Excluded {non_equity_removed} non-equity tickers (warrants/units/rights/funds)")
         
         # Exclude Chinese stocks (Ross's rule)
         if self.settings.exclude_chinese_stocks:
