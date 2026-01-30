@@ -329,6 +329,137 @@ async def get_warrior_scan_history(
 
 
 # =============================================================================
+# CATALYST AUDITS ENDPOINT (parses catalyst_audit.log)
+# =============================================================================
+
+@router.get("/catalyst-audits")
+async def get_catalyst_audits(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
+    match_type: Optional[str] = Query(None, description="Filter by match type"),
+    sort_by: str = Query("timestamp", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated catalyst audit entries with filtering and sorting.
+    
+    Parses catalyst_audit.log to show headline evaluations for debugging.
+    
+    Returns:
+        entries: List of catalyst audit entries (symbol, result, headline, match_type, confidence)
+        total: Total count for pagination
+        limit: Records per page
+        offset: Current offset
+    """
+    from pathlib import Path
+    import re
+    
+    # Find log directory
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
+    
+    if not log_dir.exists():
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Read all rotated log files
+    all_lines = []
+    base_log = log_dir / "catalyst_audit.log"
+    
+    if base_log.exists():
+        try:
+            with open(base_log, "r", encoding="utf-8") as f:
+                all_lines.extend(f.readlines())
+        except Exception:
+            pass
+    
+    # Read rotated logs
+    for i in range(1, 8):
+        rotated_log = log_dir / f"catalyst_audit.log.{i}"
+        if rotated_log.exists():
+            try:
+                with open(rotated_log, "r", encoding="utf-8") as f:
+                    all_lines.extend(f.readlines())
+            except Exception:
+                pass
+    
+    if not all_lines:
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Patterns for parsing
+    # Header: 2026-01-30 13:41:00 | === CATX | Result: FAIL | Type: none ===
+    header_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ===")
+    # Headline: 2026-01-30 13:41:00 |   [1] ✗ no_match (conf=0.00): headline text
+    headline_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)")
+    
+    all_entries = []
+    current_header = None
+    
+    for line in all_lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check for header line
+        match = header_pattern.match(line)
+        if match:
+            current_header = {
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": match.group(3),
+                "catalyst_type": match.group(4),
+            }
+            continue
+        
+        # Check for headline line
+        match = headline_pattern.match(line)
+        if match and current_header:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "symbol": current_header["symbol"],
+                "result": current_header["result"],
+                "headline_num": int(match.group(2)),
+                "passed": match.group(3) == "✓",
+                "match_type": match.group(4),
+                "confidence": float(match.group(5)),
+                "headline": match.group(6),
+            })
+    
+    # Apply filters
+    if date_from:
+        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
+    if date_to:
+        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
+    if symbol:
+        all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
+    if result:
+        all_entries = [e for e in all_entries if e["result"] == result.upper()]
+    if match_type:
+        all_entries = [e for e in all_entries if e["match_type"] == match_type]
+    
+    # Calculate total before pagination
+    total = len(all_entries)
+    
+    # Apply sorting
+    reverse = sort_dir.lower() == "desc"
+    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
+    
+    # Apply pagination
+    entries = all_entries[offset:offset + limit]
+    
+    return {
+        "entries": entries,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# =============================================================================
 # TRADE EVENTS ENDPOINT (with sorting/filtering)
 # =============================================================================
 
