@@ -347,12 +347,14 @@ class PolygonAdapter:
             from_date: Start date (YYYY-MM-DD)
             to_date: End date (YYYY-MM-DD)
         """
-        # Default date range: last 90 days
+        # Default date range: calculate from limit (trading days ~= calendar days / 1.4)
         if not to_date:
             to_date = now_et().strftime("%Y-%m-%d")
         if not from_date:
             from datetime import timedelta
-            from_dt = now_et() - timedelta(days=90)
+            # Need ~1.6 calendar days per trading day to account for weekends/holidays
+            calendar_days_needed = int(limit * 1.6) + 30  # Extra buffer for holidays
+            from_dt = now_et() - timedelta(days=calendar_days_needed)
             from_date = from_dt.strftime("%Y-%m-%d")
         
         data = self._get(
