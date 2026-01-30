@@ -1,3 +1,14 @@
+/**
+ * Global Loading Bar
+ * 
+ * YouTube-style thin progress bar at the top of the page.
+ * Shows after 2 second delay when API requests are pending.
+ * 
+ * Usage:
+ * - App wraps with <LoadingProvider>
+ * - Components use useLoading() hook to call startLoading()/stopLoading()
+ * - Bar appears automatically after 2s delay if requests are still pending
+ */
 import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 
 interface LoadingContextType {

@@ -1,3 +1,11 @@
+/**
+ * Next.js App Component
+ * 
+ * Root component that wraps all pages with:
+ * - LoadingProvider: Global loading bar context
+ * - Navbar: Site navigation
+ * - Head: Viewport meta tags
+ */
 import type { AppProps } from 'next/app'
 import Head from 'next/head'
 import '@/styles/globals.css'
