@@ -230,7 +230,12 @@ async def get_warrior_scan_history(
     
     # Patterns for parsing
     pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
-    fail_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
+    # New FAIL format: includes Gap% and RVOL before Reason
+    fail_pattern_new = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Reason: (.+)")
+    # Old FAIL format: just Reason (for parsing historical logs)
+    fail_pattern_old = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| Reason: (.+)")
+    # Legacy format: no metrics at all
+    fail_pattern_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
     
     all_entries = []
     
@@ -253,8 +258,36 @@ async def get_warrior_scan_history(
             })
             continue
         
-        # Check FAIL
-        match = fail_pattern.match(line)
+        # Check FAIL (new format with Gap + RVOL)
+        match = fail_pattern_new.match(line)
+        if match:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": "FAIL",
+                "gap_pct": float(match.group(3)),
+                "rvol": float(match.group(4)),
+                "score": None,
+                "reason": match.group(5),
+            })
+            continue
+        
+        # Check FAIL (old format with Gap only)
+        match = fail_pattern_old.match(line)
+        if match:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": "FAIL",
+                "gap_pct": float(match.group(3)),
+                "rvol": None,
+                "score": None,
+                "reason": match.group(4),
+            })
+            continue
+        
+        # Check FAIL (legacy format - no metrics)
+        match = fail_pattern_legacy.match(line)
         if match:
             all_entries.append({
                 "timestamp": match.group(1),

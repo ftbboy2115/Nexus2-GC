@@ -606,7 +606,7 @@ class WarriorScannerService:
                 reason=RejectionReason.SNAPSHOT_FAILED,
                 details="Failed to build session snapshot",
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: snapshot_failed")
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: snapshot_failed")
             return None
         
         # Extract metrics
@@ -635,7 +635,7 @@ class WarriorScannerService:
                         reason=RejectionReason.COUNTRY_EXCLUDED,
                         details=f"Chinese/HK stock excluded (country={country})",
                     )
-                    scan_logger.info(f"FAIL | {symbol} | Reason: chinese_stock | Country: {country}")
+                    scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: chinese_stock | Country: {country}")
                     if verbose:
                         print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
                     return None
@@ -655,7 +655,7 @@ class WarriorScannerService:
                 reason=RejectionReason.FLOAT_TOO_HIGH,
                 values={"float": float_shares, "max": s.max_float},
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: float_too_high | Float: {_format_float(float_shares)} > {_format_float(s.max_float)}")
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: float_too_high | Float: {_format_float(float_shares)} > {_format_float(s.max_float)}")
             if verbose:
                 print(f"{symbol}: Rejected - Float {float_shares:,} > {s.max_float:,}")
             return None
@@ -722,7 +722,7 @@ class WarriorScannerService:
                 reason=RejectionReason.RVOL_TOO_LOW,
                 values={"rvol": round(float(rvol), 2), "min": float(s.min_rvol)},
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: rvol_too_low | RVOL: {rvol:.1f}x < {s.min_rvol}x")
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: rvol_too_low | RVOL: {rvol:.1f}x < {s.min_rvol}x")
             if verbose:
                 print(f"{symbol}: Rejected - RVOL {rvol:.1f}x < {s.min_rvol}x")
             return None
@@ -820,7 +820,7 @@ class WarriorScannerService:
                         reason=RejectionReason.CATALYST_DILUTION,
                         details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
                     )
-                    scan_logger.info(f"FAIL | {symbol} | Reason: negative_catalyst | Type: {neg_type}")
+                    scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: negative_catalyst | Type: {neg_type}")
                     if verbose:
                         print(f"{symbol}: Rejected - Negative catalyst: {neg_type}")
                     return None
@@ -960,7 +960,7 @@ class WarriorScannerService:
                 reason=RejectionReason.NO_CATALYST,
                 details=catalyst_desc,
             )
-            scan_logger.info(f"FAIL | {symbol} | Reason: no_catalyst | {catalyst_desc}")
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: no_catalyst | {catalyst_desc}")
             # Log all headlines to dedicated catalyst audit log for regex training
             if headlines:
                 from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
