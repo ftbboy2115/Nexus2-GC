@@ -448,7 +448,22 @@ async def _recover_position(
                 f"[Warrior Sync] {symbol}: Updated fill_price=${entry_price:.2f} from broker"
             )
             
-            # Log FILL_CONFIRMED event for Trade Events UI
+            # Also log trade_event ENTRY for analytics
+            # The position already exists in warrior_db, but trade_events needs the entry
+            # CRITICAL: ENTRY must be logged BEFORE FILL_CONFIRMED for correct audit order
+            try:
+                trade_event_service.log_warrior_entry(
+                    position_id=position.position_id,
+                    symbol=symbol,
+                    entry_price=recovered_entry_price,
+                    stop_price=stop_price,
+                    shares=qty,
+                    trigger_type=recovered_trigger_type,  # Preserve original trigger from intent
+                )
+            except Exception as event_err:
+                logger.debug(f"[Warrior Sync] {symbol}: Recovery event log failed: {event_err}")
+            
+            # Log FILL_CONFIRMED event for Trade Events UI (after ENTRY)
             slippage_cents = float((entry_price - quote_price) * 100)
             trade_event_service.log_warrior_fill_confirmed(
                 position_id=recovered_position_id,
@@ -460,20 +475,6 @@ async def _recover_position(
             )
         except Exception as fill_err:
             logger.debug(f"[Warrior Sync] {symbol}: Fill price update failed: {fill_err}")
-        
-        # Also log trade_event ENTRY for analytics
-        # The position already exists in warrior_db, but trade_events needs the entry
-        try:
-            trade_event_service.log_warrior_entry(
-                position_id=position.position_id,
-                symbol=symbol,
-                entry_price=recovered_entry_price,
-                stop_price=stop_price,
-                shares=qty,
-                trigger_type=recovered_trigger_type,  # Preserve original trigger from intent
-            )
-        except Exception as event_err:
-            logger.debug(f"[Warrior Sync] {symbol}: Recovery event log failed: {event_err}")
     
     logger.info(
         f"[Warrior Sync] {symbol}: {'Recovered' if existing_trade else 'Auto-synced'} "

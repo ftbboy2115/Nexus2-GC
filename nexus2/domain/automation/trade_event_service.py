@@ -578,6 +578,14 @@ class TradeEventService:
         reason: str = "Manual adjustment",
     ) -> Optional[int]:
         """Log Warrior stop price change."""
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_STOP_MOVED,
+            details=f"${old_stop} → ${new_stop} | {reason}",
+        )
+        
         return self._log_event(
             strategy="WARRIOR",
             position_id=position_id,
@@ -598,6 +606,14 @@ class TradeEventService:
         entry_price: Decimal,
     ) -> Optional[int]:
         """Log Warrior stop moved to breakeven after partial."""
+        # TML: Write to persistent file log
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_BREAKEVEN_SET,
+            details=f"Stop to breakeven @ ${entry_price}",
+        )
+        
         return self._log_event(
             strategy="WARRIOR",
             position_id=position_id,
@@ -617,6 +633,15 @@ class TradeEventService:
         r_multiple: float = 0.0,
     ) -> Optional[int]:
         """Log Warrior partial exit (2:1 R target)."""
+        # TML: Write to persistent file log
+        pnl_str = f"+${pnl}" if float(pnl) >= 0 else f"-${abs(float(pnl))}"
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_PARTIAL_EXIT,
+            details=f"{shares_sold} shares @ ${exit_price} | P&L={pnl_str} | {r_multiple:.1f}R",
+        )
+        
         return self._log_event(
             strategy="WARRIOR",
             position_id=position_id,
