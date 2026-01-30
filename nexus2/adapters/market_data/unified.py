@@ -15,6 +15,7 @@ from nexus2.adapters.market_data.protocol import (
 )
 from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, FMPConfig, get_fmp_adapter
 from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter, AlpacaConfig
+from nexus2.adapters.market_data.polygon_adapter import PolygonAdapter, get_polygon_adapter
 
 
 @dataclass
@@ -30,8 +31,10 @@ class UnifiedMarketData:
     Unified Market Data Provider.
     
     Strategy:
-    - FMP for screening, fundamentals, daily data
-    - Alpaca for intraday data and real-time quotes
+    - Polygon for real-time quotes (fastest, streaming capable)
+    - FMP for screening, fundamentals, float data, daily data
+    - Alpaca for intraday bars and fallback quotes
+    - Schwab for NBBO tie-breaker
     - Automatic fallback between providers
     """
     
@@ -45,6 +48,9 @@ class UnifiedMarketData:
             self.fmp = FMPAdapter(config.fmp_config)
         
         self.alpaca = AlpacaAdapter(config.alpaca_config)
+        
+        # Polygon adapter (singleton for quote consistency)
+        self.polygon = get_polygon_adapter()
     
     # =========================================================================
     # Combined Methods
@@ -97,6 +103,8 @@ class UnifiedMarketData:
             pass  # Blacklist not critical, continue if import fails
         
         # Collect quotes from all available sources
+        # Polygon is primary (fastest), then Alpaca, FMP, Schwab
+        polygon_quote = self.polygon.get_quote(symbol) if hasattr(self, 'polygon') else None
         alpaca_quote = self.alpaca.get_quote(symbol)
         fmp_quote = self.fmp.get_quote(symbol)
         
@@ -118,11 +126,13 @@ class UnifiedMarketData:
             logger.debug(f"[Quote] {symbol}: Schwab lookup failed: {e}")
         
         # Extract prices
+        polygon_price = float(polygon_quote.price) if polygon_quote and polygon_quote.price > 0 else None
         alpaca_price = float(alpaca_quote.price) if alpaca_quote and alpaca_quote.price > 0 else None
         fmp_price = float(fmp_quote.price) if fmp_quote and fmp_quote.price > 0 else None
         
         # Build price dict for comparison and audit logging
         prices = {}
+        if polygon_price: prices["Polygon"] = polygon_price
         if alpaca_price: prices["Alpaca"] = alpaca_price
         if fmp_price: prices["FMP"] = fmp_price
         if schwab_price: prices["Schwab"] = schwab_price
@@ -143,6 +153,7 @@ class UnifiedMarketData:
                 audit.log_quote_check(
                     symbol=symbol,
                     sources_dict={
+                        "Polygon": polygon_price,
                         "Alpaca": alpaca_price,
                         "FMP": fmp_price,
                         "Schwab": schwab_price,
@@ -164,6 +175,8 @@ class UnifiedMarketData:
         if len(prices) == 1:
             source, price = list(prices.items())[0]
             logger.debug(f"[Quote] {symbol}: Only {source} available (${price:.2f})")
+            if source == "Polygon":
+                return _log_and_return(polygon_quote, "Polygon", 0.0)
             if source == "Alpaca": 
                 return _log_and_return(alpaca_quote, "Alpaca", 0.0)
             if source == "FMP": 
@@ -186,9 +199,9 @@ class UnifiedMarketData:
         max_price = max(price_list)
         divergence_pct = ((max_price - min_price) / min_price * 100) if min_price > 0 else 0
         
-        # If all sources agree (within 20%), select based on time window
-        # Extended hours: Schwab is most accurate (brokers have live extended hours data)
-        # Regular hours: Alpaca is most accurate (real-time streaming)
+        # If all sources agree (within 20%), select based on priority:
+        # - Regular hours: Polygon (fastest real-time)
+        # - Extended hours: Schwab (accurate pre/post market bid/ask)
         if divergence_pct <= 20:
             # Determine time-based priority
             from nexus2.domain.audit.quote_audit_service import determine_time_window
@@ -201,6 +214,9 @@ class UnifiedMarketData:
                 logger.debug(f"[Quote] {symbol}: Extended hours ({time_window}) - using Schwab (${schwab_price:.2f})")
                 schwab_quote = Quote(symbol=symbol, price=Decimal(str(schwab_price)), change=Decimal("0"), change_percent=Decimal("0"), volume=0, timestamp=None)
                 return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+            elif polygon_price:
+                logger.debug(f"[Quote] {symbol}: Sources agree ({divergence_pct:.1f}% spread) - using Polygon")
+                return _log_and_return(polygon_quote, "Polygon", divergence_pct)
             elif alpaca_price:
                 logger.debug(f"[Quote] {symbol}: Sources agree ({divergence_pct:.1f}% spread) - using Alpaca")
                 return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)

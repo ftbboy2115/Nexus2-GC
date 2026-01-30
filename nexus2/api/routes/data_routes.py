@@ -235,6 +235,7 @@ async def get_warrior_trades(
     exit_mode: Optional[str] = Query(None, description="Filter by exit mode"),
     stop_method: Optional[str] = Query(None, description="Filter by stop method"),
     is_sim: Optional[str] = Query(None, description="Filter: 'true'=SIM, 'false'=LIVE, 'null'=Unknown"),
+    partial_taken: Optional[str] = Query(None, description="Filter by partial taken: 'true', 'false', or '__EMPTY__' for null"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
@@ -283,12 +284,19 @@ async def get_warrior_trades(
             else:
                 query = query.filter(WarriorTradeModel.stop_method == stop_method)
         if is_sim is not None:
-            if is_sim.lower() == 'null':
+            if is_sim.lower() == 'null' or is_sim == '__EMPTY__':
                 query = query.filter(WarriorTradeModel.is_sim == None)
             elif is_sim.lower() == 'true':
                 query = query.filter(WarriorTradeModel.is_sim == True)
             elif is_sim.lower() == 'false':
                 query = query.filter(WarriorTradeModel.is_sim == False)
+        if partial_taken is not None:
+            if partial_taken == '__EMPTY__' or partial_taken.lower() == 'null':
+                query = query.filter(WarriorTradeModel.partial_taken == None)
+            elif partial_taken.lower() == 'true':
+                query = query.filter(WarriorTradeModel.partial_taken == True)
+            elif partial_taken.lower() == 'false':
+                query = query.filter(WarriorTradeModel.partial_taken == False)
         if date_from:
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:
