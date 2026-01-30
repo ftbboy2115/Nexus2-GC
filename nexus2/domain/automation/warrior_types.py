@@ -151,6 +151,7 @@ class WarriorPosition:
     scale_count: int = 0  # Number of adds taken
     original_shares: int = 0  # Initial position size (for calculating add size)
     last_scale_attempt: Optional[datetime] = None  # Track last scale attempt for cooldown
+    recovered_at: Optional[datetime] = None  # When position was recovered from broker sync (grace period)
     
     # Intraday candle tracking (for pattern exits)
     last_candle_low: Decimal = Decimal("0")

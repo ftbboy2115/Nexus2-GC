@@ -364,6 +364,7 @@ async def _recover_position(
         risk_per_share=recovered_entry_price - stop_price,
         original_shares=qty,
         partial_taken=partial_already_taken,
+        recovered_at=now if existing_trade else None,  # Set recovery timestamp for scale grace period
     )
     monitor._positions[position.position_id] = position
     

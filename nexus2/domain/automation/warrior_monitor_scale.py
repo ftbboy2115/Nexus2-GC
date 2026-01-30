@@ -80,6 +80,15 @@ async def check_scale_opportunity(
             logger.debug(f"[Warrior Scale] {symbol}: Skipping - cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
             return None
     
+    # SAFETY: Skip scaling if position was recently recovered from broker sync
+    # This prevents wash trade errors when orphan cleanup and scale race during restart
+    if position.recovered_at:
+        recovery_grace_seconds = 10  # Align with Ross's 10-second chart
+        elapsed = (now_et() - position.recovered_at).total_seconds()
+        if elapsed < recovery_grace_seconds:
+            logger.debug(f"[Warrior Scale] {symbol}: Skipping - recovery grace period ({recovery_grace_seconds - elapsed:.0f}s remaining)")
+            return None
+    
     # Price must be above support (not breaking down)
     if current_price < support:
         return None
