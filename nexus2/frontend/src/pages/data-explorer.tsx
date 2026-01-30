@@ -93,17 +93,21 @@ export default function DataExplorer() {
     }, [activeTab, limit, offset, sortBy, sortDir, filters, dateFrom, dateTo, timeFrom, timeTo])
 
     useEffect(() => {
+        // When switching tabs, reset tab-specific state but PRESERVE date/time filters
+        // This allows investigating a trade's lifecycle across different tabs
         setOffset(0)
-        setFilters({})
+        // Only reset column-specific filters, NOT date/time/symbol filters
+        setFilters(prev => {
+            // Keep symbol filter if it exists - commonly used across tabs
+            const result: Record<string, string> = {}
+            if (prev.symbol) result.symbol = prev.symbol
+            return result
+        })
         setSortBy('created_at')  // Reset to default sort
-        setDateFrom('')
-        setDateTo('')
-        setTimeFrom('')
-        setTimeTo('')
+        // PRESERVE: dateFrom, dateTo, timeFrom, timeTo, timeWindow
         setHiddenColumns(new Set())
         setExpandedCell(null)
         setFilterDropdownCol(null)
-        setTimeWindow('')
     }, [activeTab])
 
     useEffect(() => {
