@@ -42,6 +42,7 @@ export default function DataExplorer() {
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
     const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
+    const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
 
     const tabEndpoints: Record<TabType, string> = {
         'trade-events': '/api/data/trade-events',
@@ -95,11 +96,20 @@ export default function DataExplorer() {
         setDateTo('')
         setHiddenColumns(new Set())
         setExpandedCell(null)
+        setFilterDropdownCol(null)
     }, [activeTab])
 
     useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    // Close filter dropdown when clicking outside
+    useEffect(() => {
+        if (!filterDropdownCol) return
+        const handleClickOutside = () => setFilterDropdownCol(null)
+        document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside)
+    }, [filterDropdownCol])
 
     const handleSort = (column: string) => {
         if (sortBy === column) {
@@ -177,6 +187,20 @@ export default function DataExplorer() {
     const pageCount = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
     const hasFilters = Object.keys(filters).length > 0 || dateFrom || dateTo
+
+    // Get unique values for a column (for Excel-style filter dropdowns)
+    const getUniqueValues = (col: string): string[] => {
+        const values = new Set<string>()
+        data.forEach(row => {
+            const val = row[col]
+            if (val === null || val === undefined || val === '') {
+                values.add('(empty)')
+            } else {
+                values.add(String(val))
+            }
+        })
+        return Array.from(values).sort()
+    }
 
     return (
         <>
@@ -337,14 +361,98 @@ export default function DataExplorer() {
                                     {columns.map(col => (
                                         <th
                                             key={col}
-                                            onClick={() => handleSort(col)}
                                             className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
+                                            style={{ position: 'relative' }}
                                         >
-                                            {col}
-                                            {sortBy === col && (
-                                                <span className={styles.sortIndicator}>
-                                                    {sortDir === 'asc' ? ' ▲' : ' ▼'}
-                                                </span>
+                                            <span onClick={() => handleSort(col)} style={{ cursor: 'pointer' }}>
+                                                {col}
+                                                {sortBy === col && (
+                                                    <span className={styles.sortIndicator}>
+                                                        {sortDir === 'asc' ? ' ▲' : ' ▼'}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setFilterDropdownCol(filterDropdownCol === col ? null : col)
+                                                }}
+                                                className={styles.filterBtn}
+                                                title={`Filter by ${col}`}
+                                                style={{
+                                                    marginLeft: '4px',
+                                                    padding: '0 4px',
+                                                    fontSize: '10px',
+                                                    background: filters[col] ? '#4caf50' : 'transparent',
+                                                    border: '1px solid #555',
+                                                    borderRadius: '3px',
+                                                    color: filters[col] ? '#fff' : '#888',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                ▼
+                                            </button>
+                                            {filterDropdownCol === col && (
+                                                <div
+                                                    className={styles.filterDropdown}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        left: 0,
+                                                        zIndex: 1000,
+                                                        background: '#1e1e1e',
+                                                        border: '1px solid #444',
+                                                        borderRadius: '4px',
+                                                        padding: '8px',
+                                                        minWidth: '150px',
+                                                        maxHeight: '300px',
+                                                        overflowY: 'auto',
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <button
+                                                        onClick={() => {
+                                                            removeFilter(col)
+                                                            setFilterDropdownCol(null)
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '6px',
+                                                            marginBottom: '8px',
+                                                            background: '#333',
+                                                            border: 'none',
+                                                            borderRadius: '3px',
+                                                            color: '#fff',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        Clear Filter
+                                                    </button>
+                                                    {getUniqueValues(col).map(val => (
+                                                        <div
+                                                            key={val}
+                                                            onClick={() => {
+                                                                handleFilterByValue(col, val === '(empty)' ? '' : val)
+                                                                setFilterDropdownCol(null)
+                                                            }}
+                                                            style={{
+                                                                padding: '6px 8px',
+                                                                cursor: 'pointer',
+                                                                borderRadius: '3px',
+                                                                background: filters[col] === val ? '#4caf50' : 'transparent',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                            }}
+                                                            title={val}
+                                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
+                                                            onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
+                                                        >
+                                                            {val.length > 30 ? val.slice(0, 30) + '...' : val}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </th>
                                     ))}
