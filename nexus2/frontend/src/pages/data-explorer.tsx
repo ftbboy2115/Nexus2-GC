@@ -509,10 +509,14 @@ function formatValue(column: string, val: any): string {
 
     // Format timestamps - convert UTC to EST
     if (column === 'logged_at' || column.endsWith('_at') || column.endsWith('_time') || column === 'timestamp') {
-        if (typeof val === 'string' && val.includes('T')) {
+        const strVal = String(val)
+        // Handle ISO format (contains 'T') or space-separated (YYYY-MM-DD HH:MM:SS)
+        if (strVal.includes('T') || /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(strVal)) {
             try {
+                // Normalize to ISO format if space-separated
+                const isoVal = strVal.includes('T') ? strVal : strVal.replace(' ', 'T')
                 // Parse as UTC, display in EST
-                const date = new Date(val.endsWith('Z') ? val : val + 'Z')
+                const date = new Date(isoVal.endsWith('Z') ? isoVal : isoVal + 'Z')
                 return date.toLocaleString('en-US', {
                     timeZone: 'America/New_York',
                     year: 'numeric',
@@ -524,7 +528,7 @@ function formatValue(column: string, val: any): string {
                     hour12: false
                 })
             } catch {
-                return val.split('.')[0]
+                return strVal.split('.')[0]
             }
         }
     }
