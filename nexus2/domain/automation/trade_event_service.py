@@ -218,6 +218,67 @@ class TradeEventService:
             logger.warning(f"[TradeEvent] SPY MA exception: {type(e).__name__}: {e}")
             return {}
     
+    def _get_symbol_technical_context(self, symbol: str, current_price: float) -> Dict[str, Any]:
+        """
+        Capture symbol-specific technical indicators for trade event metadata.
+        
+        Returns dict with MACD status, VWAP position, and EMA levels.
+        Failures return empty dict (non-blocking).
+        """
+        # Skip during simulation to prevent blocking API calls
+        from nexus2.config import get_settings
+        settings = get_settings()
+        if settings.sim_mode:
+            return {}
+        
+        try:
+            from nexus2.adapters.market_data.unified import get_unified_market_data
+            umd = get_unified_market_data()
+            
+            result = {}
+            
+            # Get intraday data for VWAP and current indicators
+            bars = umd.get_intraday_bars(symbol, interval="1min", limit=50)
+            if bars and len(bars) > 0:
+                latest = bars[-1]
+                vwap = latest.get("vwap")
+                if vwap:
+                    result["symbol_vwap"] = round(vwap, 2)
+                    result["symbol_above_vwap"] = current_price > vwap
+            
+            # Get MACD from quote snapshot if available
+            quote = umd.get_quote(symbol)
+            if quote:
+                macd = quote.get("macd")
+                if macd is not None:
+                    result["symbol_macd_value"] = round(macd, 4)
+                    if macd > 0.05:
+                        result["symbol_macd_status"] = "positive"
+                    elif macd >= -0.05:
+                        result["symbol_macd_status"] = "flat"
+                    else:
+                        result["symbol_macd_status"] = "negative"
+            
+            # Get EMA values from daily bars
+            daily_bars = umd.get_daily_bars(symbol, limit=25)
+            if daily_bars and len(daily_bars) >= 9:
+                closes = [b["close"] for b in daily_bars[-9:]]
+                ema9 = sum(closes) / len(closes)  # Simple approximation
+                result["symbol_ema9"] = round(ema9, 2)
+                result["symbol_above_ema9"] = current_price > ema9
+            
+            if daily_bars and len(daily_bars) >= 20:
+                closes = [b["close"] for b in daily_bars[-20:]]
+                ema20 = sum(closes) / len(closes)
+                result["symbol_ema20"] = round(ema20, 2)
+                result["symbol_above_ema20"] = current_price > ema20
+            
+            return result
+            
+        except Exception as e:
+            logger.debug(f"[TradeEvent] Symbol technical context failed for {symbol}: {e}")
+            return {}
+    
     def _log_event(
         self,
         strategy: str,
@@ -451,6 +512,10 @@ class TradeEventService:
         
         # Add market context
         metadata.update(self._get_market_context())
+        
+        # Add symbol technical context (MACD, VWAP, EMA) for AI analysis
+        if entry_price:
+            metadata.update(self._get_symbol_technical_context(symbol, float(entry_price)))
         
         # TML: Write to persistent file log
         self._log_to_file(

@@ -213,16 +213,34 @@ class TradeAnalysisService:
             return [e.to_dict() for e in events]
     
     def _build_timeline(self, events: List[Dict]) -> str:
-        """Convert events to human-readable timeline."""
+        """Convert events to human-readable timeline with technical context."""
         lines = []
         for event in events:
             time_str = event["created_at"][:16] if event["created_at"] else "?"
             event_type = event["event_type"]
             reason = event.get("reason", "")
+            metadata = event.get("metadata", {})
             
             # Format based on event type
             if "ENTRY" in event_type:
                 lines.append(f"[{time_str}] ENTRY: {reason}")
+                # Add stop info from metadata
+                stop_price = metadata.get("stop_price")
+                stop_method = metadata.get("stop_method", "unknown")
+                if stop_price:
+                    lines.append(f"  → Stop: ${stop_price} ({stop_method} method)")
+                # Add market context
+                spy_trend = metadata.get("spy_ma_trend")
+                spy_20 = metadata.get("spy_above_20ma")
+                spy_50 = metadata.get("spy_above_50ma")
+                vix = metadata.get("vix")
+                if spy_trend:
+                    lines.append(f"  → Market: trend={spy_trend}, above_20MA={spy_20}, above_50MA={spy_50}, VIX={vix}")
+                # Add symbol technical health if available
+                macd = metadata.get("symbol_macd_status")
+                above_vwap = metadata.get("symbol_above_vwap")
+                if macd:
+                    lines.append(f"  → Technical: MACD={macd}, above_VWAP={above_vwap}")
             elif "STOP" in event_type:
                 old = event.get("old_value", "?")
                 new = event.get("new_value", "?")
@@ -233,8 +251,19 @@ class TradeAnalysisService:
                 lines.append(f"[{time_str}] BREAKEVEN: Stop moved to entry")
             elif "EXIT" in event_type:
                 lines.append(f"[{time_str}] EXIT: {reason}")
-            elif "SCALE" in event_type:
+                # Add exit context
+                pnl = metadata.get("pnl")
+                exit_reason = metadata.get("exit_reason")
+                if pnl:
+                    lines.append(f"  → P&L: ${pnl}, Reason: {exit_reason}")
+            elif "SCALE" in event_type or "ADD" in event_type:
                 lines.append(f"[{time_str}] SCALE IN: {reason}")
+            elif "FILL_CONFIRMED" in event_type:
+                quote = metadata.get("quote_price", "?")
+                fill = metadata.get("fill_price", "?")
+                slip = metadata.get("slippage_cents", 0)
+                shares = metadata.get("shares", "?")
+                lines.append(f"[{time_str}] FILL: {shares} shares @ ${fill} (quoted ${quote}, slip {slip:.1f}¢)")
             else:
                 lines.append(f"[{time_str}] {event_type}: {reason}")
         
@@ -292,34 +321,83 @@ class TradeAnalysisService:
         
         return summary
     
-    def _get_execution_quality(self, position_id: str) -> str:
-        """Get execution quality (slippage) from warrior.db."""
+    def _get_execution_quality(self, position_id: str, events: List[Dict]) -> str:
+        """Get execution quality by aggregating ALL fill events for the position."""
         try:
-            from nexus2.db.warrior_db import get_trade_by_id
-            trade = get_trade_by_id(position_id)
-            if not trade:
-                return "No execution data available"
+            # Extract all fill events for comprehensive slippage reporting
+            fills = []
+            for event in events:
+                if event.get("event_type") == "FILL_CONFIRMED":
+                    metadata = event.get("metadata", {})
+                    fills.append({
+                        "shares": metadata.get("shares", "?"),
+                        "quote": metadata.get("quote_price", "?"),
+                        "fill": metadata.get("fill_price", "?"),
+                        "slippage": float(metadata.get("slippage_cents", 0) or 0),
+                    })
             
-            quote_price = trade.get("quote_price")
-            fill_price = trade.get("fill_price")
-            slippage_cents = trade.get("slippage_cents")
+            if not fills:
+                # Fallback to warrior.db for older trades
+                from nexus2.db.warrior_db import get_trade_by_id
+                trade = get_trade_by_id(position_id)
+                if trade and trade.get("fill_price"):
+                    slip = float(trade.get("slippage_cents", 0) or 0)
+                    return f"Final fill: ${trade['fill_price']} (slippage {slip:.1f}¢)"
+                return "No fill data recorded"
             
-            if quote_price and fill_price:
-                slip_val = float(slippage_cents) if slippage_cents else 0
-                if slip_val > 0:
-                    quality = f"UNFAVORABLE: Quote ${quote_price}, Filled ${fill_price} (+{slip_val:.1f}¢ slippage)"
-                elif slip_val < 0:
-                    quality = f"FAVORABLE: Quote ${quote_price}, Filled ${fill_price} ({slip_val:.1f}¢ improvement)"
-                else:
-                    quality = f"PERFECT: Quote ${quote_price}, Filled ${fill_price} (no slippage)"
-                return quality
-            elif fill_price:
-                return f"Filled at ${fill_price} (quote price not recorded)"
+            # Build comprehensive report
+            lines = [f"Entry Fills: {len(fills)}"]
+            total_slip = 0
+            total_shares = 0
+            for i, f in enumerate(fills, 1):
+                lines.append(f"  Fill {i}: {f['shares']} shares @ ${f['fill']} (quoted ${f['quote']}, slip {f['slippage']:.1f}¢)")
+                total_slip += f["slippage"] * (int(f["shares"]) if str(f["shares"]).isdigit() else 1)
+                total_shares += int(f["shares"]) if str(f["shares"]).isdigit() else 1
+            
+            # Weighted average slippage
+            avg_slip = total_slip / total_shares if total_shares > 0 else 0
+            if avg_slip > 5:
+                quality = "POOR"
+            elif avg_slip > 2:
+                quality = "FAIR"
+            elif avg_slip > 0:
+                quality = "GOOD"
             else:
-                return "Fill price not yet recorded"
+                quality = "EXCELLENT"
+            
+            lines.append(f"Execution Quality: {quality} (avg slippage {avg_slip:.1f}¢ per share)")
+            return "\n".join(lines)
         except Exception as e:
             logger.warning(f"Failed to get execution quality: {e}")
             return "Execution data unavailable"
+    
+    def _validate_data_completeness(self, events: List[Dict]) -> tuple:
+        """Check if we have enough data for quality analysis."""
+        missing = []
+        
+        # Check for entry event with proper metadata
+        entry_events = [e for e in events if "ENTRY" in e.get("event_type", "")]
+        if not entry_events:
+            missing.append("No entry event recorded")
+        else:
+            metadata = entry_events[0].get("metadata", {})
+            if not metadata.get("stop_price"):
+                missing.append("Stop price not recorded at entry")
+            if metadata.get("spy_ma_trend") is None:
+                missing.append("Market trend not recorded")
+        
+        # Check for fill confirmation
+        fill_events = [e for e in events if "FILL_CONFIRMED" in e.get("event_type", "")]
+        if not fill_events:
+            missing.append("No fill confirmation - slippage unknown")
+        
+        # Check for exit event
+        exit_events = [e for e in events if "EXIT" in e.get("event_type", "") and "PARTIAL" not in e.get("event_type", "")]
+        if not exit_events:
+            missing.append("No exit event recorded - trade may still be open")
+        
+        is_complete = len(missing) == 0
+        return is_complete, missing
     
     def analyze_trade(self, position_id: str) -> Optional[TradeAnalysis]:
         """Analyze a completed trade using AI."""
@@ -347,8 +425,19 @@ class TradeAnalysisService:
         else:
             duration = "?"
         
-        # Get execution quality (slippage) from warrior.db
-        execution_quality = self._get_execution_quality(position_id)
+        # Get execution quality from all fill events
+        execution_quality = self._get_execution_quality(position_id, events)
+        
+        # Validate data completeness to prevent AI hallucination
+        is_complete, missing_data = self._validate_data_completeness(events)
+        
+        # Build data completeness warning for AI
+        if missing_data:
+            completeness_warning = "\n## DATA COMPLETENESS WARNING\nThe following data is MISSING. DO NOT invent values for these fields - mark as 'Insufficient Data' if needed:\n"
+            for item in missing_data:
+                completeness_warning += f"- {item}\n"
+        else:
+            completeness_warning = ""
         
         # 3. Build prompt
         system_prompt = WARRIOR_SYSTEM_PROMPT if strategy == "WARRIOR" else NAC_SYSTEM_PROMPT
@@ -365,6 +454,10 @@ class TradeAnalysisService:
             execution_quality=execution_quality,
             market_conditions=market_context,
         )
+        
+        # Prepend data completeness warning if there are missing fields
+        if completeness_warning:
+            user_prompt = completeness_warning + "\n" + user_prompt
         
         # 4. Call AI
         try:
