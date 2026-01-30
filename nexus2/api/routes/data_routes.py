@@ -195,21 +195,37 @@ async def get_warrior_scan_history(
     from pathlib import Path
     import re
     
-    # Try multiple log paths
-    log_path = Path("data") / "warrior_scan.log"
-    if not log_path.exists():
-        log_path = Path.home() / "Nexus2" / "data" / "warrior_scan.log"
-    if not log_path.exists():
-        log_path = Path.home() / "Nexus2" / "warrior_scan.log"
+    # Find log directory
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
     
-    if not log_path.exists():
+    if not log_dir.exists():
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
-    # Parse log file
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-    except Exception:
+    # Read all rotated log files (warrior_scan.log, .1, .2, ... .7)
+    all_lines = []
+    base_log = log_dir / "warrior_scan.log"
+    
+    # Read main log file first
+    if base_log.exists():
+        try:
+            with open(base_log, "r", encoding="utf-8") as f:
+                all_lines.extend(f.readlines())
+        except Exception:
+            pass
+    
+    # Read rotated logs (.1 through .7)
+    for i in range(1, 8):
+        rotated_log = log_dir / f"warrior_scan.log.{i}"
+        if rotated_log.exists():
+            try:
+                with open(rotated_log, "r", encoding="utf-8") as f:
+                    all_lines.extend(f.readlines())
+            except Exception:
+                pass
+    
+    if not all_lines:
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
     # Patterns for parsing
@@ -218,7 +234,7 @@ async def get_warrior_scan_history(
     
     all_entries = []
     
-    for line in lines:
+    for line in all_lines:
         line = line.strip()
         if not line:
             continue
