@@ -153,16 +153,27 @@ class TradeEventService:
         """
         try:
             # Get 200 days of SPY data (need 200 for 200 MA)
-            bars = umd.fmp.get_daily_bars("SPY", limit=210)
+            # Use Polygon (unlimited) instead of FMP (rate limited) to avoid blocking
+            from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
+            from nexus2.utils.time_utils import now_et
+            from datetime import timedelta
+            
+            polygon = get_polygon_adapter()
+            # Request 1 year of data to ensure 210+ trading days
+            to_date = now_et().strftime("%Y-%m-%d")
+            from_date = (now_et() - timedelta(days=365)).strftime("%Y-%m-%d")
+            bars = polygon.get_daily_bars("SPY", limit=300, from_date=from_date, to_date=to_date)
             if not bars:
-                logger.warning("[TradeEvent] SPY MA: FMP returned no bars")
+                logger.warning("[TradeEvent] SPY MA: Polygon returned no bars")
                 return {}
             if len(bars) < 20:
                 logger.warning(f"[TradeEvent] SPY MA: Only got {len(bars)} bars (need 20+)")
                 return {}
             
-            # Bars are typically newest-first, so reverse for chronological
-            # FMP returns OHLCV objects with .close attribute (not dicts)
+            # Polygon returns oldest-first (sort=asc), so reverse for newest-first
+            bars = list(reversed(bars))
+            
+            # Bars are now newest-first
             closes = [float(bar.close) for bar in bars if hasattr(bar, 'close') and bar.close]
             if not closes:
                 logger.warning("[TradeEvent] SPY MA: Invalid close prices in bars")
