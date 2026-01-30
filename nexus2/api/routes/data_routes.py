@@ -433,6 +433,8 @@ async def get_catalyst_audits(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
     match_type: Optional[str] = Query(None, description="Filter by match type"),
@@ -524,11 +526,23 @@ async def get_catalyst_audits(
                 "headline": match.group(6),
             })
     
-    # Apply filters
-    if date_from:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
-    if date_to:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
+    # Apply filters with time support
+    if date_from or date_to or time_from or time_to:
+        filtered = []
+        for e in all_entries:
+            ts = e["timestamp"]
+            entry_date = ts[:10]
+            entry_time = ts[11:16]
+            if date_from and entry_date < date_from:
+                continue
+            if date_to and entry_date > date_to:
+                continue
+            if time_from and entry_time < time_from:
+                continue
+            if time_to and entry_time > time_to:
+                continue
+            filtered.append(e)
+        all_entries = filtered
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if result:
@@ -564,6 +578,8 @@ async def get_ai_comparisons(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     flash_valid: Optional[bool] = Query(None, description="Filter by Flash-Lite result"),
     has_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
@@ -630,11 +646,23 @@ async def get_ai_comparisons(
     except Exception:
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
-    # Apply filters
-    if date_from:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
-    if date_to:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
+    # Apply filters with time support
+    if date_from or date_to or time_from or time_to:
+        filtered = []
+        for e in all_entries:
+            ts = e["timestamp"]
+            entry_date = ts[:10]
+            entry_time = ts[11:16]
+            if date_from and entry_date < date_from:
+                continue
+            if date_to and entry_date > date_to:
+                continue
+            if time_from and entry_time < time_from:
+                continue
+            if time_to and entry_time > time_to:
+                continue
+            filtered.append(e)
+        all_entries = filtered
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() == symbol.upper()]
     if flash_valid is not None:
@@ -673,6 +701,8 @@ async def get_trade_events(
     event_type: Optional[str] = Query(None, description="Filter by event type"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -689,11 +719,24 @@ async def get_trade_events(
         all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
     if event_type:
         all_events = [e for e in all_events if e.get("event_type") == event_type]
-    # Date filter uses created_at field (ISO format)
-    if date_from:
-        all_events = [e for e in all_events if e.get("created_at", "") >= date_from]
-    if date_to:
-        all_events = [e for e in all_events if e.get("created_at", "") <= date_to + "T23:59:59"]
+    # Date and time filter uses created_at field (ISO format)
+    if date_from or date_to or time_from or time_to:
+        filtered = []
+        for e in all_events:
+            created = e.get("created_at", "")
+            if len(created) >= 16:
+                entry_date = created[:10]
+                entry_time = created[11:16]
+                if date_from and entry_date < date_from:
+                    continue
+                if date_to and entry_date > date_to:
+                    continue
+                if time_from and entry_time < time_from:
+                    continue
+                if time_to and entry_time > time_to:
+                    continue
+            filtered.append(e)
+        all_events = filtered
     
     # Get total before pagination
     total = len(all_events)
