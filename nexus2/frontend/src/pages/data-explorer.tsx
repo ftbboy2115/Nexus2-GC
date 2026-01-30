@@ -28,7 +28,7 @@ const NUMERIC_COLS = new Set([
 const NO_COMMA_COLS = new Set(['id', 'position_id', 'entry_order_id', 'exit_order_id', 'order_id'])
 
 export default function DataExplorer() {
-    const [activeTab, setActiveTab] = useState<TabType>('trade-events')
+    const [activeTab, setActiveTab] = useState<TabType>('warrior-scans')
     const [data, setData] = useState<any[]>([])
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
@@ -252,7 +252,7 @@ export default function DataExplorer() {
 
                 {/* Tabs */}
                 <div className={styles.tabs}>
-                    {(['trade-events', 'warrior-trades', 'nac-trades', 'nac-scans', 'warrior-scans', 'catalyst-audits', 'ai-comparisons', 'quote-audits'] as TabType[]).map(tab => (
+                    {(['warrior-scans', 'nac-scans', 'catalyst-audits', 'ai-comparisons', 'trade-events', 'warrior-trades', 'nac-trades', 'quote-audits'] as TabType[]).map(tab => (
                         <button
                             key={tab}
                             className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}
