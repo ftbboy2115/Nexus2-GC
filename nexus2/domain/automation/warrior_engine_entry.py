@@ -28,6 +28,81 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# ENTRY QUALITY FILTERS (MODULAR)
+# =============================================================================
+
+
+def check_volume_confirmed(candles: list, lookback: int = 10) -> tuple[bool, int, float]:
+    """
+    Check if current bar has volume expansion.
+    
+    Ross Cameron requires volume confirmation on breakouts:
+    - Current bar volume > average of recent bars
+    - Current bar volume > prior bar
+    
+    Args:
+        candles: List of candle objects with .volume attribute
+        lookback: Number of bars to average (default 10)
+    
+    Returns:
+        (is_confirmed, current_volume, avg_volume)
+    """
+    if not candles or len(candles) < 2:
+        return False, 0, 0.0
+    
+    current_vol = candles[-1].volume if hasattr(candles[-1], 'volume') else 0
+    prior_vol = candles[-2].volume if hasattr(candles[-2], 'volume') else 0
+    
+    # Calculate average volume over lookback period
+    if len(candles) >= lookback:
+        avg_vol = sum(c.volume for c in candles[-lookback:]) / lookback
+    else:
+        avg_vol = sum(c.volume for c in candles) / len(candles)
+    
+    # Confirmed if: current > average OR current > prior
+    is_confirmed = current_vol >= avg_vol or current_vol > prior_vol
+    
+    return is_confirmed, current_vol, avg_vol
+
+
+def check_falling_knife(
+    current_price: Decimal, 
+    snapshot, 
+    min_candles: int = 20
+) -> tuple[bool, str]:
+    """
+    Check if stock is in a falling knife pattern (avoid entry).
+    
+    Falling knife = below 20 EMA AND MACD negative
+    PODC case: dropped from $3.30 to $2.50, VWAP break was death
+    
+    Args:
+        current_price: Current stock price
+        snapshot: Technical snapshot with ema_20 and is_macd_bullish
+        min_candles: Minimum candles required for reliable check
+    
+    Returns:
+        (is_falling_knife, reason_string)
+    """
+    if not snapshot:
+        return False, ""
+    
+    is_above_20_ema = (
+        snapshot.ema_20 and 
+        current_price > Decimal(str(snapshot.ema_20))
+    )
+    macd_ok = snapshot.is_macd_bullish
+    
+    # Falling knife: below 20 EMA AND MACD negative
+    if not is_above_20_ema and not macd_ok:
+        ema_str = f"${snapshot.ema_20:.2f}" if snapshot.ema_20 else "N/A"
+        reason = f"below 20 EMA {ema_str}, MACD negative"
+        return True, reason
+    
+    return False, ""
+
+
+# =============================================================================
 # ENTRY TRIGGER DETECTION
 # =============================================================================
 
@@ -454,29 +529,29 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         # Require price to be at least 5c above VWAP for confirmation
                         buffer_above_vwap = Decimal("0.05")
                         if current_price >= vwap + buffer_above_vwap:
-                            # FALLING KNIFE FILTER: Block VWAP break on fading/weak stocks
-                            # PODC case: stock dropped from $3.30 to $2.50, VWAP break was death
-                            # Same logic as dip_for_level: must be above 20 EMA OR MACD positive
-                            is_falling_knife = False
+                            # FALLING KNIFE FILTER: Block on fading/weak stocks
                             if candles and len(candles) >= 20:
-                                is_above_20_ema = snapshot.ema_20 and current_price > Decimal(str(snapshot.ema_20))
-                                macd_ok = snapshot.is_macd_bullish
-                                
-                                if not is_above_20_ema and not macd_ok:
-                                    is_falling_knife = True
+                                is_falling, reason = check_falling_knife(current_price, snapshot)
+                                if is_falling:
                                     logger.info(
-                                        f"[Warrior Entry] {symbol}: VWAP BREAK blocked (FALLING KNIFE) - "
-                                        f"below 20 EMA ${snapshot.ema_20:.2f if snapshot.ema_20 else 'N/A'}, "
-                                        f"MACD negative"
+                                        f"[Warrior Entry] {symbol}: VWAP BREAK blocked (FALLING KNIFE) - {reason}"
                                     )
+                                    watched.last_below_vwap = False
+                                    continue
                             
-                            if is_falling_knife:
-                                watched.last_below_vwap = False  # Reset to prevent re-trigger
-                                continue  # Skip this entry
+                            # VOLUME CONFIRMATION: Break bar must have volume expansion
+                            vol_confirmed, curr_vol, avg_vol = check_volume_confirmed(candles)
+                            if not vol_confirmed:
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: VWAP BREAK blocked (LOW VOLUME) - "
+                                    f"bar vol {curr_vol:,} < avg {avg_vol:,.0f}"
+                                )
+                                # Don't reset last_below_vwap - wait for volume on next bar
+                                continue
                             
                             logger.info(
                                 f"[Warrior Entry] {symbol}: VWAP BREAK at ${current_price:.2f} "
-                                f"(VWAP=${vwap:.2f})"
+                                f"(VWAP=${vwap:.2f}, vol={curr_vol:,})"
                             )
                             watched.last_below_vwap = False  # Reset for next break
                             await enter_position(
