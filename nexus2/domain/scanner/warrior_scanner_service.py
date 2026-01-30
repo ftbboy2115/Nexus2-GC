@@ -153,6 +153,12 @@ class WarriorScanSettings:
     macd_fast: int = 12
     macd_slow: int = 26
     macd_signal: int = 9
+    
+    # Pillar 6: 200 EMA Resistance Check (Ross Cameron methodology)
+    # "200 EMA acts as ceiling until broken through with volume"
+    # Reject if 200 EMA is too close overhead (less than min_room_to_200ema_pct)
+    check_200_ema: bool = True  # Enable 200 EMA resistance check
+    min_room_to_200ema_pct: float = 15.0  # Reject if < 15% room to 200 EMA
 
 
 # Chinese stock prefixes/patterns to exclude (pump & dump risk)
@@ -283,6 +289,11 @@ class WarriorCandidate:
     
     # ATR for stop sizing
     atr: Decimal = Decimal("1.0")
+    
+    # 200 EMA Resistance (Ross Cameron methodology)
+    # "200 EMA acts as ceiling until broken"
+    ema_200: Optional[Decimal] = None  # Daily 200 EMA value
+    room_to_200_ema_pct: Optional[float] = None  # % room to 200 EMA (negative = above)
     
     # Metadata
     scanned_at: datetime = field(default_factory=now_utc_factory)
@@ -1097,6 +1108,43 @@ class WarriorScannerService:
             return None
         
         # =========================================================================
+        # PILLAR 6: Room to 200 EMA (Ross Cameron methodology)
+        # "200 EMA acts as ceiling until broken through with volume"
+        # Reject if 200 EMA is too close overhead (< min_room_to_200ema_pct)
+        # =========================================================================
+        ema_200_value = None
+        room_to_ema_pct = None
+        
+        if s.check_200_ema:
+            ema_200_value = self._get_200_ema(symbol)
+            if ema_200_value and ema_200_value > 0 and float(last_price) > 0:
+                # Calculate room: how far the 200 EMA is above current price
+                room_to_ema_pct = ((float(ema_200_value) - float(last_price)) / float(last_price)) * 100
+                
+                # Only check if 200 EMA is ABOVE current price (potential ceiling)
+                if 0 < room_to_ema_pct < s.min_room_to_200ema_pct:
+                    # 200 EMA is too close overhead - acts as resistance ceiling
+                    tracker.record(
+                        symbol=symbol,
+                        scanner="warrior",
+                        reason=RejectionReason.EMA_200_CEILING,
+                        values={
+                            "price": round(float(last_price), 2),
+                            "ema_200": round(float(ema_200_value), 2),
+                            "room_pct": round(room_to_ema_pct, 1),
+                            "min_room": s.min_room_to_200ema_pct,
+                        },
+                    )
+                    scan_logger.info(
+                        f"FAIL | {symbol} | Gap:{gap_pct:.1f}% | RVOL:{rvol:.1f}x | "
+                        f"Reason: ema_200_ceiling | Price: ${last_price:.2f} | "
+                        f"200 EMA: ${ema_200_value:.2f} ({room_to_ema_pct:.1f}% room < {s.min_room_to_200ema_pct}%)"
+                    )
+                    if verbose:
+                        print(f"{symbol}: Rejected - 200 EMA ${ema_200_value:.2f} is only {room_to_ema_pct:.1f}% above price (need {s.min_room_to_200ema_pct}%)")
+                    return None
+        
+        # =========================================================================
         # BUILD CANDIDATE
         # =========================================================================
         atr = self.market_data.get_atr(symbol, period=14) or Decimal("1")
@@ -1199,6 +1247,8 @@ class WarriorScannerService:
             avg_volume=avg_volume,
             dollar_volume=dollar_vol,
             atr=atr,
+            ema_200=ema_200_value,
+            room_to_200_ema_pct=room_to_ema_pct,
             scanned_at=now_et(),
         )
         
@@ -1344,6 +1394,52 @@ class WarriorScannerService:
         ]
         
         return any(indicator in name_lower for indicator in chinese_indicators)
+    
+    def _get_200_ema(self, symbol: str) -> Optional[Decimal]:
+        """
+        Get the 200-period EMA from daily chart.
+        
+        Uses Polygon daily bars (400 days to ensure 200 EMA is calculated properly).
+        
+        Returns:
+            200 EMA value as Decimal, or None if unavailable
+        """
+        try:
+            # Get 400 daily bars to ensure we have enough data for 200 EMA
+            # The market_data adapter handles limit-aware calendar day calculations
+            bars = self.market_data.polygon.get_daily_bars(symbol, limit=400)
+            if not bars or len(bars) < 200:
+                scan_logger.debug(f"200 EMA | {symbol} | Insufficient bars ({len(bars) if bars else 0} < 200)")
+                return None
+            
+            # Extract closing prices (most recent first in the bars list)
+            closes = [float(bar.close) for bar in bars if bar.close]
+            if len(closes) < 200:
+                return None
+            
+            # Calculate EMA with period 200
+            # EMA formula: EMA_today = Close * k + EMA_yesterday * (1-k)
+            # where k = 2 / (period + 1)
+            period = 200
+            k = 2 / (period + 1)
+            
+            # Start with SMA for the first period (seed the EMA)
+            # Note: bars are typically most recent first, so we need to reverse
+            closes_chronological = closes[::-1]  # Oldest to newest
+            
+            sma = sum(closes_chronological[:period]) / period
+            ema = sma
+            
+            # Calculate EMA for remaining data points
+            for close in closes_chronological[period:]:
+                ema = close * k + ema * (1 - k)
+            
+            scan_logger.debug(f"200 EMA | {symbol} | Calculated: ${ema:.2f} from {len(closes)} bars")
+            return Decimal(str(round(ema, 2)))
+            
+        except Exception as e:
+            scan_logger.debug(f"200 EMA | {symbol} | Error: {e}")
+            return None
     
     def _get_country(self, symbol: str) -> Optional[str]:
         """Get country for a symbol from FMP profile."""

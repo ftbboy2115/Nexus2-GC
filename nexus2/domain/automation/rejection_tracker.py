@@ -45,6 +45,7 @@ class RejectionReason(Enum):
     GAP_TOO_LOW = "gap_too_low"  # Recalculated gap below threshold
     CATALYST_DILUTION = "catalyst_dilution"  # Dilution-related catalyst (private placement, etc.)
     ETB_HIGH_FLOAT = "etb_high_float"  # Easy to borrow + high float = shorts flush it
+    EMA_200_CEILING = "ema_200_ceiling"  # 200 EMA overhead too close (< 15% room)
     
     # Common
     PRICE_TOO_LOW = "price_too_low"
