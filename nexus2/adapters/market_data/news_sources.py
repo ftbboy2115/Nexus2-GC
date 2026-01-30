@@ -8,6 +8,7 @@ Supplements FMP and Alpaca/Benzinga in unified.py.
 import logging
 from typing import List
 from datetime import datetime, timedelta
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def get_yahoo_headlines(symbol: str, days: int = 5) -> List[str]:
             return []
         
         headlines = []
-        cutoff_ts = (datetime.now() - timedelta(days=days)).timestamp()
+        cutoff_ts = (now_et() - timedelta(days=days)).timestamp()
         
         for item in news:
             # Filter by date if timestamp available

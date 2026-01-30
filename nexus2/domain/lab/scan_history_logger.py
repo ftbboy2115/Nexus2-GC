@@ -11,6 +11,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from threading import Lock
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class ScanHistoryLogger:
                 "score": score,
                 "catalyst": catalyst,
                 "source": source,
-                "logged_at": datetime.utcnow().isoformat(),
+                "logged_at": now_utc().isoformat(),
             }
             
             self._history[date_key].append(entry)

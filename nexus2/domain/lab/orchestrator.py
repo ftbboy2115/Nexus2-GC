@@ -28,6 +28,7 @@ from .lab_logger import configure_lab_logging
 from nexus2.db.warrior_db import get_recent_closed_trades
 import yaml
 from enum import Enum
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -273,7 +274,7 @@ class LabOrchestrator:
         
         for iteration in range(1, config.max_iterations + 1):
             logger.info(f"[Orchestrator] === Iteration {iteration}/{config.max_iterations} ===")
-            iter_start = datetime.utcnow()
+            iter_start = now_utc()
             
             iter_result = IterationResult(iteration=iteration)
             
@@ -424,7 +425,7 @@ class LabOrchestrator:
                     except Exception as e:
                         logger.warning(f"[Orchestrator] Failed to save strategy: {e}")
                     
-                    iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+                    iter_result.duration_seconds = (now_utc() - iter_start).total_seconds()
                     result.iterations.append(iter_result)
                     break
                 
@@ -450,7 +451,7 @@ class LabOrchestrator:
                 logger.error(f"[Orchestrator] Iteration {iteration} error: {e}")
                 iter_result.recommendation = f"error: {str(e)}"
             
-            iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+            iter_result.duration_seconds = (now_utc() - iter_start).total_seconds()
             result.iterations.append(iter_result)
             
             # Call progress callback
@@ -458,7 +459,7 @@ class LabOrchestrator:
                 progress_callback(iteration, config.max_iterations)
         
         # Finalize result
-        result.completed_at = datetime.utcnow()
+        result.completed_at = now_utc()
         result.total_iterations = len(result.iterations)
         result.best_iteration = best_iteration
         result.best_score = best_score
@@ -521,7 +522,7 @@ class LabOrchestrator:
         
         # Main generation loop
         for iteration in range(1, config.max_iterations + 1):
-            iter_start = datetime.utcnow()
+            iter_start = now_utc()
             
             iter_result = IterationResult(iteration=iteration)
             
@@ -539,7 +540,7 @@ class LabOrchestrator:
                 if not generated:
                     logger.warning("[Orchestrator] No strategies generated this iteration")
                     iter_result.recommendation = "no strategies generated"
-                    iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+                    iter_result.duration_seconds = (now_utc() - iter_start).total_seconds()
                     result.iterations.append(iter_result)
                     
                     if progress_callback:
@@ -610,14 +611,14 @@ class LabOrchestrator:
                 logger.error(f"[Orchestrator] Generation iteration {iteration} error: {e}")
                 iter_result.recommendation = f"error: {str(e)}"
             
-            iter_result.duration_seconds = (datetime.utcnow() - iter_start).total_seconds()
+            iter_result.duration_seconds = (now_utc() - iter_start).total_seconds()
             result.iterations.append(iter_result)
             
             if progress_callback:
                 progress_callback(iteration, config.max_iterations)
         
         # Finalize
-        result.completed_at = datetime.utcnow()
+        result.completed_at = now_utc()
         result.total_iterations = len(result.iterations)
         
         if best_strategy:

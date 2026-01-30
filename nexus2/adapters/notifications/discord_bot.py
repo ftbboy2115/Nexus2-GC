@@ -24,6 +24,7 @@ from nexus2.domain.audit.pending_approvals import (
     ApprovalStatus,
 )
 from nexus2.domain.audit.symbol_blacklist import get_symbol_blacklist
+from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class DivergenceApprovalBot(Client):
         )
         
         embed.set_footer(text="Auto-selecting FMP in 30 seconds...")
-        embed.timestamp = datetime.utcnow()
+        embed.timestamp = now_utc()
         
         try:
             message = await self._channel.send(embed=embed)

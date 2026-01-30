@@ -15,6 +15,7 @@ import subprocess
 import json
 from datetime import datetime
 from pathlib import Path
+from nexus2.utils.time_utils import now_et
 
 try:
     from youtube_transcript_api import YouTubeTranscriptApi
@@ -46,7 +47,7 @@ def get_video_publish_date(url: str) -> tuple[str, str]:
             formatted_date = f"{upload_date[:4]}-{upload_date[4:6]}-{upload_date[6:8]}"
         else:
             # Fallback to current date if not available
-            formatted_date = datetime.now().strftime("%Y-%m-%d")
+            formatted_date = now_et().strftime("%Y-%m-%d")
             
         title = metadata.get("title", "Unknown Title")
         return formatted_date, title
@@ -54,13 +55,13 @@ def get_video_publish_date(url: str) -> tuple[str, str]:
     except subprocess.CalledProcessError as e:
         print(f"Warning: Could not fetch video metadata: {e}")
         print(f"  stderr: {e.stderr}")
-        return datetime.now().strftime("%Y-%m-%d"), "Unknown Title"
+        return now_et().strftime("%Y-%m-%d"), "Unknown Title"
     except FileNotFoundError:
         print("Warning: yt-dlp not found. Install with: pip install yt-dlp")
-        return datetime.now().strftime("%Y-%m-%d"), "Unknown Title"
+        return now_et().strftime("%Y-%m-%d"), "Unknown Title"
     except json.JSONDecodeError as e:
         print(f"Warning: Could not parse video metadata: {e}")
-        return datetime.now().strftime("%Y-%m-%d"), "Unknown Title"
+        return now_et().strftime("%Y-%m-%d"), "Unknown Title"
 
 
 def extract_video_id(url: str) -> str:

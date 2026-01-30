@@ -19,6 +19,7 @@ from .warrior_callbacks import (
     create_execute_exit,
     check_pending_fill,
 )
+from nexus2.utils.time_utils import now_utc
 
 
 # =============================================================================
@@ -593,7 +594,7 @@ async def get_discrepancies_report(min_percent: float = 5.0, days: int = 7):
     from datetime import datetime, timedelta
     from nexus2.db.warrior_db import get_warrior_session, WarriorTradeModel
     
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = now_utc() - timedelta(days=days)
     
     discrepancies = []
     stats = {

@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -375,7 +376,7 @@ class CoderAgent:
             from datetime import datetime
             debug_dir = Path(__file__).parent / "debug_responses"
             debug_dir.mkdir(exist_ok=True)
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = now_utc().strftime("%Y%m%d_%H%M%S")
             debug_file = debug_dir / f"failed_response_{timestamp}.txt"
             debug_file.write_text(text)
             logger.info(f"[CoderAgent] Saved failed response to {debug_file.name}")

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 from .strategy_schema import StrategySpec, StrategyStatus
+from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
@@ -132,7 +133,7 @@ class StrategyRegistry:
         
         try:
             # Update timestamp
-            spec.updated_at = datetime.utcnow()
+            spec.updated_at = now_utc()
             
             # Convert to dict for YAML
             data = spec.model_dump(mode="json")

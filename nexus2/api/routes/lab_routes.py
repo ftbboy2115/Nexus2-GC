@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from nexus2.domain.lab import StrategySpec
 from nexus2.domain.lab.strategy_registry import get_registry
+from nexus2.utils.time_utils import now_utc
 
 
 
@@ -471,7 +472,7 @@ async def run_experiment(request: ExperimentRequest):
     # Store initial state
     _set_experiment(experiment_id, {
         "status": "running",
-        "started_at": datetime.utcnow().isoformat(),
+        "started_at": now_utc().isoformat(),
         "mode": request.mode,
         "strategy": target_label,
         "current_iteration": 0,
@@ -525,7 +526,7 @@ async def run_experiment(request: ExperimentRequest):
             _set_experiment(experiment_id, {
                 "status": "completed",
                 "started_at": _get_experiment(experiment_id)["started_at"],
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": now_utc().isoformat(),
                 "mode": request.mode,
                 "strategy": target_label,
                 "current_iteration": request.max_iterations,
@@ -538,7 +539,7 @@ async def run_experiment(request: ExperimentRequest):
             _set_experiment(experiment_id, {
                 "status": "failed",
                 "started_at": _get_experiment(experiment_id)["started_at"],
-                "completed_at": datetime.utcnow().isoformat(),
+                "completed_at": now_utc().isoformat(),
                 "mode": request.mode,
                 "strategy": target_label,
                 "current_iteration": 0,

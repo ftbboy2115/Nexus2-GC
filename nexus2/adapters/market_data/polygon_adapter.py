@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional
 import httpx
+from nexus2.utils.time_utils import now_et
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +302,7 @@ class PolygonAdapter:
         """
         # Default to today
         if not from_date:
-            from_date = datetime.now().strftime("%Y-%m-%d")
+            from_date = now_et().strftime("%Y-%m-%d")
         if not to_date:
             to_date = from_date
         
@@ -348,10 +349,10 @@ class PolygonAdapter:
         """
         # Default date range: last 90 days
         if not to_date:
-            to_date = datetime.now().strftime("%Y-%m-%d")
+            to_date = now_et().strftime("%Y-%m-%d")
         if not from_date:
             from datetime import timedelta
-            from_dt = datetime.now() - timedelta(days=90)
+            from_dt = now_et() - timedelta(days=90)
             from_date = from_dt.strftime("%Y-%m-%d")
         
         data = self._get(
