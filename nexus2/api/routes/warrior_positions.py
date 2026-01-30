@@ -5,6 +5,7 @@ Position management, watchlist, diagnostics, and manual exit endpoints.
 """
 
 import asyncio
+import logging
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -13,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from nexus2.utils.time_utils import now_utc, format_iso_utc
 
-
+logger = logging.getLogger(__name__)
 # =============================================================================
 # ROUTER
 # =============================================================================
@@ -206,6 +207,21 @@ async def get_positions_health():
                     if avg_vol > 0:
                         volume_ratio = volumes[-1] / avg_vol
                 
+                # Compute 200 EMA from daily bars (needs ~250 bars for accuracy)
+                ema200 = None
+                try:
+                    daily_bars = await asyncio.to_thread(polygon.get_daily_bars, p.symbol, 250)
+                    if daily_bars and len(daily_bars) >= 200:
+                        closes = [float(b.close) for b in daily_bars]
+                        # Simple EMA calculation
+                        multiplier = 2 / (200 + 1)
+                        ema = sum(closes[:200]) / 200  # Initial SMA
+                        for price in closes[200:]:
+                            ema = (price - ema) * multiplier + ema
+                        ema200 = ema
+                except Exception as e:
+                    logger.debug(f"[Health] {p.symbol}: Failed to compute EMA200: {e}")
+                
                 # Compute technicals from 5-min candles
                 tech_snapshot = tech_service.get_snapshot(
                     symbol=p.symbol,
@@ -221,6 +237,7 @@ async def get_positions_health():
                     target_price=float(p.profit_target),
                     tech_snapshot=tech_snapshot,
                     volume_ratio=volume_ratio,
+                    ema200=ema200,
                 )
             
             result.append({
