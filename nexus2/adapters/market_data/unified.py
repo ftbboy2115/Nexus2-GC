@@ -276,38 +276,23 @@ class UnifiedMarketData:
         # - Regular hours: Trust Schwab (broker NBBO is most accurate)
         from nexus2.utils.time_utils import is_market_hours
         
-        if is_market_hours():
-            # Regular market hours - Schwab has best NBBO
-            if schwab_price:
-                logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) - market hours, NBBO priority")
-                schwab_quote = Quote(
-                    symbol=symbol,
-                    price=Decimal(str(schwab_price)),
-                    change=Decimal("0"),
-                    change_percent=Decimal("0"),
-                    volume=0,
-                    timestamp=None,
-                )
-                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
-            elif polygon_price:
-                logger.info(f"[Quote] {symbol}: Using Polygon (${polygon_price:.2f}) - Schwab unavailable")
-                return _log_and_return(polygon_quote, "Polygon", divergence_pct)
-        else:
-            # Extended hours - Polygon has real-time extended hours data (Developer tier)
-            if polygon_price:
-                logger.info(f"[Quote] {symbol}: Using Polygon (${polygon_price:.2f}) - extended hours, real-time priority")
-                return _log_and_return(polygon_quote, "Polygon", divergence_pct)
-            elif schwab_price:
-                logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) - Polygon unavailable")
-                schwab_quote = Quote(
-                    symbol=symbol,
-                    price=Decimal(str(schwab_price)),
-                    change=Decimal("0"),
-                    change_percent=Decimal("0"),
-                    volume=0,
-                    timestamp=None,
-                )
-                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+        # Polygon-first always - maximizes $200/mo subscription value
+        # Developer tier provides real-time consolidated quotes for ALL market phases
+        if polygon_price:
+            logger.info(f"[Quote] {symbol}: Using Polygon (${polygon_price:.2f}) - divergence, primary source")
+            return _log_and_return(polygon_quote, "Polygon", divergence_pct)
+        elif schwab_price:
+            # Fallback to Schwab if Polygon unavailable
+            logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) - Polygon unavailable")
+            schwab_quote = Quote(
+                symbol=symbol,
+                price=Decimal(str(schwab_price)),
+                change=Decimal("0"),
+                change_percent=Decimal("0"),
+                volume=0,
+                timestamp=None,
+            )
+            return _log_and_return(schwab_quote, "Schwab", divergence_pct)
         
         # Fallback: median of available prices if primary sources unavailable
         if len(prices) >= 2:
