@@ -1303,6 +1303,7 @@ async def enter_position(
                     limit_price=float(limit_price),  # Limit sent to broker
                     quote_source="unified",  # TODO: Pass actual source from quote
                     exit_mode=selected_exit_mode,  # Auto-selected based on quality score
+                    is_sim=engine.monitor.sim_mode,  # Track SIM vs LIVE
                 )
                 set_entry_order_id(order_id, order_id)
                 logger.info(

@@ -409,6 +409,7 @@ async def _recover_position(
                 trigger_type="external",
                 support_level=float(stop_price),
                 stop_method=stop_method,
+                is_sim=False,  # External broker positions are always LIVE
             )
         except Exception as db_err:
             logger.warning(f"[Warrior Sync] {symbol}: DB log failed: {db_err}")

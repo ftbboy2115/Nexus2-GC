@@ -85,6 +85,9 @@ class WarriorTradeModel(WarriorBase):
     # Exit mode tracking (base_hit or home_run)
     exit_mode = Column(String(20), nullable=True)  # Auto-selected based on quality_score
     
+    # SIM vs LIVE tracking
+    is_sim = Column(Boolean, default=False)  # True if trade was made in simulation mode
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -117,6 +120,7 @@ class WarriorTradeModel(WarriorBase):
             "slippage_cents": self.slippage_cents,
             "quote_source": self.quote_source,
             "exit_mode": self.exit_mode,
+            "is_sim": self.is_sim,
             "created_at": format_iso_utc(self.created_at),
             "updated_at": format_iso_utc(self.updated_at),
         }
@@ -197,6 +201,8 @@ def log_warrior_entry(
     quote_source: str = None,
     # Exit mode tracking
     exit_mode: str = None,  # "base_hit" or "home_run"
+    # SIM vs LIVE tracking
+    is_sim: bool = False,
 ):
     """Log a new Warrior trade entry with quote tracking."""
     # Default high_since_entry to entry_price if not provided
@@ -222,10 +228,12 @@ def log_warrior_entry(
             limit_price=str(limit_price) if limit_price else None,
             quote_source=quote_source,
             exit_mode=exit_mode,
+            is_sim=is_sim,
         )
         db.add(trade)
         db.commit()
-        print(f"[Warrior DB] Logged entry: {symbol} x{quantity} @ ${entry_price:.2f} (exit_mode={exit_mode})")
+        mode_label = "🧪 SIM" if is_sim else "🔴 LIVE"
+        print(f"[Warrior DB] {mode_label} Logged entry: {symbol} x{quantity} @ ${entry_price:.2f} (exit_mode={exit_mode})")
 
 
 def update_warrior_fill(

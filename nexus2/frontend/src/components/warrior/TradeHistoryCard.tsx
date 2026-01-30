@@ -74,7 +74,7 @@ export function TradeHistoryCard({
     }
 
     // NOTE: Source column removed - data integrity issue prevents reliable detection
-    // TODO: Add explicit is_sim flag to warrior_trades table for reliable tracking
+    // DONE: is_sim flag added to warrior_trades table for SIM vs LIVE tracking
 
     return (
         <div className={styles.card} style={{ marginTop: '1rem' }}>
