@@ -98,7 +98,7 @@ async def get_nac_trades(
 
 
 # =============================================================================
-# SCAN HISTORY ENDPOINT
+# SCAN HISTORY ENDPOINT (Warrior Scanner Logs)
 # =============================================================================
 
 @router.get("/scan-history")
@@ -108,52 +108,96 @@ async def get_scan_history(
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    source: Optional[str] = Query(None, description="Filter by source: scan or backfill"),
-    catalyst: Optional[str] = Query(None, description="Filter by catalyst type"),
-    sort_by: str = Query("logged_at", description="Column to sort by"),
+    result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
+    sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
     """
-    Get paginated scan history with filtering and sorting.
+    Get paginated Warrior scan history with filtering and sorting.
+    
+    Parses warrior_scan.log to extract individual PASS/FAIL entries as flat rows.
     
     Returns:
-        entries: List of scan history records
+        entries: List of scan entries (symbol, result, gap_pct, rvol, score, reason, timestamp)
         total: Total count for pagination
         limit: Records per page
         offset: Current offset
     """
-    from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+    from pathlib import Path
+    import re
     
-    history = get_scan_history_logger()
+    # Try multiple log paths
+    log_path = Path("data") / "warrior_scan.log"
+    if not log_path.exists():
+        log_path = Path.home() / "Nexus2" / "data" / "warrior_scan.log"
+    if not log_path.exists():
+        log_path = Path.home() / "Nexus2" / "warrior_scan.log"
     
-    # Flatten history into list with date included, ensuring all have source field
+    if not log_path.exists():
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Parse log file
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception:
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Patterns for parsing
+    pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
+    fail_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
+    
     all_entries = []
-    for date_str, entries in history._history.items():
-        for entry in entries:
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check PASS
+        match = pass_pattern.match(line)
+        if match:
             all_entries.append({
-                "date": date_str,
-                "source": "scan",  # Default value
-                **entry,
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": "PASS",
+                "gap_pct": float(match.group(3)),
+                "rvol": float(match.group(4)),
+                "score": int(match.group(5)),
+                "reason": None,
             })
+            continue
+        
+        # Check FAIL
+        match = fail_pattern.match(line)
+        if match:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": "FAIL",
+                "gap_pct": None,
+                "rvol": None,
+                "score": None,
+                "reason": match.group(3),
+            })
+            continue
     
     # Apply filters
     if date_from:
-        all_entries = [e for e in all_entries if e["date"] >= date_from]
+        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
     if date_to:
-        all_entries = [e for e in all_entries if e["date"] <= date_to]
+        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
-    if source:
-        all_entries = [e for e in all_entries if e.get("source", "scan") == source]
-    if catalyst:
-        all_entries = [e for e in all_entries if e.get("catalyst", "") == catalyst]
+    if result:
+        all_entries = [e for e in all_entries if e["result"] == result.upper()]
     
     # Calculate total before pagination
     total = len(all_entries)
     
     # Apply sorting
     reverse = sort_dir.lower() == "desc"
-    all_entries.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse)
+    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
     
     # Apply pagination
     entries = all_entries[offset:offset + limit]
