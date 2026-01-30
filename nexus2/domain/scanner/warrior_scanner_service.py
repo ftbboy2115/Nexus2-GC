@@ -900,6 +900,9 @@ class WarriorScannerService:
                 catalyst_type = "earnings"
                 catalyst_desc = f"Earnings {earnings_date}"
                 catalyst_confidence = 0.9
+                # Log PASS to catalyst audit for traceability
+                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                log_headline_evaluation(symbol, [f"Recent earnings on {earnings_date}"], "PASS", "earnings")
                 if verbose:
                     print(f"[Catalyst Debug] {symbol}: EARNINGS catalyst - {earnings_date}")
         
@@ -932,6 +935,9 @@ class WarriorScannerService:
                 catalyst_type = f"cached_{cached_type}"
                 catalyst_desc = f"Cached: {cached_type}"
                 catalyst_confidence = 0.85
+                # Log PASS to catalyst audit for traceability
+                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                log_headline_evaluation(symbol, [f"Cache hit: {cached_type}"], "PASS", cached_type)
                 if verbose:
                     print(f"[Headline Cache] {symbol}: HIT - valid catalyst from cache ({cached_type})")
             
