@@ -180,6 +180,7 @@ async def get_warrior_scan_history(
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
+    source: Optional[str] = Query(None, description="Filter by source: SCAN or PILLARS"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -373,6 +374,8 @@ async def get_warrior_scan_history(
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if result:
         all_entries = [e for e in all_entries if e["result"] == result.upper()]
+    if source:
+        all_entries = [e for e in all_entries if (e.get("source") or "").upper() == source.upper()]
     
     # Calculate total before pagination
     total = len(all_entries)
