@@ -229,11 +229,11 @@ class UnifiedMarketData:
         # Major divergence - need to pick the best source
         logger.warning(
             f"[Quote] {symbol}: DIVERGENCE! "
-            f"Alpaca=${alpaca_price or 'N/A'}, FMP=${fmp_price or 'N/A'}, Schwab=${schwab_price or 'N/A'} "
+            f"Polygon=${polygon_price or 'N/A'}, Alpaca=${alpaca_price or 'N/A'}, FMP=${fmp_price or 'N/A'}, Schwab=${schwab_price or 'N/A'} "
             f"({divergence_pct:.1f}% spread)"
         )
         
-        # Priority: Schwab (real-time pre-market) > median > FMP > Alpaca
+        # Priority: Schwab (real-time pre-market) > median > Polygon > FMP > Alpaca
         if schwab_price:
             logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) as trusted source")
             schwab_quote = Quote(
@@ -254,12 +254,16 @@ class UnifiedMarketData:
             for source, price in prices.items():
                 if price == median_price:
                     logger.info(f"[Quote] {symbol}: Using {source} (${price:.2f}) as median")
+                    if source == "Polygon":
+                        return _log_and_return(polygon_quote, "Polygon", divergence_pct)
                     if source == "Alpaca": 
                         return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
                     if source == "FMP": 
                         return _log_and_return(fmp_quote, "FMP", divergence_pct)
         
-        # Fallback to FMP (usually more reliable than corrupt Alpaca)
+        # Fallback priority: Polygon > FMP > Alpaca
+        if polygon_price:
+            return _log_and_return(polygon_quote, "Polygon", divergence_pct)
         if fmp_price:
             return _log_and_return(fmp_quote, "FMP", divergence_pct)
         return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
