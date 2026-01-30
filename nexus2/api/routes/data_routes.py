@@ -335,10 +335,25 @@ async def get_warrior_scan_history(
             continue
     
     # Apply filters
+    # Note: Log timestamps are in UTC. Convert to ET for date comparison.
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as dt
+    utc_tz = ZoneInfo("UTC")
+    et_tz = ZoneInfo("America/New_York")
+    
+    def get_local_date(ts_str: str) -> str:
+        """Convert UTC timestamp string to ET date string."""
+        try:
+            utc_dt = dt.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
+            local_dt = utc_dt.astimezone(et_tz)
+            return local_dt.strftime("%Y-%m-%d")
+        except:
+            return ts_str[:10]  # Fallback to raw date
+    
     if date_from:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
+        all_entries = [e for e in all_entries if get_local_date(e["timestamp"]) >= date_from]
     if date_to:
-        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
+        all_entries = [e for e in all_entries if get_local_date(e["timestamp"]) <= date_to]
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if result:
