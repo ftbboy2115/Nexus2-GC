@@ -264,34 +264,59 @@ class UnifiedMarketData:
             else:
                 return _log_and_return(fmp_quote, "FMP", divergence_pct)
         
-        # Major divergence - need to pick the best source
+        # Major divergence - need to pick the best source based on market phase
         logger.warning(
             f"[Quote] {symbol}: DIVERGENCE! "
             f"Polygon=${polygon_price or 'N/A'}, Alpaca=${alpaca_price or 'N/A'}, FMP=${fmp_price or 'N/A'}, Schwab=${schwab_price or 'N/A'} "
             f"({divergence_pct:.1f}% spread)"
         )
         
-        # Priority: Schwab (real-time pre-market) > median > Polygon > FMP > Alpaca
-        if schwab_price:
-            logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) as trusted source")
-            schwab_quote = Quote(
-                symbol=symbol,
-                price=Decimal(str(schwab_price)),
-                change=Decimal("0"),
-                change_percent=Decimal("0"),
-                volume=0,
-                timestamp=None,
-            )
-            return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+        # Time-aware priority selection:
+        # - Extended hours (pre/post market): Trust Polygon (real-time extended hours data)
+        # - Regular hours: Trust Schwab (broker NBBO is most accurate)
+        from nexus2.utils.time_utils import is_market_hours
         
-        # No Schwab - use median of available prices
+        if is_market_hours():
+            # Regular market hours - Schwab has best NBBO
+            if schwab_price:
+                logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) - market hours, NBBO priority")
+                schwab_quote = Quote(
+                    symbol=symbol,
+                    price=Decimal(str(schwab_price)),
+                    change=Decimal("0"),
+                    change_percent=Decimal("0"),
+                    volume=0,
+                    timestamp=None,
+                )
+                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+            elif polygon_price:
+                logger.info(f"[Quote] {symbol}: Using Polygon (${polygon_price:.2f}) - Schwab unavailable")
+                return _log_and_return(polygon_quote, "Polygon", divergence_pct)
+        else:
+            # Extended hours - Polygon has real-time extended hours data (Developer tier)
+            if polygon_price:
+                logger.info(f"[Quote] {symbol}: Using Polygon (${polygon_price:.2f}) - extended hours, real-time priority")
+                return _log_and_return(polygon_quote, "Polygon", divergence_pct)
+            elif schwab_price:
+                logger.info(f"[Quote] {symbol}: Using Schwab (${schwab_price:.2f}) - Polygon unavailable")
+                schwab_quote = Quote(
+                    symbol=symbol,
+                    price=Decimal(str(schwab_price)),
+                    change=Decimal("0"),
+                    change_percent=Decimal("0"),
+                    volume=0,
+                    timestamp=None,
+                )
+                return _log_and_return(schwab_quote, "Schwab", divergence_pct)
+        
+        # Fallback: median of available prices if primary sources unavailable
         if len(prices) >= 2:
             sorted_prices = sorted(price_list)
             median_price = sorted_prices[len(sorted_prices) // 2]
             # Find which source has the median price
             for source, price in prices.items():
                 if price == median_price:
-                    logger.info(f"[Quote] {symbol}: Using {source} (${price:.2f}) as median")
+                    logger.info(f"[Quote] {symbol}: Using {source} (${price:.2f}) as median fallback")
                     if source == "Polygon":
                         return _log_and_return(polygon_quote, "Polygon", divergence_pct)
                     if source == "Alpaca": 
@@ -299,9 +324,7 @@ class UnifiedMarketData:
                     if source == "FMP": 
                         return _log_and_return(fmp_quote, "FMP", divergence_pct)
         
-        # Fallback priority: Polygon > FMP > Alpaca
-        if polygon_price:
-            return _log_and_return(polygon_quote, "Polygon", divergence_pct)
+        # Final fallback: FMP > Alpaca
         if fmp_price:
             return _log_and_return(fmp_quote, "FMP", divergence_pct)
         return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
