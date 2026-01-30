@@ -135,23 +135,93 @@ def get_engine() -> WarriorEngine:
 # =============================================================================
 
 @router.get("/schwab/auth-url")
-async def get_schwab_auth_url():
+async def get_schwab_auth_url(request: Request):
     """
     Get Schwab OAuth authorization URL.
     
-    Open this URL in a browser to log in to Schwab.
-    After login, copy the 'code' from the callback URL and POST to /schwab/callback.
+    Returns JSON for API clients (Accept: application/json) or HTML for browsers.
     """
+    from fastapi.responses import HTMLResponse
     from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
     schwab = get_schwab_adapter()
     
     if not schwab.client_id:
         raise HTTPException(400, "SCHWAB_CLIENT_ID not configured in .env")
     
-    return {
-        "auth_url": schwab.get_auth_url(),
-        "instructions": "Open auth_url in browser, login, then POST the 'code' param to /warrior/schwab/callback",
-    }
+    auth_url = schwab.get_auth_url()
+    
+    # Check Accept header - return JSON for API clients (like schwab_auth.py script)
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept or "text/plain" in accept:
+        return {
+            "auth_url": auth_url,
+            "instructions": "Open auth_url in browser, login, then POST the 'code' param to /warrior/schwab/callback",
+        }
+    
+    # Return HTML for browsers
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Schwab OAuth - Step 1</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                   max-width: 700px; margin: 50px auto; padding: 20px; background: #1a1a2e; color: #eee; }}
+            .step {{ background: #16213e; border-left: 4px solid #00a8ff; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+            .step-num {{ color: #00a8ff; font-weight: bold; font-size: 1.2em; }}
+            a {{ color: #00a8ff; }}
+            code {{ background: #0f0f23; padding: 2px 8px; border-radius: 4px; font-family: monospace; }}
+            .warning {{ background: #2d1b00; border-left: 4px solid #ffa500; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+            .btn {{ display: inline-block; background: #00a8ff; color: #fff; padding: 12px 24px; 
+                   text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 10px; }}
+            .btn:hover {{ background: #0088cc; }}
+            input {{ width: 100%; padding: 10px; font-size: 14px; border: 1px solid #333; 
+                    border-radius: 4px; background: #0f0f23; color: #eee; margin: 10px 0; }}
+            button {{ background: #00a8ff; color: #fff; padding: 10px 20px; border: none; 
+                     border-radius: 4px; cursor: pointer; font-size: 14px; }}
+            button:hover {{ background: #0088cc; }}
+            .tip {{ background: #0d2818; border-left: 4px solid #00cc66; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+        </style>
+    </head>
+    <body>
+        <h1>🔐 Schwab OAuth Re-Authentication</h1>
+        
+        <div class="tip">
+            <strong>💡 Easier Method:</strong> Run <code>python scripts/schwab_auth.py</code> locally for automatic auth!
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Why am I seeing this?</strong><br>
+            Your Schwab refresh token has expired (7-day limit). Re-authenticate to restore real-time bid/ask quotes.
+        </div>
+        
+        <div class="step">
+            <span class="step-num">Step 1:</span> Click the button below to log in to Schwab
+            <br><br>
+            <a href="{auth_url}" target="_blank" class="btn">🔗 Open Schwab Login</a>
+        </div>
+        
+        <div class="step">
+            <span class="step-num">Step 2:</span> After logging in, you'll be redirected to a page that <strong>won't load</strong> (this is normal!)
+            <br><br>
+            The URL will look like: <code>https://127.0.0.1:8443/callback?code=XXXXXX...</code>
+            <br><br>
+            Copy the entire <code>code=</code> value from the URL bar.
+        </div>
+        
+        <div class="step">
+            <span class="step-num">Step 3:</span> Paste the code below and click Submit
+            <br><br>
+            <form action="/warrior/schwab/callback" method="post">
+                <input type="text" name="code" placeholder="Paste the code=... value here" required>
+                <button type="submit">✅ Submit Code</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
 
 
 @router.post("/schwab/callback")

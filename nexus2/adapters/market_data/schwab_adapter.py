@@ -144,8 +144,9 @@ class SchwabAdapter:
                     message = (
                         f"🔐 **Schwab Token Expiring Soon!**\n\n"
                         f"Your Schwab refresh token is **{age_days:.1f} days old** (expires at 7 days).\n\n"
-                        f"**Re-authenticate now:** [Click here to get auth URL]({auth_url})\n\n"
-                        f"After clicking, open the URL in your browser, log in, and copy the `code=` parameter from the callback URL."
+                        f"**Option 1 (Recommended):** Run the auto-auth script locally:\n"
+                        f"```\npython scripts/schwab_auth.py\n```\n\n"
+                        f"**Option 2:** Manual flow: [Open auth wizard]({auth_url})"
                     )
                     notifier.send_system_alert(message, level="warning")
                     self._expiry_alert_sent = True
