@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
+import { useLoading } from '@/components/GlobalLoadingBar'
 type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'ai-comparisons' | 'quote-audits'
 
 // Columns that are numeric for right-alignment
@@ -94,8 +95,10 @@ export default function DataExplorer() {
         'quote-audits': ['timestamp', 'symbol', 'selected_source', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price', 'divergence_pct'],
     }
 
+    const { startLoading, stopLoading } = useLoading()
     const fetchData = useCallback(async () => {
         setLoading(true)
+        startLoading()
         try {
             const params = new URLSearchParams()
             params.set('limit', String(limit))
@@ -125,6 +128,7 @@ export default function DataExplorer() {
             setData([])
         } finally {
             setLoading(false)
+            stopLoading()
         }
     }, [activeTab, limit, offset, sortBy, sortDir, filters, dateFrom, dateTo, timeFrom, timeTo])
 

@@ -1,0 +1,46 @@
+/* Global Loading Bar - YouTube-style thin progress bar */
+
+.global-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.global-loading-bar-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+    background-size: 200% 100%;
+    animation: loading-progress 1.5s ease-in-out infinite, loading-slide 0.8s ease-out forwards;
+}
+
+@keyframes loading-progress {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes loading-slide {
+    0% {
+        width: 0%;
+    }
+
+    100% {
+        width: 90%;
+    }
+}
+
+/* Dark mode adjustment */
+@media (prefers-color-scheme: dark) {
+    .global-loading-bar {
+        background: rgba(255, 255, 255, 0.05);
+    }
+}
