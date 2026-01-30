@@ -14,13 +14,14 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
-type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'scan-history'
+type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'scan-history' | 'quote-audits'
 
 // Columns that are numeric for right-alignment
 const NUMERIC_COLS = new Set([
     'entry_price', 'exit_price', 'stop_price', 'target_price', 'realized_pnl',
     'quantity', 'remaining_quantity', 'gap_percent', 'rvol', 'score', 'shares',
-    'price', 'fill_price', 'pnl', 'entry_quote', 'exit_quote', 'slippage_cents'
+    'price', 'fill_price', 'pnl', 'entry_quote', 'exit_quote', 'slippage_cents',
+    'divergence_pct', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price'
 ])
 
 // Columns that should NOT be comma-formatted
@@ -47,6 +48,7 @@ export default function DataExplorer() {
         'warrior-trades': '/api/data/warrior-trades',
         'nac-trades': '/api/data/nac-trades',
         'scan-history': '/api/data/scan-history',
+        'quote-audits': '/api/data/quote-audits',
     }
 
     const fetchData = useCallback(async () => {
@@ -70,7 +72,7 @@ export default function DataExplorer() {
             const response = await fetch(`${tabEndpoints[activeTab]}?${params}`)
             if (response.ok) {
                 const result = await response.json()
-                const items = result.trades || result.events || result.entries || result || []
+                const items = result.trades || result.events || result.entries || result.audits || result || []
                 setData(Array.isArray(items) ? items : [])
                 setTotal(result.total || items.length)
             }
@@ -223,7 +225,7 @@ export default function DataExplorer() {
 
                 {/* Tabs */}
                 <div className={styles.tabs}>
-                    {(['trade-events', 'warrior-trades', 'nac-trades', 'scan-history'] as TabType[]).map(tab => (
+                    {(['trade-events', 'warrior-trades', 'nac-trades', 'scan-history', 'quote-audits'] as TabType[]).map(tab => (
                         <button
                             key={tab}
                             className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}

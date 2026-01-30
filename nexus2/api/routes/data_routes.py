@@ -309,3 +309,77 @@ async def get_warrior_trades(
             "offset": offset,
         }
 
+
+# =============================================================================
+# QUOTE AUDITS ENDPOINT (data fidelity analysis)
+# =============================================================================
+
+@router.get("/quote-audits")
+async def get_quote_audits(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    time_window: Optional[str] = Query(None, description="Filter by time window (premarket_early, regular_hours, etc)"),
+    selected_source: Optional[str] = Query(None, description="Filter by selected source (Alpaca, FMP, Schwab)"),
+    high_divergence: Optional[bool] = Query(None, description="Filter by high divergence flag"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    sort_by: str = Query("timestamp", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated quote audit records with filtering and sorting.
+    
+    Useful for analyzing:
+    - Quote divergence between providers
+    - High divergence events (phantom quotes)
+    - Source reliability by time window
+    """
+    from nexus2.db.models import QuoteAuditModel, get_session
+    from sqlalchemy import desc, asc
+    
+    with get_session() as db:
+        query = db.query(QuoteAuditModel)
+        
+        # Apply filters (handle __EMPTY__ for NULL filtering)
+        if symbol:
+            if symbol == '__EMPTY__':
+                query = query.filter(QuoteAuditModel.symbol == None)
+            else:
+                query = query.filter(QuoteAuditModel.symbol == symbol.upper())
+        if time_window:
+            if time_window == '__EMPTY__':
+                query = query.filter(QuoteAuditModel.time_window == None)
+            else:
+                query = query.filter(QuoteAuditModel.time_window == time_window)
+        if selected_source:
+            if selected_source == '__EMPTY__':
+                query = query.filter(QuoteAuditModel.selected_source == None)
+            else:
+                query = query.filter(QuoteAuditModel.selected_source == selected_source)
+        if high_divergence is not None:
+            query = query.filter(QuoteAuditModel.high_divergence == high_divergence)
+        if date_from:
+            query = query.filter(QuoteAuditModel.timestamp >= date_from)
+        if date_to:
+            query = query.filter(QuoteAuditModel.timestamp <= date_to + "T23:59:59")
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply sorting
+        sort_column = getattr(QuoteAuditModel, sort_by, QuoteAuditModel.timestamp)
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
+        
+        # Apply pagination
+        audits = query.offset(offset).limit(limit).all()
+        
+        return {
+            "audits": [a.to_dict() for a in audits],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
