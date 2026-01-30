@@ -6,7 +6,7 @@ Based on: scanner_architecture.md
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
@@ -217,4 +217,4 @@ class DetectedPattern:
     confidence: Decimal  # 0-100
     entry_zone: Decimal
     stop_zone: Decimal
-    detected_at: datetime = field(default_factory=datetime.now)
+    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

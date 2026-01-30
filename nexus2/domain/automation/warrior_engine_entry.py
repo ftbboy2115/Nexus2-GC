@@ -725,7 +725,71 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                         )
                     except Exception as e:
                         logger.debug(f"[Warrior Entry] {symbol}: ABCD check failed: {e}")
-                    
+            
+            # CUP & HANDLE VWAP BREAK - Ross Cameron (Jan 30 2026): LRHC for +$3,686
+            # Consolidation pattern that breaks through resistance (often VWAP):
+            # Left rim → Cup low → Right rim → Handle pullback → Breakout
+            # Entry: When price breaks above handle high through VWAP
+            if engine.config.cup_handle_enabled and not watched.entry_triggered:
+                if engine._get_intraday_bars:
+                    try:
+                        candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
+                        if candles and len(candles) >= 20:
+                            from nexus2.domain.indicators.pattern_service import get_pattern_service, CupHandlePattern
+                            from nexus2.domain.indicators import get_technical_service
+                            pattern_svc = get_pattern_service()
+                            
+                            candle_dicts = [
+                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                                for c in candles
+                            ]
+                            
+                            # Get VWAP for context (Cup & Handle VWAP Break)
+                            vwap = None
+                            try:
+                                tech = get_technical_service()
+                                snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                                if snapshot.vwap:
+                                    vwap = Decimal(str(snapshot.vwap))
+                            except:
+                                pass
+                            
+                            # Detect Cup & Handle pattern
+                            pattern = pattern_svc.detect_cup_handle(candle_dicts, vwap=vwap, lookback=40)
+                            
+                            if pattern:
+                                watched.cup_handle_pattern = pattern
+                                from datetime import datetime, timezone
+                                watched.cup_handle_detected_at = datetime.now(timezone.utc)
+                                
+                                # Check for breakout (price breaks above handle high)
+                                if pattern.is_breakout(current_price, buffer_cents=5):
+                                    # Volume confirmation
+                                    current_bar_vol = candles[-1].volume if candles else 0
+                                    avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else 0
+                                    vol_confirmed = current_bar_vol >= avg_vol * 0.8
+                                    
+                                    if vol_confirmed:
+                                        vwap_info = f", VWAP=${vwap:.2f}" if vwap else ""
+                                        logger.info(
+                                            f"[Warrior Entry] {symbol}: CUP & HANDLE BREAKOUT at ${current_price:.2f} "
+                                            f"(cup low=${pattern.cup_low:.2f}, breakout=${pattern.breakout_level:.2f}{vwap_info}, "
+                                            f"stop=${pattern.stop_price:.2f}, target=${pattern.target_price:.2f}, "
+                                            f"conf={pattern.confidence:.2f})"
+                                        )
+                                        await enter_position(
+                                            engine,
+                                            watched,
+                                            current_price,
+                                            EntryTriggerType.CUP_HANDLE
+                                        )
+                                    else:
+                                        logger.debug(
+                                            f"[Warrior Entry] {symbol}: Cup & Handle breakout "
+                                            f"but volume not confirmed ({current_bar_vol:,} < avg {avg_vol:,.0f})"
+                                        )
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: Cup & Handle check failed: {e}")
                     
         except Exception as e:
             logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")

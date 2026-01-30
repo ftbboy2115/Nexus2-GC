@@ -40,6 +40,7 @@ class EntryTriggerType(Enum):
     MICRO_PULLBACK = "micro_pullback"  # For extended stocks (>100% gap): swing high break
     INVERTED_HS = "inverted_hs"  # Inverted Head & Shoulders (Ross: SXTP Jan 28 2026)
     ABCD = "abcd"  # ABCD Pattern breakout (Ross: DCX Jan 29 2026 cold-day strategy)
+    CUP_HANDLE = "cup_handle"  # Cup & Handle VWAP Break (Ross: LRHC Jan 30 2026)
 
 
 # =============================================================================
@@ -123,6 +124,9 @@ class WarriorEngineConfig:
     
     # ABCD Pattern (Ross Cameron: DCX Jan 29 2026 cold-day strategy)
     abcd_enabled: bool = True  # Enable ABCD pattern detection
+    
+    # Cup & Handle (Ross Cameron: LRHC Jan 30 2026 VWAP break)
+    cup_handle_enabled: bool = True  # Enable cup & handle pattern detection
 
 
 @dataclass
@@ -192,6 +196,10 @@ class WatchedCandidate:
     # ABCD pattern tracking (Ross: DCX Jan 29 2026 cold-day)
     abcd_pattern: Optional["ABCDPattern"] = None  # Detected ABCD pattern, if any
     abcd_detected_at: Optional[datetime] = None  # When ABCD pattern was detected
+    
+    # Cup & Handle tracking (Ross: LRHC Jan 30 2026)
+    cup_handle_pattern: Optional["CupHandlePattern"] = None  # Detected Cup & Handle pattern
+    cup_handle_detected_at: Optional[datetime] = None  # When pattern was detected
     
     @property
     def dynamic_score(self) -> int:

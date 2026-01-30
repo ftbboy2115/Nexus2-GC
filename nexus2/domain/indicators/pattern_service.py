@@ -5,6 +5,7 @@ Ross Cameron pattern detection for Warrior Trading.
 Currently supports:
 - Inverted Head & Shoulders (bullish reversal)
 - ABCD Pattern (continuation/breakout)
+- Cup & Handle (consolidation breakout - Jan 30 LRHC)
 """
 
 from dataclasses import dataclass
@@ -13,6 +14,54 @@ from typing import Optional, List, Dict, Any, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CupHandlePattern:
+    r"""
+    Cup & Handle Pattern data (Ross Cameron Jan 30 2026 LRHC trade).
+    
+    Consolidation pattern that breaks through resistance (often VWAP):
+    
+              handle
+               /\
+              /  \___ breakout
+    ________/        \
+    |      cup        |
+    |  __________    |
+    | /          \   |
+    |/            \__|
+    
+    Entry: Break above handle high (through VWAP)
+    Stop: Below handle low or cup low
+    Target: Measured move (cup depth from breakout)
+    """
+    cup_low: Decimal  # Lowest point of the cup
+    cup_left_high: Decimal  # Left rim of cup
+    cup_right_high: Decimal  # Right rim (where handle starts)
+    handle_low: Decimal  # Low point of the handle pullback
+    breakout_level: Decimal  # Entry trigger (handle high)
+    
+    # Pattern indices for reference
+    cup_low_idx: int
+    cup_left_idx: int
+    cup_right_idx: int
+    handle_low_idx: int
+    
+    # VWAP context (for Cup & Handle VWAP Break)
+    vwap_level: Optional[Decimal] = None
+    
+    # Pattern quality
+    confidence: float = 0.0  # 0.0-1.0
+    
+    # Calculated levels
+    stop_price: Decimal = Decimal("0")
+    target_price: Decimal = Decimal("0")
+    
+    def is_breakout(self, current_price: Decimal, buffer_cents: int = 5) -> bool:
+        """Check if price has broken above handle high (breakout level)."""
+        buffer = Decimal(str(buffer_cents)) / 100
+        return current_price > self.breakout_level + buffer
 
 
 @dataclass
@@ -98,6 +147,7 @@ class PatternService:
     Provides pattern detection for:
     - Inverted Head & Shoulders (bullish reversal)
     - ABCD Pattern (continuation breakout - Ross cold-day strategy)
+    - Cup & Handle (consolidation breakout - Ross LRHC Jan 30)
     """
     
     def detect_abcd(
@@ -345,6 +395,239 @@ class PatternService:
         ab_pct = (ab_distance / float(a_low)) * 100 if float(a_low) > 0 else 0
         if ab_pct >= 5:  # At least 5% move from A to B
             confidence += 0.10
+        
+        return min(confidence, 1.0)
+    
+    def detect_cup_handle(
+        self,
+        candles: List[Dict[str, Any]],
+        vwap: Optional[Decimal] = None,
+        lookback: int = 40,
+        stop_buffer_cents: int = 5,
+    ) -> Optional[CupHandlePattern]:
+        """
+        Detect Cup & Handle pattern (Ross Cameron Jan 30 2026 LRHC trade).
+        
+        Pattern rules:
+        - Cup: Rounded bottom with left and right rims at similar levels
+        - Handle: Small pullback after right rim (shallower than cup)
+        - Entry: Break above handle high (ideally through VWAP)
+        
+        Args:
+            candles: List of candle dicts with 'high', 'low', 'close', 'volume'
+            vwap: Optional VWAP level for Cup & Handle VWAP Break context
+            lookback: Number of candles to analyze
+            stop_buffer_cents: Cents below handle low for stop
+            
+        Returns:
+            CupHandlePattern if detected, None otherwise
+        """
+        if not candles or len(candles) < 15:
+            logger.debug("[Pattern] Not enough candles for Cup & Handle detection")
+            return None
+        
+        # Use only recent candles within lookback
+        recent = candles[-lookback:] if len(candles) > lookback else candles
+        
+        # Find swing lows and swing highs
+        swing_lows = self._find_swing_lows(recent, window=2)
+        swing_highs = self._find_all_swing_highs(recent, window=2)
+        
+        if len(swing_lows) < 2 or len(swing_highs) < 2:
+            logger.debug(f"[Pattern] Not enough swings for Cup & Handle: {len(swing_lows)} lows, {len(swing_highs)} highs")
+            return None
+        
+        # Try to form Cup & Handle pattern
+        # Look for: Left High → Cup Low → Right High → Handle Low → Breakout
+        for i, (cup_low_idx, cup_low) in enumerate(swing_lows):
+            # Find left rim: swing high before cup low
+            left_candidates = [(idx, high) for idx, high in swing_highs if idx < cup_low_idx]
+            if not left_candidates:
+                continue
+            
+            # Take the nearest high before cup low as left rim
+            cup_left_idx, cup_left_high = max(left_candidates, key=lambda x: x[0])
+            
+            # Find right rim: swing high after cup low
+            right_candidates = [(idx, high) for idx, high in swing_highs if idx > cup_low_idx]
+            if not right_candidates:
+                continue
+            
+            # Take the first high after cup low as right rim
+            cup_right_idx, cup_right_high = min(right_candidates, key=lambda x: x[0])
+            
+            # Find handle: swing low after right rim (must be higher than cup low)
+            handle_candidates = [
+                (idx, low) for idx, low in swing_lows 
+                if idx > cup_right_idx and low > cup_low
+            ]
+            if not handle_candidates:
+                continue
+            
+            # Take the first valid handle low
+            handle_low_idx, handle_low = handle_candidates[0]
+            
+            # Validate the pattern
+            pattern = self._validate_cup_handle(
+                recent, 
+                cup_left_idx, cup_left_high,
+                cup_low_idx, cup_low,
+                cup_right_idx, cup_right_high,
+                handle_low_idx, handle_low,
+                vwap,
+                stop_buffer_cents
+            )
+            
+            if pattern:
+                return pattern
+        
+        return None
+    
+    def _validate_cup_handle(
+        self,
+        candles: List[Dict[str, Any]],
+        cup_left_idx: int,
+        cup_left_high: Decimal,
+        cup_low_idx: int,
+        cup_low: Decimal,
+        cup_right_idx: int,
+        cup_right_high: Decimal,
+        handle_low_idx: int,
+        handle_low: Decimal,
+        vwap: Optional[Decimal],
+        stop_buffer_cents: int = 5,
+    ) -> Optional[CupHandlePattern]:
+        """
+        Validate Cup & Handle pattern.
+        
+        Rules:
+        1. Left and right rims should be at similar levels (within 10%)
+        2. Handle low must be higher than cup low (shallower pullback)
+        3. Handle should be smaller than cup (max 50% of cup depth)
+        4. Proper spacing between points
+        """
+        # Rule 1: Left and right rims at similar levels
+        rim_diff_pct = abs(float(cup_right_high - cup_left_high) / float(cup_left_high)) * 100
+        if rim_diff_pct > 15:  # Allow 15% difference
+            logger.debug(f"[Pattern] Cup & Handle rejected - rim difference {rim_diff_pct:.1f}% > 15%")
+            return None
+        
+        # Rule 2: Handle higher than cup (shows support holding)
+        if handle_low <= cup_low:
+            logger.debug(f"[Pattern] Cup & Handle rejected - handle low ({handle_low}) <= cup low ({cup_low})")
+            return None
+        
+        # Rule 3: Handle shallower than cup (max 50% of cup depth)
+        cup_depth = max(cup_left_high, cup_right_high) - cup_low
+        handle_depth = cup_right_high - handle_low
+        
+        if cup_depth <= 0:
+            return None
+        
+        handle_ratio = float(handle_depth / cup_depth) * 100
+        if handle_ratio > 60:  # Handle shouldn't be deeper than 60% of cup
+            logger.debug(f"[Pattern] Cup & Handle rejected - handle {handle_ratio:.0f}% of cup depth (max 60%)")
+            return None
+        
+        # Rule 4: Proper spacing
+        if cup_low_idx - cup_left_idx < 2 or cup_right_idx - cup_low_idx < 2:
+            return None
+        if handle_low_idx - cup_right_idx < 1:
+            return None
+        
+        # Calculate pattern levels
+        stop_buffer = Decimal(str(stop_buffer_cents)) / 100
+        
+        # Breakout level: high since handle low (the handle's peak)
+        handle_highs = [
+            Decimal(str(candles[i].get('high', 0))) 
+            for i in range(handle_low_idx, len(candles))
+        ]
+        breakout_level = max(handle_highs) if handle_highs else cup_right_high
+        
+        # Stop: Below handle low
+        stop_price = handle_low - stop_buffer
+        
+        # Target: Measured move (cup depth from breakout)
+        target_price = breakout_level + cup_depth
+        
+        # Calculate confidence
+        confidence = self._calculate_cup_handle_confidence(
+            cup_left_high, cup_low, cup_right_high, handle_low, rim_diff_pct, handle_ratio, vwap
+        )
+        
+        if confidence < 0.4:
+            logger.debug(f"[Pattern] Cup & Handle rejected - confidence {confidence:.2f} < 0.40")
+            return None
+        
+        logger.info(
+            f"[Pattern] CUP & HANDLE DETECTED - "
+            f"Left=${cup_left_high:.2f} @ idx {cup_left_idx}, "
+            f"Cup Low=${cup_low:.2f} @ idx {cup_low_idx}, "
+            f"Right=${cup_right_high:.2f} @ idx {cup_right_idx}, "
+            f"Handle=${handle_low:.2f} @ idx {handle_low_idx}, "
+            f"Breakout=${breakout_level:.2f}, "
+            f"VWAP={'$'+str(vwap) if vwap else 'N/A'}, "
+            f"Confidence={confidence:.2f}"
+        )
+        
+        return CupHandlePattern(
+            cup_low=cup_low,
+            cup_left_high=cup_left_high,
+            cup_right_high=cup_right_high,
+            handle_low=handle_low,
+            breakout_level=breakout_level,
+            cup_low_idx=cup_low_idx,
+            cup_left_idx=cup_left_idx,
+            cup_right_idx=cup_right_idx,
+            handle_low_idx=handle_low_idx,
+            vwap_level=vwap,
+            confidence=confidence,
+            stop_price=stop_price,
+            target_price=target_price,
+        )
+    
+    def _calculate_cup_handle_confidence(
+        self,
+        cup_left_high: Decimal,
+        cup_low: Decimal,
+        cup_right_high: Decimal,
+        handle_low: Decimal,
+        rim_diff_pct: float,
+        handle_ratio: float,
+        vwap: Optional[Decimal],
+    ) -> float:
+        """
+        Calculate confidence score for Cup & Handle pattern.
+        
+        Factors:
+        - Symmetry: Left and right rims at similar levels
+        - Handle quality: Smaller handle = stronger pattern
+        - VWAP alignment: Breakout near VWAP is ideal (Ross LRHC)
+        """
+        confidence = 0.5
+        
+        # Symmetry bonus: More symmetric rims = higher confidence
+        if rim_diff_pct <= 5:
+            confidence += 0.15  # Very symmetric
+        elif rim_diff_pct <= 10:
+            confidence += 0.10  # Reasonably symmetric
+        
+        # Handle quality bonus: Shallower handle = stronger
+        if handle_ratio <= 30:
+            confidence += 0.15  # Shallow handle = strong
+        elif handle_ratio <= 50:
+            confidence += 0.10  # Moderate handle
+        
+        # VWAP alignment bonus (Ross Cameron's specific setup)
+        if vwap:
+            avg_rim = (cup_left_high + cup_right_high) / 2
+            # If VWAP is near the rim level or breakout zone, add confidence
+            vwap_distance_pct = abs(float(vwap - avg_rim) / float(avg_rim)) * 100
+            if vwap_distance_pct <= 5:
+                confidence += 0.15  # VWAP right at breakout zone
+            elif vwap_distance_pct <= 10:
+                confidence += 0.10  # VWAP nearby
         
         return min(confidence, 1.0)
     
