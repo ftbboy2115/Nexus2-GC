@@ -146,20 +146,20 @@ async def get_positions_health():
             })
         return {"count": len(result), "positions": result}
     
-    # LIVE MODE: Full health indicators with FMP intraday data
-    from nexus2.adapters.market_data.fmp_adapter import FMPAdapter
+    # LIVE MODE: Full health indicators with Polygon intraday data (unlimited calls)
+    from nexus2.adapters.market_data.polygon_adapter import PolygonAdapter
     from nexus2.domain.indicators import get_technical_service
     from nexus2.domain.automation.indicator_service import aggregate_candles_to_timeframe
     
-    fmp = FMPAdapter()
+    polygon = PolygonAdapter()
     tech_service = get_technical_service()
     indicator_service = get_indicator_service()
     
     result = []
     for p in positions:
         try:
-            # Fetch 1-min candles (run in thread pool to avoid blocking event loop)
-            candles_1min = await asyncio.to_thread(fmp.get_intraday_bars, p.symbol, "1min")
+            # Fetch 1-min candles from Polygon (unlimited calls, faster than FMP)
+            candles_1min = await asyncio.to_thread(polygon.get_intraday_bars, p.symbol, "1", 100)
             
             if not candles_1min or len(candles_1min) < 30:
                 # Not enough intraday data - use fallback price sources
@@ -167,11 +167,11 @@ async def get_positions_health():
                 current_price = float(p.high_since_entry) if p.high_since_entry else 0
                 
                 if current_price <= 0:
-                    # Try to get a quote from FMP
+                    # Try to get a quote from Polygon
                     try:
-                        quote = await asyncio.to_thread(fmp.get_quote, p.symbol)
-                        if quote and quote.get("price"):
-                            current_price = float(quote["price"])
+                        quote = await asyncio.to_thread(polygon.get_quote, p.symbol)
+                        if quote and quote.price > 0:
+                            current_price = float(quote.price)
                     except Exception:
                         pass
                 
