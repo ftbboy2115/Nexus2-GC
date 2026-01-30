@@ -126,10 +126,10 @@ class UnifiedMarketData:
                     schwab_price = float(schwab_data["price"])
             else:
                 schwab_unavailable = True
-                logger.debug(f"[Quote] {symbol}: Schwab unavailable (not authenticated)")
+                logger.info(f"[Quote] {symbol}: Schwab unavailable (tokens expired - re-authenticate)")
         except Exception as e:
             schwab_unavailable = True
-            logger.debug(f"[Quote] {symbol}: Schwab lookup failed: {e}")
+            logger.warning(f"[Quote] {symbol}: Schwab lookup failed: {e}")
         
         # If Polygon and Schwab agree (within 10%), no need for other sources
         if polygon_price and schwab_price:
@@ -197,6 +197,24 @@ class UnifiedMarketData:
         
         if not prices:
             logger.warning(f"[Quote] {symbol}: No valid quotes from any source!")
+            # Log failed quotes to audit for observability
+            try:
+                from nexus2.domain.audit.quote_audit_service import get_quote_audit_service, determine_time_window
+                audit = get_quote_audit_service()
+                audit.log_quote_check(
+                    symbol=symbol,
+                    sources_dict={
+                        "Polygon": None,
+                        "Alpaca": None,
+                        "FMP": None,
+                        "Schwab": None,
+                    },
+                    selected_source="FAILED",
+                    divergence_pct=0.0,
+                    time_window=determine_time_window(),
+                )
+            except Exception:
+                pass
             return None
         
         # If only one source, use it
