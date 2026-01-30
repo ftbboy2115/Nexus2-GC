@@ -593,7 +593,7 @@ class WarriorScannerService:
                 )
                 if candidate:
                     candidates.append(candidate)
-                    scan_logger.info(f"PASS | {symbol} | Gap:{mover['change_percent']:.1f}% | RVOL:{candidate.relative_volume:.1f}x | Score:{candidate.quality_score}")
+                    scan_logger.info(f"[SCAN] PASS | {symbol} | Gap:{mover['change_percent']:.1f}% | RVOL:{candidate.relative_volume:.1f}x | Score:{candidate.quality_score}")
                     
                     # Log to scan history for Lab backtesting universe
                     try:
@@ -1254,7 +1254,7 @@ class WarriorScannerService:
         
         # Log to scan file with freshness info
         scan_logger.info(
-            f"PASS | {symbol} | Score: {candidate.quality_score}{freshness_note} | "
+            f"[PILLARS] PASS | {symbol} | Score: {candidate.quality_score}{freshness_note} | "
             f"Catalyst: {catalyst_type} | Float: {_format_float(float_shares) if float_shares else 'N/A'} | RVOL: {rvol:.1f}x"
         )
         

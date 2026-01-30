@@ -3,7 +3,7 @@
 
 **Source:** 60+ video transcripts (Nov 2025 - Jan 2026)  
 **Purpose:** Verify Warrior bot implementation matches Ross's actual methodology  
-**Last Updated:** 2026-01-29
+**Last Updated:** 2026-01-30
 
 ---
 
@@ -89,6 +89,7 @@
 | **MACD Gating** | Only enter when MACD positive | [ ] MACD > 0 |
 | **Half-Dollar/Whole-Dollar** | Buy for break of round numbers ($6, $7, etc.) - best entry on fast moving stocks (Jan 28 GRI) | [ ] Round number breakout |
 | **ABCD Pattern Breakout** | Classic technical pattern, wait for pattern to form then enter on breakout (Jan 29 DCX) | [ ] ABCD detection |
+| **Cup & Handle VWAP Break** | Consolidate under VWAP with cup & handle, enter on VWAP break (Jan 30 LRHC) | [x] VWAP break implemented |
 
 ### Entry Timing
 | Rule | Specification |
@@ -197,6 +198,7 @@
 | **Grinding price action** | Not worth fighting | Nov 16 |
 | **T12 Halt Risk** | If stock could get halted pending company info (light volume foreign parabolic), skip entirely | Jan 29 TCGL |
 | **Day 2 with lower relative volume** | Continuation plays need volume; lower RVol = skip | Jan 29 FEED/XHLD |
+| **Started below $0.50** | Too cheap, crowded, hard to trade well | Jan 30 FATBB |
 
 ### Behavioral Disqualifiers
 | Avoid | Reason | Source |

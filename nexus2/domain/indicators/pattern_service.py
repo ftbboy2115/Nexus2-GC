@@ -4,6 +4,7 @@ Pattern Detection Service
 Ross Cameron pattern detection for Warrior Trading.
 Currently supports:
 - Inverted Head & Shoulders (bullish reversal)
+- ABCD Pattern (continuation/breakout)
 """
 
 from dataclasses import dataclass
@@ -12,6 +13,50 @@ from typing import Optional, List, Dict, Any, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ABCDPattern:
+    r"""
+    ABCD Pattern data (Ross Cameron cold-day strategy).
+    
+    Classic breakout continuation pattern:
+                     D (breakout entry)
+                    /
+              B    /
+             /\   /
+            /  \ /
+           /    C (higher low)
+          /
+         A (initial low)
+    
+    Entry: Break above B with volume
+    Stop: Below C
+    Target: Measured move (AB = CD)
+    """
+    a_low: Decimal  # Initial swing low
+    b_high: Decimal  # First rally high
+    c_low: Decimal  # Pullback (higher low than A)
+    d_breakout: Decimal  # Entry level = B high + buffer
+    
+    # Pattern indices for reference
+    a_idx: int
+    b_idx: int
+    c_idx: int
+    
+    # Pattern quality
+    confidence: float  # 0.0-1.0 based on symmetry and retracement
+    
+    # Calculated levels
+    stop_price: Decimal  # Below C low
+    target_price: Decimal  # Measured move (AB distance from C)
+    risk_reward: float  # Target distance / Stop distance
+    
+    def is_breakout(self, current_price: Decimal, buffer_cents: int = 5) -> bool:
+        """Check if price has broken above B high (D point)."""
+        buffer = Decimal(str(buffer_cents)) / 100
+        return current_price > self.b_high + buffer
+
 
 
 @dataclass
@@ -52,7 +97,256 @@ class PatternService:
     
     Provides pattern detection for:
     - Inverted Head & Shoulders (bullish reversal)
+    - ABCD Pattern (continuation breakout - Ross cold-day strategy)
     """
+    
+    def detect_abcd(
+        self,
+        candles: List[Dict[str, Any]],
+        lookback: int = 30,
+        stop_buffer_cents: int = 5,
+    ) -> Optional[ABCDPattern]:
+        """
+        Detect ABCD pattern in recent candles (Ross Cameron cold-day strategy).
+        
+        Pattern rules:
+        - A: Initial swing low (starting point)
+        - B: First rally high (swing high after A)
+        - C: Pullback low (higher low than A - shows buying pressure)
+        - D: Break above B (entry trigger)
+        
+        Entry: Break above B high with volume confirmation
+        Stop: Below C low
+        Target: Measured move (AB distance projected from C)
+        
+        Args:
+            candles: List of candle dicts with 'high', 'low', 'close', 'volume'
+            lookback: Number of candles to analyze
+            stop_buffer_cents: Cents below C for stop placement
+            
+        Returns:
+            ABCDPattern if detected, None otherwise
+        """
+        if not candles or len(candles) < 10:
+            logger.debug("[Pattern] Not enough candles for ABCD detection")
+            return None
+        
+        # Use only recent candles within lookback
+        recent = candles[-lookback:] if len(candles) > lookback else candles
+        
+        # Find swing lows and swing highs
+        swing_lows = self._find_swing_lows(recent, window=2)
+        swing_highs = self._find_all_swing_highs(recent, window=2)
+        
+        if len(swing_lows) < 2 or len(swing_highs) < 1:
+            logger.debug(f"[Pattern] Not enough swings for ABCD: {len(swing_lows)} lows, {len(swing_highs)} highs")
+            return None
+        
+        # Try to form ABCD pattern
+        # A = swing low, B = swing high after A, C = swing low after B (higher than A)
+        for i, (a_idx, a_low) in enumerate(swing_lows[:-1]):  # Need at least one more low for C
+            # Find B: swing high after A
+            b_candidates = [(idx, high) for idx, high in swing_highs if idx > a_idx]
+            if not b_candidates:
+                continue
+            
+            for b_idx, b_high in b_candidates:
+                # Find C: swing low after B that is higher than A
+                c_candidates = [
+                    (idx, low) for idx, low in swing_lows 
+                    if idx > b_idx and low > a_low
+                ]
+                if not c_candidates:
+                    continue
+                
+                # Take the first valid C (closest to B)
+                c_idx, c_low = c_candidates[0]
+                
+                # Validate the pattern
+                pattern = self._validate_abcd(
+                    recent, a_idx, a_low, b_idx, b_high, c_idx, c_low, stop_buffer_cents
+                )
+                
+                if pattern:
+                    return pattern
+        
+        return None
+    
+    def _find_all_swing_highs(
+        self,
+        candles: List[Dict[str, Any]],
+        window: int = 2,
+    ) -> List[Tuple[int, Decimal]]:
+        """
+        Find all swing highs (local maxima) in candle data.
+        
+        A swing high is a candle with higher 'high' than the surrounding candles.
+        
+        Args:
+            candles: List of candle dicts
+            window: Number of candles on each side to compare
+            
+        Returns:
+            List of (index, high_price) tuples
+        """
+        swing_highs = []
+        
+        for i in range(window, len(candles) - window):
+            current_high = Decimal(str(candles[i].get('high', 0)))
+            
+            is_swing_high = True
+            for j in range(i - window, i):
+                if Decimal(str(candles[j].get('high', 0))) >= current_high:
+                    is_swing_high = False
+                    break
+            
+            if is_swing_high:
+                for j in range(i + 1, i + window + 1):
+                    if Decimal(str(candles[j].get('high', 0))) >= current_high:
+                        is_swing_high = False
+                        break
+            
+            if is_swing_high:
+                swing_highs.append((i, current_high))
+        
+        return swing_highs
+    
+    def _validate_abcd(
+        self,
+        candles: List[Dict[str, Any]],
+        a_idx: int,
+        a_low: Decimal,
+        b_idx: int,
+        b_high: Decimal,
+        c_idx: int,
+        c_low: Decimal,
+        stop_buffer_cents: int = 5,
+    ) -> Optional[ABCDPattern]:
+        """
+        Validate if the three swing points form a valid ABCD pattern.
+        
+        Validation rules:
+        1. C must be higher than A (higher low showing buying pressure)
+        2. B must be higher than both A and C
+        3. C retracement should be 38.2% - 78.6% of AB move (Fibonacci)
+        4. Proper spacing between points
+        
+        Args:
+            candles: List of candle dicts
+            a_idx, a_low: Point A index and price
+            b_idx, b_high: Point B index and price
+            c_idx, c_low: Point C index and price
+            stop_buffer_cents: Cents below C for stop
+            
+        Returns:
+            ABCDPattern if valid, None otherwise
+        """
+        # Rule 1: C must be higher than A
+        if c_low <= a_low:
+            logger.debug(f"[Pattern] ABCD rejected - C ({c_low}) not higher than A ({a_low})")
+            return None
+        
+        # Rule 2: B must be highest point
+        if b_high <= a_low or b_high <= c_low:
+            return None
+        
+        # Rule 3: C retracement of AB should be 38.2% - 78.6% (Fibonacci levels)
+        ab_distance = b_high - a_low
+        if ab_distance <= 0:
+            return None
+        
+        c_retracement_from_b = b_high - c_low
+        retracement_pct = float(c_retracement_from_b / ab_distance) * 100
+        
+        if not (30 <= retracement_pct <= 85):  # Relaxed Fibonacci range
+            logger.debug(f"[Pattern] ABCD rejected - C retracement {retracement_pct:.1f}% outside 30-85%")
+            return None
+        
+        # Rule 4: Proper spacing (at least 2 candles between each point)
+        if b_idx - a_idx < 2 or c_idx - b_idx < 2:
+            return None
+        
+        # Calculate pattern levels
+        stop_buffer = Decimal(str(stop_buffer_cents)) / 100
+        stop_price = c_low - stop_buffer
+        
+        # Target: Measured move (AB distance from C)
+        # Classic ABCD: CD = AB (100% extension)
+        target_price = c_low + ab_distance
+        
+        # D breakout level (B high + small buffer)
+        d_breakout = b_high + Decimal("0.02")
+        
+        # Risk/Reward calculation
+        risk = float(d_breakout - stop_price)
+        reward = float(target_price - d_breakout)
+        risk_reward = reward / risk if risk > 0 else 0
+        
+        # Calculate confidence
+        confidence = self._calculate_abcd_confidence(
+            a_low, b_high, c_low, retracement_pct
+        )
+        
+        # Reject low confidence patterns
+        if confidence < 0.4:
+            logger.debug(f"[Pattern] ABCD rejected - confidence {confidence:.2f} < 0.40")
+            return None
+        
+        logger.info(
+            f"[Pattern] ABCD DETECTED - A=${a_low:.2f} @ idx {a_idx}, "
+            f"B=${b_high:.2f} @ idx {b_idx}, C=${c_low:.2f} @ idx {c_idx}, "
+            f"D/Entry=${d_breakout:.2f}, Stop=${stop_price:.2f}, Target=${target_price:.2f}, "
+            f"R:R={risk_reward:.1f}, Confidence={confidence:.2f}"
+        )
+        
+        return ABCDPattern(
+            a_low=a_low,
+            b_high=b_high,
+            c_low=c_low,
+            d_breakout=d_breakout,
+            a_idx=a_idx,
+            b_idx=b_idx,
+            c_idx=c_idx,
+            confidence=confidence,
+            stop_price=stop_price,
+            target_price=target_price,
+            risk_reward=risk_reward,
+        )
+    
+    def _calculate_abcd_confidence(
+        self,
+        a_low: Decimal,
+        b_high: Decimal,
+        c_low: Decimal,
+        retracement_pct: float,
+    ) -> float:
+        """
+        Calculate confidence score for ABCD pattern.
+        
+        Factors:
+        - Retracement quality: 50-61.8% is ideal Fibonacci zone
+        - C higher than midpoint of A-B shows buying strength
+        - Clear swing points (significant highs/lows)
+        """
+        confidence = 0.5
+        
+        # Retracement bonus: 50-61.8% is golden zone
+        if 50 <= retracement_pct <= 62:
+            confidence += 0.20  # Ideal zone
+        elif 38 <= retracement_pct <= 79:
+            confidence += 0.10  # Acceptable zone
+        
+        # C position bonus: Higher C (smaller retracement) = stronger buying
+        if retracement_pct < 50:
+            confidence += 0.10  # Shallow retracement = strong
+        
+        # AB move significance: bigger move = cleaner pattern
+        ab_distance = float(b_high - a_low)
+        ab_pct = (ab_distance / float(a_low)) * 100 if float(a_low) > 0 else 0
+        if ab_pct >= 5:  # At least 5% move from A to B
+            confidence += 0.10
+        
+        return min(confidence, 1.0)
     
     def detect_inverted_hs(
         self,

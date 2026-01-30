@@ -39,6 +39,7 @@ class EntryTriggerType(Enum):
     PULLBACK = "pullback"  # General pullback entry (first candle new high)
     MICRO_PULLBACK = "micro_pullback"  # For extended stocks (>100% gap): swing high break
     INVERTED_HS = "inverted_hs"  # Inverted Head & Shoulders (Ross: SXTP Jan 28 2026)
+    ABCD = "abcd"  # ABCD Pattern breakout (Ross: DCX Jan 29 2026 cold-day strategy)
 
 
 # =============================================================================
@@ -119,6 +120,9 @@ class WarriorEngineConfig:
     
     # INVERTED H&S (Ross Cameron: SXTP Jan 28 2026)
     inverted_hs_enabled: bool = True  # Enable inverted head & shoulders pattern detection
+    
+    # ABCD Pattern (Ross Cameron: DCX Jan 29 2026 cold-day strategy)
+    abcd_enabled: bool = True  # Enable ABCD pattern detection
 
 
 @dataclass
@@ -184,6 +188,10 @@ class WatchedCandidate:
     # INVERTED H&S tracking (Ross: SXTP Jan 28 2026)
     inverted_hs_pattern: Optional["InvertedHSPattern"] = None  # Detected pattern, if any
     inverted_hs_detected_at: Optional[datetime] = None  # When pattern was detected
+    
+    # ABCD pattern tracking (Ross: DCX Jan 29 2026 cold-day)
+    abcd_pattern: Optional["ABCDPattern"] = None  # Detected ABCD pattern, if any
+    abcd_detected_at: Optional[datetime] = None  # When ABCD pattern was detected
     
     @property
     def dynamic_score(self) -> int:
