@@ -348,12 +348,42 @@ export default function DataExplorer() {
                 {/* Active filters display */}
                 {Object.keys(filters).length > 0 && (
                     <div className={styles.filterTags}>
-                        {Object.entries(filters).map(([key, value]) => (
-                            <span key={key} className={styles.filterTag}>
-                                {key}: {value.length > 20 ? value.slice(0, 20) + '...' : value}
-                                <button onClick={() => removeFilter(key)} className={styles.filterRemove}>×</button>
-                            </span>
-                        ))}
+                        {Object.entries(filters).map(([key, value]) => {
+                            // Check if this is a symbol filter (for TradingView link)
+                            const isSymbolFilter = key.toLowerCase() === 'symbol' && value !== '__EMPTY__'
+
+                            return (
+                                <span key={key} className={styles.filterTag}>
+                                    {key}: {value.length > 20 ? value.slice(0, 20) + '...' : value}
+                                    {isSymbolFilter && (
+                                        <button
+                                            onClick={() => {
+                                                // Open TradingView chart in new fullscreen window
+                                                const width = window.screen.width
+                                                const height = window.screen.height
+                                                window.open(
+                                                    `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${value}`,
+                                                    '_blank',
+                                                    `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
+                                                )
+                                            }}
+                                            title="Open TradingView chart"
+                                            style={{
+                                                marginLeft: '4px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
+                                                padding: '0 2px',
+                                            }}
+                                        >
+                                            📈
+                                        </button>
+                                    )}
+                                    <button onClick={() => removeFilter(key)} className={styles.filterRemove}>×</button>
+                                </span>
+                            )
+                        })}
                     </div>
                 )}
 
