@@ -34,7 +34,7 @@ export default function DataExplorer() {
     const [loading, setLoading] = useState(true)
     const [limit, setLimit] = useState(50)
     const [offset, setOffset] = useState(0)
-    const [sortBy, setSortBy] = useState('')
+    const [sortBy, setSortBy] = useState('created_at')  // Default sort by timestamp
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
@@ -61,10 +61,9 @@ export default function DataExplorer() {
             const params = new URLSearchParams()
             params.set('limit', String(limit))
             params.set('offset', String(offset))
-            if (sortBy) {
-                params.set('sort_by', sortBy)
-                params.set('sort_dir', sortDir)
-            }
+            // Always set sort params (default to created_at desc for all tabs)
+            params.set('sort_by', sortBy || 'created_at')
+            params.set('sort_dir', sortDir)
             // Date filters for all tabs
             if (dateFrom) params.set('date_from', dateFrom)
             if (dateTo) params.set('date_to', dateTo)
@@ -91,7 +90,7 @@ export default function DataExplorer() {
     useEffect(() => {
         setOffset(0)
         setFilters({})
-        setSortBy('')
+        setSortBy('created_at')  // Reset to default sort
         setDateFrom('')
         setDateTo('')
         setHiddenColumns(new Set())
@@ -440,6 +439,38 @@ export default function DataExplorer() {
                                                     >
                                                         Clear Filter
                                                     </button>
+                                                    {/* Search input for server-side filtering */}
+                                                    <input
+                                                        type="text"
+                                                        placeholder={`Search ${col}...`}
+                                                        defaultValue={filters[col] || ''}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                const value = (e.target as HTMLInputElement).value.trim()
+                                                                if (value) {
+                                                                    handleFilterByValue(col, value)
+                                                                } else {
+                                                                    removeFilter(col)
+                                                                }
+                                                                setFilterDropdownCol(null)
+                                                            }
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '6px 8px',
+                                                            marginBottom: '8px',
+                                                            background: '#2a2a2a',
+                                                            border: '1px solid #555',
+                                                            borderRadius: '3px',
+                                                            color: '#fff',
+                                                            fontSize: '12px',
+                                                        }}
+                                                        autoFocus
+                                                    />
+                                                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>
+                                                        Press Enter to search, or select below:
+                                                    </div>
                                                     {getUniqueValues(col).map(val => (
                                                         <div
                                                             key={val}
