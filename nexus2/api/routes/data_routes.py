@@ -91,6 +91,7 @@ async def get_scan_history(
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     source: Optional[str] = Query(None, description="Filter by source: scan or backfill"),
+    catalyst: Optional[str] = Query(None, description="Filter by catalyst type"),
     sort_by: str = Query("logged_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -107,12 +108,13 @@ async def get_scan_history(
     
     history = get_scan_history_logger()
     
-    # Flatten history into list with date included
+    # Flatten history into list with date included, ensuring all have source field
     all_entries = []
     for date_str, entries in history._history.items():
         for entry in entries:
             all_entries.append({
                 "date": date_str,
+                "source": "scan",  # Default value
                 **entry,
             })
     
@@ -125,6 +127,8 @@ async def get_scan_history(
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if source:
         all_entries = [e for e in all_entries if e.get("source", "scan") == source]
+    if catalyst:
+        all_entries = [e for e in all_entries if e.get("catalyst", "") == catalyst]
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -204,9 +208,12 @@ async def get_trade_events(
 async def get_warrior_trades(
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    status: Optional[str] = Query(None, description="Filter by status: open, pending_fill, pending_exit, closed"),
+    status: Optional[str] = Query(None, description="Filter by status"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     exit_reason: Optional[str] = Query(None, description="Filter by exit reason"),
+    trigger_type: Optional[str] = Query(None, description="Filter by trigger type"),
+    quote_source: Optional[str] = Query(None, description="Filter by quote source"),
+    exit_mode: Optional[str] = Query(None, description="Filter by exit mode"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
@@ -228,6 +235,12 @@ async def get_warrior_trades(
             query = query.filter(WarriorTradeModel.symbol == symbol.upper())
         if exit_reason:
             query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
+        if trigger_type:
+            query = query.filter(WarriorTradeModel.trigger_type == trigger_type)
+        if quote_source:
+            query = query.filter(WarriorTradeModel.quote_source == quote_source)
+        if exit_mode:
+            query = query.filter(WarriorTradeModel.exit_mode == exit_mode)
         if date_from:
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:

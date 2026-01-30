@@ -14,7 +14,6 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
-
 type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'scan-history'
 
 // Columns that are numeric for right-alignment
@@ -161,7 +160,10 @@ export default function DataExplorer() {
         navigator.clipboard.writeText(text)
     }
 
-    const allColumns = data.length > 0 ? Object.keys(data[0]) : []
+    // Derive columns from ALL rows (not just first) to avoid missing columns
+    const allColumns = data.length > 0
+        ? Array.from(new Set(data.flatMap(row => Object.keys(row))))
+        : []
     const columns = allColumns.filter(c => !hiddenColumns.has(c))
     const pageCount = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
@@ -364,10 +366,25 @@ function formatValue(column: string, val: any): string {
         return String(val)
     }
 
-    // Format timestamps to seconds (no microseconds)
-    if (column === 'logged_at' || column.endsWith('_at') || column.endsWith('_time')) {
+    // Format timestamps - convert UTC to EST
+    if (column === 'logged_at' || column.endsWith('_at') || column.endsWith('_time') || column === 'timestamp') {
         if (typeof val === 'string' && val.includes('T')) {
-            return val.split('.')[0]  // Remove everything after decimal
+            try {
+                // Parse as UTC, display in EST
+                const date = new Date(val.endsWith('Z') ? val : val + 'Z')
+                return date.toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                })
+            } catch {
+                return val.split('.')[0]
+            }
         }
     }
 
