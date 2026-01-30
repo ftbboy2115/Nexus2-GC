@@ -204,17 +204,15 @@ async def get_schwab_auth_url(request: Request):
         <div class="step">
             <span class="step-num">Step 2:</span> After logging in, you'll be redirected to a page that <strong>won't load</strong> (this is normal!)
             <br><br>
-            The URL will look like: <code>https://127.0.0.1:8443/callback?code=XXXXXX...</code>
-            <br><br>
-            Copy the entire <code>code=</code> value from the URL bar.
+            Copy the <strong>entire URL</strong> from the browser address bar.
         </div>
         
         <div class="step">
-            <span class="step-num">Step 3:</span> Paste the code below and click Submit
+            <span class="step-num">Step 3:</span> Paste the full URL below and click Submit
             <br><br>
             <form action="/warrior/schwab/callback" method="post">
-                <input type="text" name="code" placeholder="Paste the code=... value here" required>
-                <button type="submit">✅ Submit Code</button>
+                <input type="text" name="code" placeholder="Paste the full callback URL here (https://127.0.0.1:8443/callback?code=...)" required>
+                <button type="submit">✅ Submit</button>
             </form>
         </div>
     </body>
@@ -225,22 +223,81 @@ async def get_schwab_auth_url(request: Request):
 
 
 @router.post("/schwab/callback")
-async def schwab_oauth_callback(code: str):
+async def schwab_oauth_callback(request: Request):
     """
     Exchange Schwab OAuth code for access tokens.
     
-    After logging in via the auth_url, Schwab redirects to 127.0.0.1 with a code.
-    Copy that code and POST here to complete authentication.
-    """
-    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
-    schwab = get_schwab_adapter()
+    Accepts either:
+    - Form data with 'code' or 'url' field
+    - Query param 'code'
     
+    If 'url' is provided, extracts the code from the callback URL.
+    """
+    from fastapi.responses import HTMLResponse
+    from urllib.parse import urlparse, parse_qs
+    from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
+    
+    # Try to get code from form data or query params
+    code = None
+    
+    # Check form data first
+    try:
+        form = await request.form()
+        code = form.get("code") or form.get("url")
+    except Exception:
+        pass
+    
+    # Fallback to query param
+    if not code:
+        code = request.query_params.get("code")
+    
+    if not code:
+        return HTMLResponse(content="""
+            <html><body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a2e; color: #eee;">
+            <h1 style="color: #ff4444;">❌ Error: No code provided</h1>
+            <p>Please go back and paste the code or full callback URL.</p>
+            <a href="/warrior/schwab/auth-url" style="color: #00a8ff;">← Try again</a>
+            </body></html>
+        """, status_code=400)
+    
+    # If user pasted full URL, extract the code
+    if code.startswith("http"):
+        try:
+            parsed = urlparse(code)
+            params = parse_qs(parsed.query)
+            if "code" in params:
+                code = params["code"][0]
+            else:
+                return HTMLResponse(content="""
+                    <html><body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a2e; color: #eee;">
+                    <h1 style="color: #ff4444;">❌ Error: No code found in URL</h1>
+                    <p>The URL you pasted doesn't contain a 'code' parameter.</p>
+                    <a href="/warrior/schwab/auth-url" style="color: #00a8ff;">← Try again</a>
+                    </body></html>
+                """, status_code=400)
+        except Exception:
+            pass
+    
+    schwab = get_schwab_adapter()
     success = schwab.exchange_code_for_tokens(code)
     
     if success:
-        return {"status": "authenticated", "message": "Schwab tokens saved successfully"}
+        return HTMLResponse(content="""
+            <html><body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a2e; color: #eee;">
+            <h1 style="color: #00cc66;">✅ Schwab Authenticated!</h1>
+            <p>Tokens saved successfully. Real-time bid/ask quotes are now available.</p>
+            <p style="color: #888;">You can close this window.</p>
+            </body></html>
+        """)
     else:
-        raise HTTPException(400, "Failed to exchange code for tokens - check logs")
+        return HTMLResponse(content="""
+            <html><body style="font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a2e; color: #eee;">
+            <h1 style="color: #ff4444;">❌ Authentication Failed</h1>
+            <p>Failed to exchange code for tokens. The code may have expired.</p>
+            <p>Check server logs for details.</p>
+            <a href="/warrior/schwab/auth-url" style="color: #00a8ff;">← Try again</a>
+            </body></html>
+        """, status_code=400)
 
 
 @router.get("/schwab/status")
