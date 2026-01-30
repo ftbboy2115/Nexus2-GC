@@ -159,7 +159,8 @@ async def get_positions_health():
     for p in positions:
         try:
             # Fetch 1-min candles from Polygon (unlimited calls, faster than FMP)
-            candles_1min = await asyncio.to_thread(polygon.get_intraday_bars, p.symbol, "1", 100)
+            # Need 200 bars for MACD (26-period slow EMA) after 5-min aggregation
+            candles_1min = await asyncio.to_thread(polygon.get_intraday_bars, p.symbol, "1", 200)
             
             if not candles_1min or len(candles_1min) < 30:
                 # Not enough intraday data - use fallback price sources
@@ -197,6 +198,14 @@ async def get_positions_health():
                 # Get current price from latest candle
                 current_price = float(candles_1min[-1].close)
                 
+                # Compute volume ratio (current bar vs average)
+                volumes = [c.volume for c in candles_1min if c.volume > 0]
+                volume_ratio = None
+                if len(volumes) > 10:
+                    avg_vol = sum(volumes[:-1]) / len(volumes[:-1])  # Exclude current bar
+                    if avg_vol > 0:
+                        volume_ratio = volumes[-1] / avg_vol
+                
                 # Compute technicals from 5-min candles
                 tech_snapshot = tech_service.get_snapshot(
                     symbol=p.symbol,
@@ -211,6 +220,7 @@ async def get_positions_health():
                     stop_price=float(p.current_stop),
                     target_price=float(p.profit_target),
                     tech_snapshot=tech_snapshot,
+                    volume_ratio=volume_ratio,
                 )
             
             result.append({
