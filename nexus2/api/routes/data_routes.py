@@ -232,8 +232,12 @@ async def get_warrior_scan_history(
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
     # Patterns for parsing
-    # New labeled format: [SCAN] or [PILLARS] PASS ...
-    pass_pattern_labeled = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[(\w+)\] PASS \| (\w+) \| (?:Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)|Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x)")
+    # NEW consolidated format: [PILLARS] PASS | SYMBOL | Gap:X% | Score: Y | Catalyst: Z | Float: N | RVOL: Mx
+    pass_pattern_pillars_consolidated = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Gap:([0-9.]+)% \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
+    # Legacy PILLARS format (no Gap%)
+    pass_pattern_pillars_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
+    # Legacy [SCAN] format (Gap/RVOL/Score)
+    pass_pattern_scan = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[SCAN\] PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
     # Legacy format without label
     pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
     # New FAIL format: includes Gap% and RVOL before Reason
@@ -250,34 +254,53 @@ async def get_warrior_scan_history(
         if not line:
             continue
         
-        # Check labeled PASS first (new format with [SCAN] or [PILLARS])
-        match = pass_pattern_labeled.match(line)
+        # Check NEW consolidated PILLARS format first (Gap + Score + Catalyst + Float + RVOL)
+        match = pass_pattern_pillars_consolidated.match(line)
         if match:
-            # Handle both formats: [SCAN] Gap/RVOL/Score OR [PILLARS] Score/Catalyst/Float/RVOL
-            if match.group(4):  # SCAN format
-                all_entries.append({
-                    "timestamp": match.group(1),
-                    "source": match.group(2),  # "SCAN" or "PILLARS"
-                    "symbol": match.group(3),
-                    "result": "PASS",
-                    "gap_pct": float(match.group(4)),
-                    "rvol": float(match.group(5)),
-                    "score": int(match.group(6)),
-                    "reason": None,
-                })
-            else:  # PILLARS format
-                all_entries.append({
-                    "timestamp": match.group(1),
-                    "source": match.group(2),
-                    "symbol": match.group(3),
-                    "result": "PASS",
-                    "gap_pct": None,  # Not in PILLARS format
-                    "rvol": float(match.group(10)) if match.group(10) else None,
-                    "score": int(match.group(7)) if match.group(7) else None,
-                    "catalyst": match.group(8),
-                    "float": match.group(9),
-                    "reason": None,
-                })
+            all_entries.append({
+                "timestamp": match.group(1),
+                "source": "PILLARS",
+                "symbol": match.group(2),
+                "result": "PASS",
+                "gap_pct": float(match.group(3)),
+                "score": int(match.group(4)),
+                "catalyst": match.group(5),
+                "float": match.group(6),
+                "rvol": float(match.group(7)),
+                "reason": None,
+            })
+            continue
+        
+        # Check legacy PILLARS format (no Gap%)
+        match = pass_pattern_pillars_legacy.match(line)
+        if match:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "source": "PILLARS",
+                "symbol": match.group(2),
+                "result": "PASS",
+                "gap_pct": None,  # Not in legacy PILLARS format
+                "score": int(match.group(3)),
+                "catalyst": match.group(4),
+                "float": match.group(5),
+                "rvol": float(match.group(6)),
+                "reason": None,
+            })
+            continue
+        
+        # Check legacy [SCAN] format (for old logs)
+        match = pass_pattern_scan.match(line)
+        if match:
+            all_entries.append({
+                "timestamp": match.group(1),
+                "source": "SCAN",
+                "symbol": match.group(2),
+                "result": "PASS",
+                "gap_pct": float(match.group(3)),
+                "rvol": float(match.group(4)),
+                "score": int(match.group(5)),
+                "reason": None,
+            })
             continue
         
         # Check legacy PASS (without label)

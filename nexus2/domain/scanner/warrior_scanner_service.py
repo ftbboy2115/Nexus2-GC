@@ -604,7 +604,6 @@ class WarriorScannerService:
                 )
                 if candidate:
                     candidates.append(candidate)
-                    scan_logger.info(f"[SCAN] PASS | {symbol} | Gap:{mover['change_percent']:.1f}% | RVOL:{candidate.relative_volume:.1f}x | Score:{candidate.quality_score}")
                     
                     # Log to scan history for Lab backtesting universe
                     try:
@@ -1302,9 +1301,9 @@ class WarriorScannerService:
             htb_note = " [HTB]" if hard_to_borrow else ""
             print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score}{freshness_note}){htb_note}")
         
-        # Log to scan file with freshness info
+        # Log to scan file with freshness info (consolidated from PILLARS + SCAN)
         scan_logger.info(
-            f"[PILLARS] PASS | {symbol} | Score: {candidate.quality_score}{freshness_note} | "
+            f"[PILLARS] PASS | {symbol} | Gap:{change_percent:.1f}% | Score: {candidate.quality_score}{freshness_note} | "
             f"Catalyst: {catalyst_type} | Float: {_format_float(float_shares) if float_shares else 'N/A'} | RVOL: {rvol:.1f}x"
         )
         
