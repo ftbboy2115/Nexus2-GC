@@ -20,8 +20,11 @@ router = APIRouter(prefix="/data", tags=["data-explorer"])
 async def get_nac_trades(
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    status: Optional[str] = Query(None, description="Filter by status: open, pending_fill, pending_exit, closed"),
+    status: Optional[str] = Query(None, description="Filter by status"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    partial_taken: Optional[bool] = Query(None, description="Filter by partial taken"),
+    exit_reason: Optional[str] = Query(None, description="Filter by exit reason"),
+    setup_type: Optional[str] = Query(None, description="Filter by setup type"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("created_at", description="Column to sort by"),
@@ -50,6 +53,12 @@ async def get_nac_trades(
             query = query.filter(NACTradeModel.status == status)
         if symbol:
             query = query.filter(NACTradeModel.symbol == symbol.upper())
+        if partial_taken is not None:
+            query = query.filter(NACTradeModel.partial_taken == partial_taken)
+        if exit_reason:
+            query = query.filter(NACTradeModel.exit_reason == exit_reason)
+        if setup_type:
+            query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
             query = query.filter(NACTradeModel.entry_time >= date_from)
         if date_to:
@@ -161,7 +170,7 @@ async def get_trade_events(
     event_type: Optional[str] = Query(None, description="Filter by event type"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    sort_by: str = Query("timestamp", description="Column to sort by"),
+    sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
     """
@@ -177,10 +186,11 @@ async def get_trade_events(
         all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
     if event_type:
         all_events = [e for e in all_events if e.get("event_type") == event_type]
+    # Date filter uses created_at field (ISO format)
     if date_from:
-        all_events = [e for e in all_events if e.get("timestamp", "") >= date_from]
+        all_events = [e for e in all_events if e.get("created_at", "") >= date_from]
     if date_to:
-        all_events = [e for e in all_events if e.get("timestamp", "") <= date_to + "T23:59:59"]
+        all_events = [e for e in all_events if e.get("created_at", "") <= date_to + "T23:59:59"]
     
     # Get total before pagination
     total = len(all_events)
@@ -214,6 +224,7 @@ async def get_warrior_trades(
     trigger_type: Optional[str] = Query(None, description="Filter by trigger type"),
     quote_source: Optional[str] = Query(None, description="Filter by quote source"),
     exit_mode: Optional[str] = Query(None, description="Filter by exit mode"),
+    stop_method: Optional[str] = Query(None, description="Filter by stop method"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
@@ -241,6 +252,8 @@ async def get_warrior_trades(
             query = query.filter(WarriorTradeModel.quote_source == quote_source)
         if exit_mode:
             query = query.filter(WarriorTradeModel.exit_mode == exit_mode)
+        if stop_method:
+            query = query.filter(WarriorTradeModel.stop_method == stop_method)
         if date_from:
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:
