@@ -649,6 +649,17 @@ async def get_trade_events(
     # Apply pagination
     events = all_events[offset:offset + limit]
     
+    # Extract shares from metadata for display as column
+    for event in events:
+        meta = event.get("metadata") or {}
+        if isinstance(meta, str):
+            import json
+            try:
+                meta = json.loads(meta)
+            except:
+                meta = {}
+        event["shares"] = meta.get("shares", "")
+    
     return {
         "events": events,
         "total": total,

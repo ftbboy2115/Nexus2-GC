@@ -43,6 +43,7 @@ export default function DataExplorer() {
     const [dateTo, setDateTo] = useState('')
     const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
     const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
+    const [timeWindow, setTimeWindow] = useState<string>('')  // 1h, 4h, 8h, 24h, 7d, or '' for custom
 
     const tabEndpoints: Record<TabType, string> = {
         'trade-events': '/api/data/trade-events',
@@ -96,6 +97,7 @@ export default function DataExplorer() {
         setHiddenColumns(new Set())
         setExpandedCell(null)
         setFilterDropdownCol(null)
+        setTimeWindow('')
     }, [activeTab])
 
     useEffect(() => {
@@ -143,6 +145,40 @@ export default function DataExplorer() {
         setFilters({})
         setDateFrom('')
         setDateTo('')
+        setTimeWindow('')
+        setOffset(0)
+    }
+
+    // Time window filter - sets dateFrom to N hours/days ago
+    const handleTimeWindow = (window: string) => {
+        setTimeWindow(window)
+        if (!window) {
+            // Custom - clear auto-dates, let user set manually
+            return
+        }
+        const now = new Date()
+        let fromDate: Date
+        switch (window) {
+            case '1h':
+                fromDate = new Date(now.getTime() - 60 * 60 * 1000)
+                break
+            case '4h':
+                fromDate = new Date(now.getTime() - 4 * 60 * 60 * 1000)
+                break
+            case '8h':
+                fromDate = new Date(now.getTime() - 8 * 60 * 60 * 1000)
+                break
+            case '24h':
+                fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+                break
+            case '7d':
+                fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+                break
+            default:
+                return
+        }
+        setDateFrom(fromDate.toISOString().split('T')[0])
+        setDateTo(now.toISOString().split('T')[0])
         setOffset(0)
     }
 
@@ -276,17 +312,30 @@ export default function DataExplorer() {
                 <div className={styles.controls}>
                     <div className={styles.controlsLeft}>
                         <span>Showing {data.length} of {total}</span>
+                        <select
+                            value={timeWindow}
+                            onChange={e => handleTimeWindow(e.target.value)}
+                            className={styles.dateInput}
+                            title="Quick time filter"
+                        >
+                            <option value="">Time Window</option>
+                            <option value="1h">Last 1 hour</option>
+                            <option value="4h">Last 4 hours</option>
+                            <option value="8h">Last 8 hours</option>
+                            <option value="24h">Last 24 hours</option>
+                            <option value="7d">Last 7 days</option>
+                        </select>
                         <input
                             type="date"
                             value={dateFrom}
-                            onChange={e => { setDateFrom(e.target.value); setOffset(0); }}
+                            onChange={e => { setDateFrom(e.target.value); setTimeWindow(''); setOffset(0); }}
                             className={styles.dateInput}
                             title="From date"
                         />
                         <input
                             type="date"
                             value={dateTo}
-                            onChange={e => { setDateTo(e.target.value); setOffset(0); }}
+                            onChange={e => { setDateTo(e.target.value); setTimeWindow(''); setOffset(0); }}
                             className={styles.dateInput}
                             title="To date"
                         />
