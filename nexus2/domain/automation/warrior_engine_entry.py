@@ -454,6 +454,26 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         # Require price to be at least 5c above VWAP for confirmation
                         buffer_above_vwap = Decimal("0.05")
                         if current_price >= vwap + buffer_above_vwap:
+                            # FALLING KNIFE FILTER: Block VWAP break on fading/weak stocks
+                            # PODC case: stock dropped from $3.30 to $2.50, VWAP break was death
+                            # Same logic as dip_for_level: must be above 20 EMA OR MACD positive
+                            is_falling_knife = False
+                            if candles and len(candles) >= 20:
+                                is_above_20_ema = snapshot.ema_20 and current_price > Decimal(str(snapshot.ema_20))
+                                macd_ok = snapshot.is_macd_bullish
+                                
+                                if not is_above_20_ema and not macd_ok:
+                                    is_falling_knife = True
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: VWAP BREAK blocked (FALLING KNIFE) - "
+                                        f"below 20 EMA ${snapshot.ema_20:.2f if snapshot.ema_20 else 'N/A'}, "
+                                        f"MACD negative"
+                                    )
+                            
+                            if is_falling_knife:
+                                watched.last_below_vwap = False  # Reset to prevent re-trigger
+                                continue  # Skip this entry
+                            
                             logger.info(
                                 f"[Warrior Entry] {symbol}: VWAP BREAK at ${current_price:.2f} "
                                 f"(VWAP=${vwap:.2f})"
