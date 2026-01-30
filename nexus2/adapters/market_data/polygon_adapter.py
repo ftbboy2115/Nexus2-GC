@@ -78,11 +78,13 @@ class PolygonAdapter:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 logger.warning("[Polygon] Rate limit hit (429)")
+            elif e.response.status_code == 404:
+                logger.debug(f"[Polygon] 404 Not Found: {endpoint} (ticker may not exist)")
             else:
-                logger.error(f"[Polygon] HTTP error: {e.response.status_code}")
+                logger.error(f"[Polygon] HTTP {e.response.status_code}: {endpoint}")
             return None
         except Exception as e:
-            logger.error(f"[Polygon] Request error: {e}")
+            logger.error(f"[Polygon] Request error on {endpoint}: {e}")
             return None
     
     # =========================================================================
