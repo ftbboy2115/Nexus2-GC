@@ -252,13 +252,23 @@ export default function DataExplorer() {
 
                 {/* Tabs */}
                 <div className={styles.tabs}>
-                    {(['warrior-scans', 'nac-scans', 'catalyst-audits', 'ai-comparisons', 'trade-events', 'warrior-trades', 'nac-trades', 'quote-audits'] as TabType[]).map(tab => (
+                    {([
+                        { id: 'warrior-scans', label: 'Warrior Scans', tooltip: 'Real-time scanner PASS/FAIL decisions from warrior_scan.log. Shows gap%, RVOL, and rejection reasons.' },
+                        { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
+                        { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Headline classification audit trail. Shows how catalysts were identified and categorized.' },
+                        { id: 'ai-comparisons', label: 'AI Comparisons', tooltip: 'Side-by-side comparison of Regex vs Flash-Lite vs Pro catalyst classification.' },
+                        { id: 'trade-events', label: 'Trade Events', tooltip: 'Event stream from nexus.db. Every state transition: ENTRY, FILL, EXIT, STOP_RAISED, etc.' },
+                        { id: 'warrior-trades', label: 'Warrior Trades', tooltip: 'Position lifecycle from warrior.db. One row per trade: entry → exit with P&L.' },
+                        { id: 'nac-trades', label: 'Nac Trades', tooltip: 'NAC position lifecycle from nac.db. One row per trade with full position data.' },
+                        { id: 'quote-audits', label: 'Quote Audits', tooltip: 'Cross-provider quote divergence audit. Shows when Alpaca/FMP/Schwab/Polygon disagree.' },
+                    ] as { id: TabType; label: string; tooltip: string }[]).map(tab => (
                         <button
-                            key={tab}
-                            className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}
-                            onClick={() => setActiveTab(tab)}
+                            key={tab.id}
+                            className={`${styles.tab} ${activeTab === tab.id ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab(tab.id)}
+                            title={tab.tooltip}
                         >
-                            {tab.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            {tab.label}
                         </button>
                     ))}
                 </div>

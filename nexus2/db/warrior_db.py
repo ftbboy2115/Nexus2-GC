@@ -669,6 +669,9 @@ def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
     
     This reconciles the DB with reality after restarts or manual position closures.
     
+    Includes a 30-second grace period to avoid race conditions where orphan sync
+    runs before the entry callback has logged the trade to the DB.
+    
     Args:
         active_symbols: Set of symbols currently held on broker (e.g., from Alpaca)
         exit_prices: Optional dict of {symbol: exit_price} from broker sell orders.
@@ -677,8 +680,13 @@ def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
     Returns:
         List of symbols that were closed as orphans
     """
+    from datetime import timedelta
+    
     exit_prices = exit_prices or {}
     closed = []
+    grace_period = timedelta(seconds=30)
+    cutoff_time = now_utc() - grace_period
+    
     with get_warrior_session() as db:
         # Check both 'open' (legacy) and PositionStatus.OPEN.value
         open_trades = db.query(WarriorTradeModel).filter(
@@ -686,6 +694,11 @@ def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
         ).all()
         
         for trade in open_trades:
+            # Skip trades created in the last 30 seconds (grace period)
+            # This prevents race conditions where orphan sync runs before entry callback
+            if trade.created_at and trade.created_at > cutoff_time:
+                continue
+                
             if trade.symbol not in active_symbols:
                 exit_price = exit_prices.get(trade.symbol)
                 if exit_price:
