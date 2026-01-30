@@ -176,6 +176,8 @@ async def get_warrior_scan_history(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
@@ -335,25 +337,38 @@ async def get_warrior_scan_history(
             continue
     
     # Apply filters
-    # Note: Log timestamps are in UTC. Convert to ET for date comparison.
+    # Note: Log timestamps are in UTC. Convert to ET for date/time comparison.
     from zoneinfo import ZoneInfo
     from datetime import datetime as dt
     utc_tz = ZoneInfo("UTC")
     et_tz = ZoneInfo("America/New_York")
     
-    def get_local_date(ts_str: str) -> str:
-        """Convert UTC timestamp string to ET date string."""
+    def get_local_datetime(ts_str: str) -> tuple[str, str]:
+        """Convert UTC timestamp string to ET date and time strings."""
         try:
             utc_dt = dt.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
             local_dt = utc_dt.astimezone(et_tz)
-            return local_dt.strftime("%Y-%m-%d")
+            return local_dt.strftime("%Y-%m-%d"), local_dt.strftime("%H:%M")
         except:
-            return ts_str[:10]  # Fallback to raw date
+            return ts_str[:10], ts_str[11:16]  # Fallback to raw date/time
     
-    if date_from:
-        all_entries = [e for e in all_entries if get_local_date(e["timestamp"]) >= date_from]
-    if date_to:
-        all_entries = [e for e in all_entries if get_local_date(e["timestamp"]) <= date_to]
+    if date_from or date_to or time_from or time_to:
+        filtered = []
+        for e in all_entries:
+            local_date, local_time = get_local_datetime(e["timestamp"])
+            # Date filter
+            if date_from and local_date < date_from:
+                continue
+            if date_to and local_date > date_to:
+                continue
+            # Time filter (within the date range)
+            if time_from and local_time < time_from:
+                continue
+            if time_to and local_time > time_to:
+                continue
+            filtered.append(e)
+        all_entries = filtered
+    
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if result:

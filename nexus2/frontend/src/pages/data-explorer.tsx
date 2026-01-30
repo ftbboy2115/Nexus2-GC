@@ -41,6 +41,8 @@ export default function DataExplorer() {
     const [showColumnMenu, setShowColumnMenu] = useState(false)
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
+    const [timeFrom, setTimeFrom] = useState('')  // HH:MM format
+    const [timeTo, setTimeTo] = useState('')      // HH:MM format
     const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
     const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
     const [timeWindow, setTimeWindow] = useState<string>('')  // 1h, 4h, 8h, 24h, 7d, or '' for custom
@@ -65,9 +67,11 @@ export default function DataExplorer() {
             // Always set sort params (default to created_at desc for all tabs)
             params.set('sort_by', sortBy || 'created_at')
             params.set('sort_dir', sortDir)
-            // Date filters for all tabs
+            // Date and time filters for all tabs
             if (dateFrom) params.set('date_from', dateFrom)
             if (dateTo) params.set('date_to', dateTo)
+            if (timeFrom) params.set('time_from', timeFrom)
+            if (timeTo) params.set('time_to', timeTo)
             // Apply all filters
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.set(key, value)
@@ -86,7 +90,7 @@ export default function DataExplorer() {
         } finally {
             setLoading(false)
         }
-    }, [activeTab, limit, offset, sortBy, sortDir, filters, dateFrom, dateTo])
+    }, [activeTab, limit, offset, sortBy, sortDir, filters, dateFrom, dateTo, timeFrom, timeTo])
 
     useEffect(() => {
         setOffset(0)
@@ -94,6 +98,8 @@ export default function DataExplorer() {
         setSortBy('created_at')  // Reset to default sort
         setDateFrom('')
         setDateTo('')
+        setTimeFrom('')
+        setTimeTo('')
         setHiddenColumns(new Set())
         setExpandedCell(null)
         setFilterDropdownCol(null)
@@ -145,6 +151,8 @@ export default function DataExplorer() {
         setFilters({})
         setDateFrom('')
         setDateTo('')
+        setTimeFrom('')
+        setTimeTo('')
         setTimeWindow('')
         setOffset(0)
     }
@@ -333,11 +341,28 @@ export default function DataExplorer() {
                             title="From date"
                         />
                         <input
+                            type="time"
+                            value={timeFrom}
+                            onChange={e => { setTimeFrom(e.target.value); setTimeWindow(''); setOffset(0); }}
+                            className={styles.dateInput}
+                            title="From time (optional)"
+                            style={{ width: '90px' }}
+                        />
+                        <span style={{ color: '#888' }}>→</span>
+                        <input
                             type="date"
                             value={dateTo}
                             onChange={e => { setDateTo(e.target.value); setTimeWindow(''); setOffset(0); }}
                             className={styles.dateInput}
                             title="To date"
+                        />
+                        <input
+                            type="time"
+                            value={timeTo}
+                            onChange={e => { setTimeTo(e.target.value); setTimeWindow(''); setOffset(0); }}
+                            className={styles.dateInput}
+                            title="To time (optional)"
+                            style={{ width: '90px' }}
                         />
                         {activeTab === 'warrior-trades' && (
                             <select
