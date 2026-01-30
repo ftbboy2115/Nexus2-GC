@@ -421,55 +421,61 @@ export default function DataExplorer() {
                                                     }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    {/* Search input for server-side filtering - at top */}
-                                                    <input
-                                                        type="text"
-                                                        placeholder={`Search ${col}...`}
-                                                        defaultValue={filters[col] || ''}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                const value = (e.target as HTMLInputElement).value.trim()
-                                                                if (value) {
-                                                                    handleFilterByValue(col, value)
-                                                                } else {
-                                                                    removeFilter(col)
+                                                    {/* Search input with inline clear button */}
+                                                    <div style={{ position: 'relative', marginBottom: '6px' }}>
+                                                        <input
+                                                            type="text"
+                                                            placeholder={`Search ${col}...`}
+                                                            defaultValue={filters[col] || ''}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    const value = (e.target as HTMLInputElement).value.trim()
+                                                                    if (value) {
+                                                                        handleFilterByValue(col, value)
+                                                                    } else {
+                                                                        removeFilter(col)
+                                                                    }
+                                                                    setFilterDropdownCol(null)
                                                                 }
-                                                                setFilterDropdownCol(null)
-                                                            }
-                                                        }}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '6px 8px',
-                                                            marginBottom: '6px',
-                                                            background: '#2a2a2a',
-                                                            border: '1px solid #555',
-                                                            borderRadius: '3px',
-                                                            color: '#fff',
-                                                            fontSize: '12px',
-                                                        }}
-                                                        autoFocus
-                                                    />
-                                                    <button
-                                                        onClick={() => {
-                                                            removeFilter(col)
-                                                            setFilterDropdownCol(null)
-                                                        }}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '6px',
-                                                            marginBottom: '8px',
-                                                            background: '#333',
-                                                            border: 'none',
-                                                            borderRadius: '3px',
-                                                            color: '#fff',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        ✕ Clear Filter
-                                                    </button>
-                                                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>
-                                                        Press Enter to search, or select:
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '6px 28px 6px 8px',
+                                                                background: '#2a2a2a',
+                                                                border: '1px solid #555',
+                                                                borderRadius: '3px',
+                                                                color: '#fff',
+                                                                fontSize: '12px',
+                                                            }}
+                                                            autoFocus
+                                                        />
+                                                        {filters[col] && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    removeFilter(col)
+                                                                    setFilterDropdownCol(null)
+                                                                }}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    right: '4px',
+                                                                    top: '50%',
+                                                                    transform: 'translateY(-50%)',
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: '#f44336',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '14px',
+                                                                    padding: '2px 6px',
+                                                                }}
+                                                                title="Clear filter"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px' }}>
+                                                        Enter to search, or select:
                                                     </div>
                                                     {getUniqueValues(col).map(val => (
                                                         <div
