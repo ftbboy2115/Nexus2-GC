@@ -421,25 +421,7 @@ export default function DataExplorer() {
                                                     }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    <button
-                                                        onClick={() => {
-                                                            removeFilter(col)
-                                                            setFilterDropdownCol(null)
-                                                        }}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '6px',
-                                                            marginBottom: '8px',
-                                                            background: '#333',
-                                                            border: 'none',
-                                                            borderRadius: '3px',
-                                                            color: '#fff',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        Clear Filter
-                                                    </button>
-                                                    {/* Search input for server-side filtering */}
+                                                    {/* Search input for server-side filtering - at top */}
                                                     <input
                                                         type="text"
                                                         placeholder={`Search ${col}...`}
@@ -459,7 +441,7 @@ export default function DataExplorer() {
                                                         style={{
                                                             width: '100%',
                                                             padding: '6px 8px',
-                                                            marginBottom: '8px',
+                                                            marginBottom: '6px',
                                                             background: '#2a2a2a',
                                                             border: '1px solid #555',
                                                             borderRadius: '3px',
@@ -468,8 +450,26 @@ export default function DataExplorer() {
                                                         }}
                                                         autoFocus
                                                     />
+                                                    <button
+                                                        onClick={() => {
+                                                            removeFilter(col)
+                                                            setFilterDropdownCol(null)
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '6px',
+                                                            marginBottom: '8px',
+                                                            background: '#333',
+                                                            border: 'none',
+                                                            borderRadius: '3px',
+                                                            color: '#fff',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        ✕ Clear Filter
+                                                    </button>
                                                     <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>
-                                                        Press Enter to search, or select below:
+                                                        Press Enter to search, or select:
                                                     </div>
                                                     {getUniqueValues(col).map(val => (
                                                         <div
