@@ -164,12 +164,14 @@ export default function Warrior() {
         return () => clearInterval(interval)
     }, [status?.state, status?.stats?.next_scan, status?.market_hours])
 
-    // Open TradingView chart in new window (not tab)
+    // Open TradingView chart in new window (fullscreen size)
     const openChart = (symbol: string) => {
+        const width = window.screen.width
+        const height = window.screen.height
         window.open(
             `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`,
             '_blank',
-            'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no'
+            `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
         )
     }
 

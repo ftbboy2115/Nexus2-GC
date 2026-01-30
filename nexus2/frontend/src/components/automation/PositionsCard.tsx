@@ -71,11 +71,15 @@ export default function PositionsCard({
                 return (
                     <td key={colId} className={styles.symbol}>
                         <span
-                            onClick={() => window.open(
-                                `https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`,
-                                '_blank',
-                                'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no'
-                            )}
+                            onClick={() => {
+                                const w = window.screen.width
+                                const h = window.screen.height
+                                window.open(
+                                    `https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`,
+                                    '_blank',
+                                    `width=${w},height=${h},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
+                                )
+                            }}
                             style={{ color: '#38bdf8', textDecoration: 'none', cursor: 'pointer' }}
                             onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                             onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
@@ -263,11 +267,15 @@ export default function PositionsCard({
                                             <tr key={pos.symbol}>
                                                 <td className={styles.symbol}>
                                                     <span
-                                                        onClick={() => window.open(
-                                                            `https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`,
-                                                            '_blank',
-                                                            'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no'
-                                                        )}
+                                                        onClick={() => {
+                                                            const w = window.screen.width
+                                                            const h = window.screen.height
+                                                            window.open(
+                                                                `https://www.tradingview.com/chart/iPwLdkVr/?symbol=${pos.symbol}`,
+                                                                '_blank',
+                                                                `width=${w},height=${h},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
+                                                            )
+                                                        }}
                                                         style={{ color: '#38bdf8', textDecoration: 'none', cursor: 'pointer' }}
                                                         onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                                                         onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
