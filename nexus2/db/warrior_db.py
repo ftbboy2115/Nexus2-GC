@@ -685,7 +685,8 @@ def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
     exit_prices = exit_prices or {}
     closed = []
     grace_period = timedelta(seconds=30)
-    cutoff_time = now_utc() - grace_period
+    # Make cutoff naive (remove tz) since DB stores naive datetimes
+    cutoff_time = now_utc().replace(tzinfo=None) - grace_period
     
     with get_warrior_session() as db:
         # Check both 'open' (legacy) and PositionStatus.OPEN.value
