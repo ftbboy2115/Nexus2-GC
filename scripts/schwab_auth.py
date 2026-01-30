@@ -188,7 +188,11 @@ def main():
     # Step 1: Get auth URL from VPS
     print("\n[1/4] Fetching auth URL from VPS...")
     try:
-        resp = httpx.get(f"{args.vps_url}/warrior/schwab/auth-url", timeout=10)
+        resp = httpx.get(
+            f"{args.vps_url}/warrior/schwab/auth-url",
+            headers={"Accept": "application/json"},
+            timeout=10
+        )
         auth_data = resp.json()
         auth_url = auth_data.get("auth_url") or auth_data.get("url")
         if not auth_url:
