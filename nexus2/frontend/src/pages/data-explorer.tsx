@@ -380,14 +380,15 @@ export default function DataExplorer() {
                                                 className={styles.filterBtn}
                                                 title={`Filter by ${col}`}
                                                 style={{
-                                                    marginLeft: '4px',
-                                                    padding: '0 4px',
-                                                    fontSize: '10px',
-                                                    background: filters[col] ? '#4caf50' : 'transparent',
-                                                    border: '1px solid #555',
+                                                    marginLeft: '6px',
+                                                    padding: '2px 5px',
+                                                    fontSize: '11px',
+                                                    background: filters[col] ? '#4caf50' : '#333',
+                                                    border: '1px solid #666',
                                                     borderRadius: '3px',
-                                                    color: filters[col] ? '#fff' : '#888',
+                                                    color: filters[col] ? '#fff' : '#ccc',
                                                     cursor: 'pointer',
+                                                    fontWeight: 'bold',
                                                 }}
                                             >
                                                 ▼
