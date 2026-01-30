@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
-type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'quote-audits'
+type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'ai-comparisons' | 'quote-audits'
 
 // Columns that are numeric for right-alignment
 const NUMERIC_COLS = new Set([
@@ -50,6 +50,7 @@ export default function DataExplorer() {
         'nac-scans': '/api/data/scan-history',
         'warrior-scans': '/api/data/warrior-scan-history',
         'catalyst-audits': '/api/data/catalyst-audits',
+        'ai-comparisons': '/api/data/ai-comparisons',
         'quote-audits': '/api/data/quote-audits',
     }
 
@@ -227,7 +228,7 @@ export default function DataExplorer() {
 
                 {/* Tabs */}
                 <div className={styles.tabs}>
-                    {(['trade-events', 'warrior-trades', 'nac-trades', 'nac-scans', 'warrior-scans', 'catalyst-audits', 'quote-audits'] as TabType[]).map(tab => (
+                    {(['trade-events', 'warrior-trades', 'nac-trades', 'nac-scans', 'warrior-scans', 'catalyst-audits', 'ai-comparisons', 'quote-audits'] as TabType[]).map(tab => (
                         <button
                             key={tab}
                             className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}

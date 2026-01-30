@@ -460,6 +460,112 @@ async def get_catalyst_audits(
 
 
 # =============================================================================
+# AI COMPARISONS ENDPOINT (parses catalyst_comparison.jsonl)
+# =============================================================================
+
+@router.get("/ai-comparisons")
+async def get_ai_comparisons(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    flash_valid: Optional[bool] = Query(None, description="Filter by Flash-Lite result"),
+    has_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
+    sort_by: str = Query("timestamp", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated AI comparison entries showing Regex vs Flash-Lite vs Pro.
+    
+    Parses catalyst_comparison.jsonl to show the multi-model validation pipeline.
+    
+    Returns:
+        entries: List of comparison entries with regex_conf, flash_valid, pro_valid, etc.
+        total: Total count for pagination
+        limit: Records per page
+        offset: Current offset
+    """
+    from pathlib import Path
+    import json
+    
+    # Find log directory
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
+    
+    log_path = log_dir / "catalyst_comparison.jsonl"
+    if not log_path.exists():
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Read JSONL file
+    all_entries = []
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    
+                    # Flatten the nested structure for table display
+                    flash_result = data.get("models", {}).get("flash_lite", {})
+                    pro_result = data.get("models", {}).get("pro", {})
+                    regex_info = data.get("regex", {})
+                    
+                    entry = {
+                        "timestamp": data.get("timestamp", "")[:19],  # Trim timezone
+                        "symbol": data.get("symbol"),
+                        "headline": data.get("headline", "")[:80],
+                        "regex_type": regex_info.get("type"),
+                        "regex_conf": regex_info.get("conf", 0),
+                        "flash_valid": flash_result.get("valid"),
+                        "flash_type": flash_result.get("type"),
+                        "flash_reason": flash_result.get("reason", "")[:40],
+                        "flash_ms": flash_result.get("latency_ms", 0),
+                        "pro_valid": pro_result.get("valid") if pro_result else None,
+                        "pro_type": pro_result.get("type") if pro_result else None,
+                        "pro_reason": pro_result.get("reason", "")[:40] if pro_result else None,
+                        "used_tiebreaker": bool(pro_result),
+                    }
+                    all_entries.append(entry)
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
+    
+    # Apply filters
+    if date_from:
+        all_entries = [e for e in all_entries if e["timestamp"][:10] >= date_from]
+    if date_to:
+        all_entries = [e for e in all_entries if e["timestamp"][:10] <= date_to]
+    if symbol:
+        all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() == symbol.upper()]
+    if flash_valid is not None:
+        all_entries = [e for e in all_entries if e["flash_valid"] == flash_valid]
+    if has_tiebreaker is not None:
+        all_entries = [e for e in all_entries if e["used_tiebreaker"] == has_tiebreaker]
+    
+    # Calculate total before pagination
+    total = len(all_entries)
+    
+    # Apply sorting
+    reverse = sort_dir.lower() == "desc"
+    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
+    
+    # Apply pagination
+    entries = all_entries[offset:offset + limit]
+    
+    return {
+        "entries": entries,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# =============================================================================
 # TRADE EVENTS ENDPOINT (with sorting/filtering)
 # =============================================================================
 
