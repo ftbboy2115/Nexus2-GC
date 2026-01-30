@@ -108,9 +108,16 @@ class PolygonAdapter:
         # Use last trade price, fallback to close
         price = last_trade.get("p") or day.get("c") or 0
         
+        # Calculate change from prev_day
+        prev_close = prev_day.get("c", 0) or 0
+        change = float(price) - float(prev_close) if prev_close else 0
+        change_pct = (change / float(prev_close) * 100) if prev_close else 0
+        
         return Quote(
             symbol=symbol,
             price=Decimal(str(price)),
+            change=Decimal(str(round(change, 2))),
+            change_percent=Decimal(str(round(change_pct, 2))),
             bid=Decimal(str(last_quote.get("p", 0) or 0)),  # bid price
             ask=Decimal(str(last_quote.get("P", 0) or 0)),  # ask price
             volume=day.get("v", 0),
@@ -131,6 +138,8 @@ class PolygonAdapter:
         return Quote(
             symbol=symbol,
             price=Decimal(str(price)),
+            change=Decimal("0"),
+            change_percent=Decimal("0"),
             bid=Decimal("0"),
             ask=Decimal("0"),
             volume=0,
@@ -168,9 +177,17 @@ class PolygonAdapter:
             
             price = last_trade.get("p") or day.get("c") or 0
             
+            # Calculate change
+            prev_day = ticker.get("prevDay", {})
+            prev_close = prev_day.get("c", 0) or 0
+            change = float(price) - float(prev_close) if prev_close else 0
+            change_pct = (change / float(prev_close) * 100) if prev_close else 0
+            
             quotes[sym] = Quote(
                 symbol=sym,
                 price=Decimal(str(price)),
+                change=Decimal(str(round(change, 2))),
+                change_percent=Decimal(str(round(change_pct, 2))),
                 bid=Decimal(str(last_quote.get("p", 0) or 0)),
                 ask=Decimal(str(last_quote.get("P", 0) or 0)),
                 volume=day.get("v", 0),
