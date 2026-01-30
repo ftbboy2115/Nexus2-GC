@@ -747,7 +747,8 @@ async def get_quote_audits(
     - High divergence events (phantom quotes)
     - Source reliability by time window
     """
-    from nexus2.db.models import QuoteAuditModel, get_session
+    from nexus2.db.models import QuoteAuditModel
+    from nexus2.db.database import get_session
     from sqlalchemy import desc, asc
     
     with get_session() as db:

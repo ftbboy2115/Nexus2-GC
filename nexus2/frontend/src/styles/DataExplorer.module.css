@@ -341,6 +341,11 @@
     text-align: right;
 }
 
+.numericHeader>span,
+.numericHeader>button {
+    display: inline-block;
+}
+
 /* Expanded cell for viewing full content */
 .expandedCell {
     white-space: pre-wrap;
