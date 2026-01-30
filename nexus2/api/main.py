@@ -30,10 +30,19 @@ from pathlib import Path
 log_dir = Path(__file__).parent.parent.parent / "data"
 log_dir.mkdir(exist_ok=True)
 
-# Create formatters
-log_format = '%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s | %(message)s'
-date_format = '%H:%M:%S'
-formatter = logging.Formatter(log_format, datefmt=date_format)
+# Create ET-aware formatter (VPS runs UTC, we want ET in logs)
+from nexus2.utils.time_utils import now_et
+
+class ETFormatter(logging.Formatter):
+    """Formatter that always uses Eastern Time for timestamps."""
+    def formatTime(self, record, datefmt=None):
+        et_time = now_et()
+        if datefmt:
+            return et_time.strftime(datefmt)
+        return et_time.strftime('%H:%M:%S') + f'.{int(et_time.microsecond / 1000):03d}'
+
+log_format = '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s'
+formatter = ETFormatter(log_format)
 
 # Root logger
 root_logger = logging.getLogger()
