@@ -928,6 +928,18 @@ async def handle_exit(
                     pnl=actual_pnl,
                 )
             
+            # Log EXIT_FILL_CONFIRMED to complete PSM audit trail
+            # (signal.exit_price = intended, actual_exit_price = broker confirmed)
+            trade_event_service.log_warrior_exit_fill_confirmed(
+                position_id=signal.position_id,
+                symbol=signal.symbol,
+                intended_price=signal.exit_price,
+                actual_price=actual_exit_price,
+                shares=signal.shares_to_exit,
+                exit_reason=exit_reason_map.get(signal.reason, "manual"),
+                pnl=actual_pnl,
+            )
+            
             # Track realized P&L
             monitor._add_realized_pnl(actual_pnl)
                 

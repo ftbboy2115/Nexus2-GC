@@ -54,7 +54,8 @@ class TradeEventService:
     WARRIOR_FULL_EXIT = "FULL_EXIT"
     WARRIOR_BROKER_SYNC_CLOSE = "BROKER_SYNC_CLOSE"  # Orphan auto-closed by sync
     WARRIOR_EXIT_FAILED = "EXIT_FAILED"  # Exit callback error (diagnostic)
-    WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received
+    WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received (entry)
+    WARRIOR_EXIT_FILL_CONFIRMED = "EXIT_FILL_CONFIRMED"  # Broker exit fill received
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -510,6 +511,61 @@ class TradeEventService:
             old_value=str(quote_price),
             new_value=str(fill_price),
             reason=f"Fill confirmed: ${quote_price} → ${fill_price} ({slip_str})",
+            metadata=metadata,
+        )
+    
+    def log_warrior_exit_fill_confirmed(
+        self,
+        position_id: str,
+        symbol: str,
+        intended_price: Decimal,
+        actual_price: Decimal,
+        shares: int,
+        exit_reason: str,
+        pnl: Decimal,
+    ) -> Optional[int]:
+        """Log when broker confirms actual exit fill price.
+        
+        This completes the audit trail for exits:
+          1. EXIT intent event (e.g., CANDLE_UNDER_CANDLE_EXIT) → PENDING_EXIT
+          2. EXIT_FILL_CONFIRMED → CLOSED
+        """
+        slippage_cents = float((actual_price - intended_price) * 100)
+        
+        metadata = {
+            "intended_price": str(intended_price),
+            "actual_price": str(actual_price),
+            "slippage_cents": slippage_cents,
+            "shares": shares,
+            "exit_reason": exit_reason,
+            "pnl": str(pnl),
+        }
+        
+        # Format slippage for display
+        if slippage_cents > 0:
+            slip_str = f"{slippage_cents:.1f}¢ worse"
+        elif slippage_cents < 0:
+            slip_str = f"{abs(slippage_cents):.1f}¢ better"
+        else:
+            slip_str = "no slippage"
+        
+        # TML: Write to persistent file log
+        pnl_str = f"+${pnl}" if float(pnl) >= 0 else f"-${abs(float(pnl))}"
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_EXIT_FILL_CONFIRMED,
+            details=f"Exit fill ${intended_price} → ${actual_price} ({slip_str}) | P&L={pnl_str}",
+        )
+        
+        return self._log_event(
+            strategy="WARRIOR",
+            position_id=position_id,
+            symbol=symbol,
+            event_type=self.WARRIOR_EXIT_FILL_CONFIRMED,
+            old_value=str(intended_price),
+            new_value=str(actual_price),
+            reason=f"Exit fill confirmed: ${intended_price} → ${actual_price} ({slip_str})",
             metadata=metadata,
         )
     
