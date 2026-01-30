@@ -21,6 +21,11 @@ USAGE:
     
     # Convert UTC datetime to ET
     et_time = utc_to_et(some_utc_datetime)
+
+ENFORCEMENT:
+    Run `python scripts/migrate_to_time_utils.py` to find and fix violations.
+    This script detects datetime.now() and datetime.utcnow() in codebase.
+    Use --apply flag to auto-fix. Dry run by default.
 """
 
 from datetime import datetime, time as dt_time
