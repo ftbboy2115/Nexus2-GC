@@ -977,6 +977,9 @@ class WarriorScannerService:
                             catalyst_confidence = 0.85
                             if verbose:
                                 print(f"[Catalyst Debug] {symbol}: {method.upper()} - {final_type}")
+                            # Log PASS to catalyst audit for traceability
+                            from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                            log_headline_evaluation(symbol, new_headlines, "PASS", final_type)
                             break  # Found valid, no need to check more
                             
                     except Exception as e:
