@@ -48,17 +48,26 @@ async def get_nac_trades(
     with get_nac_session() as db:
         query = db.query(NACTradeModel)
         
-        # Apply filters
+        # Apply filters (handle __EMPTY__ for NULL filtering)
         if status:
-            query = query.filter(NACTradeModel.status == status)
+            if status == '__EMPTY__':
+                query = query.filter(NACTradeModel.status == None)
+            else:
+                query = query.filter(NACTradeModel.status == status)
         if symbol:
             query = query.filter(NACTradeModel.symbol == symbol.upper())
         if partial_taken is not None:
             query = query.filter(NACTradeModel.partial_taken == partial_taken)
         if exit_reason:
-            query = query.filter(NACTradeModel.exit_reason == exit_reason)
+            if exit_reason == '__EMPTY__':
+                query = query.filter(NACTradeModel.exit_reason == None)
+            else:
+                query = query.filter(NACTradeModel.exit_reason == exit_reason)
         if setup_type:
-            query = query.filter(NACTradeModel.setup_type == setup_type)
+            if setup_type == '__EMPTY__':
+                query = query.filter(NACTradeModel.setup_type == None)
+            else:
+                query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
             query = query.filter(NACTradeModel.entry_time >= date_from)
         if date_to:
@@ -239,21 +248,39 @@ async def get_warrior_trades(
     with get_warrior_session() as db:
         query = db.query(WarriorTradeModel)
         
-        # Apply filters
+        # Apply filters (handle __EMPTY__ for NULL filtering)
         if status:
-            query = query.filter(WarriorTradeModel.status == status)
+            if status == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.status == None)
+            else:
+                query = query.filter(WarriorTradeModel.status == status)
         if symbol:
             query = query.filter(WarriorTradeModel.symbol == symbol.upper())
         if exit_reason:
-            query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
+            if exit_reason == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.exit_reason == None)
+            else:
+                query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
         if trigger_type:
-            query = query.filter(WarriorTradeModel.trigger_type == trigger_type)
+            if trigger_type == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.trigger_type == None)
+            else:
+                query = query.filter(WarriorTradeModel.trigger_type == trigger_type)
         if quote_source:
-            query = query.filter(WarriorTradeModel.quote_source == quote_source)
+            if quote_source == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.quote_source == None)
+            else:
+                query = query.filter(WarriorTradeModel.quote_source == quote_source)
         if exit_mode:
-            query = query.filter(WarriorTradeModel.exit_mode == exit_mode)
+            if exit_mode == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.exit_mode == None)
+            else:
+                query = query.filter(WarriorTradeModel.exit_mode == exit_mode)
         if stop_method:
-            query = query.filter(WarriorTradeModel.stop_method == stop_method)
+            if stop_method == '__EMPTY__':
+                query = query.filter(WarriorTradeModel.stop_method == None)
+            else:
+                query = query.filter(WarriorTradeModel.stop_method == stop_method)
         if date_from:
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:

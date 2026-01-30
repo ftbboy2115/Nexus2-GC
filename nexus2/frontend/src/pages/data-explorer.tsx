@@ -107,8 +107,8 @@ export default function DataExplorer() {
 
     // Accumulate filters instead of replacing
     const handleFilterByValue = (column: string, value: any) => {
-        // Use special marker for empty values
-        if (value === null || value === undefined || value === '' || value === '-') {
+        // Use special marker for empty/null values
+        if (value === null || value === undefined || value === '' || value === '-' || value === 'null') {
             setFilters(prev => ({ ...prev, [column]: '__EMPTY__' }))
         } else {
             setFilters(prev => ({ ...prev, [column]: String(value) }))
