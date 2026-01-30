@@ -5,7 +5,7 @@ API endpoints for controlling the Warrior Trading automation engine.
 Separate from KK-style automation routes.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from decimal import Decimal
