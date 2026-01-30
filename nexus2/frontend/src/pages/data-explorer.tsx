@@ -35,6 +35,18 @@ const NUMERIC_COLS = new Set([
 // Columns that should NOT be comma-formatted
 const NO_COMMA_COLS = new Set(['id', 'position_id', 'entry_order_id', 'exit_order_id', 'order_id'])
 
+// Per-tab filter state type
+interface TabFilterState {
+    filters: Record<string, string>
+    dateFrom: string
+    dateTo: string
+    timeFrom: string
+    timeTo: string
+    timeWindow: string
+    sortBy: string
+    sortDir: 'asc' | 'desc'
+}
+
 export default function DataExplorer() {
     const [activeTab, setActiveTab] = useState<TabType>('warrior-scans')
     const [data, setData] = useState<any[]>([])
@@ -54,6 +66,10 @@ export default function DataExplorer() {
     const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
     const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
     const [timeWindow, setTimeWindow] = useState<string>('')  // 1h, 4h, 8h, 24h, 7d, or '' for custom
+
+    // Store filter state per tab so each tab has independent filters
+    const [tabFilterStates, setTabFilterStates] = useState<Partial<Record<TabType, TabFilterState>>>({})
+    const [previousTab, setPreviousTab] = useState<TabType | null>(null)
 
     const tabEndpoints: Record<TabType, string> = {
         'trade-events': '/api/data/trade-events',
@@ -101,21 +117,54 @@ export default function DataExplorer() {
     }, [activeTab, limit, offset, sortBy, sortDir, filters, dateFrom, dateTo, timeFrom, timeTo])
 
     useEffect(() => {
-        // When switching tabs, reset tab-specific state but PRESERVE date/time filters
-        // This allows investigating a trade's lifecycle across different tabs
+        // Save current tab's filter state before switching
+        if (previousTab) {
+            setTabFilterStates(prev => ({
+                ...prev,
+                [previousTab]: {
+                    filters,
+                    dateFrom,
+                    dateTo,
+                    timeFrom,
+                    timeTo,
+                    timeWindow,
+                    sortBy,
+                    sortDir,
+                }
+            }))
+        }
+
+        // Restore the new tab's filter state or reset to defaults
+        const savedState = tabFilterStates[activeTab]
+        if (savedState) {
+            setFilters(savedState.filters)
+            setDateFrom(savedState.dateFrom)
+            setDateTo(savedState.dateTo)
+            setTimeFrom(savedState.timeFrom)
+            setTimeTo(savedState.timeTo)
+            setTimeWindow(savedState.timeWindow)
+            setSortBy(savedState.sortBy)
+            setSortDir(savedState.sortDir)
+        } else {
+            // Fresh tab - reset to defaults
+            setFilters({})
+            setDateFrom('')
+            setDateTo('')
+            setTimeFrom('')
+            setTimeTo('')
+            setTimeWindow('')
+            setSortBy('created_at')
+            setSortDir('desc')
+        }
+
+        // Always reset these on tab switch
         setOffset(0)
-        // Only reset column-specific filters, NOT date/time/symbol filters
-        setFilters(prev => {
-            // Keep symbol filter if it exists - commonly used across tabs
-            const result: Record<string, string> = {}
-            if (prev.symbol) result.symbol = prev.symbol
-            return result
-        })
-        setSortBy('created_at')  // Reset to default sort
-        // PRESERVE: dateFrom, dateTo, timeFrom, timeTo, timeWindow
         setHiddenColumns(new Set())
         setExpandedCell(null)
         setFilterDropdownCol(null)
+
+        // Track previous tab for next switch
+        setPreviousTab(activeTab)
     }, [activeTab])
 
     useEffect(() => {
