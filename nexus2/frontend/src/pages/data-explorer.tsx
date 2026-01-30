@@ -18,10 +18,18 @@ type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 
 
 // Columns that are numeric for right-alignment
 const NUMERIC_COLS = new Set([
+    // Trade columns
     'entry_price', 'exit_price', 'stop_price', 'target_price', 'realized_pnl',
-    'quantity', 'remaining_quantity', 'gap_percent', 'rvol', 'score', 'shares',
+    'quantity', 'remaining_quantity', 'shares',
     'price', 'fill_price', 'pnl', 'entry_quote', 'exit_quote', 'slippage_cents',
-    'divergence_pct', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price'
+    // Quote audit columns
+    'divergence_pct', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price',
+    // Scan columns (warrior/nac)
+    'gap_percent', 'gap_pct', 'rvol', 'score',
+    // Catalyst audit columns
+    'headline_num', 'confidence',
+    // AI comparison columns
+    'regex_conf', 'flash_ms',
 ])
 
 // Columns that should NOT be comma-formatted
