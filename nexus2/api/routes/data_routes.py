@@ -98,11 +98,80 @@ async def get_nac_trades(
 
 
 # =============================================================================
-# SCAN HISTORY ENDPOINT (Warrior Scanner Logs)
+# SCAN HISTORY ENDPOINT (NAC/EP Scans from scan_history.json)
 # =============================================================================
 
 @router.get("/scan-history")
 async def get_scan_history(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    source: Optional[str] = Query(None, description="Filter by source: scan or backfill"),
+    catalyst: Optional[str] = Query(None, description="Filter by catalyst type"),
+    sort_by: str = Query("logged_at", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated NAC/EP scan history with filtering and sorting.
+    
+    Returns:
+        entries: List of scan history records
+        total: Total count for pagination
+        limit: Records per page
+        offset: Current offset
+    """
+    from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+    
+    history = get_scan_history_logger()
+    
+    # Flatten history into list with date included, ensuring all have source field
+    all_entries = []
+    for date_str, entries in history._history.items():
+        for entry in entries:
+            all_entries.append({
+                "date": date_str,
+                "source": "scan",  # Default value
+                **entry,
+            })
+    
+    # Apply filters
+    if date_from:
+        all_entries = [e for e in all_entries if e["date"] >= date_from]
+    if date_to:
+        all_entries = [e for e in all_entries if e["date"] <= date_to]
+    if symbol:
+        all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
+    if source:
+        all_entries = [e for e in all_entries if e.get("source", "scan") == source]
+    if catalyst:
+        all_entries = [e for e in all_entries if e.get("catalyst", "") == catalyst]
+    
+    # Calculate total before pagination
+    total = len(all_entries)
+    
+    # Apply sorting
+    reverse = sort_dir.lower() == "desc"
+    all_entries.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse)
+    
+    # Apply pagination
+    entries = all_entries[offset:offset + limit]
+    
+    return {
+        "entries": entries,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# =============================================================================
+# WARRIOR SCAN HISTORY ENDPOINT (PASS/FAIL from warrior_scan.log)
+# =============================================================================
+
+@router.get("/warrior-scan-history")
+async def get_warrior_scan_history(
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
