@@ -102,13 +102,19 @@ class UnifiedMarketData:
         except Exception:
             pass  # Blacklist not critical, continue if import fails
         
-        # Collect quotes from all available sources
-        # Polygon is primary (fastest), then Alpaca, FMP, Schwab
+        # Collect quotes - use lazy evaluation to avoid unnecessary API calls
+        # Polygon is primary (unlimited calls, fastest), only call others if needed
         polygon_quote = self.polygon.get_quote(symbol) if hasattr(self, 'polygon') else None
-        alpaca_quote = self.alpaca.get_quote(symbol)
-        fmp_quote = self.fmp.get_quote(symbol)
+        polygon_price = float(polygon_quote.price) if polygon_quote and polygon_quote.price > 0 else None
         
-        # Try Schwab (real-time pre-market bid/ask)
+        # If Polygon returns a valid quote, we may skip Alpaca/FMP to save rate limits
+        # Only fetch from other sources for validation or if Polygon fails
+        alpaca_quote = None
+        alpaca_price = None
+        fmp_quote = None
+        fmp_price = None
+        
+        # Get Schwab for tie-breaking (real-time pre-market bid/ask)
         schwab_price = None
         schwab_unavailable = False
         try:
@@ -125,8 +131,30 @@ class UnifiedMarketData:
             schwab_unavailable = True
             logger.debug(f"[Quote] {symbol}: Schwab lookup failed: {e}")
         
-        # Extract prices
-        polygon_price = float(polygon_quote.price) if polygon_quote and polygon_quote.price > 0 else None
+        # If Polygon and Schwab agree (within 10%), no need for other sources
+        if polygon_price and schwab_price:
+            price_diff = abs(polygon_price - schwab_price) / min(polygon_price, schwab_price) * 100
+            if price_diff <= 10:
+                # They agree - use Polygon, skip Alpaca/FMP rate limits
+                logger.debug(f"[Quote] {symbol}: Polygon+Schwab agree ({price_diff:.1f}%) - skipping Alpaca/FMP")
+                # Inline audit logging for early return
+                try:
+                    from nexus2.domain.audit.quote_audit_service import get_quote_audit_service, determine_time_window
+                    audit = get_quote_audit_service()
+                    audit.log_quote_check(
+                        symbol=symbol,
+                        sources_dict={"Polygon": polygon_price, "Schwab": schwab_price},
+                        selected_source="Polygon",
+                        divergence_pct=price_diff,
+                        time_window=determine_time_window(),
+                    )
+                except Exception:
+                    pass
+                return polygon_quote
+        
+        # Need validation - fetch from Alpaca and FMP (may hit rate limits)
+        alpaca_quote = self.alpaca.get_quote(symbol)
+        fmp_quote = self.fmp.get_quote(symbol)
         alpaca_price = float(alpaca_quote.price) if alpaca_quote and alpaca_quote.price > 0 else None
         fmp_price = float(fmp_quote.price) if fmp_quote and fmp_quote.price > 0 else None
         
@@ -261,7 +289,13 @@ class UnifiedMarketData:
         return _log_and_return(alpaca_quote, "Alpaca", divergence_pct)
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
-        """Get quotes for multiple symbols via FMP."""
+        """Get quotes for multiple symbols - Polygon primary, FMP fallback."""
+        # Try Polygon first (unlimited calls, fastest)
+        if hasattr(self, 'polygon'):
+            quotes = self.polygon.get_quotes_batch(symbols)
+            if quotes and len(quotes) >= len(symbols) * 0.8:  # Got 80%+ of symbols
+                return quotes
+        # Fallback to FMP if Polygon failed or incomplete
         return self.fmp.get_quotes_batch(symbols)
     
     def get_daily_bars(
