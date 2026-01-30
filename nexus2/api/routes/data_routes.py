@@ -234,7 +234,7 @@ async def get_warrior_trades(
     quote_source: Optional[str] = Query(None, description="Filter by quote source"),
     exit_mode: Optional[str] = Query(None, description="Filter by exit mode"),
     stop_method: Optional[str] = Query(None, description="Filter by stop method"),
-    is_sim: Optional[bool] = Query(None, description="Filter by SIM (True) or LIVE (False)"),
+    is_sim: Optional[str] = Query(None, description="Filter: 'true'=SIM, 'false'=LIVE, 'null'=Unknown"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
@@ -283,7 +283,12 @@ async def get_warrior_trades(
             else:
                 query = query.filter(WarriorTradeModel.stop_method == stop_method)
         if is_sim is not None:
-            query = query.filter(WarriorTradeModel.is_sim == is_sim)
+            if is_sim.lower() == 'null':
+                query = query.filter(WarriorTradeModel.is_sim == None)
+            elif is_sim.lower() == 'true':
+                query = query.filter(WarriorTradeModel.is_sim == True)
+            elif is_sim.lower() == 'false':
+                query = query.filter(WarriorTradeModel.is_sim == False)
         if date_from:
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:

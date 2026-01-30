@@ -254,6 +254,29 @@ export default function DataExplorer() {
                             className={styles.dateInput}
                             title="To date"
                         />
+                        {activeTab === 'warrior-trades' && (
+                            <select
+                                value={filters.is_sim || ''}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setFilters(prev => {
+                                        if (!val) {
+                                            const { is_sim, ...rest } = prev;
+                                            return rest;
+                                        }
+                                        return { ...prev, is_sim: val };
+                                    });
+                                    setOffset(0);
+                                }}
+                                className={styles.dateInput}
+                                title="Filter by SIM/LIVE"
+                            >
+                                <option value="">All Trades</option>
+                                <option value="false">🔴 LIVE Only</option>
+                                <option value="true">🧪 SIM Only</option>
+                                <option value="null">❓ Unknown</option>
+                            </select>
+                        )}
                         {hasFilters && (
                             <button onClick={clearFilters} className={styles.clearBtn}>
                                 ✕ Clear All
