@@ -313,9 +313,14 @@ async def get_warrior_scan_history(
     # Calculate total before pagination
     total = len(all_entries)
     
-    # Apply sorting
+    # Apply sorting (handle mixed types - numeric fields need special handling)
     reverse = sort_dir.lower() == "desc"
-    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
+    numeric_fields = {"gap_pct", "rvol", "score"}
+    if sort_by in numeric_fields:
+        # For numeric fields, use 0 as default and ensure float comparison
+        all_entries.sort(key=lambda x: float(x.get(sort_by) or 0), reverse=reverse)
+    else:
+        all_entries.sort(key=lambda x: str(x.get(sort_by) or ""), reverse=reverse)
     
     # Apply pagination
     entries = all_entries[offset:offset + limit]
