@@ -293,3 +293,64 @@
 .dateInput::-webkit-calendar-picker-indicator {
     filter: invert(0.8);
 }
+
+/* Filter Tags */
+.filterTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #1a1a1a;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.filterTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    background: #2a3a4a;
+    border: 1px solid #4dabf7;
+    border-radius: 12px;
+    color: #4dabf7;
+    font-size: 0.75rem;
+}
+
+.filterRemove {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    line-height: 1;
+}
+
+.filterRemove:hover {
+    color: #ff8787;
+}
+
+/* Numeric column alignment */
+.numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.numericHeader {
+    text-align: right;
+}
+
+/* Expanded cell for viewing full content */
+.expandedCell {
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-width: 400px;
+    max-height: 200px;
+    overflow: auto;
+    background: #1a1a1a;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin: 0;
+}

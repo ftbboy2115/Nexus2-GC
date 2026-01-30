@@ -22,6 +22,8 @@ async def get_nac_trades(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     status: Optional[str] = Query(None, description="Filter by status: open, pending_fill, pending_exit, closed"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -35,7 +37,10 @@ async def get_nac_trades(
         offset: Current offset
     """
     from nexus2.db.nac_db import get_nac_session, NACTradeModel
-    from sqlalchemy import desc, asc
+    from sqlalchemy import desc, asc, cast, Float
+    
+    # Columns stored as strings that need numeric sorting
+    NUMERIC_STRING_COLS = {"entry_price", "exit_price", "stop_price", "target_price", "realized_pnl"}
     
     with get_nac_session() as db:
         query = db.query(NACTradeModel)
@@ -45,12 +50,19 @@ async def get_nac_trades(
             query = query.filter(NACTradeModel.status == status)
         if symbol:
             query = query.filter(NACTradeModel.symbol == symbol.upper())
+        if date_from:
+            query = query.filter(NACTradeModel.entry_time >= date_from)
+        if date_to:
+            query = query.filter(NACTradeModel.entry_time <= date_to + "T23:59:59")
         
         # Get total count
         total = query.count()
         
-        # Apply sorting
+        # Apply sorting - cast string columns to float for numeric sort
         sort_column = getattr(NACTradeModel, sort_by, NACTradeModel.created_at)
+        if sort_by in NUMERIC_STRING_COLS:
+            sort_column = cast(sort_column, Float)
+        
         if sort_dir.lower() == "desc":
             query = query.order_by(desc(sort_column))
         else:
@@ -143,6 +155,8 @@ async def get_trade_events(
     strategy: Optional[str] = Query(None, description="Filter by strategy: NAC or WARRIOR"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     event_type: Optional[str] = Query(None, description="Filter by event type"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -159,6 +173,10 @@ async def get_trade_events(
         all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
     if event_type:
         all_events = [e for e in all_events if e.get("event_type") == event_type]
+    if date_from:
+        all_events = [e for e in all_events if e.get("timestamp", "") >= date_from]
+    if date_to:
+        all_events = [e for e in all_events if e.get("timestamp", "") <= date_to + "T23:59:59"]
     
     # Get total before pagination
     total = len(all_events)
@@ -189,6 +207,8 @@ async def get_warrior_trades(
     status: Optional[str] = Query(None, description="Filter by status: open, pending_fill, pending_exit, closed"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     exit_reason: Optional[str] = Query(None, description="Filter by exit reason"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -208,6 +228,10 @@ async def get_warrior_trades(
             query = query.filter(WarriorTradeModel.symbol == symbol.upper())
         if exit_reason:
             query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
+        if date_from:
+            query = query.filter(WarriorTradeModel.entry_time >= date_from)
+        if date_to:
+            query = query.filter(WarriorTradeModel.entry_time <= date_to + "T23:59:59")
         
         # Get total count
         total = query.count()

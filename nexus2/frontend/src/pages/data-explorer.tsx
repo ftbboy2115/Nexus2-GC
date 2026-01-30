@@ -7,8 +7,8 @@
  * - NAC Trades (PSM)
  * - Scan History
  * 
- * Features: sortable columns, click-to-filter, pagination, export/copy,
- * column visibility, date filters, number formatting.
+ * Features: sortable columns, click-to-filter (multiple), pagination, export/copy,
+ * column visibility, date filters, number formatting, full cell tooltips.
  */
 import { useState, useEffect, useCallback } from 'react'
 import Head from 'next/head'
@@ -16,6 +16,16 @@ import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
 
 type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'scan-history'
+
+// Columns that are numeric for right-alignment
+const NUMERIC_COLS = new Set([
+    'entry_price', 'exit_price', 'stop_price', 'target_price', 'realized_pnl',
+    'quantity', 'remaining_quantity', 'gap_percent', 'rvol', 'score', 'shares',
+    'price', 'fill_price', 'pnl', 'entry_quote', 'exit_quote', 'slippage_cents'
+])
+
+// Columns that should NOT be comma-formatted
+const NO_COMMA_COLS = new Set(['id', 'position_id', 'entry_order_id', 'exit_order_id', 'order_id'])
 
 export default function DataExplorer() {
     const [activeTab, setActiveTab] = useState<TabType>('trade-events')
@@ -31,8 +41,8 @@ export default function DataExplorer() {
     const [showColumnMenu, setShowColumnMenu] = useState(false)
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
+    const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
 
-    // Updated endpoints - all use /data/ routes with sort/filter support
     const tabEndpoints: Record<TabType, string> = {
         'trade-events': '/api/data/trade-events',
         'warrior-trades': '/api/data/warrior-trades',
@@ -50,11 +60,10 @@ export default function DataExplorer() {
                 params.set('sort_by', sortBy)
                 params.set('sort_dir', sortDir)
             }
-            // Date filters for scan history
-            if (activeTab === 'scan-history') {
-                if (dateFrom) params.set('date_from', dateFrom)
-                if (dateTo) params.set('date_to', dateTo)
-            }
+            // Date filters for all tabs
+            if (dateFrom) params.set('date_from', dateFrom)
+            if (dateTo) params.set('date_to', dateTo)
+            // Apply all filters
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.set(key, value)
             })
@@ -81,6 +90,7 @@ export default function DataExplorer() {
         setDateFrom('')
         setDateTo('')
         setHiddenColumns(new Set())
+        setExpandedCell(null)
     }, [activeTab])
 
     useEffect(() => {
@@ -96,8 +106,19 @@ export default function DataExplorer() {
         }
     }
 
+    // Accumulate filters instead of replacing
     const handleFilterByValue = (column: string, value: any) => {
+        if (value === null || value === undefined || value === '') return
         setFilters(prev => ({ ...prev, [column]: String(value) }))
+        setOffset(0)
+    }
+
+    const removeFilter = (column: string) => {
+        setFilters(prev => {
+            const next = { ...prev }
+            delete next[column]
+            return next
+        })
         setOffset(0)
     }
 
@@ -144,6 +165,7 @@ export default function DataExplorer() {
     const columns = allColumns.filter(c => !hiddenColumns.has(c))
     const pageCount = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
+    const hasFilters = Object.keys(filters).length > 0 || dateFrom || dateTo
 
     return (
         <>
@@ -210,27 +232,23 @@ export default function DataExplorer() {
                 <div className={styles.controls}>
                     <div className={styles.controlsLeft}>
                         <span>Showing {data.length} of {total}</span>
-                        {activeTab === 'scan-history' && (
-                            <>
-                                <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={e => { setDateFrom(e.target.value); setOffset(0); }}
-                                    className={styles.dateInput}
-                                    placeholder="From"
-                                />
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={e => { setDateTo(e.target.value); setOffset(0); }}
-                                    className={styles.dateInput}
-                                    placeholder="To"
-                                />
-                            </>
-                        )}
-                        {(Object.keys(filters).length > 0 || dateFrom || dateTo) && (
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={e => { setDateFrom(e.target.value); setOffset(0); }}
+                            className={styles.dateInput}
+                            title="From date"
+                        />
+                        <input
+                            type="date"
+                            value={dateTo}
+                            onChange={e => { setDateTo(e.target.value); setOffset(0); }}
+                            className={styles.dateInput}
+                            title="To date"
+                        />
+                        {hasFilters && (
                             <button onClick={clearFilters} className={styles.clearBtn}>
-                                ✕ Clear Filters
+                                ✕ Clear All
                             </button>
                         )}
                     </div>
@@ -260,6 +278,18 @@ export default function DataExplorer() {
                     </div>
                 </div>
 
+                {/* Active filters display */}
+                {Object.keys(filters).length > 0 && (
+                    <div className={styles.filterTags}>
+                        {Object.entries(filters).map(([key, value]) => (
+                            <span key={key} className={styles.filterTag}>
+                                {key}: {value.length > 20 ? value.slice(0, 20) + '...' : value}
+                                <button onClick={() => removeFilter(key)} className={styles.filterRemove}>×</button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+
                 {/* Table */}
                 <div className={styles.tableContainer}>
                     {loading && data.length === 0 ? (
@@ -274,7 +304,7 @@ export default function DataExplorer() {
                                         <th
                                             key={col}
                                             onClick={() => handleSort(col)}
-                                            className={styles.sortable}
+                                            className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
                                         >
                                             {col}
                                             {sortBy === col && (
@@ -289,16 +319,32 @@ export default function DataExplorer() {
                             <tbody>
                                 {data.map((row, i) => (
                                     <tr key={i}>
-                                        {columns.map(col => (
-                                            <td
-                                                key={col}
-                                                onClick={() => handleFilterByValue(col, row[col])}
-                                                className={styles.clickable}
-                                                title="Click to filter by this value"
-                                            >
-                                                {formatValue(col, row[col])}
-                                            </td>
-                                        ))}
+                                        {columns.map(col => {
+                                            const rawVal = row[col]
+                                            const displayVal = formatValue(col, rawVal)
+                                            const fullVal = typeof rawVal === 'object' ? JSON.stringify(rawVal, null, 2) : String(rawVal ?? '')
+                                            const isExpanded = expandedCell?.row === i && expandedCell?.col === col
+                                            const isTruncated = fullVal.length > 50
+
+                                            return (
+                                                <td
+                                                    key={col}
+                                                    className={`${styles.clickable} ${NUMERIC_COLS.has(col) ? styles.numeric : ''}`}
+                                                    title={fullVal}
+                                                    onClick={(e) => {
+                                                        if (e.shiftKey && isTruncated) {
+                                                            setExpandedCell(isExpanded ? null : { row: i, col })
+                                                        } else {
+                                                            handleFilterByValue(col, rawVal)
+                                                        }
+                                                    }}
+                                                >
+                                                    {isExpanded ? (
+                                                        <pre className={styles.expandedCell}>{fullVal}</pre>
+                                                    ) : displayVal}
+                                                </td>
+                                            )
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
@@ -313,16 +359,19 @@ export default function DataExplorer() {
 function formatValue(column: string, val: any): string {
     if (val === null || val === undefined) return '-'
 
-    // Format timestamps to milliseconds precision
+    // Never format ID columns with commas
+    if (NO_COMMA_COLS.has(column)) {
+        return String(val)
+    }
+
+    // Format timestamps to seconds (no microseconds)
     if (column === 'logged_at' || column.endsWith('_at') || column.endsWith('_time')) {
         if (typeof val === 'string' && val.includes('T')) {
-            // Truncate to milliseconds
-            const match = val.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3})/)
-            return match ? match[1] : val.split('.')[0]
+            return val.split('.')[0]  // Remove everything after decimal
         }
     }
 
-    // Format gap_percent and rvol with commas
+    // Format gap_percent and rvol with commas and decimals
     if (column === 'gap_percent' || column === 'rvol') {
         const num = parseFloat(val)
         if (!isNaN(num)) {
@@ -333,7 +382,7 @@ function formatValue(column: string, val: any): string {
         }
     }
 
-    // Other numbers
+    // Other numbers - only add commas if >= 1000 and not an ID
     if (typeof val === 'number') {
         if (Number.isInteger(val) && val >= 1000) {
             return val.toLocaleString('en-US')
@@ -341,8 +390,14 @@ function formatValue(column: string, val: any): string {
         if (!Number.isInteger(val)) {
             return val.toFixed(2)
         }
+        return String(val)
     }
 
-    if (typeof val === 'object') return JSON.stringify(val)
+    // Objects - show as JSON but truncate
+    if (typeof val === 'object') {
+        const json = JSON.stringify(val)
+        return json.length > 50 ? json.slice(0, 47) + '...' : json
+    }
+
     return String(val)
 }
