@@ -525,6 +525,56 @@ test_cases:
       stop_near: 2.50
     notes: "Made massive move after-hours (375%), Ross traded the next morning continuation. High-extension requires Base Hit mode."
 
+  # --------------------------------------------------------------------------
+  # NEW: POLYGON-SOURCED TEST CASES (Jan 2026)
+  # --------------------------------------------------------------------------
+  
+  - id: ross_gri_20260128
+    symbol: GRI
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron - RS + Breaking News 8:45 AM (+$33k)"
+    trade_date: "2026-01-28"
+    intraday_file: "intraday/ross_gri_20260128.json"
+    data_source: polygon
+    ross_pnl: 33499.98
+    premarket_data:
+      gap_percent: 29.9
+      premarket_high: 11.90
+      previous_close: 4.78
+      float_shares: 5000000
+      catalyst: "biotech_news"
+    expected:
+      entry_near: 5.97  # Entry for break of $6 whole number
+      stop_near: 5.70
+    notes: "RS + Breaking News at 8:45 AM. Entry $5.97 for $6 break. Peak at $12, gave back 25%. HC Wainwright shelf registration caused selling."
+
+  - id: ross_lrhc_20260130
+    symbol: LRHC
+    setup_type: vwap_break
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron - Cup & Handle VWAP Break (+$31k)"
+    trade_date: "2026-01-30"
+    intraday_file: "intraday/ross_lrhc_20260130.json"
+    data_source: polygon
+    ross_pnl: 31076.62
+    premarket_data:
+      gap_percent: -20.2  # Actually pulled back from AH high
+      premarket_high: 8.10
+      previous_close: 5.64
+      float_shares: 5000000
+      catalyst: "sympathy_momentum"
+    expected:
+      entry_near: 5.30  # Cup & Handle under VWAP
+      stop_near: 5.00
+    notes: "Sympathy momentum from TCGL squeeze. Cup & Handle formed under VWAP, entry on VWAP break. Peak $7.25, battle at $7, final P&L +$31k."
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -533,5 +583,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# REAL_TRADE:                  2 (PAVM, LCFY) - Ross Cameron Jan 2026
+# REAL_TRADE:                  7 (PAVM, LCFY, ROLR, TNMG, GWAV, VERO, BATL)
+# POLYGON_DATA:                2 (GRI, LRHC) - Jan 28-30 2026
 # ==========================================================================
+
