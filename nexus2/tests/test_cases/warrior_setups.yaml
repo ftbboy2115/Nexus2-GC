@@ -462,6 +462,30 @@ test_cases:
       stop_near: 14.00
     notes: "Prediction Markets theme trade, Blue Sky breakout pattern"
 
+  - id: ross_bnkk_20260115
+    symbol: BNKK
+    setup_type: curl_squeeze
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$15,000 - Crypto Treasury Curl Squeeze"
+    trade_date: "2026-01-15"
+    intraday_file: "intraday/ross_bnkk_20260115.json"
+    data_source: polygon
+    ross_pnl: 15000.00
+    ross_entry_time: "09:30"  # Entry under $5, squeeze to $6
+    premarket_data:
+      gap_percent: 48.2
+      premarket_high: 6.07
+      previous_close: 3.40  # Estimated
+      float_shares: 5000000
+      catalyst: "crypto_treasury"
+    expected:
+      entry_near: 5.00  # Entry under $5 on curl
+      stop_near: 4.75
+    notes: "Crypto treasury strategy catalyst. Entry under $5 for double top break. Squeeze to $6. Same day Ross botched PHL."
+
   - id: ross_tnmg_20260116
     symbol: TNMG
     setup_type: pmh
@@ -634,7 +658,7 @@ test_cases:
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
 # REAL_TRADE:                  7 (PAVM, LCFY, ROLR, TNMG, GWAV, VERO, BATL)
-# POLYGON_DATA:                4 (GRI, LRHC, HIND, DCX) - Jan 27-30 2026
+# POLYGON_DATA:                5 (GRI, LRHC, HIND, DCX, BNKK) - Jan 15-30 2026
 # ==========================================================================
 
 
