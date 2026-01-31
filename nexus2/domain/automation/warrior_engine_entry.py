@@ -1793,8 +1793,7 @@ async def enter_position(
                         )
                     
                     # Log FILL_CONFIRMED event for Trade Events UI
-                    from nexus2.domain.automation.trade_event_service import get_trade_event_service
-                    trade_event_service = get_trade_event_service()
+                    from nexus2.domain.automation.trade_event_service import trade_event_service
                     trade_event_service.log_warrior_fill_confirmed(
                         position_id=order_id,
                         symbol=symbol,
@@ -1896,8 +1895,7 @@ async def enter_position(
                 logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")
                 
                 # Log FILL_CONFIRMED event for Trade Events UI
-                from nexus2.domain.automation.trade_event_service import get_trade_event_service
-                trade_event_service = get_trade_event_service()
+                from nexus2.domain.automation.trade_event_service import trade_event_service
                 trade_event_service.log_warrior_fill_confirmed(
                     position_id=order_id,
                     symbol=symbol,

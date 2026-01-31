@@ -924,13 +924,16 @@ async def load_historical_test_case(case_id: str):
         async def sim_submit_order_historical(
             symbol: str, shares: int, side: str = "buy", order_type: str = "market",
             stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb",
-            exit_mode: str = None, **kwargs
+            exit_mode: str = None, entry_trigger: str = None, **kwargs
         ):
             """Submit order through MockBroker for historical replay."""
             sim_broker = get_warrior_sim_broker()
             if sim_broker is None:
                 print(f"[Historical Replay] No MockBroker for order submission")
                 return None
+            
+            # Debug: trace entry_trigger value
+            print(f"[Historical Replay] sim_submit_order: {symbol}, entry_trigger={entry_trigger}, exit_mode={exit_mode}")
             
             from decimal import Decimal
             from uuid import uuid4
@@ -946,6 +949,7 @@ async def load_historical_test_case(case_id: str):
                 limit_price=Decimal(str(limit_price)) if limit_price else None,
                 exit_mode=exit_mode,
                 sim_time=sim_time,
+                entry_trigger=entry_trigger,  # Pass through to MockBroker
             )
             
             if result:
