@@ -525,6 +525,9 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     if engine._get_intraday_bars:
                         try:
                             activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                            logger.info(
+                                f"[Warrior Entry] {symbol}: Active market check - got {len(activity_candles) if activity_candles else 0} candles"
+                            )
                             if activity_candles:
                                 market_active, inactive_reason = check_active_market(
                                     activity_candles,
@@ -532,8 +535,11 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                     min_volume_per_bar=1000,  # Require 1000+ avg volume
                                     max_time_gap_minutes=15,  # Max 15 min between bars
                                 )
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: Active market result: active={market_active}, reason='{inactive_reason}'"
+                                )
                         except Exception as e:
-                            logger.debug(f"[Warrior Entry] {symbol}: Active market check failed: {e}")
+                            logger.warning(f"[Warrior Entry] {symbol}: Active market check FAILED: {e}")
                     
                     if not market_active:
                         logger.info(
