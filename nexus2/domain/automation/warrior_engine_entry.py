@@ -380,6 +380,37 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         distance_cents = int((nearest_level - current_price) * 100)
                         
                         if distance_cents <= engine.config.level_proximity_cents:
+                            # ACTIVE MARKET CHECK: Prevent DIP-FOR-LEVEL in dead premarket
+                            market_active = True
+                            inactive_reason = ""
+                            if engine._get_intraday_bars:
+                                try:
+                                    activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market check - "
+                                        f"got {len(activity_candles) if activity_candles else 0} candles"
+                                    )
+                                    if activity_candles:
+                                        market_active, inactive_reason = check_active_market(
+                                            activity_candles,
+                                            min_bars=5,
+                                            min_volume_per_bar=1000,
+                                            max_time_gap_minutes=15,
+                                        )
+                                        logger.info(
+                                            f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market result: "
+                                            f"active={market_active}, reason='{inactive_reason}'"
+                                        )
+                                except Exception as e:
+                                    logger.warning(f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market check FAILED: {e}")
+                            
+                            if not market_active:
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL BLOCKED - market not active "
+                                    f"({inactive_reason}). Waiting for more activity..."
+                                )
+                                continue  # Skip this entry
+                            
                             watched.target_level = nearest_level
                             logger.info(
                                 f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL pattern "
