@@ -1467,7 +1467,8 @@ async def enter_position(
                         f"[Warrior Entry] {symbol}: REJECTED - below VWAP "
                         f"(${entry_price:.2f} < VWAP ${snapshot.vwap:.2f})"
                     )
-                    watched.entry_triggered = True
+                    # NOTE: Do NOT set entry_triggered=True here - VWAP is a temporary condition
+                    # that can change. We want to re-check on next tick if price moves above VWAP.
                     return
                 
                 # Check: price should be above 9 EMA (within 1% tolerance)
@@ -1476,7 +1477,7 @@ async def enter_position(
                         f"[Warrior Entry] {symbol}: REJECTED - below 9 EMA "
                         f"(${entry_price:.2f} < 9EMA ${snapshot.ema_9:.2f})"
                     )
-                    watched.entry_triggered = True
+                    # NOTE: Do NOT set entry_triggered=True here - 9 EMA is a temporary condition
                     return
                 
                 # Log technical confirmation
