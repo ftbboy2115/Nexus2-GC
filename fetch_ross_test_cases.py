@@ -191,7 +191,8 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
             "float_shares": 5000000,  # Would need separate lookup
             "catalyst": catalyst,
         },
-        "bars": all_bars
+        "bars": all_bars,
+        "source": data.get("source", "polygon"),  # Track data provider
     }
     
     filename = f"ross_{symbol.lower()}_{date_str.replace('-', '')}.json"

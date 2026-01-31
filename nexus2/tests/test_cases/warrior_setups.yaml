@@ -680,8 +680,8 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# REAL_TRADE:                  6 (LCFY, ROLR, TNMG, GWAV, VERO, BATL)
-# POLYGON_DATA:                6 (GRI, LRHC, HIND, DCX, BNKK, PAVM) - Jan 15-30 2026
+# REAL_TRADE:                  0 (all migrated to POLYGON_DATA)
+# POLYGON_DATA:               13 (PAVM, LCFY, ROLR, TNMG, GWAV, VERO, BATL x2, GRI, LRHC, HIND, DCX, BNKK)
 # ==========================================================================
 
 
