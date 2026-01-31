@@ -1,3 +1,14 @@
+/**
+ * CatalystSearchCard Component
+ * 
+ * Search catalyst headlines from the headline_cache.json file.
+ * Provides a search box and results table for finding symbols by catalyst keywords.
+ * 
+ * API Endpoints:
+ * - GET /catalyst/search?q={query}&limit={limit} - Search headlines
+ * - GET /catalyst/stats - Get cache statistics
+ * - GET /catalyst/recent - Get recent catalysts
+ */
 import React, { useState, useCallback } from 'react';
 import styles from '../../styles/Warrior.module.css';
 

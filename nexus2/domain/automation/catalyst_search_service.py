@@ -30,7 +30,9 @@ class CatalystSearchService:
     """Search catalyst headlines from cache."""
     
     def __init__(self, data_dir: Path = None):
-        self.data_dir = data_dir or Path(__file__).parent.parent.parent / "data"
+        # Path: nexus2/domain/automation/catalyst_search_service.py
+        # Data is at repo root: Nexus2/data/ (4 levels up from this file)
+        self.data_dir = data_dir or Path(__file__).parent.parent.parent.parent / "data"
         self.headline_cache_path = self.data_dir / "headline_cache.json"
         self._cache: Dict[str, List[dict]] = {}
         self._cache_loaded_at: Optional[datetime] = None
