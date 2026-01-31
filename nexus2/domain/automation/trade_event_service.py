@@ -226,9 +226,8 @@ class TradeEventService:
         Failures return empty dict (non-blocking).
         """
         # Skip during simulation to prevent blocking API calls
-        from nexus2.config import get_settings
-        settings = get_settings()
-        if settings.sim_mode:
+        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+        if get_warrior_sim_broker() is not None:
             return {}
         
         try:
