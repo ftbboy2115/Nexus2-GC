@@ -1719,6 +1719,18 @@ async def enter_position(
                     f"[Warrior Entry] {symbol}: Intent logged to DB "
                     f"(trigger={trigger_type.value}, order_id={order_id[:8]}...)"
                 )
+                
+                # CRITICAL: Log ENTRY event to trade_event_service BEFORE fill confirmation
+                # This ensures correct audit order: ENTRY -> FILL_CONFIRMED
+                from nexus2.domain.automation.trade_event_service import trade_event_service
+                trade_event_service.log_warrior_entry(
+                    position_id=order_id,
+                    symbol=symbol,
+                    entry_price=entry_decimal,
+                    stop_price=mental_stop,
+                    shares=shares,
+                    trigger_type=trigger_type.value,
+                )
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
             
