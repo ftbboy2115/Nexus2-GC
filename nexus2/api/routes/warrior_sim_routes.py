@@ -156,6 +156,9 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         if sim_broker is None:
             return None
         
+        # Debug: trace entry_trigger value
+        print(f"[sim_submit_order] {symbol}: entry_trigger={entry_trigger}, exit_mode={exit_mode}")
+        
         # Get sim_time from simulation clock for GUI display
         from nexus2.adapters.simulation import get_simulation_clock
         sim_clock = get_simulation_clock()
