@@ -132,6 +132,7 @@ export function MockMarketCard({
     // Auto-play effect - advances clock automatically when playing
     // Uses setTimeout chain instead of setInterval to prevent race conditions
     // (waits for each API call to complete before scheduling the next)
+    // For high speeds (50x+), steps multiple minutes per call since API latency dominates
     useEffect(() => {
         if (!isPlaying || !onStep || !clockState) return
 
@@ -140,9 +141,16 @@ export function MockMarketCard({
 
         const step = async () => {
             if (cancelled) return
-            await onStep(1)  // Wait for step to complete
+
+            // Calculate minutes per step based on speed
+            // Below 50x: step 1 minute, adjust delay
+            // 50x+: step multiple minutes, fixed delay (API latency dominates)
+            const speed = speedRef.current
+            const minutesPerStep = speed >= 50 ? Math.round(speed / 10) : 1  // 50x→5min, 100x→10min
+            const delayMs = speed >= 50 ? 100 : Math.round(1000 / speed)  // Fixed 100ms delay for high speeds
+
+            await onStep(minutesPerStep)  // Wait for step to complete
             if (!cancelled) {
-                const delayMs = Math.round(1000 / speedRef.current)
                 timeoutId = setTimeout(step, delayMs)
             }
         }

@@ -961,6 +961,9 @@ async def load_historical_test_case(case_id: str):
         # Disable live Alpaca order status polling during replay
         # MockBroker fills are instantaneous, no need to poll
         engine._get_order_status = None
+        
+        # Wire monitor's submit_scale_order to use MockBroker (must be after sim_submit_order_historical is defined)
+        engine.monitor._submit_scale_order = sim_submit_order_historical
         print(f"[Historical Replay] Engine + Monitor callbacks re-wired to MockBroker")
     else:
         print(f"[Historical Replay] Engine not initialized, cannot add to watchlist")
