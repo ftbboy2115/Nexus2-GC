@@ -204,12 +204,29 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
         return sim_broker.get_positions() if sim_broker else []
     
     async def sim_get_intraday_bars(symbol: str, timeframe: str = "1min", limit: int = 50):
-        """Get intraday bars from MockMarketData for VWAP/EMA calculation."""
-        from nexus2.adapters.simulation import get_mock_market_data
-        mock_data = get_mock_market_data()
+        """Get intraday bars from HistoricalBarLoader for VWAP/EMA calculation and active market checks.
         
-        # Get intraday bars from MockMarketData
-        bars = mock_data.get_intraday_bars(symbol, timeframe, limit)
+        Uses the ACTUAL intraday JSON data (with real time gaps and volumes) rather than
+        synthetic bars, so check_active_market() can detect dead premarket.
+        """
+        from nexus2.adapters.simulation import get_simulation_clock, get_historical_bar_loader
+        
+        sim_clock = get_simulation_clock()
+        bar_loader = get_historical_bar_loader()
+        
+        if not sim_clock or not sim_clock.current_time:
+            return []
+        
+        # Get current sim time
+        time_str = sim_clock.get_time_string()
+        
+        # Get bars from HistoricalBarLoader (actual intraday JSON data)
+        bars = bar_loader.get_bars_up_to(symbol, time_str, timeframe)
+        
+        # Return last 'limit' bars
+        if len(bars) > limit:
+            bars = bars[-limit:]
+        
         return bars
     
     async def sim_execute_exit(signal):
