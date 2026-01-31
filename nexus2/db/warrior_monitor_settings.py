@@ -103,7 +103,7 @@ def get_monitor_settings_dict(monitor_settings_obj) -> dict:
         "profit_target_cents": float(monitor_settings_obj.profit_target_cents),
         "partial_exit_fraction": monitor_settings_obj.partial_exit_fraction,
         "use_technical_stop": monitor_settings_obj.use_technical_stop,
-        "move_stop_to_breakeven": monitor_settings_obj.move_stop_to_breakeven,
+        # NOTE: move_stop_to_breakeven REMOVED (KK methodology, not Ross Cameron)
         "enable_candle_under_candle": monitor_settings_obj.enable_candle_under_candle,
         "enable_topping_tail": monitor_settings_obj.enable_topping_tail,
         "topping_tail_threshold": monitor_settings_obj.topping_tail_threshold,

@@ -819,7 +819,7 @@ async def get_warrior_monitor_settings():
         "use_technical_stop": s.use_technical_stop,
         "profit_target_r": s.profit_target_r,
         "partial_exit_fraction": s.partial_exit_fraction,
-        "move_stop_to_breakeven": s.move_stop_to_breakeven,
+        # NOTE: move_stop_to_breakeven REMOVED (KK methodology, not Ross Cameron)
         "enable_candle_under_candle": s.enable_candle_under_candle,
         "enable_topping_tail": s.enable_topping_tail,
         "topping_tail_threshold": s.topping_tail_threshold,

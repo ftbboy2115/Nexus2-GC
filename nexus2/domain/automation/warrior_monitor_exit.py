@@ -567,17 +567,9 @@ async def _check_profit_target(
     position.partial_taken = True
     position.shares -= shares_to_exit
     
-    # Move stop to breakeven
-    if s.move_stop_to_breakeven:
-        position.current_stop = position.entry_price
-        if monitor._update_stop:
-            await monitor._update_stop(position.position_id, position.entry_price)
-        trade_event_service.log_warrior_breakeven(
-            position_id=position.position_id,
-            symbol=position.symbol,
-            entry_price=position.entry_price,
-        )
-        logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven")
+    # NOTE: move_stop_to_breakeven logic REMOVED - this is KK methodology, not Ross Cameron
+    # Ross trails with candle lows, not automatic breakeven after partials
+
     
     monitor.partials_triggered += 1
     

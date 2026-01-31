@@ -1399,10 +1399,16 @@ async def enter_position(
             logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
     
     if mental_stop is None:
-        # Ensure Decimal arithmetic (entry_price may be float from MockBroker)
-        entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
-        mental_stop = entry_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
-        stop_method = "fallback_15c"
+        # BLOCK TRADE: Cannot make informed decision without candle data
+        # Per audit: "If I didn't have data to make informed decisions, I wouldn't trade"
+        logger.warning(
+            f"[Warrior Entry] {symbol}: TRADE BLOCKED - Unable to fetch entry candle data for stop calculation. "
+            f"This indicates a data problem that needs investigation."
+        )
+        watched.entry_triggered = False  # Reset so we can retry
+        engine.stats.entries_triggered -= 1  # Undo the increment
+        return
+
     
     # Ensure Decimal arithmetic for risk calculation
     entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price

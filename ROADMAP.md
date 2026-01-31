@@ -328,6 +328,42 @@ Last updated: 2026-01-27
   - [x] `warrior_engine.py` (694 lines) - Core orchestration (48% reduction)
 - [x] **Configure Gemini MCP** — DONE: Updated to google.genai package, set user env var
 
+### 📊 Chart Pattern Coverage (Audit Jan 30, 2026)
+> Gap analysis: Training material has 25+ patterns, bot implements ~9 (36%).
+> Source: `.agent/knowledge/warrior_trading/CHART_PATTERNS.md`
+
+**Tier 1 — High Priority (Simple, High Frequency):**
+- [ ] **Red to Green Move** — ⚠️ DEFERRED: needs more transcript research
+  - CHART_PATTERNS.md says "9:30 AM" but transcripts show it's generic reversal pattern
+  - Could apply at any ORB (4AM, 7AM, 9:30AM) or intraday
+  - Source: 2025-11-13 SGBX trade, 2024-03-14 Level 2 deep dive
+- [ ] **Flat Top Breakout** — Clean horizontal resistance breaks up
+  - Clear pattern, easy detection
+
+**Tier 2 — Warning Patterns (Avoid Bad Trades):**
+- [ ] **Bull Flag Trap** — Detect when consolidation fails instead of breaking out
+- [ ] **Bad Pre-Market Chart** — Filter extended/parabolic gap-ups that typically fail
+- [ ] **VWAP First Pullback Enhancement** — Improve existing PULLBACK pattern
+
+**Tier 3 — Shorting (Future, Requires Short Capability):**
+- [ ] Bear Flag Breakdown
+- [ ] Flat Bottom Breakdown
+- [ ] VWAP Fade
+- [ ] Moving Average Pop (short)
+- [ ] Break Below Moving Average
+- [ ] Shift in Trend Entry
+
+**Currently Implemented:**
+- ✅ Bull Flag Breakout (`BULL_FLAG`)
+- ✅ VWAP Breakout (`VWAP_BREAK`)
+- ✅ Micro Pullback (`MICRO_PULLBACK`)
+- ✅ Whole/Half Dollar (`DIP_FOR_LEVEL`)
+- ✅ PMH Break (`PMH_BREAK`)
+- ✅ Head & Shoulders (`INVERTED_HS`)
+- ✅ ABCD (`ABCD`)
+- ✅ Cup & Handle (`CUP_HANDLE`)
+- ✅ ORB (`ORB`)
+
 ---
 
 ## 🧪 R&D Labs
