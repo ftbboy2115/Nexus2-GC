@@ -133,6 +133,43 @@ def check_active_market(
     return True, ""
 
 
+def check_volume_expansion(
+    candles: list,
+    min_expansion: float = 3.0,
+    lookback: int = 10
+) -> tuple[bool, float, str]:
+    """
+    Check if current bar has volume expansion vs recent average.
+    
+    Ross Cameron requires volume EXPLOSION on entries - not just "some volume".
+    Validated on LRHC: 06:40 had 2.6x (blocked), 07:27 had 16.3x (passed).
+    
+    Args:
+        candles: List of candle objects with .volume attribute
+        min_expansion: Minimum volume ratio required (default 3.0x)
+        lookback: Number of bars to use for average (default 10)
+    
+    Returns:
+        (passes, ratio, reason_if_blocked)
+    """
+    if not candles or len(candles) < lookback:
+        return False, 0.0, f"Need {lookback} bars (got {len(candles) if candles else 0})"
+    
+    # Use previous (lookback-1) bars for average, current bar for comparison
+    prev_vols = [c.volume for c in candles[-(lookback):-1] if hasattr(c, 'volume')]
+    if not prev_vols:
+        return False, 0.0, "No volume data in candles"
+    
+    avg_vol = sum(prev_vols) / len(prev_vols)
+    current_vol = candles[-1].volume if hasattr(candles[-1], 'volume') else 0
+    ratio = current_vol / avg_vol if avg_vol > 0 else 0
+    
+    if ratio < min_expansion:
+        return False, ratio, f"{ratio:.1f}x < {min_expansion}x required"
+    
+    return True, ratio, ""
+
+
 def check_falling_knife(
     current_price: Decimal, 
     snapshot, 
@@ -410,6 +447,25 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                     f"({inactive_reason}). Waiting for more activity..."
                                 )
                                 continue  # Skip this entry
+                            
+                            # VOLUME EXPANSION CHECK: Require 3x average volume
+                            # Ross waits for volume EXPLOSION (LRHC: 06:40 had 2.6x=blocked, 07:27 had 16.3x=pass)
+                            # TODO: Apply this check to PMH_BREAK, ORB_BREAK, VWAP_BREAK as well
+                            vol_ok, vol_ratio, vol_reason = check_volume_expansion(
+                                activity_candles,
+                                min_expansion=3.0,
+                                lookback=10
+                            )
+                            if not vol_ok:
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL BLOCKED - "
+                                    f"volume {vol_ratio:.1f}x avg ({vol_reason}). Waiting for volume spike..."
+                                )
+                                continue
+                            
+                            logger.info(
+                                f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL volume OK - {vol_ratio:.1f}x avg"
+                            )
                             
                             watched.target_level = nearest_level
                             logger.info(
