@@ -1012,6 +1012,9 @@ async def step_clock(minutes: int = 1):
     
     Also updates the mock price based on historical bar data
     and triggers entry checks if engine is running.
+    
+    IMPORTANT: When stepping multiple minutes, each minute is processed
+    individually to ensure entry/exit triggers are not missed at high speeds.
     """
     from nexus2.adapters.simulation import (
         get_simulation_clock,
@@ -1022,70 +1025,79 @@ async def step_clock(minutes: int = 1):
     
     clock = get_simulation_clock()
     loader = get_historical_bar_loader()
-    
-    # Step forward
-    clock.step_forward(minutes)
-    time_str = clock.get_time_string()
-    
-    # Update prices for all loaded symbols
     broker = get_warrior_sim_broker()
-    prices = {}
+    engine = get_engine()
     
+    # Process each minute individually to avoid missing triggers
+    for _ in range(minutes):
+        # Step forward 1 minute
+        clock.step_forward(1)
+        time_str = clock.get_time_string()
+        
+        # Update prices for all loaded symbols
+        prices = {}
+        for symbol in loader.get_loaded_symbols():
+            price = loader.get_price_at(symbol, time_str)
+            if price and broker:
+                broker.set_price(symbol, price)
+                prices[symbol] = price
+        
+        # Check engine state - handle both enum and string values
+        engine_state_str = engine.state.value if hasattr(engine.state, 'value') else str(engine.state) if engine else None
+        
+        # Trigger entry check if engine is running
+        if engine and engine_state_str in ("running", "premarket"):
+            try:
+                await check_entry_triggers(engine)
+            except Exception as e:
+                print(f"[Historical Replay] Entry check error at {time_str}: {e}")
+        
+        # Check positions for exits (monitor tick)
+        if engine and engine.monitor and engine.monitor._positions:
+            try:
+                # Ensure batch price callback is available for monitor
+                if not engine.monitor._get_prices_batch:
+                    async def sim_get_prices_batch(symbols):
+                        result = {}
+                        for s in symbols:
+                            if broker:
+                                price = broker.get_price(s)
+                                if price:
+                                    result[s] = price
+                        return result
+                    engine.monitor._get_prices_batch = sim_get_prices_batch
+                
+                await engine.monitor._check_all_positions()
+            except Exception as e:
+                print(f"[Historical Replay] Monitor check error at {time_str}: {e}")
+    
+    # Final state after all minutes processed
+    time_str = clock.get_time_string()
+    prices = {}
     for symbol in loader.get_loaded_symbols():
         price = loader.get_price_at(symbol, time_str)
-        if price and broker:
-            broker.set_price(symbol, price)
+        if price:
             prices[symbol] = price
     
-    # DEBUG: Log step info
+    # Log only the final step
     print(f"[Historical Replay] Step to {time_str}, prices: {prices}")
     
-    # Trigger entry check if engine is running with sim mode
-    engine = get_engine()
+    # Check if any entry was triggered during the stepping (for API response)
     entry_triggered = None
-    # Check engine state - handle both enum and string values
-    engine_state_str = engine.state.value if hasattr(engine.state, 'value') else str(engine.state) if engine else None
-    if engine and engine_state_str in ("running", "premarket"):
-        print(f"[Historical Replay] Engine state: {engine_state_str}, checking entry triggers...")
-        try:
-            await check_entry_triggers(engine)
-            # Check if any entry was triggered for the symbols
-            for symbol in loader.get_loaded_symbols():
-                if symbol in engine._watchlist:
-                    watched = engine._watchlist[symbol]
-                    print(f"[Historical Replay] {symbol}: entry_triggered={watched.entry_triggered}, pmh={watched.pmh}")
-                    if watched.entry_triggered:
-                        entry_triggered = {
-                            "symbol": symbol,
-                            "pmh": str(watched.pmh),
-                            "trigger_time": time_str,
-                        }
-        except Exception as e:
-            print(f"[Historical Replay] Entry check error: {e}")
-    else:
-        print(f"[Historical Replay] Engine not ready: engine={engine}, state={engine.state if engine else 'N/A'}")
+    for symbol in loader.get_loaded_symbols():
+        if symbol in engine._watchlist:
+            watched = engine._watchlist[symbol]
+            print(f"[Historical Replay] {symbol}: entry_triggered={watched.entry_triggered}, pmh={watched.pmh}")
+            if watched.entry_triggered:
+                entry_triggered = {
+                    "symbol": symbol,
+                    "pmh": str(watched.pmh),
+                    "trigger_time": time_str,
+                }
     
-    # =========================================================================
-    # MONITOR TICK: Check positions for exits, scaling, and profit targets
-    # =========================================================================
+    # Log monitor status
     if engine and engine.monitor and engine.monitor._positions:
-        try:
-            # Ensure batch price callback is available for monitor
-            if not engine.monitor._get_prices_batch:
-                async def sim_get_prices_batch(symbols):
-                    result = {}
-                    for s in symbols:
-                        if broker:
-                            price = broker.get_price(s)
-                            if price:
-                                result[s] = price
-                    return result
-                engine.monitor._get_prices_batch = sim_get_prices_batch
-            
-            await engine.monitor._check_all_positions()
-            print(f"[Historical Replay] Monitor tick complete - {len(engine.monitor._positions)} positions checked")
-        except Exception as e:
-            print(f"[Historical Replay] Monitor check error: {e}")
+        print(f"[Historical Replay] Monitor tick complete - {len(engine.monitor._positions)} positions checked")
     
     # Get orders for GUI
     orders = []
