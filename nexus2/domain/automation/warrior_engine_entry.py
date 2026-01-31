@@ -1503,9 +1503,9 @@ async def enter_position(
     engine.stats.entries_triggered += 1
     
     # Calculate position size
-    # Use entry candle low (Ross Cameron's actual method) per ROSS_RULES_EXTRACTION.md
-    # "Max loss per trade = Low of entry candle"
-    # Falls back to 15 cents if candle data unavailable
+    # Use CONSOLIDATION LOW (lowest of last 5 candles) - Ross Cameron methodology
+    # This prevents premature stops during normal consolidation dips before breakouts
+    # Example: GRI entry at $4.70, consolidation low was $4.60, stop should be ~$4.58
     mental_stop = None
     stop_method = "fallback_15c"
     calculated_candle_low = None  # Track for passing to add_position
@@ -1514,17 +1514,19 @@ async def enter_position(
         try:
             candles = await engine._get_intraday_bars(symbol, "1min", limit=5)
             if candles and len(candles) >= 1:
-                # Ross method: Use low of the current/entry candle with 2¢ buffer
-                entry_candle = candles[-1]  # Most recent candle (entry candle)
-                calculated_candle_low = Decimal(str(entry_candle.low))
+                # MULTI-CANDLE LOW: Use lowest low of last 5 candles (consolidation support)
+                # This is more robust than single candle low for catching breakouts
+                consolidation_low = min(Decimal(str(c.low)) for c in candles)
+                entry_candle_low = Decimal(str(candles[-1].low))
                 
-                # Add 2¢ buffer below the low
-                mental_stop = calculated_candle_low - Decimal("0.02")
-                stop_method = "candle_low"
+                # Use consolidation low as support, with 2¢ buffer
+                calculated_candle_low = consolidation_low
+                mental_stop = consolidation_low - Decimal("0.02")
+                stop_method = "consolidation_low"
                 
                 logger.info(
                     f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method} "
-                    f"(candle low=${calculated_candle_low:.2f} - 2¢)"
+                    f"(5-bar low=${consolidation_low:.2f}, entry bar=${entry_candle_low:.2f})"
                 )
         except Exception as e:
             logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
