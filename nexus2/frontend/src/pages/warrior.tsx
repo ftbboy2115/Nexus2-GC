@@ -29,6 +29,7 @@ import {
     TradeHistoryCard,
     EngineControlCard,
     TradingModeCard,
+    CatalystSearchCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -629,6 +630,9 @@ export default function Warrior() {
 
                             {/* 12. Settings Card */}
                             <SettingsCard config={status?.config} updateConfig={updateConfig} />
+
+                            {/* 13. Catalyst Search */}
+                            <CatalystSearchCard />
                         </div>
                     </>
                 )
