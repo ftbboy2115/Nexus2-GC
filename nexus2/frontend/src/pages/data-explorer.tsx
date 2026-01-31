@@ -66,6 +66,7 @@ export default function DataExplorer() {
     const [timeTo, setTimeTo] = useState('')      // HH:MM format
     const [expandedCell, setExpandedCell] = useState<{ row: number, col: string } | null>(null)
     const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
+    const [filterSearchText, setFilterSearchText] = useState<string>('')  // Live filter text for dropdown
     const [timeWindow, setTimeWindow] = useState<string>('')  // 1h, 4h, 8h, 24h, 7d, or '' for custom
 
     // Store filter state per tab so each tab has independent filters
@@ -586,7 +587,12 @@ export default function DataExplorer() {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    setFilterDropdownCol(filterDropdownCol === col ? null : col)
+                                                    if (filterDropdownCol === col) {
+                                                        setFilterDropdownCol(null)
+                                                    } else {
+                                                        setFilterDropdownCol(col)
+                                                        setFilterSearchText('')  // Reset search when opening new dropdown
+                                                    }
                                                 }}
                                                 className={styles.filterBtn}
                                                 title={`Filter by ${col}`}
@@ -628,16 +634,18 @@ export default function DataExplorer() {
                                                         <input
                                                             type="text"
                                                             placeholder={`Search ${col}...`}
-                                                            defaultValue={filters[col] || ''}
+                                                            value={filterSearchText}
+                                                            onChange={(e) => setFilterSearchText(e.target.value)}
                                                             onKeyDown={(e) => {
                                                                 if (e.key === 'Enter') {
-                                                                    const value = (e.target as HTMLInputElement).value.trim()
+                                                                    const value = filterSearchText.trim()
                                                                     if (value) {
                                                                         handleFilterByValue(col, value)
                                                                     } else {
                                                                         removeFilter(col)
                                                                     }
                                                                     setFilterDropdownCol(null)
+                                                                    setFilterSearchText('')
                                                                 }
                                                             }}
                                                             onClick={(e) => e.stopPropagation()}
@@ -677,31 +685,34 @@ export default function DataExplorer() {
                                                         )}
                                                     </div>
                                                     <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px' }}>
-                                                        Enter to search, or select:
+                                                        {filterSearchText ? `Matching "${filterSearchText}":` : 'Enter to search, or select:'}
                                                     </div>
-                                                    {getUniqueValues(col).map(val => (
-                                                        <div
-                                                            key={val}
-                                                            onClick={() => {
-                                                                handleFilterByValue(col, val === '(empty)' ? '' : val)
-                                                                setFilterDropdownCol(null)
-                                                            }}
-                                                            style={{
-                                                                padding: '6px 8px',
-                                                                cursor: 'pointer',
-                                                                borderRadius: '3px',
-                                                                background: filters[col] === val ? '#4caf50' : 'transparent',
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                            }}
-                                                            title={val}
-                                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
-                                                            onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
-                                                        >
-                                                            {val.length > 30 ? val.slice(0, 30) + '...' : val}
-                                                        </div>
-                                                    ))}
+                                                    {getUniqueValues(col)
+                                                        .filter(val => !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase()))
+                                                        .slice(0, 50)  // Limit to 50 results for performance
+                                                        .map(val => (
+                                                            <div
+                                                                key={val}
+                                                                onClick={() => {
+                                                                    handleFilterByValue(col, val === '(empty)' ? '' : val)
+                                                                    setFilterDropdownCol(null)
+                                                                }}
+                                                                style={{
+                                                                    padding: '6px 8px',
+                                                                    cursor: 'pointer',
+                                                                    borderRadius: '3px',
+                                                                    background: filters[col] === val ? '#4caf50' : 'transparent',
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                }}
+                                                                title={val}
+                                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
+                                                                onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
+                                                            >
+                                                                {val.length > 30 ? val.slice(0, 30) + '...' : val}
+                                                            </div>
+                                                        ))}
                                                 </div>
                                             )}
                                         </th>
