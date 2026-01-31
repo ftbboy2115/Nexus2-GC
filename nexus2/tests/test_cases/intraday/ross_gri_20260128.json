@@ -6,7 +6,7 @@
     "pmh": 11.9,
     "previous_close": 4.78,
     "float_shares": 5000000,
-    "catalyst": "biotech"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -4513,4 +4513,6 @@
       "c": 3.95,
       "v": 517
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

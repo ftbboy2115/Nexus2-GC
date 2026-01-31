@@ -6,7 +6,7 @@
     "pmh": 20.84,
     "previous_close": 3.56,
     "float_shares": 5000000,
-    "catalyst": "prediction_markets"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -5233,4 +5233,6 @@
       "c": 17.95,
       "v": 11307
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

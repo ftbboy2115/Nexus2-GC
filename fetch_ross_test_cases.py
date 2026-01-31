@@ -223,9 +223,19 @@ if __name__ == "__main__":
         ]
     else:
         test_cases = [
-            # New test cases from Jan 27-29 transcripts
-            {"symbol": "HIND", "date": "2026-01-27", "catalyst": "news"},  # +$59k, breaking news, all buying power
-            {"symbol": "DCX", "date": "2026-01-29", "catalyst": "news"},  # +$6.2k, ABCD pattern breakout
+            # January 2026 Ross Cameron trades - all confirmed from transcripts
+            {"symbol": "ROLR", "date": "2026-01-14", "catalyst": "news"},
+            {"symbol": "BNKK", "date": "2026-01-15", "catalyst": "news"},
+            {"symbol": "LCFY", "date": "2026-01-16", "catalyst": "headline"},
+            {"symbol": "TNMG", "date": "2026-01-16", "catalyst": "news"},
+            {"symbol": "GWAV", "date": "2026-01-16", "catalyst": "news"},
+            {"symbol": "VERO", "date": "2026-01-16", "catalyst": "news"},
+            {"symbol": "BATL", "date": "2026-01-26", "catalyst": "news"},
+            {"symbol": "BATL", "date": "2026-01-27", "catalyst": "news"},
+            {"symbol": "HIND", "date": "2026-01-27", "catalyst": "news"},
+            {"symbol": "GRI", "date": "2026-01-28", "catalyst": "news"},
+            {"symbol": "DCX", "date": "2026-01-29", "catalyst": "news"},
+            {"symbol": "LRHC", "date": "2026-01-30", "catalyst": "news"},
         ]
     
     created_files = []

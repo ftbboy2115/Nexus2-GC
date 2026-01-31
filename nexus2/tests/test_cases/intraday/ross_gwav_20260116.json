@@ -6,7 +6,7 @@
     "pmh": 8.43,
     "previous_close": 5.11,
     "float_shares": 5000000,
-    "catalyst": "momentum"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -4329,4 +4329,6 @@
       "c": 5.06,
       "v": 2227
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

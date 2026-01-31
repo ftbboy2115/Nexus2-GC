@@ -6,7 +6,7 @@
     "pmh": 4.1,
     "previous_close": 3.72,
     "float_shares": 5000000,
-    "catalyst": "natural_gas"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -7233,4 +7233,6 @@
       "c": 4.2,
       "v": 21109
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

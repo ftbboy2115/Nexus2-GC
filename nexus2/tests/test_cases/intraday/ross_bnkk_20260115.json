@@ -6,7 +6,7 @@
     "pmh": 6.07,
     "previous_close": 2.8,
     "float_shares": 5000000,
-    "catalyst": "crypto_treasury"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -5449,4 +5449,6 @@
       "c": 3.72,
       "v": 7142
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

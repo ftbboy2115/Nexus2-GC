@@ -6,7 +6,7 @@
     "pmh": 6.81,
     "previous_close": 2.25,
     "float_shares": 5000000,
-    "catalyst": "earnings"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -7689,4 +7689,6 @@
       "c": 5.68,
       "v": 31620
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}

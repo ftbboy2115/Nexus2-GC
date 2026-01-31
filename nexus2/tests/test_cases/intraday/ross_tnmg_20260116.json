@@ -6,7 +6,7 @@
     "pmh": 4.49,
     "previous_close": 2.36,
     "float_shares": 5000000,
-    "catalyst": "china_stocks"
+    "catalyst": "news"
   },
   "bars": [
     {
@@ -5569,4 +5569,6 @@
       "c": 3.22,
       "v": 1875
     }
-  ],`n  "source": "polygon"`n}
+  ],
+  "source": "polygon"
+}
