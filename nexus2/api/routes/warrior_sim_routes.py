@@ -804,6 +804,8 @@ async def load_historical_test_case(case_id: str):
         # Without this, monitor evaluates positions against LIVE Alpaca prices
         # =========================================================================
         engine.monitor.sim_mode = True
+        engine.monitor._sim_clock = clock  # For sim-time re-entry cooldown (fixes BATL over-trading)
+        engine.monitor._recently_exited_sim_time.clear()  # Reset on new test case
         
         async def sim_get_price(symbol: str):
             sim_broker = get_warrior_sim_broker()

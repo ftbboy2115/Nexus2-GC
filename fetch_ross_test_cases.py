@@ -52,30 +52,77 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
     Fetch 1-minute bars for a symbol on a given date.
     Includes premarket (4am-9:30am) and market hours (9:30am-4pm).
     
+    Uses Polygon as primary source (latest provider with best premarket coverage).
+    Falls back to FMP if Polygon fails.
+    
     Returns dict with bars, pmh, prev_close, etc.
     """
+    from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
+    
     date = datetime.strptime(date_str, "%Y-%m-%d")
     
-    # Premarket starts at 4am, market closes at 4pm
-    start = ET.localize(date.replace(hour=4, minute=0))
-    end = ET.localize(date.replace(hour=16, minute=0))
-    
-    print(f"Fetching {symbol} bars from {start} to {end}...")
-    
-    request = StockBarsRequest(
-        symbol_or_symbols=symbol,
-        timeframe=TimeFrame.Minute,
-        start=start,
-        end=end,
-        feed="sip",  # SIP feed includes extended hours data
-    )
+    print(f"Fetching {symbol} bars from Polygon for {date_str}...")
     
     try:
-        bars_data = client.get_stock_bars(request)
-        bars = bars_data[symbol]
+        # Use Polygon adapter as primary source
+        polygon = get_polygon_adapter()
+        bars_data = polygon.get_intraday_bars(
+            symbol=symbol,
+            timeframe="1",  # 1-minute bars
+            from_date=date_str,
+            to_date=date_str,
+            limit=1000
+        )
+        
+        if not bars_data or len(bars_data) == 0:
+            raise Exception("Polygon returned no data")
+        
+        print(f"  Got {len(bars_data)} bars from Polygon")
+        
+        # Convert to test case format
+        premarket_bars = []
+        market_bars = []
+        
+        for bar in bars_data:
+            bar_time = bar.timestamp.astimezone(ET)
+            bar_dict = {
+                "t": bar_time.strftime("%H:%M"),
+                "o": float(bar.open),
+                "h": float(bar.high),
+                "l": float(bar.low),
+                "c": float(bar.close),
+                "v": int(bar.volume)
+            }
+            
+            if bar_time.hour < 9 or (bar_time.hour == 9 and bar_time.minute < 30):
+                premarket_bars.append(bar_dict)
+            else:
+                market_bars.append(bar_dict)
+        
+        # Calculate premarket high (PMH)
+        pmh = max([b["h"] for b in premarket_bars]) if premarket_bars else None
+        
+        # Get previous close (use first premarket bar's open as approx)
+        prev_close = premarket_bars[0]["o"] if premarket_bars else market_bars[0]["o"]
+        
+        # Calculate gap
+        first_bar_open = market_bars[0]["o"] if market_bars else premarket_bars[-1]["c"]
+        gap_percent = ((first_bar_open - prev_close) / prev_close) * 100 if prev_close else 0
+        
+        return {
+            "symbol": symbol,
+            "date": date_str,
+            "premarket_bars": premarket_bars,
+            "market_bars": market_bars,
+            "pmh": pmh,
+            "prev_close": prev_close,
+            "gap_percent": gap_percent,
+            "source": "polygon",
+        }
+        
     except Exception as e:
-        # Fallback to FMP for recent data (Alpaca SIP doesn't allow same-day)
-        print(f"  Alpaca SIP failed: {e}")
+        # Fallback to FMP for data
+        print(f"  Polygon failed: {e}")
         print(f"  Trying FMP fallback...")
         import httpx
         fmp_key = os.getenv("FMP_API_KEY")
@@ -123,51 +170,8 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
             "pmh": pmh,
             "prev_close": prev_close,
             "gap_percent": gap_percent,
+            "source": "fmp",
         }
-    
-    print(f"  Got {len(bars)} bars")
-    
-    # Convert to test case format
-    premarket_bars = []
-    market_bars = []
-    
-    market_open_time = date.replace(hour=9, minute=30)
-    
-    for bar in bars:
-        bar_time = bar.timestamp.astimezone(ET)
-        bar_dict = {
-            "t": bar_time.strftime("%H:%M"),
-            "o": float(bar.open),
-            "h": float(bar.high),
-            "l": float(bar.low),
-            "c": float(bar.close),
-            "v": int(bar.volume)
-        }
-        
-        if bar_time.hour < 9 or (bar_time.hour == 9 and bar_time.minute < 30):
-            premarket_bars.append(bar_dict)
-        else:
-            market_bars.append(bar_dict)
-    
-    # Calculate premarket high (PMH)
-    pmh = max([b["h"] for b in premarket_bars]) if premarket_bars else None
-    
-    # Get previous close (would need separate call, use first premarket bar's open as approx)
-    prev_close = premarket_bars[0]["o"] if premarket_bars else market_bars[0]["o"]
-    
-    # Calculate gap
-    first_bar_open = market_bars[0]["o"] if market_bars else premarket_bars[-1]["c"]
-    gap_percent = ((first_bar_open - prev_close) / prev_close) * 100 if prev_close else 0
-    
-    return {
-        "symbol": symbol,
-        "date": date_str,
-        "premarket_bars": premarket_bars,
-        "market_bars": market_bars,
-        "pmh": pmh,
-        "prev_close": prev_close,
-        "gap_percent": gap_percent,
-    }
 
 
 def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path):
@@ -210,17 +214,18 @@ if __name__ == "__main__":
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Ross Cameron trades from transcripts
-    test_cases = [
-        # Existing test cases
-        {"symbol": "PAVM", "date": "2026-01-21", "catalyst": "reverse_split"},
-        {"symbol": "LCFY", "date": "2026-01-16", "catalyst": "headline"},
-        # New test cases to add
-        {"symbol": "ROLR", "date": "2026-01-14", "catalyst": "prediction_market"},  # +$85k big winner
-        {"symbol": "TNMG", "date": "2026-01-16", "catalyst": "momentum"},  # Chinese stock, dip buy
-        {"symbol": "GWAV", "date": "2026-01-16", "catalyst": "momentum"},  # No news momentum scalp
-        {"symbol": "VERO", "date": "2026-01-16", "catalyst": "after_hours"},  # After-hours mover
-        {"symbol": "BATL", "date": "2026-01-27", "catalyst": "natural_gas_prices"},  # Natural gas surge
-    ]
+    # Usage: python fetch_ross_test_cases.py [SYMBOL DATE CATALYST]
+    # If args provided, fetch single case. Otherwise fetch all in list.
+    if len(sys.argv) >= 4:
+        test_cases = [
+            {"symbol": sys.argv[1], "date": sys.argv[2], "catalyst": sys.argv[3]}
+        ]
+    else:
+        test_cases = [
+            # New test cases from Jan 27-29 transcripts
+            {"symbol": "HIND", "date": "2026-01-27", "catalyst": "news"},  # +$59k, breaking news, all buying power
+            {"symbol": "DCX", "date": "2026-01-29", "catalyst": "news"},  # +$6.2k, ABCD pattern breakout
+        ]
     
     created_files = []
     for tc in test_cases:

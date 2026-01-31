@@ -1543,8 +1543,8 @@ async def enter_position(
         return
     
     # Check re-entry cooldown: block entry if symbol was recently exited
-    # This prevents immediately buying back after exit (e.g., after spread exit or stop)
-    # SKIP in sim_mode: cooldown uses wall-clock time, not simulation time
+    # LIVE: Uses wall-clock time (now_utc())
+    # SIM: Uses simulation time (bar timestamps) to fix BATL over-trading issue
     if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
         exit_time = engine.monitor._recently_exited[symbol]
         seconds_ago = (now_utc() - exit_time).total_seconds()
@@ -1556,6 +1556,22 @@ async def enter_position(
             )
             watched.entry_triggered = True  # Mark as triggered to prevent retries
             return
+    
+    # SIM MODE: Check simulation-time cooldown (fixes BATL 12-entry over-trading)
+    if engine.monitor.sim_mode and symbol in engine.monitor._recently_exited_sim_time:
+        exit_sim_time = engine.monitor._recently_exited_sim_time[symbol]
+        # Get current simulation time from clock
+        if hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+            current_sim_time = engine.monitor._sim_clock.current_time
+            minutes_since_exit = (current_sim_time - exit_sim_time).total_seconds() / 60
+            cooldown_minutes = engine.monitor._reentry_cooldown_minutes
+            if minutes_since_exit < cooldown_minutes:
+                logger.info(
+                    f"[Warrior Entry] {symbol}: SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago "
+                    f"(waiting {cooldown_minutes}m), skipping"
+                )
+                watched.entry_triggered = True
+                return
     
     # Entry Spread Filter: reject stocks with wide bid-ask spreads
     # Wide spreads cause unpredictable fills and difficult exits (e.g., SOGP 46% spread)

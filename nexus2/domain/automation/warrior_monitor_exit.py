@@ -944,9 +944,15 @@ async def handle_exit(
     # Only remove position if exit order succeeded - prevents orphaned shares
     if signal.reason != WarriorExitReason.PARTIAL_EXIT:
         if order_success:
-            # Track as recently exited
+            # Track as recently exited (wall clock for live, sim clock for Mock Market)
             monitor._recently_exited[signal.symbol] = now_utc()
             monitor._save_recently_exited()
+            
+            # SIM MODE: Also track exit in simulation time (for proper cooldown)
+            if monitor.sim_mode and hasattr(monitor, '_sim_clock') and monitor._sim_clock:
+                sim_time = monitor._sim_clock.current_time
+                monitor._recently_exited_sim_time[signal.symbol] = sim_time
+                logger.debug(f"[Warrior] {signal.symbol}: Exit recorded at sim time {sim_time}")
             
             # RE-ENTRY: Notify engine of profit exit (allow re-entry on next volume wave)
             # Only for base_hit/profit exits, not stops

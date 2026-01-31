@@ -98,6 +98,11 @@ class WarriorMonitor:
         self._recently_exited_file = Path(__file__).parent.parent.parent.parent / "data" / "recently_exited.json"
         self._load_recently_exited()
         
+        # Simulation-time exit tracking for Mock Market
+        # Uses bar timestamps instead of wall clock (fixes BATL over-trading)
+        self._recently_exited_sim_time: Dict[str, datetime] = {}  # symbol → sim timestamp at exit
+        self._reentry_cooldown_minutes = 10  # Minutes (in sim time) before re-entry allowed
+        
         # NOTE: Pending exit tracking now uses DB status (PENDING_EXIT) instead of in-memory dict
         # See: _is_pending_exit(), _mark_pending_exit(), _clear_pending_exit()
     
