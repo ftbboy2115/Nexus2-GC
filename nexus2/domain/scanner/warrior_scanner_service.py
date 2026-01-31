@@ -1316,6 +1316,10 @@ class WarriorScannerService:
             f"Catalyst: {catalyst_type} | Float: {_format_float(float_shares) if float_shares else 'N/A'} | RVOL: {rvol:.1f}x"
         )
         
+        # Log PASS to catalyst audit for traceability (definitive PILLARS pass)
+        from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+        log_headline_evaluation(symbol, [f"PILLARS pass: {catalyst_type}"], "PASS", catalyst_type)
+        
         return candidate
     
     def _get_float_shares(self, symbol: str) -> Optional[int]:
