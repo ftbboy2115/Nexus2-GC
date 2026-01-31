@@ -438,6 +438,7 @@ async def get_catalyst_audits(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
     match_type: Optional[str] = Query(None, description="Filter by match type"),
+    headline: Optional[str] = Query(None, description="Filter by headline text (case-insensitive)"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -549,6 +550,9 @@ async def get_catalyst_audits(
         all_entries = [e for e in all_entries if e["result"] == result.upper()]
     if match_type:
         all_entries = [e for e in all_entries if e["match_type"] == match_type]
+    if headline:
+        headline_lower = headline.lower()
+        all_entries = [e for e in all_entries if headline_lower in e.get("headline", "").lower()]
     
     # Calculate total before pagination
     total = len(all_entries)
