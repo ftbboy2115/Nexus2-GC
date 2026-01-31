@@ -1286,6 +1286,36 @@ async def _scale_into_existing_position(
     # Calculate add shares (same sizing as initial entry)
     add_shares = engine.config.position_size
     
+    # ==========================================================================
+    # PROFIT-CHECK GUARD: Block scale-ins when position is already at profit target
+    # 
+    # PAVM LESSON (Jan 2026): DIP_FOR_LEVEL at $14.23 had target ~$14.50.
+    # Price reached $20.80 (+46%) → ABCD add reset target → held to $12.84 (-38%).
+    # 
+    # Ross Cameron pattern (HIND Jan 27): "I take profit off the table...then I 
+    # get back in" - he takes profit FIRST, then re-enters if setup reforms.
+    # ==========================================================================
+    current_price = entry_price  # Scale entry price
+    unrealized_pnl_per_share = current_price - existing_position.entry_price
+    unrealized_pnl_pct = (unrealized_pnl_per_share / existing_position.entry_price) * 100
+    
+    # Block if: (1) Current price >= profit target, OR (2) Unrealized P&L > 25%
+    profit_target = existing_position.profit_target or Decimal("0")
+    price_past_target = profit_target > 0 and current_price >= profit_target
+    pnl_above_threshold = unrealized_pnl_pct > 25  # 25% gain threshold
+    
+    if price_past_target or pnl_above_threshold:
+        reason = (
+            f"past target ${profit_target:.2f}" if price_past_target 
+            else f"+{unrealized_pnl_pct:.1f}% unrealized"
+        )
+        logger.warning(
+            f"[Warrior Entry] {symbol}: BLOCKING SCALE-IN - position already {reason}. "
+            f"Take profit first per Ross Cameron methodology. "
+            f"(entry=${existing_position.entry_price:.2f}, current=${current_price:.2f})"
+        )
+        return
+    
     # Create scale signal matching what warrior_monitor_scale expects
     scale_signal = {
         "position_id": existing_position.position_id,
@@ -1454,7 +1484,31 @@ async def enter_position(
                 )
                 watched.entry_triggered = True
                 return
-            # Allow if under max_scale (will consolidate in add_position)
+            
+            # ==========================================================================
+            # PROFIT-CHECK GUARD: Block adds when position is past profit target
+            # PAVM LESSON: Adding resets profit_target, erasing unrealized gains
+            # Ross pattern (HIND Jan 27): Take profit FIRST, then re-enter
+            # ==========================================================================
+            unrealized_pnl_pct = ((entry_price - pos.entry_price) / pos.entry_price) * 100
+            profit_target = pos.profit_target or Decimal("0")
+            price_past_target = profit_target > 0 and entry_price >= profit_target
+            pnl_above_threshold = unrealized_pnl_pct > 25  # 25% gain threshold
+            
+            if price_past_target or pnl_above_threshold:
+                reason = (
+                    f"past target ${profit_target:.2f}" if price_past_target 
+                    else f"+{unrealized_pnl_pct:.1f}% unrealized"
+                )
+                logger.warning(
+                    f"[Warrior Entry] {symbol}: BLOCKING {trigger_type.name} - position already {reason}. "
+                    f"Take profit first per Ross methodology. "
+                    f"(entry=${pos.entry_price:.2f}, current=${entry_price:.2f})"
+                )
+                watched.entry_triggered = True
+                return
+            
+            # Allow if under max_scale AND not past profit target (will consolidate in add_position)
             break
     
     # SECOND: Check BROKER positions for double-buy prevention
