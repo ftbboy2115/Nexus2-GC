@@ -945,3 +945,28 @@ async def get_quote_audits(
             "limit": limit,
             "offset": offset,
         }
+
+
+# =============================================================================
+# TEST ENDPOINT FOR CATALYST AUDIT VERIFICATION
+# =============================================================================
+
+@router.post("/test-catalyst-pass")
+async def test_catalyst_pass():
+    """
+    Write a test PASS entry to catalyst_audit.log for verification.
+    Entry will be clearly marked as TEST to distinguish from real data.
+    """
+    from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+    
+    test_symbol = "TEST"
+    test_headlines = ["[TEST] Verification of PASS logging - ignore this entry"]
+    
+    log_headline_evaluation(test_symbol, test_headlines, "PASS", "test_catalyst")
+    
+    return {
+        "status": "ok",
+        "message": "Test PASS entry written to catalyst_audit.log",
+        "symbol": test_symbol,
+        "catalyst_type": "test_catalyst"
+    }
