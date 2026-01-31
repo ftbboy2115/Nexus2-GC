@@ -426,20 +426,22 @@ test_cases:
     outcome: winner
     ross_traded: true
     synthetic: false
-    status: REAL_TRADE
+    status: POLYGON_DATA
     description: "Ross Cameron +$43,950 - Reverse Split Short Squeeze"
     trade_date: "2026-01-21"
     intraday_file: "intraday/ross_pavm_20260121.json"
+    data_source: polygon
+    ross_pnl: 43950.00
     premarket_data:
       gap_percent: 177.2
       premarket_high: 19.90
-      previous_close: 7.19
+      previous_close: 6.49
       float_shares: 5000000
       catalyst: "reverse_split"
     expected:
       entry_near: 20.00
       stop_near: 19.00
-    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze"
+    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze. Re-fetched with Polygon for premarket data."
 
   - id: ross_batl_20260126
     symbol: BATL
@@ -678,8 +680,8 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# REAL_TRADE:                  7 (PAVM, LCFY, ROLR, TNMG, GWAV, VERO, BATL)
-# POLYGON_DATA:                5 (GRI, LRHC, HIND, DCX, BNKK) - Jan 15-30 2026
+# REAL_TRADE:                  6 (LCFY, ROLR, TNMG, GWAV, VERO, BATL)
+# POLYGON_DATA:                6 (GRI, LRHC, HIND, DCX, BNKK, PAVM) - Jan 15-30 2026
 # ==========================================================================
 
 
