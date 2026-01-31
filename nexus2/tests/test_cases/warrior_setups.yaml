@@ -380,25 +380,6 @@ test_cases:
   # ROSS CAMERON REAL TRADES (January 2026)
   # ========================================================================
   
-  - id: ross_pavm_20260121
-    symbol: PAVM
-    setup_type: pmh
-    outcome: winner
-    synthetic: false
-    status: REAL_TRADE
-    description: "Ross Cameron +$43,950 - Reverse Split Short Squeeze"
-    trade_date: "2026-01-21"
-    intraday_file: "intraday/ross_pavm_20260121.json"
-    premarket_data:
-      gap_percent: 177.2
-      premarket_high: 19.90
-      previous_close: 7.19
-      float_shares: 5000000
-      catalyst: "reverse_split"
-    expected:
-      entry_near: 20.00
-      stop_near: 19.00
-    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze"
 
   - id: ross_lcfy_20260116
     symbol: LCFY
