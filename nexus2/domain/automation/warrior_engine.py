@@ -147,6 +147,7 @@ class WarriorEngine:
             get_price=get_quote,
             get_intraday_candles=get_intraday_bars,
             record_symbol_fail=self.record_symbol_fail,
+            on_profit_exit=self._handle_profit_exit,
         )
     
     def _load_pending_entries(self):
@@ -199,6 +200,39 @@ class WarriorEngine:
             del self._pending_entries[symbol]
             self._save_pending_entries()
             logger.info(f"[Warrior Engine] Cleared pending entry for {symbol}")
+    
+    def _handle_profit_exit(self, symbol: str, exit_price: float, exit_time: datetime):
+        """
+        Handle profit exit callback - enable re-entry for second wave.
+        
+        Option A (Base Hit + Re-Entry):
+        After taking base_hit profit, reset entry_triggered to allow
+        re-entry on volume explosion (with higher bar: 5x instead of 3x).
+        
+        Args:
+            symbol: The symbol that just exited at profit
+            exit_price: The price at which we exited
+            exit_time: When the exit occurred
+        """
+        watched = self._watchlist.get(symbol)
+        if not watched:
+            logger.debug(f"[Warrior Engine] {symbol}: No watched symbol for re-entry")
+            return
+        
+        # Reset entry_triggered to allow re-entry
+        watched.entry_triggered = False
+        watched.position_opened = False
+        
+        # Store exit metadata for re-entry guards
+        from decimal import Decimal
+        watched.last_exit_time = exit_time
+        watched.last_exit_price = Decimal(str(exit_price))
+        watched.entry_attempt_count += 1
+        
+        logger.info(
+            f"[Warrior Engine] {symbol}: Re-entry ENABLED after profit exit @ ${exit_price:.2f} "
+            f"(attempt #{watched.entry_attempt_count})"
+        )
     
     # =========================================================================
     # STATE MANAGEMENT

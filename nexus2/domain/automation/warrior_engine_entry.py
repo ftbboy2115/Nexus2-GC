@@ -448,12 +448,50 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                 )
                                 continue  # Skip this entry
                             
-                            # VOLUME EXPANSION CHECK: Require 3x average volume
+                            # RE-ENTRY GUARDS (Option A: Base Hit + Re-Entry)
+                            # After profit exit, require stricter conditions for second wave
+                            is_reentry = watched.entry_attempt_count > 0 and watched.last_exit_time is not None
+                            reentry_volume_threshold = 5.0  # Higher bar for re-entry (vs 3x initial)
+                            reentry_cooldown_minutes = 10
+                            max_entry_attempts = 2
+                            
+                            if is_reentry:
+                                from datetime import timedelta
+                                from nexus2.utils.time_utils import now_utc
+                                
+                                # Guard 1: Cooldown (10 minutes since last exit)
+                                if watched.last_exit_time:
+                                    time_since_exit = (now_utc() - watched.last_exit_time).total_seconds() / 60
+                                    if time_since_exit < reentry_cooldown_minutes:
+                                        logger.debug(
+                                            f"[Warrior Entry] {symbol}: RE-ENTRY cooldown "
+                                            f"({time_since_exit:.1f}m < {reentry_cooldown_minutes}m)"
+                                        )
+                                        continue
+                                
+                                # Guard 2: Max attempts (2 per symbol per day)
+                                if watched.entry_attempt_count >= max_entry_attempts:
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: RE-ENTRY BLOCKED - max attempts "
+                                        f"({watched.entry_attempt_count} >= {max_entry_attempts})"
+                                    )
+                                    continue
+                                
+                                # Guard 3: Price above last exit (buying strength, not weakness)
+                                if watched.last_exit_price and current_price < watched.last_exit_price:
+                                    logger.debug(
+                                        f"[Warrior Entry] {symbol}: RE-ENTRY blocked - price ${current_price:.2f} "
+                                        f"< exit ${watched.last_exit_price:.2f} (not buying strength)"
+                                    )
+                                    continue
+                            
+                            # VOLUME EXPANSION CHECK: Require 3x average (5x for re-entries)
                             # Ross waits for volume EXPLOSION (LRHC: 06:40 had 2.6x=blocked, 07:27 had 16.3x=pass)
                             # TODO: Apply this check to PMH_BREAK, ORB_BREAK, VWAP_BREAK as well
+                            min_volume_expansion = reentry_volume_threshold if is_reentry else 3.0
                             vol_ok, vol_ratio, vol_reason = check_volume_expansion(
                                 activity_candles,
-                                min_expansion=3.0,
+                                min_expansion=min_volume_expansion,
                                 lookback=10
                             )
                             if not vol_ok:
@@ -465,7 +503,11 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                             
                             logger.info(
                                 f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL volume OK - {vol_ratio:.1f}x avg"
+                                f"{' (RE-ENTRY)' if is_reentry else ''}"
                             )
+                            
+                            # Store volume ratio for exit mode selection
+                            watched.entry_volume_ratio = vol_ratio
                             
                             watched.target_level = nearest_level
                             logger.info(
@@ -1666,10 +1708,27 @@ async def enter_position(
             high_quality_threshold = 10  # TODO: Pull from scanner settings
             extension_threshold = engine.config.extension_threshold  # Use config value (was hardcoded 100)
             
+            # RE-ENTRY / VOLUME EXPLOSION OVERRIDE:
+            # On re-entry or strong volume (5x+), use home_run mode to ride the trend
+            is_reentry = watched.entry_attempt_count > 0 and watched.last_exit_time is not None
+            entry_volume_ratio = getattr(watched, 'entry_volume_ratio', 0) or 0
+            
+            if is_reentry:
+                selected_exit_mode = "home_run"
+                logger.info(
+                    f"[Warrior Entry] {symbol}: exit_mode=home_run "
+                    f"(RE-ENTRY #{watched.entry_attempt_count}: ride the second wave)"
+                )
+            elif entry_volume_ratio >= 5.0:
+                selected_exit_mode = "home_run"
+                logger.info(
+                    f"[Warrior Entry] {symbol}: exit_mode=home_run "
+                    f"(VOLUME EXPLOSION: {entry_volume_ratio:.1f}x at entry)"
+                )
             # EXTENSION-BASED EXIT MODE SELECTION:
             # Per Ross's pattern: extended stocks (e.g., VERO at 375%) get quick scalps
             # "Felt like missed the bulk of it" = don't try for home run on extended moves
-            if gap_percent > extension_threshold:
+            elif gap_percent > extension_threshold:
                 selected_exit_mode = "base_hit"
                 logger.info(
                     f"[Warrior Entry] {symbol}: exit_mode=base_hit "

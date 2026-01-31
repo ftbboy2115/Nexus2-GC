@@ -70,6 +70,8 @@ class WarriorMonitor:
         self._record_symbol_fail: Optional[Callable] = None  # 2-strike rule callback
         self._submit_scale_order: Optional[Callable] = None  # Scaling order callback
         self._get_order_status: Optional[Callable] = None  # For exit order confirmation
+        self._on_profit_exit: Optional[Callable] = None  # Re-entry: reset watched symbol after profit
+
         
         # Sync tracking
         self._sync_counter = 0
@@ -205,6 +207,7 @@ class WarriorMonitor:
         record_symbol_fail: Callable = None,
         submit_scale_order: Callable = None,
         get_order_status: Callable = None,
+        on_profit_exit: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -231,6 +234,8 @@ class WarriorMonitor:
             self._submit_scale_order = submit_scale_order
         if get_order_status is not None:
             self._get_order_status = get_order_status
+        if on_profit_exit is not None:
+            self._on_profit_exit = on_profit_exit
     
     # =========================================================================
     # POSITION MANAGEMENT

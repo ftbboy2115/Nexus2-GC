@@ -156,6 +156,13 @@ class WatchedCandidate:
     entry_triggered: bool = False  # Entry was ATTEMPTED (may be blocked by guards)
     position_opened: bool = False  # Order was actually submitted (use this for UI "Entered")
     entry_attempt_count: int = 0  # Track re-entry attempts (Ross: MACD gate on re-entry)
+    
+    # RE-ENTRY TRACKING (Option A: Base Hit + Re-Entry)
+    # After profit exit, allow re-entry on second volume wave
+    last_exit_time: Optional[datetime] = None  # When last exit occurred (for cooldown)
+    last_exit_price: Optional[Decimal] = None  # Price at last exit (must buy higher for strength)
+    entry_volume_ratio: float = 0.0  # Volume ratio at entry (for exit mode selection)
+    
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
     last_below_vwap: bool = False  # True if price was below VWAP (for VWAP break detection)
     added_at: datetime = field(default_factory=now_utc_factory)

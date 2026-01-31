@@ -948,6 +948,22 @@ async def handle_exit(
             monitor._recently_exited[signal.symbol] = now_utc()
             monitor._save_recently_exited()
             
+            # RE-ENTRY: Notify engine of profit exit (allow re-entry on next volume wave)
+            # Only for base_hit/profit exits, not stops
+            profit_reasons = {
+                WarriorExitReason.PROFIT_TARGET,
+            }
+            if signal.reason in profit_reasons and monitor._on_profit_exit:
+                try:
+                    monitor._on_profit_exit(
+                        symbol=signal.symbol,
+                        exit_price=float(actual_exit_price),
+                        exit_time=now_utc(),
+                    )
+                    logger.info(f"[Warrior] {signal.symbol}: Re-entry enabled after profit exit")
+                except Exception as e:
+                    logger.warning(f"[Warrior] {signal.symbol}: on_profit_exit callback failed: {e}")
+            
             # 2-Strike Rule: count stop-outs
             stop_reasons = {
                 WarriorExitReason.MENTAL_STOP,
