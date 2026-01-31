@@ -50,6 +50,8 @@ class MockOrder:
     exit_mode: Optional[str] = None
     # Sim clock time when order was placed (for historical replay)
     sim_time: Optional[str] = None
+    # Entry trigger type for debugging (pmh_break, orb, dip_for_level, etc.)
+    entry_trigger: Optional[str] = None
 
 
 @dataclass
@@ -173,6 +175,7 @@ class MockBroker:
         take_profit_price=None,  # Optional[Decimal]
         exit_mode: Optional[str] = None,  # "base_hit" or "home_run" for GUI
         sim_time: Optional[str] = None,  # Sim clock time (e.g. "10:45") for GUI
+        entry_trigger: Optional[str] = None,  # Entry trigger type (pmh_break, orb, etc.)
     ):
         """
         Submit bracket order (entry + stop + optional TP).
@@ -223,7 +226,7 @@ class MockBroker:
                 # Can fill immediately
                 return self._fill_entry_order(
                     client_order_id, entry_order_id, symbol, quantity, 
-                    current_price, stop_price, exit_mode, sim_time
+                    current_price, stop_price, exit_mode, sim_time, entry_trigger
                 )
             else:
                 # Create PENDING limit order - will fill when price crosses
@@ -238,6 +241,7 @@ class MockBroker:
                     stop_price=stop_price,  # Store for when it fills
                     exit_mode=exit_mode,
                     sim_time=sim_time,
+                    entry_trigger=entry_trigger,
                 )
                 self._orders[entry_order_id] = entry_order
                 
@@ -273,7 +277,7 @@ class MockBroker:
             
             return self._fill_entry_order(
                 client_order_id, entry_order_id, symbol, quantity, 
-                current_price, stop_price, exit_mode, sim_time
+                current_price, stop_price, exit_mode, sim_time, entry_trigger
             )
     
     def _fill_entry_order(
@@ -286,6 +290,7 @@ class MockBroker:
         stop_price: float,
         exit_mode: Optional[str] = None,
         sim_time: Optional[str] = None,
+        entry_trigger: Optional[str] = None,
     ):
         """Internal helper to fill an entry order and create position."""
         from nexus2.adapters.broker.protocol import BrokerOrder, BrokerOrderStatus
@@ -318,6 +323,7 @@ class MockBroker:
             filled_at=now_utc(),
             exit_mode=exit_mode,
             sim_time=sim_time,
+            entry_trigger=entry_trigger,
         )
         
         # Only create stop order if stop_price is provided
@@ -662,6 +668,7 @@ class MockBroker:
                 "filled_at": order.filled_at.isoformat() if order.filled_at else None,
                 "exit_mode": order.exit_mode,
                 "sim_time": order.sim_time,
+                "entry_trigger": order.entry_trigger,
             }
             for order in self._orders.values()
         ]

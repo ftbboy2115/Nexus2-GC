@@ -1212,6 +1212,19 @@
     border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+/* Entry trigger badge (pmh_break, orb, dip_for_level, etc.) */
+.entryTriggerBadge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
 /* Test Case Description Area */
 .testCaseDescription {
     display: flex;

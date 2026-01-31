@@ -151,7 +151,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
     engine.monitor.sim_mode = True
     
     # Wire up sim callbacks
-    async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb", exit_mode: str = None):
+    async def sim_submit_order(symbol: str, shares: int, side: str = "buy", order_type: str = "market", stop_loss: float = None, limit_price: float = None, trigger_type: str = "orb", exit_mode: str = None, entry_trigger: str = None):
         sim_broker = get_warrior_sim_broker()
         if sim_broker is None:
             return None
@@ -172,6 +172,7 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
             limit_price=Decimal(str(limit_price)) if limit_price else None,
             exit_mode=exit_mode,
             sim_time=sim_time,
+            entry_trigger=entry_trigger,
         )
         return result
 

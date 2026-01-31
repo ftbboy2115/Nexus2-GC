@@ -541,6 +541,7 @@ test_cases:
     intraday_file: "intraday/ross_gri_20260128.json"
     data_source: polygon
     ross_pnl: 33499.98
+    ross_entry_time: "08:45"  # Breaking news at 8:45 AM, Ross entered ~$5.97
     premarket_data:
       gap_percent: 29.9
       premarket_high: 11.90
@@ -550,7 +551,7 @@ test_cases:
     expected:
       entry_near: 5.97  # Entry for break of $6 whole number
       stop_near: 5.70
-    notes: "RS + Breaking News at 8:45 AM. Entry $5.97 for $6 break. Peak at $12, gave back 25%. HC Wainwright shelf registration caused selling."
+    notes: "NEWS at 8:45 AM. Ross entry $5.97 for $6 break (8:45 AM). Peak $12, gave back 25%. HC Wainwright shelf."
 
   - id: ross_lrhc_20260130
     symbol: LRHC
@@ -559,11 +560,12 @@ test_cases:
     ross_traded: true
     synthetic: false
     status: POLYGON_DATA
-    description: "Ross Cameron - Cup & Handle VWAP Break (+$31k)"
+    description: "Ross Cameron - Cup & Handle VWAP Break ~9:30 AM (+$31k)"
     trade_date: "2026-01-30"
     intraday_file: "intraday/ross_lrhc_20260130.json"
     data_source: polygon
     ross_pnl: 31076.62
+    ross_entry_time: "09:30"  # Market open, VWAP break setup
     premarket_data:
       gap_percent: -20.2  # Actually pulled back from AH high
       premarket_high: 8.10
@@ -573,7 +575,7 @@ test_cases:
     expected:
       entry_near: 5.30  # Cup & Handle under VWAP
       stop_near: 5.00
-    notes: "Sympathy momentum from TCGL squeeze. Cup & Handle formed under VWAP, entry on VWAP break. Peak $7.25, battle at $7, final P&L +$31k."
+    notes: "Ross entry ~9:30 AM on Cup & Handle VWAP break at $5.30. Sympathy from TCGL. Peak $7.25, battle at $7."
 
 # ==========================================================================
 # SUMMARY

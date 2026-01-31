@@ -38,6 +38,7 @@ interface MockOrder {
     filled_at: string | null
     exit_mode?: string | null  // "base_hit" or "home_run"
     sim_time?: string | null   // Sim clock time when order was placed (e.g. "10:45")
+    entry_trigger?: string | null  // Entry trigger type (pmh_break, orb, etc.)
 }
 
 interface MockMarketCardProps {
@@ -68,7 +69,7 @@ interface MockMarketCardProps {
     realizedPnl?: number
 }
 
-const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 60]
+const SPEEDS = [1, 2, 5, 10, 20, 30, 40, 50, 75, 100]
 
 export function MockMarketCard({
     testCases,
@@ -362,13 +363,21 @@ export function MockMarketCard({
                                     <span className={styles.orderType}>
                                         {order.order_type}
                                     </span>
-                                    {/* Exit mode badge */}
                                     {order.exit_mode && order.side === 'buy' && (
                                         <span
                                             className={`${styles.exitModeBadge} ${order.exit_mode === 'home_run' ? styles.homeRun : styles.baseHit}`}
                                             title={order.exit_mode === 'home_run' ? 'Home Run: trailing stops, partials' : 'Base Hit: fixed target exit'}
                                         >
                                             {order.exit_mode === 'home_run' ? '🚀' : '⚾'}
+                                        </span>
+                                    )}
+                                    {/* Entry trigger for debugging */}
+                                    {order.entry_trigger && order.side === 'buy' && (
+                                        <span
+                                            className={styles.entryTriggerBadge}
+                                            title={`Entry trigger: ${order.entry_trigger}`}
+                                        >
+                                            {order.entry_trigger.toUpperCase().replace('_', ' ')}
                                         </span>
                                     )}
                                     <span className={`${styles.orderStatusBadge} ${styles['status' + order.status.charAt(0).toUpperCase() + order.status.slice(1)]}`}>

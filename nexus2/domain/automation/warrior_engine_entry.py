@@ -65,6 +65,74 @@ def check_volume_confirmed(candles: list, lookback: int = 10) -> tuple[bool, int
     return is_confirmed, current_vol, avg_vol
 
 
+def check_active_market(
+    candles: list, 
+    min_bars: int = 5, 
+    min_volume_per_bar: int = 1000,
+    max_time_gap_minutes: int = 15,
+) -> tuple[bool, str]:
+    """
+    Check if there's active trading happening (not dead premarket).
+    
+    A trader looks at a chart and sees "nothing is happening" when:
+    - Bars are sparse (hour+ gaps between them)  
+    - Volume is tiny (250-300 shares)
+    - No price action
+    
+    Active market requires:
+    - At least min_bars in recent history
+    - Average volume per bar above threshold
+    - No huge gaps between bars (indicating dead market)
+    
+    Args:
+        candles: List of candle objects with .time and .volume
+        min_bars: Minimum number of bars required (default 5)
+        min_volume_per_bar: Minimum average volume per bar (default 1000)
+        max_time_gap_minutes: Max gap between bars to be "active" (default 15)
+    
+    Returns:
+        (is_active, reason_if_inactive)
+    """
+    if not candles or len(candles) < min_bars:
+        return False, f"Only {len(candles) if candles else 0} bars (need {min_bars})"
+    
+    # Check average volume per bar
+    total_vol = sum(c.volume for c in candles if hasattr(c, 'volume'))
+    avg_vol = total_vol / len(candles)
+    
+    if avg_vol < min_volume_per_bar:
+        return False, f"Low volume ({int(avg_vol)} avg vs {min_volume_per_bar} min)"
+    
+    # Check for large time gaps (dead market)
+    # Parse time strings like "04:54", "05:54" and check gaps
+    if len(candles) >= 2:
+        last_gap_minutes = 0
+        for i in range(1, min(5, len(candles))):  # Check last 5 bars
+            try:
+                curr_time = candles[-i].time if hasattr(candles[-i], 'time') else None
+                prev_time = candles[-i-1].time if hasattr(candles[-i-1], 'time') else None
+                
+                if curr_time and prev_time:
+                    # Parse "HH:MM" format
+                    curr_parts = curr_time.split(":")
+                    prev_parts = prev_time.split(":")
+                    
+                    if len(curr_parts) == 2 and len(prev_parts) == 2:
+                        curr_mins = int(curr_parts[0]) * 60 + int(curr_parts[1])
+                        prev_mins = int(prev_parts[0]) * 60 + int(prev_parts[1])
+                        gap = curr_mins - prev_mins
+                        
+                        if gap > last_gap_minutes:
+                            last_gap_minutes = gap
+            except (ValueError, AttributeError, IndexError):
+                pass
+        
+        if last_gap_minutes > max_time_gap_minutes:
+            return False, f"Large gap ({last_gap_minutes}min between bars)"
+    
+    return True, ""
+
+
 def check_falling_knife(
     current_price: Decimal, 
     snapshot, 
@@ -446,34 +514,60 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     except Exception as e:
                         logger.debug(f"[Warrior Entry] {symbol}: Candle fetch for confirmation failed: {e}")
                 
+                # ACTIVE MARKET GATE: Only consider PMH break if market is actually active
+                # This prevents entering on dead premarket with sparse, low-volume bars
+                # (GRI 04:54 entry was on 250 vol with hour gaps between bars)
                 if current_price >= trigger_price:
-                    # STAGE 1: Set control candle if not already set
-                    if watched.control_candle_high is None:
-                        watched.control_candle_high = current_candle_high if current_candle_high else current_price
-                        watched.control_candle_time = current_candle_time if current_candle_time else "N/A"
+                    # Check if market is active enough to trade
+                    market_active = True
+                    inactive_reason = ""
+                    
+                    if engine._get_intraday_bars:
+                        try:
+                            activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                            if activity_candles:
+                                market_active, inactive_reason = check_active_market(
+                                    activity_candles,
+                                    min_bars=5,  # Require at least 5 bars
+                                    min_volume_per_bar=1000,  # Require 1000+ avg volume
+                                    max_time_gap_minutes=15,  # Max 15 min between bars
+                                )
+                        except Exception as e:
+                            logger.debug(f"[Warrior Entry] {symbol}: Active market check failed: {e}")
+                    
+                    if not market_active:
                         logger.info(
-                            f"[Warrior Entry] {symbol}: PMH break detected at {watched.control_candle_time}, "
-                            f"control candle high=${watched.control_candle_high:.2f} - waiting for confirmation"
+                            f"[Warrior Entry] {symbol}: PMH break BLOCKED - market not active "
+                            f"({inactive_reason}). Waiting for more activity..."
                         )
-                    # STAGE 2: Check if CURRENT candle is DIFFERENT from control candle and breaks control high
-                    elif current_candle_time and current_candle_time != watched.control_candle_time:
-                        if current_price > watched.control_candle_high:
+                    else:
+                        # STAGE 1: Set control candle if not already set
+                        if watched.control_candle_high is None:
+                            watched.control_candle_high = current_candle_high if current_candle_high else current_price
+                            watched.control_candle_time = current_candle_time if current_candle_time else "N/A"
                             logger.info(
-                                f"[Warrior Entry] {symbol}: CANDLE CONFIRMATION - "
-                                f"${current_price:.2f} breaks control high ${watched.control_candle_high:.2f} "
-                                f"(control set at {watched.control_candle_time})"
+                                f"[Warrior Entry] {symbol}: PMH break detected at {watched.control_candle_time}, "
+                                f"control candle high=${watched.control_candle_high:.2f} - waiting for confirmation"
                             )
-                            await enter_position(
-                                engine, 
-                                watched, 
-                                current_price, 
-                                EntryTriggerType.PMH_BREAK
-                            )
-                        else:
-                            logger.debug(
-                                f"[Warrior Entry] {symbol}: Waiting for break of control high "
-                                f"${watched.control_candle_high:.2f} (current=${current_price:.2f})"
-                            )
+                        # STAGE 2: Check if CURRENT candle is DIFFERENT from control candle and breaks control high
+                        elif current_candle_time and current_candle_time != watched.control_candle_time:
+                            if current_price > watched.control_candle_high:
+                                logger.info(
+                                    f"[Warrior Entry] {symbol}: CANDLE CONFIRMATION - "
+                                    f"${current_price:.2f} breaks control high ${watched.control_candle_high:.2f} "
+                                    f"(control set at {watched.control_candle_time})"
+                                )
+                                await enter_position(
+                                    engine, 
+                                    watched, 
+                                    current_price, 
+                                    EntryTriggerType.PMH_BREAK
+                                )
+                            else:
+                                logger.debug(
+                                    f"[Warrior Entry] {symbol}: Waiting for break of control high "
+                                    f"${watched.control_candle_high:.2f} (current=${current_price:.2f})"
+                                )
             
             # ORB breakout (after ORB established)
             if watched.orb_established and watched.orb_high:
@@ -1506,6 +1600,7 @@ async def enter_position(
                 limit_price=float(limit_price),  # offset above ask
                 stop_loss=None,  # Mental stop, not broker stop
                 exit_mode=selected_exit_mode,  # Pass to MockBroker for GUI display
+                entry_trigger=trigger_type.value,  # Pass trigger type for debugging
             )
             
             # Check for blacklist response from broker
