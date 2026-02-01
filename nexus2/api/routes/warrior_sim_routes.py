@@ -780,7 +780,7 @@ async def load_historical_test_case(case_id: str):
         session_low=Decimal(str(prev_close)),
     )
     
-    watched = WatchedCandidate(candidate=candidate, pmh=pmh)
+    watched = WatchedCandidate(candidate=candidate, pmh=pmh, setup_type=data.setup_type)
     
     engine = get_engine()
     added_to_watchlist = False
@@ -797,7 +797,8 @@ async def load_historical_test_case(case_id: str):
         
         engine._watchlist[symbol] = watched
         added_to_watchlist = True
-        print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded")
+        setup_info = f", setup_type={data.setup_type}" if data.setup_type else ""
+        print(f"[Historical Replay] Added {symbol} to watchlist: PMH=${pmh}, gap={gap_pct}%, {len(data.bars)} bars loaded{setup_info}")
         
         # =========================================================================
         # Re-wire monitor callbacks to use MockBroker for historical replay

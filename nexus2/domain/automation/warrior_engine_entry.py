@@ -361,13 +361,21 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # These patterns don't depend on price being above/below PMH
             # =============================================================================
             
-            # ABCD PATTERN - Ross Cameron (Jan 29 2026): DCX for +$6,268
+            # PATTERN COMPETITION: Route to correct pattern based on setup_type
+            # If setup_type is specified (from test case YAML), only run matching pattern
+            # This prevents ABCD false triggers on PMH/VWAP_BREAK setups
+            setup_type = getattr(watched, 'setup_type', None)
+            if setup_type:
+                logger.debug(f"[Warrior Entry] {symbol}: Pattern routing - setup_type={setup_type}")
+            
+            # ABCD PATTERN - Only check if setup_type is None or "abcd"
+            # Ross Cameron (Jan 29 2026): DCX for +$6,268
             # Cold-day strategy: A (low) → B (rally high) → C (higher low) → D (break B)
             # Entry: When price breaks above B high (D point) with volume
             # Stop: Below C low
             # Target: Measured move (AB distance from C)
-            # NOTE: Moved before PMH check because ABCD doesn't depend on PMH relationship
-            if engine.config.abcd_enabled and not watched.entry_triggered:
+            should_check_abcd = setup_type is None or setup_type == "abcd"
+            if engine.config.abcd_enabled and not watched.entry_triggered and should_check_abcd:
                 if engine._get_intraday_bars:
                     try:
                         candles = await engine._get_intraday_bars(symbol, "1min", limit=40)
@@ -728,7 +736,9 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # Pattern: First candle exceeds PMH = "control candle"
             #          Entry triggers when NEXT candle breaks control candle's high
             # This naturally filters rejection wicks (LCFY 08:01 had high $7.26 but close $6.20)
-            if engine.config.pmh_enabled and not watched.entry_triggered:
+            # PATTERN COMPETITION: Only check if setup_type matches
+            should_check_pmh = setup_type is None or setup_type == "pmh"
+            if engine.config.pmh_enabled and not watched.entry_triggered and should_check_pmh:
                 trigger_price = watched.pmh + engine.config.pmh_buffer_cents / 100
                 
                 # Get current candle info for confirmation logic
@@ -882,7 +892,9 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # VWAP BREAK - Ross Cameron (Jan 20 2026): "I took this trade for the break through VWAP"
             # Pattern: Stock pulls back below VWAP, consolidates, then breaks back above
             # This is distinct from VWAP_RECLAIM (which is reclaiming after losing VWAP)
-            if engine.config.vwap_break_enabled and not watched.entry_triggered:
+            # PATTERN COMPETITION: Only check if setup_type matches
+            should_check_vwap_break = setup_type is None or setup_type == "vwap_break"
+            if engine.config.vwap_break_enabled and not watched.entry_triggered and should_check_vwap_break:
                 # Get current VWAP
                 vwap = None
                 if engine._get_intraday_bars:
@@ -1015,7 +1027,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # Entry: When price breaks above B high (D point) with volume
             # Stop: Below C low
             # Target: Measured move (AB distance from C)
-            if engine.config.abcd_enabled and not watched.entry_triggered:
+            # PATTERN COMPETITION: Only check if setup_type matches (reuses should_check_abcd from earlier)
+            if engine.config.abcd_enabled and not watched.entry_triggered and should_check_abcd:
                 if engine._get_intraday_bars:
                     try:
                         candles = await engine._get_intraday_bars(symbol, "1min", limit=40)

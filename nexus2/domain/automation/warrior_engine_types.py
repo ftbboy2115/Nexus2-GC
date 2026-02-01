@@ -209,6 +209,11 @@ class WatchedCandidate:
     cup_handle_pattern: Optional["CupHandlePattern"] = None  # Detected Cup & Handle pattern
     cup_handle_detected_at: Optional[datetime] = None  # When pattern was detected
     
+    # PATTERN COMPETITION: setup_type from test case to route pattern detection
+    # Valid values: "pmh", "abcd", "vwap_break", "orb", "pullback", "micro_pullback"
+    # If None, defaults to pmh + abcd detection
+    setup_type: Optional[str] = None
+    
     @property
     def dynamic_score(self) -> int:
         """

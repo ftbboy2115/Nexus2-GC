@@ -56,6 +56,8 @@ class IntradayData:
     premarket: Dict = field(default_factory=dict)
     bars: List[IntradayBar] = field(default_factory=list)
     continuity_bars: List[IntradayBar] = field(default_factory=list)  # Previous day's bars for MACD
+    # PATTERN COMPETITION: setup_type from YAML (pmh, abcd, vwap_break, orb, etc.)
+    setup_type: Optional[str] = None
     
     @classmethod
     def from_json(cls, data: Dict) -> "IntradayData":
@@ -91,6 +93,7 @@ class IntradayData:
             premarket=data.get("premarket", {}),
             bars=bars,
             continuity_bars=continuity_bars,
+            setup_type=data.get("setup_type"),  # From YAML merge
         )
     
     def get_price_at(self, time_str: str) -> Optional[float]:
@@ -207,7 +210,7 @@ class HistoricalBarLoader:
     
     def load_test_case(self, case_id: str) -> Optional[IntradayData]:
         """
-        Load a test case from JSON file.
+        Load a test case from JSON file, merging YAML metadata for setup_type.
         
         Args:
             case_id: Test case ID (e.g., "bnai_2026_01_23")
@@ -222,20 +225,48 @@ class HistoricalBarLoader:
             logger.error(f"[HistoricalBarLoader] Test case not found: {json_path}")
             return None
         
+        # Load YAML metadata to get setup_type (Pattern Competition)
+        yaml_meta = self._load_yaml_metadata(case_id)
+        
         try:
             with open(json_path, "r") as f:
                 data = json.load(f)
+            
+            # Merge setup_type from YAML into JSON data before parsing
+            if yaml_meta and "setup_type" in yaml_meta:
+                data["setup_type"] = yaml_meta["setup_type"]
             
             intraday = IntradayData.from_json(data)
             self._loaded_data[intraday.symbol] = intraday
             self._current_case_id = case_id
             
             cont_count = len(intraday.continuity_bars)
-            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars + {cont_count} continuity bars for {intraday.symbol}")
+            setup_info = f", setup_type={intraday.setup_type}" if intraday.setup_type else ""
+            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars + {cont_count} continuity bars for {intraday.symbol}{setup_info}")
             return intraday
             
         except Exception as e:
             logger.error(f"[HistoricalBarLoader] Error loading {case_id}: {e}")
+            return None
+    
+    def _load_yaml_metadata(self, case_id: str) -> Optional[Dict]:
+        """Load metadata from warrior_setups.yaml for a test case."""
+        import yaml
+        yaml_path = self._test_cases_dir / "warrior_setups.yaml"
+        
+        if not yaml_path.exists():
+            return None
+        
+        try:
+            with open(yaml_path, "r") as f:
+                data = yaml.safe_load(f)
+            
+            for tc in data.get("test_cases", []):
+                if tc.get("id") == case_id:
+                    return tc
+            return None
+        except Exception as e:
+            logger.warning(f"[HistoricalBarLoader] Error loading YAML: {e}")
             return None
     
     def get_price_at(self, symbol: str, time_str: str) -> Optional[float]:

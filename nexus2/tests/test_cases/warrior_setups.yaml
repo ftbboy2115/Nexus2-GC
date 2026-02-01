@@ -420,9 +420,9 @@ test_cases:
       float_shares: 5000000
       catalyst: "reverse_split"
     expected:
-      entry_near: 20.00
-      stop_near: 19.00
-    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze. Re-fetched with Polygon for premarket data."
+      entry_near: 12.31  # Ross avg from transcript, NOT $20
+      stop_near: 11.50
+    notes: "Ross Cameron transcript Jan 21 - 299% reverse split squeeze. Entry $12.31 on second micro-pullback. Re-fetched with Polygon for premarket data."
 
   - id: ross_batl_20260126
     symbol: BATL
