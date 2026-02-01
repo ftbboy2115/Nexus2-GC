@@ -388,6 +388,29 @@ class HistoricalBarLoader:
         
         return self._loaded_data[symbol].get_price_at(time_str)
     
+    def has_10s_bars(self, symbol: str) -> bool:
+        """Check if 10s bar data is available for symbol."""
+        if symbol not in self._loaded_data:
+            return False
+        return self._loaded_data[symbol].has_10s_bars()
+    
+    def get_10s_price_at(self, symbol: str, time_str: str) -> Optional[float]:
+        """
+        Get price at given time using 10s bars (higher precision).
+        Falls back to 1-min bars if 10s not available.
+        
+        Args:
+            symbol: Stock symbol
+            time_str: Time in "HH:MM" or "HH:MM:SS" format
+        
+        Returns:
+            Closing price at that time, or None
+        """
+        if symbol not in self._loaded_data:
+            return None
+        
+        return self._loaded_data[symbol].get_10s_price_at(time_str)
+    
     def get_bars_up_to(self, symbol: str, time_str: str, timeframe: str = "1min", include_continuity: bool = True) -> List[IntradayBar]:
         """
         Get bars for symbol up to given time.

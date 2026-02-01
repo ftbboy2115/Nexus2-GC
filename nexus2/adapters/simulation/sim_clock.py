@@ -222,19 +222,26 @@ class SimulationClock:
         """Get current time as HH:MM string."""
         return self._current_time.strftime("%H:%M")
     
-    def step_forward(self, minutes: int = 1) -> datetime:
+    def get_time_string_with_seconds(self) -> str:
+        """Get current time as HH:MM:SS string (for 10s bar lookup)."""
+        return self._current_time.strftime("%H:%M:%S")
+    
+    def step_forward(self, minutes: int = 1, seconds: int = 0) -> datetime:
         """
-        Step forward by specified minutes.
+        Step forward by specified time.
         
         Used for manual stepping through historical replay.
         
         Args:
             minutes: Number of minutes to step forward
+            seconds: Number of seconds to step forward (for 10s bar granularity)
         
         Returns:
             New current time
         """
-        return self.advance(minutes=minutes)
+        delta = timedelta(minutes=minutes, seconds=seconds)
+        self._current_time += delta
+        return self._current_time
     
     def step_back(self, minutes: int = 1) -> datetime:
         """

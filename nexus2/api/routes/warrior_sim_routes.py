@@ -189,12 +189,23 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
                 return price
         
         # Priority 2: Get price from HistoricalBarLoader (for historical replay)
-        # Do NOT fall back to Alpaca - that causes stale quote rejections
+        # PREFER 10s bars when available for higher precision timing
         from nexus2.adapters.simulation import get_historical_bar_loader, get_simulation_clock
         loader = get_historical_bar_loader()
         clock = get_simulation_clock()
         if loader and clock:
             time_str = clock.get_time_string()
+            
+            # Check if 10s bars available for this symbol
+            if loader.has_10s_bars(symbol):
+                # Use seconds-aware time for 10s bar precision
+                time_str_sec = clock.get_time_string_with_seconds()
+                price = loader.get_10s_price_at(symbol, time_str_sec)
+                if price:
+                    logger.debug(f"[Sim Quote] {symbol} @ {time_str_sec}: ${price:.2f} (10s bars)")
+                    return price
+            
+            # Fallback to 1-min bars
             price = loader.get_price_at(symbol, time_str)
             if price:
                 return price
@@ -1045,16 +1056,41 @@ async def step_clock(minutes: int = 1):
     broker = get_warrior_sim_broker()
     engine = get_engine()
     
-    # Process each minute individually to avoid missing triggers
-    for _ in range(minutes):
-        # Step forward 1 minute
-        clock.step_forward(1)
-        time_str = clock.get_time_string()
+    # Determine step granularity based on 10s bar availability
+    # If ANY loaded symbol has 10s bars, use 10s stepping for precision
+    use_10s_stepping = any(
+        loader.has_10s_bars(sym) for sym in loader.get_loaded_symbols()
+    )
+    
+    if use_10s_stepping:
+        # 10s stepping: each "minute" becomes 6 x 10s steps
+        total_steps = minutes * 6
+        step_seconds = 10
+        print(f"[Historical Replay] 10s precision enabled - {total_steps} steps")
+    else:
+        # 1-min stepping (original behavior)
+        total_steps = minutes
+        step_seconds = 0
+    
+    # Process each step individually to avoid missing triggers
+    for step_idx in range(total_steps):
+        # Step forward
+        if use_10s_stepping:
+            clock.step_forward(minutes=0, seconds=step_seconds)
+            time_str = clock.get_time_string_with_seconds()
+        else:
+            clock.step_forward(minutes=1)
+            time_str = clock.get_time_string()
         
         # Update prices for all loaded symbols
         prices = {}
         for symbol in loader.get_loaded_symbols():
-            price = loader.get_price_at(symbol, time_str)
+            # Use 10s bars when available
+            if use_10s_stepping and loader.has_10s_bars(symbol):
+                price = loader.get_10s_price_at(symbol, time_str)
+            else:
+                price = loader.get_price_at(symbol, clock.get_time_string())
+            
             if price and broker:
                 broker.set_price(symbol, price)
                 prices[symbol] = price
@@ -1087,12 +1123,18 @@ async def step_clock(minutes: int = 1):
                 await engine.monitor._check_all_positions()
             except Exception as e:
                 print(f"[Historical Replay] Monitor check error at {time_str}: {e}")
+    # Final state after all steps processed
+    if use_10s_stepping:
+        time_str = clock.get_time_string_with_seconds()
+    else:
+        time_str = clock.get_time_string()
     
-    # Final state after all minutes processed
-    time_str = clock.get_time_string()
     prices = {}
     for symbol in loader.get_loaded_symbols():
-        price = loader.get_price_at(symbol, time_str)
+        if use_10s_stepping and loader.has_10s_bars(symbol):
+            price = loader.get_10s_price_at(symbol, time_str)
+        else:
+            price = loader.get_price_at(symbol, clock.get_time_string())
         if price:
             prices[symbol] = price
     
