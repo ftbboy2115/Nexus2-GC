@@ -56,6 +56,7 @@ class IntradayData:
     premarket: Dict = field(default_factory=dict)
     bars: List[IntradayBar] = field(default_factory=list)
     continuity_bars: List[IntradayBar] = field(default_factory=list)  # Previous day's bars for MACD
+    bars_10s: List[IntradayBar] = field(default_factory=list)  # 10-second bars for high-fidelity timing
     # PATTERN COMPETITION: setup_type from YAML (pmh, abcd, vwap_break, orb, etc.)
     setup_type: Optional[str] = None
     # ENTRY VALIDATION: Ross's ground truth for comparison
@@ -90,12 +91,26 @@ class IntradayData:
             for b in data.get("continuity_bars", [])
         ]
         
+        # Load 10s bars if present (for high-fidelity timing)
+        bars_10s = [
+            IntradayBar(
+                time=b.get("t", b.get("time", "")),
+                open=float(b.get("o", b.get("open", 0))),
+                high=float(b.get("h", b.get("high", 0))),
+                low=float(b.get("l", b.get("low", 0))),
+                close=float(b.get("c", b.get("close", 0))),
+                volume=int(b.get("v", b.get("volume", 0))),
+            )
+            for b in data.get("bars_10s", [])
+        ]
+        
         return cls(
             symbol=data.get("symbol", ""),
             date=data.get("date", ""),
             premarket=data.get("premarket", {}),
             bars=bars,
             continuity_bars=continuity_bars,
+            bars_10s=bars_10s,
             setup_type=data.get("setup_type"),  # From YAML merge
             ross_entry=data.get("ross_entry"),   # From YAML merge
             ross_pnl=data.get("ross_pnl"),       # From YAML merge
@@ -180,6 +195,61 @@ class IntradayData:
         """Parse time string to time object."""
         parts = time_str.split(":")
         return time(int(parts[0]), int(parts[1]))
+    
+    def _parse_time_with_seconds(self, time_str: str) -> time:
+        """Parse time string with seconds (HH:MM:SS) to time object."""
+        parts = time_str.split(":")
+        if len(parts) == 3:
+            return time(int(parts[0]), int(parts[1]), int(parts[2]))
+        return time(int(parts[0]), int(parts[1]))
+    
+    def has_10s_bars(self) -> bool:
+        """Check if 10s bar data is available."""
+        return len(self.bars_10s) > 0
+    
+    def get_10s_price_at(self, time_str: str) -> Optional[float]:
+        """
+        Get the closing price at or before given time using 10s bars.
+        
+        Args:
+            time_str: Time in HH:MM or HH:MM:SS format
+        """
+        if not self.bars_10s:
+            return self.get_price_at(time_str)  # Fallback to 1-min
+        
+        target = self._parse_time_with_seconds(time_str)
+        
+        last_price = None
+        for bar in self.bars_10s:
+            bar_time = self._parse_time_with_seconds(bar.time)
+            if bar_time <= target:
+                last_price = bar.close
+            else:
+                break
+        
+        return last_price
+    
+    def get_10s_bars_up_to(self, time_str: str) -> List[IntradayBar]:
+        """
+        Get all 10s bars up to and including the given time.
+        
+        Args:
+            time_str: Time in HH:MM or HH:MM:SS format
+        """
+        if not self.bars_10s:
+            return []
+        
+        target = self._parse_time_with_seconds(time_str)
+        
+        result = []
+        for bar in self.bars_10s:
+            bar_time = self._parse_time_with_seconds(bar.time)
+            if bar_time <= target:
+                result.append(bar)
+            else:
+                break
+        
+        return result
 
 
 class HistoricalBarLoader:
@@ -217,6 +287,8 @@ class HistoricalBarLoader:
         """
         Load a test case from JSON file, merging YAML metadata for setup_type.
         
+        Also auto-loads 10s bars if a corresponding *_10s.json file exists.
+        
         Args:
             case_id: Test case ID (e.g., "bnai_2026_01_23")
         
@@ -251,13 +323,29 @@ class HistoricalBarLoader:
                 if yaml_meta.get("ross_pnl"):
                     data["ross_pnl"] = yaml_meta["ross_pnl"]
             
+            # AUTO-LOAD 10s BARS: Look for matching *_10s.json file
+            symbol = data.get("symbol", "").lower()
+            date_str = data.get("date", "").replace("-", "")
+            if symbol and date_str:
+                bars_10s_path = self._test_cases_dir / "intraday" / f"{symbol}_{date_str}_10s.json"
+                if bars_10s_path.exists():
+                    try:
+                        with open(bars_10s_path, "r") as f:
+                            data_10s = json.load(f)
+                        data["bars_10s"] = data_10s.get("bars", [])
+                        logger.info(f"[HistoricalBarLoader] Loaded {len(data['bars_10s'])} 10s bars from {bars_10s_path.name}")
+                    except Exception as e:
+                        logger.warning(f"[HistoricalBarLoader] Failed to load 10s bars: {e}")
+            
             intraday = IntradayData.from_json(data)
             self._loaded_data[intraday.symbol] = intraday
             self._current_case_id = case_id
             
             cont_count = len(intraday.continuity_bars)
+            bars_10s_count = len(intraday.bars_10s)
             setup_info = f", setup_type={intraday.setup_type}" if intraday.setup_type else ""
-            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars + {cont_count} continuity bars for {intraday.symbol}{setup_info}")
+            bars_10s_info = f", 10s_bars={bars_10s_count}" if bars_10s_count else ""
+            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars + {cont_count} continuity{bars_10s_info} for {intraday.symbol}{setup_info}")
             return intraday
             
         except Exception as e:

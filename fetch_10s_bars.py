@@ -1,6 +1,9 @@
 """Fetch 10s bars from Polygon and save to JSON for Mock Market replay."""
 import json
+import pytz
 from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
+
+ET = pytz.timezone("US/Eastern")
 
 def fetch_10s_bars(symbol: str, date: str):
     polygon = get_polygon_adapter()
@@ -10,15 +13,16 @@ def fetch_10s_bars(symbol: str, date: str):
         print(f"No bars returned for {symbol} on {date}")
         return
     
-    # Convert to JSON-serializable format
+    # Convert to JSON-serializable format with Eastern Time
     data = {
         "symbol": symbol,
         "date": date,
         "timeframe": "10s",
+        "timezone": "US/Eastern",
         "bar_count": len(bars),
         "bars": [
             {
-                "t": b.timestamp.strftime("%H:%M:%S"),
+                "t": b.timestamp.astimezone(ET).strftime("%H:%M:%S"),
                 "o": float(b.open),
                 "h": float(b.high),
                 "l": float(b.low),
@@ -34,10 +38,10 @@ def fetch_10s_bars(symbol: str, date: str):
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2)
     
+    first_time = bars[0].timestamp.astimezone(ET).strftime("%H:%M:%S")
+    last_time = bars[-1].timestamp.astimezone(ET).strftime("%H:%M:%S")
     print(f"Saved {len(bars)} bars to {output_path}")
-    first_time = bars[0].timestamp.strftime("%H:%M:%S")
-    last_time = bars[-1].timestamp.strftime("%H:%M:%S")
-    print(f"Time range: {first_time} to {last_time}")
+    print(f"Time range (ET): {first_time} to {last_time}")
 
 if __name__ == "__main__":
     fetch_10s_bars("GRI", "2026-01-28")
