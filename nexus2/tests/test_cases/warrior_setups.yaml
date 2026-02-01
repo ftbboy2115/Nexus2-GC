@@ -570,6 +570,7 @@ test_cases:
     data_source: polygon
     ross_pnl: 33499.98
     ross_entry_time: "08:45"  # Breaking news at 8:45 AM, Ross entered ~$5.97
+    ross_chart_timeframe: "10s"  # Ross used 10-second chart for micro-timing
     premarket_data:
       gap_percent: 29.9
       premarket_high: 11.90
@@ -579,7 +580,7 @@ test_cases:
     expected:
       entry_near: 5.97  # Entry for break of $6 whole number
       stop_near: 5.70
-    notes: "NEWS at 8:45 AM. Ross entry $5.97 for $6 break (8:45 AM). Peak $12, gave back 25%. HC Wainwright shelf."
+    notes: "NEWS at 8:45 AM. Ross entry $5.97 for $6 break using 10s chart timing. Move from ~$5 to $8.60 in 15 min. Bot 1m bars miss micro-timing - entered pullback at $4.15 vs Ross $5.97. HC Wainwright shelf."
 
   - id: ross_lrhc_20260130
     symbol: LRHC
