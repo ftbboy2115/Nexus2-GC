@@ -1918,18 +1918,64 @@ async def enter_position(
                 from nexus2.domain.indicators import get_technical_service
                 tech = get_technical_service()
                 
-                # Convert candles to dict format for pandas-ta
-                candle_dicts = [
+                # CRITICAL FIX (Feb 1 2026): Filter out continuity bars for VWAP
+                # Continuity bars from previous day EOD (15:00-16:00) distort VWAP
+                # VWAP should only use TODAY's session bars
+                current_hour = None
+                try:
+                    from nexus2.adapters.simulation.sim_clock import get_sim_clock
+                    clock = get_sim_clock()
+                    if clock.is_active():
+                        time_str = clock.get_time_string()
+                        current_hour = int(time_str.split(':')[0])
+                except Exception:
+                    pass
+                
+                # Filter for today's session bars only (VWAP calculation)
+                today_candles = []
+                for c in candles:
+                    bar_time = getattr(c, 'time', '') or ''
+                    if not bar_time:
+                        continue
+                    try:
+                        hour = int(bar_time.split(':')[0])
+                        if current_hour is not None:
+                            if current_hour < 10:  # Premarket
+                                if 4 <= hour < 10:
+                                    today_candles.append(c)
+                            else:  # Regular hours
+                                if 4 <= hour <= current_hour:
+                                    today_candles.append(c)
+                        else:
+                            if 4 <= hour < 10:
+                                today_candles.append(c)
+                    except (ValueError, IndexError):
+                        today_candles.append(c)
+                
+                # Use filtered candles for VWAP
+                vwap_candle_dicts = [
+                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                    for c in today_candles
+                ] if today_candles else []
+                
+                # Use ALL candles for MACD/EMA (needs continuity for warm-up)
+                all_candle_dicts = [
                     {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
                     for c in candles
                 ]
-                snapshot = tech.get_snapshot(symbol, candle_dicts, entry_price)
+                
+                # Get VWAP from today's bars only
+                vwap_snapshot = tech.get_snapshot(symbol, vwap_candle_dicts, entry_price) if vwap_candle_dicts else None
+                # Get MACD/EMA from all bars (includes continuity)
+                snapshot = tech.get_snapshot(symbol, all_candle_dicts, entry_price)
                 
                 # Check: price should be above VWAP (Ross Cameron rule)
-                if snapshot.vwap and entry_price < snapshot.vwap:
+                # Use vwap_snapshot (today's bars only) for accurate session VWAP
+                actual_vwap = vwap_snapshot.vwap if vwap_snapshot else snapshot.vwap
+                if actual_vwap and entry_price < actual_vwap:
                     logger.warning(
                         f"[Warrior Entry] {symbol}: REJECTED - below VWAP "
-                        f"(${entry_price:.2f} < VWAP ${snapshot.vwap:.2f})"
+                        f"(${entry_price:.2f} < VWAP ${actual_vwap:.2f})"
                     )
                     # NOTE: Do NOT set entry_triggered=True here - VWAP is a temporary condition
                     # that can change. We want to re-check on next tick if price moves above VWAP.
@@ -1947,7 +1993,7 @@ async def enter_position(
                 # Log technical confirmation
                 logger.info(
                     f"[Warrior Entry] {symbol}: Technical OK - "
-                    f"VWAP=${f'{snapshot.vwap:.2f}' if snapshot.vwap else 'N/A'}, "
+                    f"VWAP=${f'{actual_vwap:.2f}' if actual_vwap else 'N/A'}, "
                     f"9EMA=${f'{snapshot.ema_9:.2f}' if snapshot.ema_9 else 'N/A'}, "
                     f"MACD={snapshot.macd_crossover}"
                 )
