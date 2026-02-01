@@ -325,29 +325,62 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         from nexus2.domain.indicators import get_technical_service
                         from datetime import datetime, timezone
                         tech = get_technical_service()
-                        candle_dicts = [
+                        
+                        # CRITICAL FIX (Feb 1 2026): Dual calculation approach
+                        # - MACD/EMA need ALL bars (including continuity) for warm-up at market open
+                        # - VWAP should only use TODAY's session bars (resets daily)
+                        
+                        # Filter for today's session bars (04:00-20:00 ET) for VWAP
+                        today_candles = []
+                        for c in candles:
+                            bar_time = getattr(c, 'time', '') or ''
+                            if not bar_time:
+                                continue
+                            try:
+                                hour = int(bar_time.split(':')[0])
+                                if 4 <= hour < 20:  # Today's extended hours session
+                                    today_candles.append(c)
+                            except (ValueError, IndexError):
+                                today_candles.append(c)
+                        
+                        # ALL candles for MACD/EMA (includes continuity)
+                        all_candle_dicts = [
                             {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
                             for c in candles
                         ]
-                        snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
                         
-                        # Store trend data on watched candidate
-                        if snapshot.vwap:
-                            watched.current_vwap = Decimal(str(snapshot.vwap))
-                            watched.is_above_vwap = current_price > watched.current_vwap
-                            logger.debug(
-                                f"[Warrior Entry] {symbol}: VWAP=${snapshot.vwap:.2f}, "
-                                f"price=${current_price:.2f}, above={watched.is_above_vwap}"
-                            )
-                        else:
-                            logger.info(f"[Warrior Entry] {symbol}: No VWAP in snapshot (candles={len(candles)})")
+                        # TODAY's candles only for VWAP
+                        today_candle_dicts = [
+                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                            for c in today_candles
+                        ]
+                        
+                        # Get MACD/EMA from full history
+                        snapshot = tech.get_snapshot(symbol, all_candle_dicts, float(current_price))
+                        
+                        # Update EMA from full snapshot
                         if snapshot.ema_9:
                             watched.current_ema_9 = Decimal(str(snapshot.ema_9))
                             watched.is_above_ema_9 = current_price > watched.current_ema_9
                         watched.trend_updated_at = datetime.now(timezone.utc)
+                        
+                        # Calculate VWAP separately from today's bars only
+                        if len(today_candle_dicts) >= 5:
+                            vwap_snapshot = tech.get_snapshot(symbol, today_candle_dicts, float(current_price))
+                            if vwap_snapshot.vwap:
+                                watched.current_vwap = Decimal(str(vwap_snapshot.vwap))
+                                watched.is_above_vwap = current_price > watched.current_vwap
+                                logger.debug(
+                                    f"[Warrior Entry] {symbol}: VWAP=${vwap_snapshot.vwap:.2f} (from {len(today_candles)} today bars), "
+                                    f"price=${current_price:.2f}, above={watched.is_above_vwap}"
+                                )
+                            else:
+                                logger.info(f"[Warrior Entry] {symbol}: No VWAP in snapshot (today_candles={len(today_candles)})")
+                        else:
+                            logger.info(f"[Warrior Entry] {symbol}: Not enough today's candles for VWAP ({len(today_candles)} < 5)")
                     else:
                         candle_count = len(candles) if candles else 0
-                        logger.info(f"[Warrior Entry] {symbol}: Not enough candles for VWAP ({candle_count} < 10)")
+                        logger.info(f"[Warrior Entry] {symbol}: Not enough candles for technicals ({candle_count} < 10)")
                 except Exception as e:
                     logger.warning(f"[Warrior Entry] {symbol}: Trend update failed: {e}")
             else:
