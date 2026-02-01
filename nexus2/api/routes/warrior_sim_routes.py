@@ -917,9 +917,31 @@ async def load_historical_test_case(case_id: str):
             IMPORTANT: We include continuity bars (previous day) for MACD/EMA calculations.
             The limit parameter is a hint, not a hard cap - we prioritize having enough
             bars for technical indicators over strict limit compliance.
+            
+            CRITICAL FIX (Feb 1 2026): For VWAP/EMA accuracy, we exclude the current minute's
+            bar because its CLOSE contains future data. At 08:45:10, the 08:45 bar's close
+            reflects 08:45:59, which is 50 seconds in the future. This caused VWAP to be $6.28
+            instead of actual $5.28 for GRI at 08:45:10.
             """
             loader = get_historical_bar_loader()
-            time_str = clock.get_time_string()
+            
+            # Get time with seconds to determine if we're mid-minute
+            time_with_seconds = clock.get_time_string_with_seconds()  # e.g., "08:45:10"
+            time_str = clock.get_time_string()  # e.g., "08:45"
+            
+            # If we're mid-minute (seconds > 0), use the PREVIOUS minute to avoid future data
+            # The current minute's bar close contains future info until the minute completes
+            seconds = int(time_with_seconds.split(":")[-1]) if ":" in time_with_seconds else 0
+            if seconds > 0:
+                # Decrement by 1 minute to get only completed bars
+                hour, minute = int(time_str.split(":")[0]), int(time_str.split(":")[1])
+                if minute > 0:
+                    minute -= 1
+                else:
+                    hour -= 1
+                    minute = 59
+                time_str = f"{hour:02d}:{minute:02d}"
+            
             # include_continuity=True ensures MACD/EMA have enough history at market open
             bars = loader.get_bars_up_to(symbol, time_str, timeframe, include_continuity=True)
             
