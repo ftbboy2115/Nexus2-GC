@@ -404,7 +404,12 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                         f"MACD negative)"
                                     )
                         except Exception as e:
-                            logger.debug(f"[Warrior Entry] {symbol}: Falling knife check failed: {e}")
+                            # FAIL-CLOSED: Cannot verify falling knife status - block entry
+                            logger.warning(
+                                f"[Warrior Entry] {symbol}: FAIL-CLOSED - Falling knife check failed: {e}. "
+                                f"Cannot verify trend safety, blocking DIP_FOR_LEVEL entry."
+                            )
+                            continue  # Skip this entry - better to miss than enter blind
                     
                     # Skip entry if falling knife detected
                     if is_falling_knife:
@@ -1464,7 +1469,13 @@ async def enter_position(
                         f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'})"
                     )
         except Exception as e:
-            logger.debug(f"[Warrior Entry] {symbol}: MACD check failed: {e} - proceeding without gate")
+            # FAIL-CLOSED: Cannot verify MACD - block entry
+            logger.warning(
+                f"[Warrior Entry] {symbol}: FAIL-CLOSED - MACD check failed: {e}. "
+                f"Cannot verify momentum, blocking entry."
+            )
+            watched.entry_triggered = True  # Mark as triggered to prevent retries
+            return
     
     # Check if we already hold this symbol
     # - For regular entries: Block re-entry (prevents double-buying)
@@ -1657,7 +1668,13 @@ async def enter_position(
                     f"MACD={snapshot.macd_crossover}"
                 )
         except Exception as e:
-            logger.debug(f"[Warrior Entry] {symbol}: Technical check failed: {e} - proceeding")
+            # FAIL-CLOSED: Cannot verify technicals - block entry
+            logger.warning(
+                f"[Warrior Entry] {symbol}: FAIL-CLOSED - Technical check failed: {e}. "
+                f"Cannot verify VWAP/EMA/MACD, blocking entry."
+            )
+            watched.entry_triggered = True  # Mark as triggered to prevent retries
+            return
     
     # Check if we can open new position (max positions, daily loss)
     if not await engine._can_open_position():
@@ -1699,7 +1716,8 @@ async def enter_position(
                     f"(5-bar low=${consolidation_low:.2f}, entry bar=${entry_candle_low:.2f})"
                 )
         except Exception as e:
-            logger.debug(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
+            # FAIL-CLOSED: Log as warning (trade will be blocked below when mental_stop is None)
+            logger.warning(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
     
     if mental_stop is None:
         # BLOCK TRADE: Cannot make informed decision without candle data

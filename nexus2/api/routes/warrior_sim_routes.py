@@ -891,13 +891,21 @@ async def load_historical_test_case(case_id: str):
         # Wire _get_intraday_bars to use historical bar loader at simulated time
         # Without this, entry stop calculation uses real (stale) bars instead of simulated-time bars
         async def sim_get_intraday_bars(symbol: str, timeframe: str = "1min", limit: int = 50):
-            """Return historical bars up to current simulated time."""
+            """Return historical bars up to current simulated time.
+            
+            IMPORTANT: We include continuity bars (previous day) for MACD/EMA calculations.
+            The limit parameter is a hint, not a hard cap - we prioritize having enough
+            bars for technical indicators over strict limit compliance.
+            """
             loader = get_historical_bar_loader()
             time_str = clock.get_time_string()
-            bars = loader.get_bars_up_to(symbol, time_str, timeframe)
-            # Return last N bars per limit
-            if bars and len(bars) > limit:
-                bars = bars[-limit:]
+            # include_continuity=True ensures MACD/EMA have enough history at market open
+            bars = loader.get_bars_up_to(symbol, time_str, timeframe, include_continuity=True)
+            
+            # Only clip if we have WAY more bars than needed (100+ extra)
+            # This preserves continuity bars while preventing memory bloat on long runs
+            if bars and len(bars) > limit + 100:
+                bars = bars[-(limit + 50):]  # Keep extra buffer for indicator warmup
             return bars
         
         engine._get_intraday_bars = sim_get_intraday_bars

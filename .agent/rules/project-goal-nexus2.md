@@ -130,3 +130,36 @@ DOCUMENT SYNC PATTERN
 - [ROADMAP.md](cci:7://file:///c:/Users/ftbbo/Nextcloud4/OneDrive%20Backup/Documents%20%28sync%27d%29/Development/Nexus/ROADMAP.md:0:0-0:0) in project root is the user-facing task list (version controlled).
 - KI artifacts contain detailed architecture/implementation notes (AI memory).
 - When completing roadmap items or adding new ones, keep both in sync.
+
+────────────────────────────────────────
+🚨 WARRIOR BOT PROFITABILITY (NON-NEGOTIABLE)
+────────────────────────────────────────
+
+**Warrior bot profitability is the PRIMARY success metric for Nexus 2.**
+
+FAIL-CLOSED MANDATE:
+- NEVER use `logger.debug` for conditions that affect trading outcomes
+- If a safety check fails (candle fetch, MACD, EMA, stop calc), BLOCK THE TRADE
+- "Proceeding without gate" or "proceeding with caution" = UNACCEPTABLE
+- When uncertain, do NOT trade and clearly log WHY
+
+BEFORE ANY WARRIOR CODE CHANGE:
+1. What problem does this solve?
+2. How will I verify it improves profitability?
+3. Which test cases will I run?
+4. What could go wrong, and how will I detect it?
+
+RED FLAGS (STOP IMMEDIATELY):
+- `except: pass` or `except Exception as e: logger.debug` → HIDES FAILURES
+- New entry types without evidence from Ross methodology → INVENTED PATTERNS
+- "Minor fix" without running test cases → ASSUMED SUCCESS
+- Multiple triggers on same symbol in test → OVERTRADING
+
+THE GOLDEN RULE:
+**"Better to not trade than trade blind."**
+If Warrior lacks information (bars, technicals, stops), it MUST:
+1. NOT enter the trade
+2. Log a WARNING explaining what's missing
+3. Continue checking other symbols
+
+THIS IS NOT OPTIONAL. PROFITABILITY IS THE ONLY METRIC THAT MATTERS.
