@@ -548,6 +548,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         if 3 <= distance_cents <= 10:
                             # MOMENTUM CHECK: Must be in an uptrend, not consolidating
                             has_momentum = False
+                            higher_highs = False
+                            position_in_range = 0.0
                             if engine._get_intraday_bars:
                                 try:
                                     candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
@@ -566,13 +568,14 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                             # Must be in top 30% of recent range
                                             has_momentum = higher_highs and position_in_range > 0.7
                                             
-                                            if has_momentum:
-                                                logger.info(
-                                                    f"[Warrior Entry] {symbol}: MOMENTUM CONFIRMED - "
-                                                    f"higher highs={higher_highs}, range position={position_in_range:.1%}"
-                                                )
+                                            # ALWAYS log momentum check result
+                                            logger.info(
+                                                f"[Warrior Entry] {symbol}: WHOLE/HALF MOMENTUM CHECK - "
+                                                f"higher_highs={higher_highs}, range_pos={position_in_range:.1%}, "
+                                                f"result={'PASS' if has_momentum else 'FAIL'}"
+                                            )
                                 except Exception as e:
-                                    logger.debug(f"[Warrior Entry] {symbol}: Momentum check failed: {e}")
+                                    logger.warning(f"[Warrior Entry] {symbol}: Momentum check failed: {e}")
                             
                             if has_momentum:
                                 # VOLUME CHECK: Use existing check_volume_expansion helper
@@ -601,11 +604,6 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                         EntryTriggerType.WHOLE_HALF_ANTICIPATORY
                                     )
                                     break  # Don't check other levels after entry
-                            else:
-                                logger.debug(
-                                    f"[Warrior Entry] {symbol}: Near ${level:.2f} but no momentum - "
-                                    f"waiting for breakout setup"
-                                )
                 
                 # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
                 # Example: TNMG at $3.93, target $4.00 level
