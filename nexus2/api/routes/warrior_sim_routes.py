@@ -479,6 +479,9 @@ async def list_warrior_test_cases():
     intraday_path = os.path.join(base_path, "intraday")
     if os.path.exists(intraday_path):
         for filename in os.listdir(intraday_path):
+            # Skip 10s bar files - they're supplementary data auto-loaded by bar loader
+            if filename.endswith("_10s.json"):
+                continue
             if filename.endswith(".json"):
                 json_path = os.path.join(intraday_path, filename)
                 try:
