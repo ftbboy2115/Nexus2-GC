@@ -304,11 +304,8 @@ export default function DataExplorer() {
         URL.revokeObjectURL(url)
     }
 
-    const copyToClipboard = () => {
-        if (data.length === 0) return
-        const visibleCols = allColumns.filter(c => !hiddenColumns.has(c))
-        const text = data.map(row => visibleCols.map(k => row[k] ?? '').join('\t')).join('\n')
-        // Fallback for non-HTTPS contexts where navigator.clipboard is unavailable
+    // Helper to write text to clipboard with fallback for non-HTTPS
+    const writeToClipboard = (text: string) => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text)
         } else {
@@ -322,6 +319,27 @@ export default function DataExplorer() {
             document.execCommand('copy')
             document.body.removeChild(textarea)
         }
+    }
+
+    const copyToClipboard = () => {
+        if (data.length === 0) return
+        const visibleCols = allColumns.filter(c => !hiddenColumns.has(c))
+        // Include headers
+        const header = visibleCols.join('\t')
+        const rows = data.map(row => visibleCols.map(k => row[k] ?? '').join('\t')).join('\n')
+        writeToClipboard(`${header}\n${rows}`)
+    }
+
+    const copyAsJson = () => {
+        if (data.length === 0) return
+        const visibleCols = allColumns.filter(c => !hiddenColumns.has(c))
+        // Filter each row to only include visible columns
+        const filtered = data.map(row => {
+            const obj: Record<string, any> = {}
+            visibleCols.forEach(col => { obj[col] = row[col] ?? null })
+            return obj
+        })
+        writeToClipboard(JSON.stringify(filtered, null, 2))
     }
 
     // Derive columns from ALL rows (not just first) to avoid missing columns
@@ -383,6 +401,9 @@ export default function DataExplorer() {
                         </button>
                         <button onClick={copyToClipboard} className={styles.btn} disabled={data.length === 0}>
                             📋 Copy
+                        </button>
+                        <button onClick={copyAsJson} className={styles.btn} disabled={data.length === 0} title="Copy as JSON">
+                            { } JSON
                         </button>
                         <button onClick={fetchData} className={styles.btn} disabled={loading}>
                             {loading ? '...' : '🔄 Refresh'}
