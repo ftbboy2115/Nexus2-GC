@@ -15,7 +15,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
 import { useLoading } from '@/components/GlobalLoadingBar'
-type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'ai-comparisons' | 'quote-audits'
+type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'ai-comparisons' | 'quote-audits' | 'validation-log'
 
 // Columns that are numeric for right-alignment
 const NUMERIC_COLS = new Set([
@@ -82,6 +82,7 @@ export default function DataExplorer() {
         'catalyst-audits': '/api/data/catalyst-audits',
         'ai-comparisons': '/api/data/ai-comparisons',
         'quote-audits': '/api/data/quote-audits',
+        'validation-log': '/api/data/validation-log',
     }
 
     // Preferred column order per tab - ensures stable column positions
@@ -94,6 +95,7 @@ export default function DataExplorer() {
         'warrior-trades': ['entry_time', 'symbol', 'status', 'entry_price', 'exit_price', 'stop_price', 'target_price', 'quantity', 'realized_pnl', 'exit_reason', 'trigger_type', 'stop_method', 'is_sim'],
         'nac-trades': ['entry_time', 'symbol', 'status', 'entry_price', 'exit_price', 'stop_price', 'quantity', 'realized_pnl', 'exit_reason'],
         'quote-audits': ['timestamp', 'symbol', 'selected_source', 'alpaca_price', 'fmp_price', 'schwab_price', 'selected_price', 'divergence_pct'],
+        'validation-log': ['created_at', 'symbol', 'entry_price', 'entry_trigger', 'expected_target', 'expected_stop', 'entry_confidence', 'ross_entry', 'entry_delta', 'ross_pnl', 'mfe', 'mae', 'realized_pnl', 'target_hit', 'is_sim'],
     }
 
     const { startLoading, stopLoading } = useLoading()
@@ -403,6 +405,7 @@ export default function DataExplorer() {
                         { id: 'warrior-trades', label: 'Warrior Trades', tooltip: 'Position lifecycle from warrior.db. One row per trade: entry → exit with P&L.' },
                         { id: 'nac-trades', label: 'Nac Trades', tooltip: 'NAC position lifecycle from nac.db. One row per trade with full position data.' },
                         { id: 'quote-audits', label: 'Quote Audits', tooltip: 'Cross-provider quote divergence audit. Shows when Alpaca/FMP/Schwab/Polygon disagree.' },
+                        { id: 'validation-log', label: 'Validation Log', tooltip: 'Entry validation audit trail. Compares bot entry vs Ross entry, tracks MFE/MAE and target/stop outcomes.' },
                     ] as { id: TabType; label: string; tooltip: string }[]).map(tab => (
                         <button
                             key={tab.id}
