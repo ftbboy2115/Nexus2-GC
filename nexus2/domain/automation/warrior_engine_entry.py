@@ -376,8 +376,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 # Example: TNMG at $3.93, target $4.00 level
                 if engine.config.dip_for_level_enabled and not watched.entry_triggered:
                     # TIME GATE: DIP_FOR_LEVEL requires established intraday structure
-                    # LRHC lesson: Ross waited until 09:30 for VWAP break, not early PM dip
-                    # Early premarket lacks the price structure needed for level plays
+                    # 04:00-06:00 lets the stock establish pattern, retail joins at 06:00
                     from datetime import datetime
                     import pytz
                     et = pytz.timezone("US/Eastern")
@@ -391,10 +390,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     except:
                         pass
                     
-                    if now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30):
+                    if now_et.hour < 6:
                         logger.info(
-                            f"[Warrior Entry] {symbol}: DIP_FOR_LEVEL blocked - premarket "
-                            f"({now_et.strftime('%H:%M')}). Wait for regular hours (09:30+)."
+                            f"[Warrior Entry] {symbol}: DIP_FOR_LEVEL blocked - early premarket "
+                            f"({now_et.strftime('%H:%M')}). Wait until 06:00+."
                         )
                         continue
                     
