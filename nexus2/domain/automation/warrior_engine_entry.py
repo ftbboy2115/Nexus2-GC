@@ -2062,6 +2062,20 @@ async def enter_position(
                     logger.info(
                         f"[ENTRY VALIDATION] {symbol}: {', '.join(validation_parts)}"
                     )
+                    # Persist to DB for Data Explorer
+                    from nexus2.db.warrior_db import log_entry_validation
+                    log_entry_validation(
+                        trade_id=order_id,
+                        symbol=symbol,
+                        entry_price=float(entry_decimal),
+                        entry_trigger=trigger_type.value,
+                        expected_target=float(watched.expected_target) if watched.expected_target else None,
+                        expected_stop=float(watched.expected_stop) if watched.expected_stop else None,
+                        entry_confidence=float(watched.entry_confidence) if watched.entry_confidence else None,
+                        ross_entry=float(watched.ross_entry) if watched.ross_entry else None,
+                        ross_pnl=float(watched.ross_pnl) if watched.ross_pnl else None,
+                        is_sim=engine.monitor.sim_mode,
+                    )
                 
                 # CRITICAL: Log ENTRY event to trade_event_service BEFORE fill confirmation
                 # This ensures correct audit order: ENTRY -> FILL_CONFIRMED

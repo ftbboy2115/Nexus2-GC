@@ -126,6 +126,62 @@ class WarriorTradeModel(WarriorBase):
         }
 
 
+class EntryValidationLogModel(WarriorBase):
+    """Entry validation audit log for data-driven tuning."""
+    __tablename__ = "entry_validation_log"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_id = Column(String(36), nullable=False, index=True)
+    symbol = Column(String(10), nullable=False, index=True)
+    
+    # Entry intent (captured at entry)
+    entry_price = Column(String(20), nullable=False)
+    entry_trigger = Column(String(30), nullable=True)  # abcd, pmh_break, vwap_break
+    expected_target = Column(String(20), nullable=True)  # From pattern detection
+    expected_stop = Column(String(20), nullable=True)    # From pattern detection
+    entry_confidence = Column(String(10), nullable=True) # 0.0-1.0
+    
+    # Ross comparison (from test case YAML)
+    ross_entry = Column(String(20), nullable=True)
+    ross_pnl = Column(String(20), nullable=True)
+    entry_delta = Column(String(20), nullable=True)  # bot_entry - ross_entry
+    
+    # Outcome (captured at exit)
+    exit_price = Column(String(20), nullable=True)
+    mfe = Column(String(20), nullable=True)  # Max favorable excursion
+    mae = Column(String(20), nullable=True)  # Max adverse excursion
+    realized_pnl = Column(String(20), nullable=True)
+    target_hit = Column(Boolean, nullable=True)  # Did price reach expected_target?
+    stop_hit = Column(Boolean, nullable=True)    # Did price hit expected_stop?
+    
+    # Metadata
+    is_sim = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "trade_id": self.trade_id,
+            "symbol": self.symbol,
+            "entry_price": self.entry_price,
+            "entry_trigger": self.entry_trigger,
+            "expected_target": self.expected_target,
+            "expected_stop": self.expected_stop,
+            "entry_confidence": self.entry_confidence,
+            "ross_entry": self.ross_entry,
+            "ross_pnl": self.ross_pnl,
+            "entry_delta": self.entry_delta,
+            "exit_price": self.exit_price,
+            "mfe": self.mfe,
+            "mae": self.mae,
+            "realized_pnl": self.realized_pnl,
+            "target_hit": self.target_hit,
+            "stop_hit": self.stop_hit,
+            "is_sim": self.is_sim,
+            "created_at": format_iso_utc(self.created_at),
+        }
+
+
 @contextmanager
 def get_warrior_session():
     """Context manager for Warrior database sessions."""
@@ -811,3 +867,85 @@ def get_recent_closed_trades(limit: int = 30) -> list:
             for t in trades
         ]
 
+
+# =============================================================================
+# ENTRY VALIDATION LOG FUNCTIONS
+# =============================================================================
+
+def log_entry_validation(
+    trade_id: str,
+    symbol: str,
+    entry_price: float,
+    entry_trigger: str = None,
+    expected_target: float = None,
+    expected_stop: float = None,
+    entry_confidence: float = None,
+    ross_entry: float = None,
+    ross_pnl: float = None,
+    is_sim: bool = True,
+):
+    """Log entry validation intent at time of entry."""
+    entry_delta = None
+    if ross_entry and entry_price:
+        entry_delta = entry_price - ross_entry
+    
+    with get_warrior_session() as db:
+        log = EntryValidationLogModel(
+            trade_id=trade_id,
+            symbol=symbol,
+            entry_price=str(entry_price),
+            entry_trigger=entry_trigger,
+            expected_target=str(expected_target) if expected_target else None,
+            expected_stop=str(expected_stop) if expected_stop else None,
+            entry_confidence=str(entry_confidence) if entry_confidence else None,
+            ross_entry=str(ross_entry) if ross_entry else None,
+            ross_pnl=str(ross_pnl) if ross_pnl else None,
+            entry_delta=str(round(entry_delta, 2)) if entry_delta else None,
+            is_sim=is_sim,
+        )
+        db.add(log)
+        db.commit()
+        
+        delta_str = f", Δ${entry_delta:+.2f}" if entry_delta else ""
+        print(f"[Validation DB] Logged: {symbol} @ ${entry_price:.2f}{delta_str}")
+
+
+def update_entry_validation_outcome(
+    trade_id: str,
+    exit_price: float = None,
+    mfe: float = None,
+    mae: float = None,
+    realized_pnl: float = None,
+    target_hit: bool = None,
+    stop_hit: bool = None,
+):
+    """Update validation log with trade outcome at exit."""
+    with get_warrior_session() as db:
+        log = db.query(EntryValidationLogModel).filter_by(trade_id=trade_id).first()
+        if not log:
+            return False
+        
+        if exit_price:
+            log.exit_price = str(exit_price)
+        if mfe:
+            log.mfe = str(mfe)
+        if mae:
+            log.mae = str(mae)
+        if realized_pnl:
+            log.realized_pnl = str(realized_pnl)
+        if target_hit is not None:
+            log.target_hit = target_hit
+        if stop_hit is not None:
+            log.stop_hit = stop_hit
+        
+        db.commit()
+        return True
+
+
+def get_entry_validation_log(limit: int = 50):
+    """Get entry validation logs for Data Explorer."""
+    with get_warrior_session() as db:
+        logs = db.query(EntryValidationLogModel).order_by(
+            EntryValidationLogModel.created_at.desc()
+        ).limit(limit).all()
+        return [log.to_dict() for log in logs]

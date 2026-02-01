@@ -952,6 +952,68 @@ async def get_quote_audits(
 
 
 # =============================================================================
+# ENTRY VALIDATION LOG ENDPOINT
+# =============================================================================
+
+@router.get("/validation-log")
+async def get_validation_log(
+    limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol"),
+    entry_trigger: Optional[str] = Query(None, description="Filter by entry trigger (abcd, pmh_break, etc)"),
+    target_hit: Optional[str] = Query(None, description="Filter by target hit: 'true', 'false', or '__EMPTY__'"),
+    sort_by: str = Query("created_at", description="Column to sort by"),
+    sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
+):
+    """
+    Get paginated entry validation logs for auditing.
+    
+    Tracks:
+    - Entry intent (expected_target, expected_stop, confidence)
+    - Ross comparison (ross_entry, entry_delta)
+    - Outcome (MFE, MAE, target_hit, realized_pnl)
+    """
+    from nexus2.db.warrior_db import get_warrior_session, EntryValidationLogModel
+    from sqlalchemy import desc, asc
+    
+    with get_warrior_session() as db:
+        query = db.query(EntryValidationLogModel)
+        
+        # Apply filters
+        if symbol:
+            query = query.filter(EntryValidationLogModel.symbol == symbol.upper())
+        if entry_trigger:
+            query = query.filter(EntryValidationLogModel.entry_trigger == entry_trigger)
+        if target_hit is not None:
+            if target_hit == '__EMPTY__':
+                query = query.filter(EntryValidationLogModel.target_hit == None)
+            elif target_hit.lower() == 'true':
+                query = query.filter(EntryValidationLogModel.target_hit == True)
+            elif target_hit.lower() == 'false':
+                query = query.filter(EntryValidationLogModel.target_hit == False)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply sorting
+        sort_column = getattr(EntryValidationLogModel, sort_by, EntryValidationLogModel.created_at)
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
+        
+        # Apply pagination
+        logs = query.offset(offset).limit(limit).all()
+        
+        return {
+            "entries": [log.to_dict() for log in logs],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+
+
+# =============================================================================
 # TEST ENDPOINT FOR CATALYST AUDIT VERIFICATION
 # =============================================================================
 
