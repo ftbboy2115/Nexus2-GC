@@ -1458,7 +1458,7 @@ async def enter_position(
                 if not snapshot.is_macd_bullish:
                     logger.info(
                         f"[Warrior Entry] {symbol}: MACD GATE - blocking entry "
-                        f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'}, "
+                        f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'}, "
                         f"crossover={snapshot.macd_crossover}) - Ross rule: no entry when MACD negative"
                     )
                     watched.entry_triggered = True  # Block this attempt
@@ -1466,7 +1466,7 @@ async def enter_position(
                 else:
                     logger.info(
                         f"[Warrior Entry] {symbol}: MACD OK for entry "
-                        f"(histogram={snapshot.macd_histogram:.4f if snapshot.macd_histogram else 'N/A'})"
+                        f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'})"
                     )
         except Exception as e:
             # FAIL-CLOSED: Cannot verify MACD - block entry
