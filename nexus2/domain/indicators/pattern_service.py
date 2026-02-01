@@ -305,6 +305,14 @@ class PatternService:
         if ab_distance <= 0:
             return None
         
+        # Rule 3a: MINIMUM AB MOVE - prevent false positives on premarket noise
+        # Ross trades real patterns, not $0.20 micro-moves
+        # DCX example: Real pattern was $3.60 → $4.60 (28%), not $3.20 → $3.40 (6%)
+        ab_move_pct = float(ab_distance / a_low) * 100
+        if ab_move_pct < 10.0:  # Require at least 10% A→B move
+            logger.debug(f"[Pattern] ABCD rejected - AB move {ab_move_pct:.1f}% < 10% minimum")
+            return None
+        
         c_retracement_from_b = b_high - c_low
         retracement_pct = float(c_retracement_from_b / ab_distance) * 100
         
