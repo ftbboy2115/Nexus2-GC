@@ -375,6 +375,29 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
                 # Example: TNMG at $3.93, target $4.00 level
                 if engine.config.dip_for_level_enabled and not watched.entry_triggered:
+                    # TIME GATE: DIP_FOR_LEVEL requires established intraday structure
+                    # LRHC lesson: Ross waited until 09:30 for VWAP break, not early PM dip
+                    # Early premarket lacks the price structure needed for level plays
+                    from datetime import datetime
+                    import pytz
+                    et = pytz.timezone("US/Eastern")
+                    now_et = datetime.now(et)
+                    # Get sim clock time if we're in sim mode
+                    try:
+                        from nexus2.adapters.simulation import get_simulation_clock
+                        sim_clock = get_simulation_clock()
+                        if sim_clock and sim_clock.current_time:
+                            now_et = sim_clock.current_time
+                    except:
+                        pass
+                    
+                    if now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30):
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: DIP_FOR_LEVEL blocked - premarket "
+                            f"({now_et.strftime('%H:%M')}). Wait for regular hours (09:30+)."
+                        )
+                        continue
+                    
                     # FALLING KNIFE FILTER: Block dip-for-level in sustained downtrends
                     # PAVM case: stock dropped from $24 to $13 over 3 hours — not a dip, it's death
                     # Check: must be above 20 EMA OR MACD positive (momentum recovering)
