@@ -283,8 +283,18 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # SANITY CHECK: Validate quote against last candle close
             # Catches phantom inflated quotes (e.g., BATL $5.14 vs actual $4.80)
             # that cause bad limit prices and immediate losses
-            # SKIP in sim_mode: 10s bar prices are accurate, comparing to 1-min close causes false positives
-            if engine._get_intraday_bars and not engine.config.sim_only:
+            # SKIP in historical replay with 10s bars: sub-minute prices are accurate,
+            # comparing to 1-min close causes false positives
+            skip_phantom_check = False
+            try:
+                from nexus2.adapters.simulation.historical_bar_loader import get_historical_bar_loader
+                loader = get_historical_bar_loader()
+                if loader.has_10s_bars(symbol):
+                    skip_phantom_check = True  # Using high-fidelity 10s historical data
+            except Exception:
+                pass
+            
+            if engine._get_intraday_bars and not skip_phantom_check:
                 try:
                     sanity_candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
                     if sanity_candles and len(sanity_candles) >= 1:
