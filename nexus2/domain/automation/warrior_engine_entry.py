@@ -415,6 +415,17 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     if is_falling_knife:
                         continue
                     
+                    # VWAP GATE: Ross waits for VWAP confirmation before buying dips
+                    # LRHC lesson (Jan 30 2026): Ross entered on VWAP break at $5.30,
+                    # NOT the dip near $6.00 level. Don't buy dips below VWAP.
+                    if watched.current_vwap and current_price < watched.current_vwap:
+                        logger.info(
+                            f"[Warrior Entry] {symbol}: DIP_FOR_LEVEL blocked - below VWAP "
+                            f"(${current_price:.2f} < VWAP ${watched.current_vwap:.2f}). "
+                            f"Wait for VWAP break first."
+                        )
+                        continue
+                    
                     levels = engine._get_key_levels(current_price)
                     levels_above = [l for l in levels if l > current_price]
                     if levels_above:
