@@ -466,6 +466,13 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     for level, level_type in [(nearest_whole, "whole"), (nearest_half, "half")]:
                         distance_cents = (level - current_float) * 100
                         
+                        # Log distance check (INFO only when close to range)
+                        if distance_cents > 0 and distance_cents < 20:
+                            logger.info(
+                                f"[Warrior Entry] {symbol}: WHOLE/HALF distance check - "
+                                f"${current_float:.2f} is {distance_cents:.1f}¢ from ${level:.2f} ({level_type})"
+                            )
+                        
                         # ANTICIPATORY ZONE: 3-10 cents BELOW the level
                         # Ross buys at $5.97 for break of $6.00 (3 cents below)
                         if 3 <= distance_cents <= 10:
