@@ -331,6 +331,59 @@ class PolygonAdapter:
         
         return bars
     
+    def get_second_bars(
+        self,
+        symbol: str,
+        seconds: int = 10,  # 10s bars (Ross's typical)
+        limit: int = 5000,
+        from_date: Optional[str] = None,  # YYYY-MM-DD
+        to_date: Optional[str] = None,
+    ) -> Optional[List[OHLCV]]:
+        """
+        Get sub-minute bars (second-level granularity).
+        
+        Polygon added "second aggregates" in Sept 2023.
+        Use this for high-fidelity simulation matching Ross's 10s chart timing.
+        
+        Args:
+            symbol: Stock symbol
+            seconds: Bar size in seconds (10, 30, etc.)
+            limit: Max bars to return (up to 50,000)
+            from_date: Start date (YYYY-MM-DD)
+            to_date: End date (YYYY-MM-DD)
+        """
+        # Default to today
+        if not from_date:
+            from_date = now_et().strftime("%Y-%m-%d")
+        if not to_date:
+            to_date = from_date
+        
+        data = self._get(
+            f"/v2/aggs/ticker/{symbol}/range/{seconds}/second/{from_date}/{to_date}",
+            params={"limit": limit, "sort": "asc"}
+        )
+        
+        if not data or data.get("status") != "OK":
+            logger.warning(f"[Polygon] Failed to get {seconds}s bars for {symbol}")
+            return None
+        
+        bars = []
+        for result in data.get("results", []):
+            ts = result.get("t", 0) / 1000
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            
+            bars.append(OHLCV(
+                timestamp=dt,
+                open=Decimal(str(result.get("o", 0))),
+                high=Decimal(str(result.get("h", 0))),
+                low=Decimal(str(result.get("l", 0))),
+                close=Decimal(str(result.get("c", 0))),
+                volume=result.get("v", 0),
+            ))
+        
+        logger.info(f"[Polygon] Fetched {len(bars)} {seconds}s bars for {symbol}")
+        return bars
+    
     def get_daily_bars(
         self,
         symbol: str,
