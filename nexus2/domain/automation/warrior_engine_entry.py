@@ -423,7 +423,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                     is_falling_knife = True
                                     logger.info(
                                         f"[Warrior Entry] {symbol}: FALLING KNIFE - blocked dip entry "
-                                        f"(below 20 EMA ${snapshot.ema_20:.2f if snapshot.ema_20 else 'N/A'}, "
+                                        f"(below 20 EMA ${snapshot.ema_20:.2f}, "
                                         f"MACD negative)"
                                     )
                         except Exception as e:
