@@ -582,25 +582,37 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                     logger.warning(f"[Warrior Entry] {symbol}: Momentum check failed: {e}")
                             
                             if has_momentum:
-                                # VOLUME CHECK: Use existing check_volume_expansion helper
-                                # Lower threshold (2x) for anticipatory entries vs 3x for breakouts
-                                vol_ok, vol_ratio, vol_reason = check_volume_expansion(
-                                    candles, min_expansion=2.0, lookback=10
-                                )
+                                # VOLUME CHECK: Only require volume if NOT a clear breakout
+                                # If price already broke out above range, momentum is confirmed
+                                # Volume will follow the move - don't wait for it
+                                vol_ok = True
+                                vol_ratio = 0.0
                                 
-                                if not vol_ok:
-                                    logger.info(
-                                        f"[Warrior Entry] {symbol}: WHOLE/HALF near ${level:.2f} but "
-                                        f"volume weak ({vol_reason}). Waiting for volume spike..."
+                                if not breakout_above_range:
+                                    # Not a clear breakout - require volume confirmation
+                                    vol_ok, vol_ratio, vol_reason = check_volume_expansion(
+                                        candles, min_expansion=1.5, lookback=10
                                     )
+                                    if not vol_ok:
+                                        logger.info(
+                                            f"[Warrior Entry] {symbol}: WHOLE/HALF near ${level:.2f} but "
+                                            f"volume weak ({vol_reason}). Waiting for volume spike..."
+                                        )
                                 else:
+                                    # Clear breakout - price action confirms, skip volume wait
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: WHOLE/HALF BREAKOUT CONFIRMED - "
+                                        f"price ${current_float:.2f} broke above range ${range_high:.2f}, entering..."
+                                    )
+                                
+                                if vol_ok:
                                     logger.info(
                                         f"[Warrior Entry] {symbol}: WHOLE/HALF ANTICIPATORY - "
                                         f"${current_price:.2f} for break of ${level:.2f} ({level_type}) "
-                                        f"[volume {vol_ratio:.1f}x]"
+                                        f"[breakout={breakout_above_range}]"
                                     )
                                     watched.target_level = Decimal(str(level))
-                                    watched.entry_volume_ratio = vol_ratio
+                                    watched.entry_volume_ratio = vol_ratio if vol_ratio > 0 else 1.0
                                     await enter_position(
                                         engine,
                                         watched,
