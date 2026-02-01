@@ -1543,8 +1543,9 @@ async def enter_position(
         return
     
     # Check re-entry cooldown: block entry if symbol was recently exited
+    # This prevents immediately buying back after exit (e.g., after spread exit or stop)
     # LIVE: Uses wall-clock time (now_utc())
-    # SIM: Uses simulation time (bar timestamps) to fix BATL over-trading issue
+    # SIM: Uses simulation time (bar timestamps) - has its own block below to fix BATL over-trading issue
     if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
         exit_time = engine.monitor._recently_exited[symbol]
         seconds_ago = (now_utc() - exit_time).total_seconds()
