@@ -450,6 +450,86 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         (watched.recent_high - current_price) / watched.recent_high * 100
                     )
                 
+                # =================================================================
+                # WHOLE/HALF DOLLAR ANTICIPATORY - Ross's #1 momentum entry
+                # "Best entry for me $5.97 for the break of six" (GRI Jan 28 2026)
+                # This MUST be checked BEFORE DIP_FOR_LEVEL (higher priority)
+                # =================================================================
+                if engine.config.whole_half_anticipatory_enabled and not watched.entry_triggered:
+                    current_float = float(current_price)
+                    
+                    # Find nearest whole ($6.00) and half ($5.50) dollar levels ABOVE current
+                    nearest_whole = (int(current_float) + 1)  # e.g., $5.97 -> $6.00
+                    nearest_half = (int(current_float * 2) + 1) / 2  # e.g., $5.37 -> $5.50
+                    
+                    # Check both levels
+                    for level, level_type in [(nearest_whole, "whole"), (nearest_half, "half")]:
+                        distance_cents = (level - current_float) * 100
+                        
+                        # ANTICIPATORY ZONE: 3-10 cents BELOW the level
+                        # Ross buys at $5.97 for break of $6.00 (3 cents below)
+                        if 3 <= distance_cents <= 10:
+                            # MOMENTUM CHECK: Must be in an uptrend, not consolidating
+                            has_momentum = False
+                            if engine._get_intraday_bars:
+                                try:
+                                    candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                                    if candles and len(candles) >= 3:
+                                        # Check: last 3 candles trending up (higher highs)
+                                        recent = candles[-3:]
+                                        higher_highs = all(
+                                            recent[i].high > recent[i-1].high 
+                                            for i in range(1, len(recent))
+                                        )
+                                        # Check: current price near top of recent range
+                                        range_high = max(c.high for c in candles[-5:])
+                                        range_low = min(c.low for c in candles[-5:])
+                                        if range_high > range_low:
+                                            position_in_range = (current_float - range_low) / (range_high - range_low)
+                                            # Must be in top 30% of recent range
+                                            has_momentum = higher_highs and position_in_range > 0.7
+                                            
+                                            if has_momentum:
+                                                logger.info(
+                                                    f"[Warrior Entry] {symbol}: MOMENTUM CONFIRMED - "
+                                                    f"higher highs={higher_highs}, range position={position_in_range:.1%}"
+                                                )
+                                except Exception as e:
+                                    logger.debug(f"[Warrior Entry] {symbol}: Momentum check failed: {e}")
+                            
+                            if has_momentum:
+                                # VOLUME CHECK: Use existing check_volume_expansion helper
+                                # Lower threshold (2x) for anticipatory entries vs 3x for breakouts
+                                vol_ok, vol_ratio, vol_reason = check_volume_expansion(
+                                    candles, min_expansion=2.0, lookback=10
+                                )
+                                
+                                if not vol_ok:
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: WHOLE/HALF near ${level:.2f} but "
+                                        f"volume weak ({vol_reason}). Waiting for volume spike..."
+                                    )
+                                else:
+                                    logger.info(
+                                        f"[Warrior Entry] {symbol}: WHOLE/HALF ANTICIPATORY - "
+                                        f"${current_price:.2f} for break of ${level:.2f} ({level_type}) "
+                                        f"[volume {vol_ratio:.1f}x]"
+                                    )
+                                    watched.target_level = Decimal(str(level))
+                                    watched.entry_volume_ratio = vol_ratio
+                                    await enter_position(
+                                        engine,
+                                        watched,
+                                        current_price,
+                                        EntryTriggerType.WHOLE_HALF_ANTICIPATORY
+                                    )
+                                    break  # Don't check other levels after entry
+                            else:
+                                logger.debug(
+                                    f"[Warrior Entry] {symbol}: Near ${level:.2f} but no momentum - "
+                                    f"waiting for breakout setup"
+                                )
+                
                 # DIP-FOR-LEVEL PATTERN: Ross buys dips near psychological levels
                 # Example: TNMG at $3.93, target $4.00 level
                 if engine.config.dip_for_level_enabled and not watched.entry_triggered:

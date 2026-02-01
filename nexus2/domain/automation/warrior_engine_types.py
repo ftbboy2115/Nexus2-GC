@@ -42,6 +42,7 @@ class EntryTriggerType(Enum):
     INVERTED_HS = "inverted_hs"  # Inverted Head & Shoulders (Ross: SXTP Jan 28 2026)
     ABCD = "abcd"  # ABCD Pattern breakout (Ross: DCX Jan 29 2026 cold-day strategy)
     CUP_HANDLE = "cup_handle"  # Cup & Handle VWAP Break (Ross: LRHC Jan 30 2026)
+    WHOLE_HALF_ANTICIPATORY = "whole_half_anticipatory"  # Buy $5.97 for break of $6 (Ross: GRI Jan 28 2026)
 
 
 # =============================================================================
@@ -128,6 +129,10 @@ class WarriorEngineConfig:
     
     # Cup & Handle (Ross Cameron: LRHC Jan 30 2026 VWAP break)
     cup_handle_enabled: bool = True  # Enable cup & handle pattern detection
+    
+    # Whole/Half Dollar Anticipatory (Ross Cameron: GRI Jan 28 2026)
+    # "Best entry for me $5.97 for the break of six" - buy ahead of psychological level
+    whole_half_anticipatory_enabled: bool = True  # Enable anticipatory entries at whole/half dollars
 
 
 @dataclass
