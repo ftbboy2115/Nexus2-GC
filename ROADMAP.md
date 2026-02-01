@@ -233,6 +233,10 @@ Last updated: 2026-01-27
   - `warrior_trades.log` - All entries/exits/P&L events
   - `warrior_scaling.log` - Scale operations with PSM transitions
   - `errors.log` - All errors across strategies
+- [ ] **Runtime Log Level Toggle** — API endpoint to change log level without restart
+  - `POST /debug/log-level?level=DEBUG` to enable verbose logging
+  - `POST /debug/log-level?level=INFO` to return to normal
+  - Avoids code changes for debugging session
 
 ---
 

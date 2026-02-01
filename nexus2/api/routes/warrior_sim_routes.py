@@ -934,6 +934,15 @@ async def load_historical_test_case(case_id: str):
         async def sim_get_quote_historical(symbol: str):
             """Return price from historical bar loader at current simulated time."""
             loader = get_historical_bar_loader()
+            
+            # Use 10s bars when available for sub-minute precision
+            if loader.has_10s_bars(symbol):
+                time_str = clock.get_time_string_with_seconds()
+                price = loader.get_10s_price_at(symbol, time_str)
+                if price:
+                    return price
+            
+            # Fallback to 1-min bars
             time_str = clock.get_time_string()
             price = loader.get_price_at(symbol, time_str)
             if price:
