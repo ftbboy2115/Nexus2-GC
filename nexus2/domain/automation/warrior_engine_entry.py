@@ -330,7 +330,20 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         # - MACD/EMA need ALL bars (including continuity) for warm-up at market open
                         # - VWAP should only use TODAY's session bars (resets daily)
                         
-                        # Filter for today's session bars (04:00-20:00 ET) for VWAP
+                        # Get current simulation time to determine session phase
+                        current_hour = None
+                        try:
+                            from nexus2.adapters.simulation.sim_clock import get_sim_clock
+                            clock = get_sim_clock()
+                            if clock.is_active():
+                                time_str = clock.get_time_string()  # "HH:MM"
+                                current_hour = int(time_str.split(':')[0])
+                        except Exception:
+                            pass
+                        
+                        # Filter for TODAY's session bars only
+                        # Premarket: hours 4-9 (exclude afternoon continuity bars 15-16 from yesterday)
+                        # Regular hours: hours 9-16
                         today_candles = []
                         for c in candles:
                             bar_time = getattr(c, 'time', '') or ''
@@ -338,8 +351,21 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                 continue
                             try:
                                 hour = int(bar_time.split(':')[0])
-                                if 4 <= hour < 20:  # Today's extended hours session
-                                    today_candles.append(c)
+                                
+                                # If we know current sim hour, filter appropriately
+                                if current_hour is not None:
+                                    if current_hour < 10:  # Premarket (04:00-09:59)
+                                        # Only include premarket bars (4-9), exclude afternoon (10+)
+                                        if 4 <= hour < 10:
+                                            today_candles.append(c)
+                                    else:  # Regular hours (10:00+)
+                                        # Include all today's bars up to current hour
+                                        if 4 <= hour <= current_hour:
+                                            today_candles.append(c)
+                                else:
+                                    # Fallback: include 4-16 but exclude clear continuity (15-16 during early AM)
+                                    if 4 <= hour < 10:  # Safe premarket range
+                                        today_candles.append(c)
                             except (ValueError, IndexError):
                                 today_candles.append(c)
                         
