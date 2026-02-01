@@ -1663,8 +1663,8 @@ async def enter_position(
                 # Log technical confirmation
                 logger.info(
                     f"[Warrior Entry] {symbol}: Technical OK - "
-                    f"VWAP=${snapshot.vwap:.2f if snapshot.vwap else 'N/A'}, "
-                    f"9EMA=${snapshot.ema_9:.2f if snapshot.ema_9 else 'N/A'}, "
+                    f"VWAP=${f'{snapshot.vwap:.2f}' if snapshot.vwap else 'N/A'}, "
+                    f"9EMA=${f'{snapshot.ema_9:.2f}' if snapshot.ema_9 else 'N/A'}, "
                     f"MACD={snapshot.macd_crossover}"
                 )
         except Exception as e:
