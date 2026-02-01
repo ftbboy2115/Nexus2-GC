@@ -100,6 +100,7 @@
 | GET | `/data/nac-trades` | Get Nac Trades |
 | GET | `/data/scan-history` | Get Scan History |
 | GET | `/data/trade-events` | Get Trade Events |
+| GET | `/data/validation-log` | Get Entry Validation Log (MFE/MAE, Ross comparison) |
 | GET | `/data/warrior-trades` | Get Warrior Trades |
 
 ## Health

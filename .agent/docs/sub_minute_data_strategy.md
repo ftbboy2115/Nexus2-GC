@@ -1,5 +1,14 @@
 # Sub-Minute Data Strategy
 
+## Implementation Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| **Polygon Adapter** | ✅ Complete | `get_second_bars(symbol, seconds=10)` added |
+| **10s Data Verified** | ✅ Complete | GRI 2026-01-28: 1,383 bars fetched |
+| **Mock Market Integration** | ⬜ Pending | Update historical_bar_loader.py |
+| **Live 10s Monitoring** | ⬜ Future | Low priority |
+
 ## Current Limitation
 
 The Warrior bot uses **1-minute bars** for pattern detection and entry timing. Ross Cameron uses **10-second charts** for micro-timing entries during fast premarket moves.
@@ -13,46 +22,35 @@ The Warrior bot uses **1-minute bars** for pattern detection and entry timing. R
 
 ## Polygon.io 10-Second Bars
 
-Polygon.io added "second aggregates" in September 2023. We can get 10s historical data:
+Polygon.io added "second aggregates" in September 2023. **Implementation complete** in `polygon_adapter.py`:
 
 ```python
-# Current 1-minute request
-response = client.get_aggs(
-    ticker=symbol,
-    multiplier=1,
-    timespan="minute",
-    from_=start_date,
-    to=end_date
-)
+# Usage (now available)
+from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
 
-# 10-second request (same API, different params)
-response = client.get_aggs(
-    ticker=symbol,
-    multiplier=10,
-    timespan="second",  # <-- Key change
-    from_=start_date,
-    to=end_date
-)
+polygon = get_polygon_adapter()
+bars = polygon.get_second_bars("GRI", seconds=10, from_date="2026-01-28")
+# Returns list of OHLCV with 10s granularity
 ```
 
 ## Implementation Path
 
-### Phase 1: Historical 10s for Mock Market
-- Fetch 10s bars for test cases where Ross used sub-minute timing
-- Update historical_bar_loader.py to support `timeframe="10s"`
-- Enable high-fidelity replay matching Ross's timing
+### Phase 1: Historical 10s for Mock Market (Next)
+- [ ] Fetch and cache 10s bars to JSON for test cases with `ross_chart_timeframe: "10s"`
+- [ ] Update historical_bar_loader.py to support `timeframe="10s"`
+- [ ] Enable high-fidelity replay matching Ross's timing
 
-### Phase 2: Live 10s Monitoring (Optional)
+### Phase 2: Live 10s Monitoring (Future)
 - Use Polygon WebSocket for real-time 10s aggregates
-- More API overhead, but enables micro-timing like Ross
-- Only needed for premarket fast movers
+- More API overhead, only for premarket fast movers
 
 ## Test Cases with 10s Timing
 
-| Symbol | Date | Ross Entry Time | Ross Chart |
-|--------|------|-----------------|------------|
-| GRI | 2026-01-28 | 08:45 | 10s |
+| Symbol | Date | Ross Entry Time | Ross Chart | In YAML |
+|--------|------|-----------------|------------|---------|
+| GRI | 2026-01-28 | 08:45 | 10s | ✅ `ross_chart_timeframe: "10s"` |
 
 ## Recommendation
 
-Start with **Phase 1** for Mock Market accuracy. This is a simulation-only change with no live trading risk. It will reveal whether 10s granularity actually improves entry timing fidelity.
+Start with **Phase 1** for Mock Market accuracy. This is a simulation-only change with no live trading risk.
+
