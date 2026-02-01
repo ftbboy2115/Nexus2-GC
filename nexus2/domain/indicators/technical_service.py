@@ -27,6 +27,7 @@ class TechnicalSnapshot:
     macd_histogram: Optional[float] = None
     macd_crossover: str = "neutral"  # "bullish", "bearish", "neutral"
     current_price: Optional[Decimal] = None
+    data_insufficient: bool = False  # True if not enough candles for calculation (AUDIT FLAG)
     
     @property
     def is_above_vwap(self) -> bool:
@@ -78,8 +79,9 @@ class TechnicalService:
             TechnicalSnapshot with all indicators
         """
         if not candles or len(candles) < 5:
-            logger.debug(f"[Technical] {symbol}: Not enough candles ({len(candles) if candles else 0})")
-            return TechnicalSnapshot(symbol=symbol, current_price=current_price)
+            logger.warning(f"[Technical] {symbol}: INSUFFICIENT DATA - only {len(candles) if candles else 0} candles (need 5+ for indicators)")
+            # Return snapshot with explicit flag so callers know data was insufficient
+            return TechnicalSnapshot(symbol=symbol, current_price=current_price, data_insufficient=True)
         
         try:
             # Convert to DataFrame

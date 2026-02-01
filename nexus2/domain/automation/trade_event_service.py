@@ -483,8 +483,16 @@ class TradeEventService:
         intended_price: Decimal = None,
         slippage_cents: Decimal = None,
         exit_mode: str = None,  # home_run or base_hit
+        technical_context: Optional[Dict[str, Any]] = None,  # Pass from caller for consistency
     ) -> Optional[int]:
-        """Log Warrior position entry with optional slippage tracking."""
+        """Log Warrior position entry with optional slippage tracking.
+        
+        Args:
+            technical_context: Optional dict with MACD/VWAP/EMA values from entry logic.
+                               If provided, uses these instead of fetching (ensures consistency).
+                               Expected keys: symbol_macd_value, symbol_macd_status, symbol_vwap, 
+                               symbol_above_vwap, symbol_ema9, symbol_above_ema9, etc.
+        """
         # Check if this is a Mock Market (simulation) trade
         from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
         is_mock_market = get_warrior_sim_broker() is not None
@@ -512,9 +520,26 @@ class TradeEventService:
         # Add market context
         metadata.update(self._get_market_context())
         
-        # Add symbol technical context (MACD, VWAP, EMA) for AI analysis
-        if entry_price:
-            metadata.update(self._get_symbol_technical_context(symbol, float(entry_price)))
+        # Add symbol technical context (MACD, VWAP, EMA)
+        # PRIORITY: Use caller-provided context to ensure consistency with entry logic
+        if technical_context:
+            # Caller passed the same snapshot used for entry decisions
+            metadata.update(technical_context)
+            metadata["technicals_source"] = "caller_snapshot"  # Audit: data came from entry logic
+        elif not is_mock_market and entry_price:
+            # Live trading: fetch fresh (backward compatibility)
+            fetched_context = self._get_symbol_technical_context(symbol, float(entry_price))
+            if fetched_context:
+                metadata.update(fetched_context)
+                metadata["technicals_source"] = "live_api"
+            else:
+                metadata["technicals_source"] = "unavailable"
+                logger.warning(f"[TradeEvent] {symbol}: Technical context unavailable from live API - audit gap")
+        else:
+            # Sim mode without caller context OR no entry price
+            metadata["technicals_source"] = "unavailable"
+            if is_mock_market:
+                logger.warning(f"[TradeEvent] {symbol}: Technical context missing for Mock Market entry - should be passed from caller")
         
         # TML: Write to persistent file log
         self._log_to_file(

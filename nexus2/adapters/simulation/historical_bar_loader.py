@@ -55,6 +55,7 @@ class IntradayData:
     date: str  # "2026-01-23" format
     premarket: Dict = field(default_factory=dict)
     bars: List[IntradayBar] = field(default_factory=list)
+    continuity_bars: List[IntradayBar] = field(default_factory=list)  # Previous day's bars for MACD
     
     @classmethod
     def from_json(cls, data: Dict) -> "IntradayData":
@@ -70,11 +71,26 @@ class IntradayData:
             )
             for b in data.get("bars", [])
         ]
+        
+        # Load continuity bars (previous day's bars for MACD calculation)
+        continuity_bars = [
+            IntradayBar(
+                time=b.get("t", b.get("time", "")),
+                open=float(b.get("o", b.get("open", 0))),
+                high=float(b.get("h", b.get("high", 0))),
+                low=float(b.get("l", b.get("low", 0))),
+                close=float(b.get("c", b.get("close", 0))),
+                volume=int(b.get("v", b.get("volume", 0))),
+            )
+            for b in data.get("continuity_bars", [])
+        ]
+        
         return cls(
             symbol=data.get("symbol", ""),
             date=data.get("date", ""),
             premarket=data.get("premarket", {}),
             bars=bars,
+            continuity_bars=continuity_bars,
         )
     
     def get_price_at(self, time_str: str) -> Optional[float]:
@@ -92,11 +108,22 @@ class IntradayData:
         
         return last_price
     
-    def get_bars_up_to(self, time_str: str) -> List[IntradayBar]:
-        """Get all bars up to and including the given time."""
+    def get_bars_up_to(self, time_str: str, include_continuity: bool = True) -> List[IntradayBar]:
+        """
+        Get all bars up to and including the given time.
+        
+        Args:
+            time_str: Time in HH:MM format
+            include_continuity: If True, prepend previous day's continuity bars for MACD calculation
+        """
         target = self._parse_time(time_str)
         
         result = []
+        
+        # Prepend continuity bars for MACD calculation (previous day's bars)
+        if include_continuity and self.continuity_bars:
+            result.extend(self.continuity_bars)
+        
         for bar in self.bars:
             bar_time = bar.time_obj
             if bar_time <= target:
@@ -203,7 +230,8 @@ class HistoricalBarLoader:
             self._loaded_data[intraday.symbol] = intraday
             self._current_case_id = case_id
             
-            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars for {intraday.symbol}")
+            cont_count = len(intraday.continuity_bars)
+            logger.info(f"[HistoricalBarLoader] Loaded {case_id}: {len(intraday.bars)} bars + {cont_count} continuity bars for {intraday.symbol}")
             return intraday
             
         except Exception as e:

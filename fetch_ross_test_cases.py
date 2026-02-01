@@ -47,7 +47,7 @@ client = StockHistoricalDataClient(API_KEY, API_SECRET)
 
 ET = pytz.timezone("US/Eastern")
 
-def fetch_bars(symbol: str, date_str: str) -> dict:
+def fetch_bars(symbol: str, date_str: str, include_prev_day: bool = True) -> dict:
     """
     Fetch 1-minute bars for a symbol on a given date.
     Includes premarket (4am-9:30am) and market hours (9:30am-4pm).
@@ -55,11 +55,22 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
     Uses Polygon as primary source (latest provider with best premarket coverage).
     Falls back to FMP if Polygon fails.
     
+    Args:
+        symbol: Stock symbol
+        date_str: Date in YYYY-MM-DD format
+        include_prev_day: If True, include previous day's last ~50 bars for MACD continuity
+    
     Returns dict with bars, pmh, prev_close, etc.
     """
     from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
+    from datetime import timedelta
     
     date = datetime.strptime(date_str, "%Y-%m-%d")
+    prev_date = date - timedelta(days=1)
+    # Skip weekends for previous day
+    while prev_date.weekday() >= 5:  # Saturday=5, Sunday=6
+        prev_date -= timedelta(days=1)
+    prev_date_str = prev_date.strftime("%Y-%m-%d")
     
     print(f"Fetching {symbol} bars from Polygon for {date_str}...")
     
@@ -79,9 +90,43 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
         
         print(f"  Got {len(bars_data)} bars from Polygon")
         
+        # Fetch previous day's bars for MACD continuity
+        prev_day_bars = []
+        if include_prev_day:
+            try:
+                prev_bars_data = polygon.get_intraday_bars(
+                    symbol=symbol,
+                    timeframe="1",
+                    from_date=prev_date_str,
+                    to_date=prev_date_str,
+                    limit=1000
+                )
+                if prev_bars_data and len(prev_bars_data) > 0:
+                    # Take last 50 bars from previous day (for MACD 26-period + buffer)
+                    prev_day_bars = prev_bars_data[-50:]
+                    print(f"  Got {len(prev_day_bars)} bars from previous day ({prev_date_str}) for MACD continuity")
+            except Exception as e:
+                print(f"  Warning: Could not fetch previous day bars: {e}")
+        
         # Convert to test case format
+        continuity_bars = []  # Previous day bars for MACD calculation
         premarket_bars = []
         market_bars = []
+        
+        # Process previous day bars (mark with previous day's date in timestamp)
+        for bar in prev_day_bars:
+            bar_time = bar.timestamp.astimezone(ET)
+            bar_dict = {
+                "t": bar_time.strftime("%H:%M"),
+                "d": prev_date_str,  # Include date to distinguish from current day
+                "o": float(bar.open),
+                "h": float(bar.high),
+                "l": float(bar.low),
+                "c": float(bar.close),
+                "v": int(bar.volume),
+                "prev_day": True,  # Flag for MACD continuity bars
+            }
+            continuity_bars.append(bar_dict)
         
         for bar in bars_data:
             bar_time = bar.timestamp.astimezone(ET)
@@ -112,6 +157,7 @@ def fetch_bars(symbol: str, date_str: str) -> dict:
         return {
             "symbol": symbol,
             "date": date_str,
+            "continuity_bars": continuity_bars,  # Previous day bars for MACD
             "premarket_bars": premarket_bars,
             "market_bars": market_bars,
             "pmh": pmh,
@@ -178,6 +224,9 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
     """Create a test case JSON file."""
     data = fetch_bars(symbol, date_str)
     
+    # Continuity bars from previous day (for MACD calculation)
+    continuity_bars = data.get("continuity_bars", [])
+    
     # Combine premarket and market bars for full replay
     all_bars = data["premarket_bars"] + data["market_bars"]
     
@@ -191,6 +240,7 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
             "float_shares": 5000000,  # Would need separate lookup
             "catalyst": catalyst,
         },
+        "continuity_bars": continuity_bars,  # Previous day bars for MACD continuity
         "bars": all_bars,
         "source": data.get("source", "polygon"),  # Track data provider
     }
@@ -204,7 +254,7 @@ def create_test_case(symbol: str, date_str: str, catalyst: str, output_dir: Path
     print(f"Created: {output_path}")
     print(f"  PMH: ${data['pmh']}")
     print(f"  Gap: {data['gap_percent']:.1f}%")
-    print(f"  Bars: {len(all_bars)} market, {len(data['premarket_bars'])} premarket")
+    print(f"  Bars: {len(all_bars)} total, {len(data['premarket_bars'])} premarket, {len(continuity_bars)} continuity (prev day)")
     
     return filename
 
