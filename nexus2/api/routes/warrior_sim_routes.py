@@ -96,7 +96,7 @@ async def get_warrior_sim_status():
         loaded_symbols = loader.get_loaded_symbols()
         if loaded_symbols:
             chart_symbol = loaded_symbols[0]  # Primary symbol for chart
-            bars = loader.get_bars_up_to(chart_symbol, time_str, "1min")
+            bars = loader.get_bars_up_to(chart_symbol, time_str, "1min", include_continuity=False)  # Exclude prev-day for chart
             if bars:
                 # Convert bar objects to dict format for JSON serialization
                 visible_bars = [
@@ -976,7 +976,7 @@ async def load_historical_test_case(case_id: str):
     time_str = clock.get_time_string() if clock else None
     if time_str and data.bars:
         # Get bars up to current simulated time
-        bars_up_to = loader.get_bars_up_to(symbol, time_str, "1min")
+        bars_up_to = loader.get_bars_up_to(symbol, time_str, "1min", include_continuity=False)  # Exclude prev-day for chart
         if bars_up_to:
             visible_bars = [
                 {
@@ -1114,7 +1114,7 @@ async def step_clock(minutes: int = 1):
     loaded_symbols = loader.get_loaded_symbols()
     if loaded_symbols:
         chart_symbol = loaded_symbols[0]
-        bars = loader.get_bars_up_to(chart_symbol, time_str, "1min")
+        bars = loader.get_bars_up_to(chart_symbol, time_str, "1min", include_continuity=False)  # Exclude prev-day for chart
         if bars:
             visible_bars = [
                 {

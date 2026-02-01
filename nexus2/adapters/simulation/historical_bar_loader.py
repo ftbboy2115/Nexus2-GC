@@ -254,7 +254,7 @@ class HistoricalBarLoader:
         
         return self._loaded_data[symbol].get_price_at(time_str)
     
-    def get_bars_up_to(self, symbol: str, time_str: str, timeframe: str = "1min") -> List[IntradayBar]:
+    def get_bars_up_to(self, symbol: str, time_str: str, timeframe: str = "1min", include_continuity: bool = True) -> List[IntradayBar]:
         """
         Get bars for symbol up to given time.
         
@@ -262,6 +262,8 @@ class HistoricalBarLoader:
             symbol: Stock symbol
             time_str: Time in "HH:MM" format
             timeframe: "1min" or "5min"
+            include_continuity: If True, prepend previous day's bars for MACD calculation.
+                               Set False for chart display (avoids time order issues).
         
         Returns:
             List of bars
@@ -274,7 +276,7 @@ class HistoricalBarLoader:
         if timeframe == "5min":
             return data.aggregate_to_5min(time_str)
         else:
-            return data.get_bars_up_to(time_str)
+            return data.get_bars_up_to(time_str, include_continuity=include_continuity)
     
     def get_premarket_data(self, symbol: str) -> Dict:
         """Get premarket data for symbol."""
