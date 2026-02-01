@@ -1837,43 +1837,36 @@ async def enter_position(
             high_quality_threshold = 10  # TODO: Pull from scanner settings
             extension_threshold = engine.config.extension_threshold  # Use config value (was hardcoded 100)
             
+            # EXIT MODE SELECTION:
+            # Start with session setting as default, only override for exceptional cases
+            # This respects user's configured session_exit_mode in monitor settings
+            session_exit_mode = engine.monitor.settings.session_exit_mode
+            selected_exit_mode = session_exit_mode  # Default to user's session setting
+            
             # RE-ENTRY / VOLUME EXPLOSION OVERRIDE:
-            # On re-entry or strong volume (5x+), use home_run mode to ride the trend
+            # Only override session setting for truly exceptional conditions
             is_reentry = watched.entry_attempt_count > 0 and watched.last_exit_time is not None
             entry_volume_ratio = getattr(watched, 'entry_volume_ratio', 0) or 0
             
             if is_reentry:
+                # Re-entry on proven winner: override to home_run to ride the second wave
                 selected_exit_mode = "home_run"
                 logger.info(
                     f"[Warrior Entry] {symbol}: exit_mode=home_run "
-                    f"(RE-ENTRY #{watched.entry_attempt_count}: ride the second wave)"
+                    f"(RE-ENTRY #{watched.entry_attempt_count}: overriding session setting)"
                 )
             elif entry_volume_ratio >= 5.0:
+                # Extreme volume explosion (5x+): override to home_run for potential runner
                 selected_exit_mode = "home_run"
                 logger.info(
                     f"[Warrior Entry] {symbol}: exit_mode=home_run "
-                    f"(VOLUME EXPLOSION: {entry_volume_ratio:.1f}x at entry)"
-                )
-            # EXTENSION-BASED EXIT MODE SELECTION:
-            # Per Ross's pattern: extended stocks (e.g., VERO at 375%) get quick scalps
-            # "Felt like missed the bulk of it" = don't try for home run on extended moves
-            elif gap_percent > extension_threshold:
-                selected_exit_mode = "base_hit"
-                logger.info(
-                    f"[Warrior Entry] {symbol}: exit_mode=base_hit "
-                    f"(EXTENDED: gap={gap_percent:.0f}% > {extension_threshold}% threshold)"
-                )
-            elif quality_score >= high_quality_threshold:
-                selected_exit_mode = "home_run"
-                logger.info(
-                    f"[Warrior Entry] {symbol}: exit_mode=home_run "
-                    f"(quality_score={quality_score} >= {high_quality_threshold})"
+                    f"(VOLUME EXPLOSION: {entry_volume_ratio:.1f}x, overriding session setting)"
                 )
             else:
-                selected_exit_mode = "base_hit"
+                # Use session setting (base_hit or home_run)
                 logger.info(
-                    f"[Warrior Entry] {symbol}: exit_mode=base_hit "
-                    f"(quality_score={quality_score} < {high_quality_threshold})"
+                    f"[Warrior Entry] {symbol}: exit_mode={selected_exit_mode} "
+                    f"(using session setting)"
                 )
             
             order_result = await engine._submit_order(
