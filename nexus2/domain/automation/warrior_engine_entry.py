@@ -284,7 +284,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # Catches phantom inflated quotes (e.g., BATL $5.14 vs actual $4.80)
             # that cause bad limit prices and immediate losses
             # SKIP in sim_mode: 10s bar prices are accurate, comparing to 1-min close causes false positives
-            if engine._get_intraday_bars and not engine.sim_mode:
+            if engine._get_intraday_bars and not engine.config.sim_only:
                 try:
                     sanity_candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
                     if sanity_candles and len(sanity_candles) >= 1:
