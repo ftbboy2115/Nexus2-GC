@@ -546,33 +546,37 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         # ANTICIPATORY ZONE: 3-10 cents BELOW the level
                         # Ross buys at $5.97 for break of $6.00 (3 cents below)
                         if 3 <= distance_cents <= 10:
-                            # MOMENTUM CHECK: Must be in an uptrend, not consolidating
+                            # MOMENTUM CHECK: Detect if current tick is BREAKING OUT
+                            # Old approach (higher_highs) fails during fast gaps with no prior bars
+                            # New approach: is current price breaking above recent consolidation?
                             has_momentum = False
-                            higher_highs = False
+                            breakout_above_range = False
                             position_in_range = 0.0
                             if engine._get_intraday_bars:
                                 try:
                                     candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
                                     if candles and len(candles) >= 3:
-                                        # Check: last 3 candles trending up (higher highs)
-                                        recent = candles[-3:]
-                                        higher_highs = all(
-                                            recent[i].high > recent[i-1].high 
-                                            for i in range(1, len(recent))
-                                        )
-                                        # Check: current price near top of recent range
+                                        # Get recent range from completed bars
                                         range_high = max(c.high for c in candles[-5:])
                                         range_low = min(c.low for c in candles[-5:])
+                                        
                                         if range_high > range_low:
-                                            position_in_range = (current_float - range_low) / (range_high - range_low)
-                                            # Must be in top 30% of recent range
-                                            has_momentum = higher_highs and position_in_range > 0.7
+                                            # BREAKOUT DETECTION: current tick above range high
+                                            # This catches fast moves like GRI where bars gap up
+                                            breakout_above_range = current_float > range_high * 1.02  # 2% above
                                             
-                                            # ALWAYS log momentum check result
+                                            # POSITION IN RANGE: how far into the range
+                                            position_in_range = (current_float - range_low) / (range_high - range_low)
+                                            
+                                            # MOMENTUM = breaking out (price above range) 
+                                            # OR already significantly extended (>90% of range with volume coming)
+                                            has_momentum = breakout_above_range or position_in_range > 0.9
+                                            
+                                            # Log result
                                             logger.info(
                                                 f"[Warrior Entry] {symbol}: WHOLE/HALF MOMENTUM CHECK - "
-                                                f"higher_highs={higher_highs}, range_pos={position_in_range:.1%}, "
-                                                f"result={'PASS' if has_momentum else 'FAIL'}"
+                                                f"breakout={breakout_above_range} (price ${current_float:.2f} vs range high ${range_high:.2f}), "
+                                                f"range_pos={position_in_range:.1%}, result={'PASS' if has_momentum else 'FAIL'}"
                                             )
                                 except Exception as e:
                                     logger.warning(f"[Warrior Entry] {symbol}: Momentum check failed: {e}")
