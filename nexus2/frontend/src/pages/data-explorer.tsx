@@ -308,7 +308,20 @@ export default function DataExplorer() {
         if (data.length === 0) return
         const visibleCols = allColumns.filter(c => !hiddenColumns.has(c))
         const text = data.map(row => visibleCols.map(k => row[k] ?? '').join('\t')).join('\n')
-        navigator.clipboard.writeText(text)
+        // Fallback for non-HTTPS contexts where navigator.clipboard is unavailable
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+        } else {
+            // Legacy fallback using textarea
+            const textarea = document.createElement('textarea')
+            textarea.value = text
+            textarea.style.position = 'fixed'
+            textarea.style.opacity = '0'
+            document.body.appendChild(textarea)
+            textarea.select()
+            document.execCommand('copy')
+            document.body.removeChild(textarea)
+        }
     }
 
     // Derive columns from ALL rows (not just first) to avoid missing columns
