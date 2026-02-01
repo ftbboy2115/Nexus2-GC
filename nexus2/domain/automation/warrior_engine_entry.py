@@ -412,6 +412,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                             f"stop=${pattern.stop_price:.2f}, target=${pattern.target_price:.2f}, "
                                             f"R:R={pattern.risk_reward:.1f}, conf={pattern.confidence:.2f})"
                                         )
+                                        # ENTRY VALIDATION: Capture intent before entry
+                                        watched.expected_target = Decimal(str(pattern.target_price))
+                                        watched.expected_stop = Decimal(str(pattern.stop_price))
+                                        watched.entry_confidence = pattern.confidence
                                         await enter_position(
                                             engine,
                                             watched,
@@ -1065,6 +1069,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                             f"stop=${pattern.stop_price:.2f}, target=${pattern.target_price:.2f}, "
                                             f"R:R={pattern.risk_reward:.1f}, conf={pattern.confidence:.2f})"
                                         )
+                                        # ENTRY VALIDATION: Capture intent before entry
+                                        watched.expected_target = Decimal(str(pattern.target_price))
+                                        watched.expected_stop = Decimal(str(pattern.stop_price))
+                                        watched.entry_confidence = pattern.confidence
                                         await enter_position(
                                             engine,
                                             watched,
@@ -2038,6 +2046,22 @@ async def enter_position(
                     f"[Warrior Entry] {symbol}: Intent logged to DB "
                     f"(trigger={trigger_type.value}, order_id={order_id[:8]}...)"
                 )
+                
+                # ENTRY VALIDATION LOG: Capture expected outcome for data-driven tuning
+                validation_parts = []
+                if watched.expected_target:
+                    validation_parts.append(f"target=${watched.expected_target:.2f}")
+                if watched.expected_stop:
+                    validation_parts.append(f"stop=${watched.expected_stop:.2f}")
+                if watched.entry_confidence:
+                    validation_parts.append(f"conf={watched.entry_confidence:.2f}")
+                if watched.ross_entry:
+                    delta = float(entry_decimal) - float(watched.ross_entry)
+                    validation_parts.append(f"ross=${watched.ross_entry:.2f} Δ${delta:+.2f}")
+                if validation_parts:
+                    logger.info(
+                        f"[ENTRY VALIDATION] {symbol}: {', '.join(validation_parts)}"
+                    )
                 
                 # CRITICAL: Log ENTRY event to trade_event_service BEFORE fill confirmation
                 # This ensures correct audit order: ENTRY -> FILL_CONFIRMED

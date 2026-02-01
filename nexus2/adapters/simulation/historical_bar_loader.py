@@ -58,6 +58,9 @@ class IntradayData:
     continuity_bars: List[IntradayBar] = field(default_factory=list)  # Previous day's bars for MACD
     # PATTERN COMPETITION: setup_type from YAML (pmh, abcd, vwap_break, orb, etc.)
     setup_type: Optional[str] = None
+    # ENTRY VALIDATION: Ross's ground truth for comparison
+    ross_entry: Optional[float] = None  # Ross's actual entry price
+    ross_pnl: Optional[float] = None    # Ross's actual P&L
     
     @classmethod
     def from_json(cls, data: Dict) -> "IntradayData":
@@ -94,6 +97,8 @@ class IntradayData:
             bars=bars,
             continuity_bars=continuity_bars,
             setup_type=data.get("setup_type"),  # From YAML merge
+            ross_entry=data.get("ross_entry"),   # From YAML merge
+            ross_pnl=data.get("ross_pnl"),       # From YAML merge
         )
     
     def get_price_at(self, time_str: str) -> Optional[float]:
@@ -235,6 +240,16 @@ class HistoricalBarLoader:
             # Merge setup_type from YAML into JSON data before parsing
             if yaml_meta and "setup_type" in yaml_meta:
                 data["setup_type"] = yaml_meta["setup_type"]
+            
+            # ENTRY VALIDATION: Merge Ross's ground truth for comparison
+            if yaml_meta:
+                # Ross's entry price from expected.entry_near
+                expected = yaml_meta.get("expected", {})
+                if expected.get("entry_near"):
+                    data["ross_entry"] = expected["entry_near"]
+                # Ross's actual P&L from ross_pnl
+                if yaml_meta.get("ross_pnl"):
+                    data["ross_pnl"] = yaml_meta["ross_pnl"]
             
             intraday = IntradayData.from_json(data)
             self._loaded_data[intraday.symbol] = intraday

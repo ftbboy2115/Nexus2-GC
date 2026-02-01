@@ -780,7 +780,13 @@ async def load_historical_test_case(case_id: str):
         session_low=Decimal(str(prev_close)),
     )
     
-    watched = WatchedCandidate(candidate=candidate, pmh=pmh, setup_type=data.setup_type)
+    watched = WatchedCandidate(
+        candidate=candidate, 
+        pmh=pmh, 
+        setup_type=data.setup_type,
+        ross_entry=Decimal(str(data.ross_entry)) if data.ross_entry else None,
+        ross_pnl=Decimal(str(data.ross_pnl)) if data.ross_pnl else None,
+    )
     
     engine = get_engine()
     added_to_watchlist = False

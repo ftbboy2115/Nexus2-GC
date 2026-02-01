@@ -214,6 +214,22 @@ class WatchedCandidate:
     # If None, defaults to pmh + abcd detection
     setup_type: Optional[str] = None
     
+    # ENTRY VALIDATION: Capture intent for data-driven tuning
+    # Populated at entry from pattern detection
+    expected_target: Optional[Decimal] = None  # What we expect price to hit
+    expected_stop: Optional[Decimal] = None    # Where we'd stop out
+    entry_confidence: Optional[float] = None   # Pattern confidence at entry (0-1)
+    
+    # MFE/MAE tracking for position analysis
+    mfe: Optional[Decimal] = None  # Max favorable excursion (best price)
+    mae: Optional[Decimal] = None  # Max adverse excursion (worst price)
+    
+    # Ross comparison (from test case metadata)
+    ross_entry: Optional[Decimal] = None   # Ross's actual entry price
+    ross_exit: Optional[Decimal] = None    # Ross's actual exit price
+    ross_pnl: Optional[Decimal] = None     # Ross's actual P&L
+
+    
     @property
     def dynamic_score(self) -> int:
         """
