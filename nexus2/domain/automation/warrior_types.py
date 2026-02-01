@@ -147,7 +147,8 @@ class WarriorPosition:
     risk_per_share: Decimal = Decimal("0")  # Entry - stop
     
     # Tracking
-    high_since_entry: Decimal = Decimal("0")  # For trailing
+    high_since_entry: Decimal = Decimal("0")  # For trailing / MFE
+    low_since_entry: Decimal = Decimal("999999")  # For MAE tracking (init high so first price updates it)
     partial_taken: bool = False
     
     # Scaling In

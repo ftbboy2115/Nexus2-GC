@@ -777,7 +777,7 @@ async def evaluate_position(
         if current_price is None:
             return None
     
-    # Update high since entry
+    # Update high since entry (MFE tracking)
     if current_price > position.high_since_entry:
         position.high_since_entry = current_price
         try:
@@ -785,6 +785,10 @@ async def evaluate_position(
             update_high_since_entry(position.position_id, float(current_price))
         except Exception as e:
             logger.debug(f"[Warrior] {position.symbol}: Failed to persist high: {e}")
+    
+    # Update low since entry (MAE tracking)
+    if current_price < position.low_since_entry:
+        position.low_since_entry = current_price
     
     # Calculate current R
     if position.risk_per_share > 0:
@@ -934,6 +938,34 @@ async def handle_exit(
             
             # Track realized P&L
             monitor._add_realized_pnl(actual_pnl)
+            
+            # Update entry validation log with outcome (MFE/MAE, P&L, target/stop hit)
+            try:
+                from nexus2.db.warrior_db import update_entry_validation_outcome
+                position = monitor._positions.get(signal.position_id)
+                if position:
+                    # Calculate MFE/MAE relative to entry price
+                    mfe = float(position.high_since_entry - position.entry_price) if position.high_since_entry else None
+                    mae = float(position.entry_price - position.low_since_entry) if position.low_since_entry and position.low_since_entry < Decimal("999999") else None
+                    
+                    # Determine if target/stop was hit
+                    stop_reasons = {WarriorExitReason.MENTAL_STOP, WarriorExitReason.TECHNICAL_STOP}
+                    profit_reasons = {WarriorExitReason.PROFIT_TARGET, WarriorExitReason.PARTIAL_EXIT}
+                    target_hit = signal.reason in profit_reasons
+                    stop_hit = signal.reason in stop_reasons
+                    
+                    update_entry_validation_outcome(
+                        trade_id=signal.position_id,
+                        exit_price=float(actual_exit_price),
+                        mfe=mfe,
+                        mae=mae,
+                        realized_pnl=float(actual_pnl),
+                        target_hit=target_hit,
+                        stop_hit=stop_hit,
+                    )
+                    logger.info(f"[Warrior] {signal.symbol}: Validation outcome logged (MFE={mfe}, MAE={mae})")
+            except Exception as e:
+                logger.debug(f"[Warrior] {signal.symbol}: Failed to log validation outcome: {e}")
                 
         except Exception as e:
             logger.error(f"[Warrior] Exit execution failed: {e}")
