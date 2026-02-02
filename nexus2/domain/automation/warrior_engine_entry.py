@@ -1744,9 +1744,23 @@ async def enter_position(
     # ROSS MACD GATE: Block ALL entries when MACD is negative
     # Per Ross Cameron: "Red light, green light - MACD negative = don't trade"
     # Applies to ALL entries (first and re-entries alike)
+    # 
+    # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
+    # If we cannot verify technicals (bars missing), BLOCK the trade.
     if engine._get_intraday_bars:
         try:
             candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
+            
+            # FAIL-CLOSED: Block if bar data is missing or insufficient
+            if not candles or len(candles) < 10:
+                bar_count = len(candles) if candles else 0
+                logger.warning(
+                    f"[Warrior Entry] {symbol}: FAIL-CLOSED - insufficient bar data "
+                    f"({bar_count} bars, need 10+). Cannot verify MACD/technicals, blocking entry."
+                )
+                watched.entry_triggered = True
+                return
+            
             if candles and len(candles) >= 10:
                 from nexus2.domain.indicators import get_technical_service
                 tech = get_technical_service()
@@ -1777,7 +1791,14 @@ async def enter_position(
             )
             watched.entry_triggered = True  # Mark as triggered to prevent retries
             return
-    
+    else:
+        # FAIL-CLOSED: No bar callback available - cannot verify technicals
+        logger.warning(
+            f"[Warrior Entry] {symbol}: FAIL-CLOSED - no intraday bar callback available. "
+            f"Cannot verify MACD/technicals, blocking entry."
+        )
+        watched.entry_triggered = True
+        return
     # Check if we already hold this symbol
     # - For regular entries: Block re-entry (prevents double-buying)
     # - For MICRO_PULLBACK: Scale into existing position (Ross averaging-in methodology)
