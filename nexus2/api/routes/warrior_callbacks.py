@@ -271,8 +271,10 @@ def create_get_intraday_bars():
             polygon = PolygonAdapter()
             
             # Use Polygon's get_intraday_bars (includes premarket by default)
+            # Convert timeframe: "1min" -> "1", "5min" -> "5" (Polygon expects just the number)
+            polygon_tf = timeframe.replace("min", "").replace("Min", "")
             if hasattr(polygon, 'get_intraday_bars'):
-                bars = polygon.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
+                bars = polygon.get_intraday_bars(symbol, timeframe=polygon_tf, limit=limit)
                 if bars:
                     return [Bar(
                         open=float(b.open),
