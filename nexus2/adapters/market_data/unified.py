@@ -345,7 +345,13 @@ class UnifiedMarketData:
         timeframe: str = "1Min",
         limit: int = 1000
     ) -> Optional[List[OHLCV]]:
-        """Get intraday bars from Alpaca."""
+        """Get intraday bars - Polygon primary, Alpaca fallback."""
+        # Polygon primary: Convert timeframe (e.g., "1Min" -> "1")
+        polygon_tf = timeframe.replace("Min", "").replace("min", "")
+        bars = self.polygon.get_intraday_bars(symbol, timeframe=polygon_tf, limit=limit)
+        if bars and len(bars) >= 5:
+            return bars
+        # Alpaca fallback
         return self.alpaca.get_intraday_bars(symbol, timeframe, limit)
     
     def get_stock_info(self, symbol: str) -> Optional[StockInfo]:

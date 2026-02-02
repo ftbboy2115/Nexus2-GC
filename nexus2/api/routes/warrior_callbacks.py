@@ -140,7 +140,7 @@ def create_get_quotes_batch():
 
 
 def create_get_quote_with_spread():
-    """Create a quote-with-spread callback with Schwab fallback."""
+    """Create a quote-with-spread callback with Polygon primary, Alpaca/Schwab fallback."""
     # Schwab quote cache (10-second TTL to stay under 120 calls/min limit)
     _schwab_quote_cache: dict = {}
     _schwab_cache_ttl = 10
@@ -151,7 +151,7 @@ def create_get_quote_with_spread():
     async def get_quote_with_spread(symbol: str):
         """Get quote with bid/ask spread for spread exit trigger.
         
-        Priority: Alpaca (primary) -> Schwab (fallback when bid/ask = 0)
+        Priority: Polygon (primary $200/mo) -> Alpaca (fallback) -> Schwab (tertiary)
         
         During simulation mode, returns MockBroker price with 0 spread.
         """
@@ -174,19 +174,35 @@ def create_get_quote_with_spread():
         ask = 0
         price = 0
         
-        # Try Alpaca first
+        # POLYGON PRIMARY: Preferred provider ($200/mo subscription)
         try:
-            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-            alpaca = AlpacaAdapter()
-            quote = alpaca.get_quote(symbol)
+            from nexus2.adapters.market_data.polygon_adapter import get_polygon_adapter
+            polygon = get_polygon_adapter()
+            quote = polygon.get_quote(symbol)
             if quote:
                 price = float(quote.price)
                 bid = float(quote.bid) if hasattr(quote, 'bid') and quote.bid else 0
                 ask = float(quote.ask) if hasattr(quote, 'ask') and quote.ask else 0
         except Exception as e:
-            print(f"[Warrior] Alpaca quote failed for {symbol}: {e}")
+            print(f"[Warrior] Polygon quote failed for {symbol}: {e}")
         
-        # Schwab fallback if Alpaca doesn't have bid/ask
+        # ALPACA FALLBACK: Secondary source (if Polygon fails or no bid/ask)
+        if price <= 0 or (bid <= 0 and ask <= 0):
+            try:
+                from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+                alpaca = AlpacaAdapter()
+                quote = alpaca.get_quote(symbol)
+                if quote:
+                    if price <= 0:
+                        price = float(quote.price)
+                    if bid <= 0:
+                        bid = float(quote.bid) if hasattr(quote, 'bid') and quote.bid else 0
+                    if ask <= 0:
+                        ask = float(quote.ask) if hasattr(quote, 'ask') and quote.ask else 0
+            except Exception as e:
+                print(f"[Warrior] Alpaca quote fallback failed for {symbol}: {e}")
+        
+        # SCHWAB TERTIARY: For bid/ask if still missing
         if bid <= 0 or ask <= 0:
             cache_key = symbol
             now = time.time()
@@ -223,6 +239,8 @@ def create_get_quote_with_spread():
         return None
     
     return get_quote_with_spread
+
+
 
 
 # =============================================================================
