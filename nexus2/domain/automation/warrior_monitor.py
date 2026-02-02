@@ -396,16 +396,8 @@ class WarriorMonitor:
         
         self._positions[position_id] = position
         
-        # Log entry event
-        trade_event_service.log_warrior_entry(
-            position_id=position_id,
-            symbol=symbol,
-            entry_price=entry_price,
-            stop_price=current_stop,
-            shares=shares,
-            trigger_type=trigger_type,
-            exit_mode=exit_mode_override,  # For Entry Type column display
-        )
+        # NOTE: Entry is logged by warrior_engine_entry.py with technical_context
+        # Do NOT log here - that causes duplicate entries without technical data
         
         exit_mode_str = f", mode={exit_mode_override}" if exit_mode_override else ""
         logger.info(
