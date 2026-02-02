@@ -265,11 +265,30 @@ def create_get_intraday_bars():
         except Exception:
             pass  # If import fails, continue with normal path
         
+        # POLYGON PRIMARY: Preferred data provider with better rate limits
+        try:
+            from nexus2.adapters.market_data.polygon_adapter import PolygonAdapter
+            polygon = PolygonAdapter()
+            
+            # Use Polygon's get_intraday_bars (includes premarket by default)
+            if hasattr(polygon, 'get_intraday_bars'):
+                bars = polygon.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
+                if bars:
+                    return [Bar(
+                        open=float(b.open),
+                        high=float(b.high),
+                        low=float(b.low),
+                        close=float(b.close),
+                        volume=int(b.volume)
+                    ) for b in bars]
+        except Exception as e:
+            logger.debug(f"[Warrior] Polygon bars failed for {symbol}: {e}")
+        
+        # ALPACA FALLBACK: Secondary source
         try:
             from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
             alpaca = AlpacaAdapter()
             
-            # Use Alpaca's get_intraday_bars method (exists since adapter creation)
             if hasattr(alpaca, 'get_intraday_bars'):
                 bars = alpaca.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
                 if bars:
@@ -280,9 +299,11 @@ def create_get_intraday_bars():
                         close=float(b.close),
                         volume=int(b.volume)
                     ) for b in bars]
-            
-            # Fallback: FMP (run in thread pool to avoid blocking event loop)
-            # Pass the requested timeframe instead of hardcoding "5min"
+        except Exception as e:
+            logger.debug(f"[Warrior] Alpaca bars failed for {symbol}: {e}")
+        
+        # FMP FALLBACK: Tertiary source (run in thread pool to avoid blocking)
+        try:
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             fmp = get_fmp_adapter()
             if fmp:
@@ -296,11 +317,10 @@ def create_get_intraday_bars():
                         close=float(b.close),
                         volume=int(b.volume)
                     ) for b in bars_to_use]
-            
-            return None
         except Exception as e:
-            print(f"[Warrior] Intraday bars failed for {symbol}: {e}")
-            return None
+            logger.debug(f"[Warrior] FMP bars failed for {symbol}: {e}")
+        
+        return None
     
     return get_intraday_bars
 

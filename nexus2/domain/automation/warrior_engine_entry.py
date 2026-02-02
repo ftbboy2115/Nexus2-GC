@@ -1746,7 +1746,7 @@ async def enter_position(
     # Applies to ALL entries (first and re-entries alike)
     if engine._get_intraday_bars:
         try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+            candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
             if candles and len(candles) >= 10:
                 from nexus2.domain.indicators import get_technical_service
                 tech = get_technical_service()
