@@ -345,7 +345,14 @@ class UnifiedMarketData:
         timeframe: str = "1Min",
         limit: int = 1000
     ) -> Optional[List[OHLCV]]:
-        """Get intraday bars - Polygon primary, Alpaca fallback."""
+        """Get intraday bars - Polygon primary, Alpaca fallback.
+        
+        NOTE: This is the SYNC general-purpose version.
+        For Warrior engine (async + simulation mode), see:
+        warrior_callbacks.py:create_get_intraday_bars()
+        
+        Returns OHLCV objects with Decimal prices.
+        """
         # Polygon primary: Convert timeframe (e.g., "1Min" -> "1")
         polygon_tf = timeframe.replace("Min", "").replace("min", "")
         bars = self.polygon.get_intraday_bars(symbol, timeframe=polygon_tf, limit=limit)

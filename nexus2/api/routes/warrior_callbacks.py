@@ -248,7 +248,17 @@ def create_get_quote_with_spread():
 # =============================================================================
 
 def create_get_intraday_bars():
-    """Create an intraday bars callback for technical indicators."""
+    """Create an intraday bars callback for Warrior engine technical indicators.
+    
+    NOTE: This is the ASYNC version with simulation mode support.
+    For general-purpose sync usage, see unified.py:UnifiedMarketData.get_intraday_bars()
+    
+    Key differences from unified.py:
+    - Returns custom Bar dataclass (floats) instead of OHLCV (Decimals)
+    - Supports simulation mode via HistoricalBarLoader
+    - Includes FMP as tertiary fallback (unified.py doesn't)
+    - Async interface for use in Warrior engine callbacks
+    """
     from dataclasses import dataclass
     
     @dataclass
