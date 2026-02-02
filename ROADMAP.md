@@ -331,6 +331,17 @@ Last updated: 2026-01-27
   - [x] `warrior_engine_entry.py` (580 lines) - Entry triggers & execution
   - [x] `warrior_engine.py` (694 lines) - Core orchestration (48% reduction)
 - [x] **Configure Gemini MCP** — DONE: Updated to google.genai package, set user env var
+- [ ] **Parabolic Ride Exit Mode** — NEW exit_mode for riding runners (Feb 1)
+  - **Problem:** Current exit modes (base_hit, home_run) exit too early on parabolic movers
+  - **Evidence:** GRI Jan 28 - Ross entered at $5.97, added every 50¢ to $12, made $50k+
+  - **Bot behavior:** Exited at $6.68 (base_hit) leaving ~$5/share on table
+  - **Required changes:**
+    1. New `exit_mode=parabolic_ride` with partial profit at round numbers ($7, $7.50, $8...)
+    2. Re-add logic on micro pullback holds (dip holds support → add for next breakout)
+    3. "Add every 50 cents" scaling during parabolic moves
+    4. 25% giveback hard stop (from session high)
+    5. Don't add if dropping sharply - take profit instead
+  - **Transcript source:** `2026-01-28_transcript_WYB5jmTDBO4.md`
 
 ### 📊 Chart Pattern Coverage (Audit Jan 30, 2026)
 > Gap analysis: Training material has 25+ patterns, bot implements ~9 (36%).

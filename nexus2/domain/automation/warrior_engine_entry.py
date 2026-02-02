@@ -2153,11 +2153,14 @@ async def enter_position(
             entry_volume_ratio = getattr(watched, 'entry_volume_ratio', 0) or 0
             
             if is_reentry:
-                # Re-entry on proven winner: override to home_run to ride the second wave
-                selected_exit_mode = "home_run"
+                # RE-ENTRY SAFETY VALVE: Force base_hit for re-entries
+                # Ross CMCT transcript (Dec 2025): Re-entries are quick scalps, not home runs
+                # "I add on the dip... when it broke the low of 85, I had to sell"
+                # Take quick +18¢ profit, cut if it doesn't work - don't bag-hold
+                selected_exit_mode = "base_hit"
                 logger.info(
-                    f"[Warrior Entry] {symbol}: exit_mode=home_run "
-                    f"(RE-ENTRY #{watched.entry_attempt_count}: overriding session setting)"
+                    f"[Warrior Entry] {symbol}: exit_mode=base_hit "
+                    f"(RE-ENTRY #{watched.entry_attempt_count}: quick scalp mode, not home run)"
                 )
             elif entry_volume_ratio >= 5.0:
                 # Extreme volume explosion (5x+): override to home_run for potential runner
