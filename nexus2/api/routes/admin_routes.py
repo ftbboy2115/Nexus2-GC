@@ -84,12 +84,11 @@ async def restart_server(request: RestartRequest):
 
 @router.get("/status")
 async def admin_status():
-    """Get server admin status including uptime and process info."""
+    """Get basic server process info. Use /health for full stats."""
     from nexus2.utils.time_utils import now_et
     
     return {
         "status": "healthy",
         "timestamp": now_et().isoformat(),
         "pid": os.getpid(),
-        "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
     }

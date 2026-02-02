@@ -10,8 +10,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 interface AdminStatus {
     status: string
     timestamp: string
-    pid: number
-    python_version?: string
+    version: string
+    mode: string
+    uptime_seconds: number
+    memory_mb: number
 }
 
 export function AdminCard() {
@@ -24,7 +26,7 @@ export function AdminCard() {
     useEffect(() => {
         const fetchStatus = async () => {
             try {
-                const res = await fetch(`${API_BASE}/admin/status`)
+                const res = await fetch(`${API_BASE}/health`)
                 if (res.ok) {
                     const data = await res.json()
                     setAdminStatus(data)
@@ -34,6 +36,9 @@ export function AdminCard() {
             }
         }
         fetchStatus()
+        // Refresh every 30 seconds
+        const interval = setInterval(fetchStatus, 30000)
+        return () => clearInterval(interval)
     }, [])
 
     const handleRestart = async () => {
@@ -81,11 +86,34 @@ export function AdminCard() {
             defaultCollapsed={true}
         >
             <div className={styles.cardBody}>
-                {/* Status */}
+                {/* Health Stats */}
                 {adminStatus && (
-                    <div className={styles.statusRow} style={{ marginBottom: '12px' }}>
-                        <span>PID: {adminStatus.pid}</span>
-                        <span>Python: {adminStatus.python_version}</span>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '12px',
+                        marginBottom: '16px',
+                        padding: '12px',
+                        background: 'rgba(50, 200, 100, 0.1)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(50, 200, 100, 0.3)'
+                    }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#888' }}>Uptime</div>
+                            <div style={{ fontWeight: 'bold', color: '#4ade80' }}>
+                                {Math.floor(adminStatus.uptime_seconds / 3600)}h {Math.floor((adminStatus.uptime_seconds % 3600) / 60)}m
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#888' }}>Memory</div>
+                            <div style={{ fontWeight: 'bold', color: '#4ade80' }}>{adminStatus.memory_mb} MB</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#888' }}>Mode</div>
+                            <div style={{ fontWeight: 'bold', color: adminStatus.mode?.includes('paper') ? '#fbbf24' : '#f87171' }}>
+                                {adminStatus.mode?.replace('alpaca_', '').toUpperCase()}
+                            </div>
+                        </div>
                     </div>
                 )}
 
