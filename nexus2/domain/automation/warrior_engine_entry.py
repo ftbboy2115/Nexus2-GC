@@ -2355,6 +2355,7 @@ async def enter_position(
                     shares=shares,
                     trigger_type=trigger_type.value,
                     technical_context=tech_context,
+                    exit_mode=selected_exit_mode,  # For Entry Type column display
                 )
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
