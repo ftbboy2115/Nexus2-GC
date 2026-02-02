@@ -308,7 +308,7 @@ class PolygonAdapter:
         
         data = self._get(
             f"/v2/aggs/ticker/{symbol}/range/{timeframe}/minute/{from_date}/{to_date}",
-            params={"limit": limit, "sort": "asc"}
+            params={"limit": limit, "sort": "desc"}  # CRITICAL: desc = newest first
         )
         
         if not data or data.get("status") != "OK":
@@ -329,7 +329,9 @@ class PolygonAdapter:
                 volume=result.get("v", 0),
             ))
         
-        return bars
+        # Reverse to chronological order (oldest first) for indicator calculations
+        # We fetch sort=desc to get NEWEST bars within limit, then reverse
+        return list(reversed(bars))
     
     def get_second_bars(
         self,
