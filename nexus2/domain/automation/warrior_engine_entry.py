@@ -1779,6 +1779,9 @@ async def enter_position(
                     watched.entry_triggered = True  # Block this attempt
                     return
                 else:
+                    # CRITICAL: Store snapshot for audit logging - ensures consistency between
+                    # entry decision and audit trail (fixes "Technical context unavailable" bug)
+                    watched.entry_snapshot = snapshot
                     logger.info(
                         f"[Warrior Entry] {symbol}: MACD OK for entry "
                         f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'})"
@@ -2325,27 +2328,24 @@ async def enter_position(
                 # This ensures correct audit order: ENTRY -> FILL_CONFIRMED
                 from nexus2.domain.automation.trade_event_service import trade_event_service
                 
-                # Calculate technical context from simulated bars for consistency (fixes logging discrepancy)
+                # Use the SAME snapshot that was calculated at the MACD gate
+                # This ensures audit trail matches exactly what was used for the entry decision
+                # (Fixes "Technical context unavailable" bug where audit used different data path)
                 tech_context = None
-                if engine.monitor.sim_mode and engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
-                        if candles and len(candles) >= 10:
-                            from nexus2.domain.indicators import get_technical_service
-                            tech = get_technical_service()
-                            candle_dicts = [{"high": c.high, "low": c.low, "close": c.close, "volume": c.volume} for c in candles]
-                            snapshot = tech.get_snapshot(symbol, candle_dicts, float(entry_decimal))
-                            tech_context = {
-                                "symbol_vwap": float(snapshot.vwap) if snapshot.vwap else None,
-                                "symbol_above_vwap": float(entry_decimal) > float(snapshot.vwap) if snapshot.vwap else None,
-                                "symbol_ema9": float(snapshot.ema_9) if snapshot.ema_9 else None,
-                                "symbol_above_ema9": float(entry_decimal) > float(snapshot.ema_9) if snapshot.ema_9 else None,
-                                "symbol_macd_value": float(snapshot.macd_histogram) if snapshot.macd_histogram else None,
-                                "symbol_macd_status": "positive" if snapshot.macd_histogram and snapshot.macd_histogram > 0.05 else ("negative" if snapshot.macd_histogram and snapshot.macd_histogram < -0.05 else "flat"),
-                                "data_insufficient": getattr(snapshot, 'data_insufficient', False),  # AUDIT: Track if data was insufficient for indicators
-                            }
-                    except Exception as e:
-                        logger.warning(f"[Warrior Entry] {symbol}: Technical context calc failed: {e}")
+                entry_snapshot = getattr(watched, 'entry_snapshot', None)
+                if entry_snapshot:
+                    tech_context = {
+                        "symbol_vwap": float(entry_snapshot.vwap) if entry_snapshot.vwap else None,
+                        "symbol_above_vwap": float(entry_decimal) > float(entry_snapshot.vwap) if entry_snapshot.vwap else None,
+                        "symbol_ema9": float(entry_snapshot.ema_9) if entry_snapshot.ema_9 else None,
+                        "symbol_above_ema9": float(entry_decimal) > float(entry_snapshot.ema_9) if entry_snapshot.ema_9 else None,
+                        "symbol_macd_value": float(entry_snapshot.macd_histogram) if entry_snapshot.macd_histogram else None,
+                        "symbol_macd_status": "positive" if entry_snapshot.macd_histogram and entry_snapshot.macd_histogram > 0.05 else ("negative" if entry_snapshot.macd_histogram and entry_snapshot.macd_histogram < -0.05 else "flat"),
+                        "data_insufficient": getattr(entry_snapshot, 'data_insufficient', False),
+                        "source": "entry_decision",  # AUDIT: Indicates this is from the actual entry decision, not a re-fetch
+                    }
+                else:
+                    logger.warning(f"[Warrior Entry] {symbol}: No entry_snapshot available for audit logging")
                 
                 trade_event_service.log_warrior_entry(
                     position_id=order_id,
