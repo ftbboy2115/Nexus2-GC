@@ -56,3 +56,18 @@ ssh root@100.113.178.7 "curl -s http://localhost:8000/health"
 ## ⚠️ Never Use
 - `scp` for deployment (bypasses version control)
 - Direct file edits on VPS (causes git conflicts)
+
+---
+
+## 🔧 One-Time Setup: Wrapper Script
+
+For the `/admin/restart` endpoint to work, the server must run via `run_api.sh`:
+
+```bash
+# After first deployment, switch to wrapper script (one-time only):
+ssh root@100.113.178.7 "chmod +x ~/Nexus2/run_api.sh"
+ssh root@100.113.178.7 "tmux send-keys -t nexus:0 C-c C-c"  # Stop current server
+ssh root@100.113.178.7 "tmux send-keys -t nexus:0 './run_api.sh' Enter"
+```
+
+Now you can restart the server from the UI (**Warrior → 🔧 Server Admin**) without SSH.

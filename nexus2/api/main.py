@@ -17,7 +17,7 @@ from nexus2.adapters.broker import OrderExecutor
 from nexus2.settings.risk_settings import PartialExitSettings
 from nexus2.api.broker_factory import create_broker_by_type
 
-from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics, automation_simulation, ma_check_routes, monitor_routes, scheduler_routes, docs_routes, preferences, warrior_routes, trade_event_routes, lab_routes, audit_routes, data_routes, catalyst_routes  # v3
+from nexus2.api.routes import health, orders, positions, scanner, trade, settings, websocket, automation, watchlist, analytics, automation_simulation, ma_check_routes, monitor_routes, scheduler_routes, docs_routes, preferences, warrior_routes, trade_event_routes, lab_routes, audit_routes, data_routes, catalyst_routes, admin_routes  # v3
 from nexus2.api.routes.settings import get_settings
 from nexus2.db import init_db
 
@@ -439,6 +439,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_routes.router, prefix="/audit", tags=["audit"])
     app.include_router(data_routes.router)
     app.include_router(catalyst_routes.router)
+    app.include_router(admin_routes.router)
     
     # Custom OpenAPI schema with sorted endpoints for Swagger readability
     def custom_openapi():

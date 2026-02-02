@@ -1,0 +1,24 @@
+# Artifact Protection Rules
+
+## NEVER Overwrite Plans Without Checking
+
+Before using `Overwrite=true` on ANY artifact file in the brain directory:
+
+1. **ALWAYS view the existing file first** to understand what's there
+2. **If it contains valuable content**, create a NEW file instead with a descriptive name:
+   - ❌ `implementation_plan.md` (generic, gets overwritten)
+   - ✅ `plan_pattern_priority_framework.md` (specific, preserved)
+   - ✅ `plan_server_restart_endpoint.md` (specific, preserved)
+3. **Ask the user** if you're unsure whether content should be preserved
+
+## Naming Convention for Plans
+
+Use feature-specific names, not generic `implementation_plan.md`:
+- `plan_[feature_name].md` for implementation plans
+- `investigation_[topic].md` for research/debugging
+- `walkthrough_[feature].md` for completed work summaries
+
+## The Single Generic Files
+
+These files are OK to update (not overwrite entirely):
+- `task.md` - The living task checklist (append new phases, don't replace)

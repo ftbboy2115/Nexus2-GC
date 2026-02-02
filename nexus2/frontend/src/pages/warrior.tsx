@@ -30,6 +30,7 @@ import {
     EngineControlCard,
     TradingModeCard,
     CatalystSearchCard,
+    AdminCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -633,6 +634,9 @@ export default function Warrior() {
 
                             {/* 13. Catalyst Search */}
                             <CatalystSearchCard />
+
+                            {/* 14. Server Admin */}
+                            <AdminCard />
                         </div>
                     </>
                 )
