@@ -462,7 +462,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                             ]
                             
                             # Detect ABCD pattern
-                            pattern = pattern_svc.detect_abcd(candle_dicts, lookback=30)
+                            pattern = pattern_svc.detect_abcd(candle_dicts, lookback=30, symbol=symbol)
                             
                             if pattern:
                                 watched.abcd_pattern = pattern
@@ -1220,7 +1220,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                             ]
                             
                             # Detect ABCD pattern
-                            pattern = pattern_svc.detect_abcd(candle_dicts, lookback=30)
+                            pattern = pattern_svc.detect_abcd(candle_dicts, lookback=30, symbol=symbol)
                             
                             if pattern:
                                 watched.abcd_pattern = pattern
@@ -1290,7 +1290,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                 pass
                             
                             # Detect Cup & Handle pattern
-                            pattern = pattern_svc.detect_cup_handle(candle_dicts, vwap=vwap, lookback=40)
+                            pattern = pattern_svc.detect_cup_handle(candle_dicts, vwap=vwap, lookback=40, symbol=symbol)
                             
                             if pattern:
                                 watched.cup_handle_pattern = pattern

@@ -155,6 +155,7 @@ class PatternService:
         candles: List[Dict[str, Any]],
         lookback: int = 30,
         stop_buffer_cents: int = 5,
+        symbol: Optional[str] = None,
     ) -> Optional[ABCDPattern]:
         """
         Detect ABCD pattern in recent candles (Ross Cameron cold-day strategy).
@@ -350,8 +351,9 @@ class PatternService:
             logger.debug(f"[Pattern] ABCD rejected - confidence {confidence:.2f} < 0.40")
             return None
         
+        sym_prefix = f"{symbol}: " if symbol else ""
         logger.info(
-            f"[Pattern] ABCD DETECTED - A=${a_low:.2f} @ idx {a_idx}, "
+            f"[Pattern] {sym_prefix}ABCD DETECTED - A=${a_low:.2f} @ idx {a_idx}, "
             f"B=${b_high:.2f} @ idx {b_idx}, C=${c_low:.2f} @ idx {c_idx}, "
             f"D/Entry=${d_breakout:.2f}, Stop=${stop_price:.2f}, Target=${target_price:.2f}, "
             f"R:R={risk_reward:.1f}, Confidence={confidence:.2f}"
@@ -412,6 +414,7 @@ class PatternService:
         vwap: Optional[Decimal] = None,
         lookback: int = 40,
         stop_buffer_cents: int = 5,
+        symbol: Optional[str] = None,
     ) -> Optional[CupHandlePattern]:
         """
         Detect Cup & Handle pattern (Ross Cameron Jan 30 2026 LRHC trade).
@@ -568,8 +571,9 @@ class PatternService:
             logger.debug(f"[Pattern] Cup & Handle rejected - confidence {confidence:.2f} < 0.40")
             return None
         
+        sym_prefix = f"{symbol}: " if symbol else ""
         logger.info(
-            f"[Pattern] CUP & HANDLE DETECTED - "
+            f"[Pattern] {sym_prefix}CUP & HANDLE DETECTED - "
             f"Left=${cup_left_high:.2f} @ idx {cup_left_idx}, "
             f"Cup Low=${cup_low:.2f} @ idx {cup_low_idx}, "
             f"Right=${cup_right_high:.2f} @ idx {cup_right_idx}, "
