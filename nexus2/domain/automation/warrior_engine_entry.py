@@ -348,6 +348,9 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         for c in candles:
                             bar_time = getattr(c, 'time', '') or ''
                             if not bar_time:
+                                # LIVE MODE FIX: Bars from Alpaca don't have .time attribute
+                                # Default to including them since Alpaca returns today's bars
+                                today_candles.append(c)
                                 continue
                             try:
                                 hour = int(bar_time.split(':')[0])
@@ -363,8 +366,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                                         if 4 <= hour <= current_hour:
                                             today_candles.append(c)
                                 else:
-                                    # Fallback: include 4-16 but exclude clear continuity (15-16 during early AM)
-                                    if 4 <= hour < 10:  # Safe premarket range
+                                    # LIVE MODE: Include all today's session bars (4 AM - 8 PM)
+                                    if 4 <= hour <= 20:
                                         today_candles.append(c)
                             except (ValueError, IndexError):
                                 today_candles.append(c)
