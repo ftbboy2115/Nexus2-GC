@@ -94,7 +94,7 @@ class TestWarriorMonitorIntegration:
         
         settings = WarriorMonitorSettings()
         
-        assert settings.mental_stop_cents == Decimal("15")
+        assert settings.mental_stop_cents == Decimal("50")
         assert settings.profit_target_r == 2.0
         assert settings.partial_exit_fraction == 0.5
         assert settings.enable_candle_under_candle is True
@@ -124,8 +124,8 @@ class TestWarriorMonitorIntegration:
         assert positions[0].symbol == "TEST"
         assert positions[0].entry_price == Decimal("5.00")
         
-        # Mental stop should be entry - 15 cents
-        assert positions[0].mental_stop == Decimal("4.85")
+        # Mental stop should be entry - 50 cents (updated default)
+        assert positions[0].mental_stop == Decimal("4.50")
     
     def test_monitor_remove_position(self):
         """Monitor should remove positions correctly."""
@@ -186,8 +186,8 @@ class TestWarriorEngineIntegration:
         
         config = WarriorEngineConfig()
         
-        assert config.market_open == dt_time(9, 30)
-        assert config.trading_window_end == dt_time(11, 30)
+        assert config.market_open == dt_time(4, 0)  # Premarket enabled
+        assert config.trading_window_end == dt_time(19, 30)  # Extended hours
         assert config.risk_per_trade == Decimal("125")  # Updated for testing
         assert config.max_positions == 10  # Updated for testing
         assert config.max_daily_loss == Decimal("999999")  # Disabled for testing
