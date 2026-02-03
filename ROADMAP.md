@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-01-27
+Last updated: 2026-02-03
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -83,9 +83,11 @@ Last updated: 2026-01-27
     6. Update tests to use async fixtures
   - **Estimated Effort:** 3-4 hours
   - **Priority:** Medium (quick fix deployed, but proper async is cleaner)
-- [ ] **Large File Audit** — Find files >600 lines and plan refactoring
-  - `warrior_engine_entry.py` is now ~1180 lines after micro-pullback additions
-  - Look for extraction opportunities (functions → modules)
+- [x] **Large File Audit** — Find files >600 lines and plan refactoring (Feb 3)
+  - `warrior_engine_entry.py` reduced from 2605 → 2181 lines (16% smaller)
+  - Extracted 4 pattern detection functions to `warrior_entry_patterns.py`
+  - Extracted guards, sizing, execution helpers to separate modules
+  - Scanner god function (`_evaluate_symbol`) refactored with EvaluationContext
   - Target: No file >600 lines for maintainability
 
 ---
@@ -330,6 +332,13 @@ Last updated: 2026-01-27
   - [x] `warrior_engine_types.py` (130 lines) - Enums & dataclasses
   - [x] `warrior_engine_entry.py` (580 lines) - Entry triggers & execution
   - [x] `warrior_engine.py` (694 lines) - Core orchestration (48% reduction)
+- [x] **Phase 2 Codebase Audit & Refactoring** — COMPLETE (Feb 3)
+  - [x] Multi-agent audit of 5 domains (Warrior, Scanner, Market Data, NAC, Shared)
+  - [x] Pattern extraction: ABCD, whole/half, dip-for-level, PMH → `warrior_entry_patterns.py`
+  - [x] Entry helpers: guards, sizing, execution → 3 new modules
+  - [x] Scanner: `_evaluate_symbol` god function → 12 helpers via EvaluationContext
+  - [x] Dead code: `alpaca_streaming.py` removed (0 imports)
+  - [x] Test fixes: 24/24 warrior engine tests passing
 - [x] **Configure Gemini MCP** — DONE: Updated to google.genai package, set user env var
 - [ ] **Parabolic Ride Exit Mode** — NEW exit_mode for riding runners (Feb 1)
   - **Problem:** Current exit modes (base_hit, home_run) exit too early on parabolic movers
