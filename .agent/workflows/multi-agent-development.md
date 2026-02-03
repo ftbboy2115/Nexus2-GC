@@ -47,18 +47,42 @@ Trading methodology definitions live in `.agent/strategies/`:
 ### Pattern 1: Domain-Specialist Agents
 Run separate agents in the Agent Manager, each focused on a domain:
 
+---
+
+## Nexus 2 Specialist Agent Registry
+
+| Agent | Rule File | Scope | Key Constraint |
+|-------|-----------|-------|----------------|
+| **Testing Specialist** | `agent-testing-specialist.md` | `nexus2/tests/` | READ ONLY for impl code |
+| **Frontend Specialist** | `agent-frontend-specialist.md` | `frontend/src/` | Defer API changes to Backend |
+| **Backend Specialist** | `agent-backend-specialist.md` | `nexus2/api/`, `nexus2/domain/` | Owns core logic |
+| **Mock Market Specialist** | `agent-mock-market-specialist.md` | `adapters/simulation/` | Stay in SIM sandbox |
+| **Coordinator** | `agent-coordinator.md` | Knowledge, workflows | Root Cause Fidelity |
+| **Code Auditor** | `agent-code-auditor.md` | All code (P0 priority) | READ ONLY, no fixes |
+| **Audit Validator** | `handoff_audit_validator_template.md` | Audit reports | Verify claims only |
+| **Strategy Expert** | `agent-strategy-expert.md` | Trading methodology | Source-grounded research |
+| **Algo Specialist** | `agent-algo-specialist.md` | R&D Lab, backtest | Experimental only |
+
+### Refactoring Sub-Specialists (Feb 2026)
+
+These specialists emerged during Phase 2 refactoring:
+
+| Agent | Focus | Example Tasks |
+|-------|-------|---------------|
+| **Entry Specialist** | Entry trigger logic | Pattern extraction, wiring, guards |
+| **Exit/Monitor Specialist** | Exit logic, position monitoring | Stop logic, scaling, base hit |
+| **Core Services Specialist** | Shared infrastructure | Broker adapters, risk engine |
+
+**Handoff Pattern**: Create `handoff_[specialist].md` with specific task details before spawning.
+
+---
+
+### Deployment Command
+
+To spawn a specialist:
 ```
-Agent 1: "Backend Specialist"
-- Focus: FastAPI routes, domain logic, database
-- Workspace: Nexus (focused on /api, /domain)
-
-Agent 2: "Frontend Specialist"  
-- Focus: React/Next.js UI, TypeScript
-- Workspace: Nexus (focused on /frontend)
-
-Agent 3: "Testing & Verification"
-- Focus: Writing tests, running backtests
-- Workspace: Nexus (focused on /tests, /domain/lab)
+CTRL+E → New Conversation → Paste:
+"Read @agent-[role]-specialist.md and implement [Task] as defined in [Plan]."
 ```
 
 ### Pattern 2: Task-Parallel Agents
@@ -87,6 +111,16 @@ Agent 2: "Implementer" (EXECUTION mode)
 ---
 
 ## Best Practices
+
+### Post-Refactor Verification (CRITICAL)
+After any extraction + wiring refactoring:
+1. **Grep verify**: Check each function is CALLED (not just imported)
+2. **Import/Call matrix**: Document "Imported at Line X, Called at Line Y"
+3. **Runtime smoke test**: `python -c "from module import func; print('OK')"`
+
+See: `.agent/rules/refactoring-verification-standard.md` for full protocol.
+
+> **Feb 2026 Lesson**: ABCD pattern was imported but never wired, causing production error.
 
 ### Conflict Prevention
 - **One agent per file at a time** – Avoid agents editing the same file concurrently
