@@ -48,10 +48,11 @@ formatter = ETFormatter(log_format)
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
 
-# Console handler (original behavior)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-root_logger.addHandler(console_handler)
+# Console handler - DISABLED to prevent duplicate logs when stderr is redirected
+# to the same log file by tmux/nohup. Uncomment for local development.
+# console_handler = logging.StreamHandler()
+# console_handler.setFormatter(formatter)
+# root_logger.addHandler(console_handler)
 
 # File handler - auto-rotates at 10MB, keeps 5 backups
 file_handler = RotatingFileHandler(
