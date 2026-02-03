@@ -43,11 +43,23 @@ from nexus2.domain.automation.warrior_entry_patterns import (
     detect_dip_for_level,
     detect_pmh_break,
     check_micro_pullback_entry as _check_micro_pullback_pattern,
+    # Phase 3 extraction - additional patterns
+    detect_pullback_pattern,
+    detect_bull_flag_pattern,
+    detect_vwap_break_pattern,
+    detect_inverted_hs_pattern,
+    detect_cup_handle_pattern,
+)
+
+# Helper functions (Phase 3 extraction)
+from nexus2.domain.automation.warrior_entry_helpers import (
+    update_candidate_technicals,
 )
 
 # Entry guard functions (consolidated guard checks)
 from nexus2.domain.automation.warrior_entry_guards import (
     check_entry_guards,
+    validate_technicals,
     _check_macd_gate,
     _check_position_guards,
     _check_spread_filter,
@@ -69,6 +81,7 @@ from nexus2.domain.automation.warrior_entry_execution import (
     calculate_slippage,
     extract_order_status,
     scale_into_existing_position as _scale_into_position,
+    complete_entry,
 )
 
 if TYPE_CHECKING:
@@ -368,103 +381,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             
             # UPDATE VWAP/EMA TRACKING for dynamic_score (TOP_PICK_ONLY uses this)
             # Calculate once per cycle, reuse for entry guard later
-            watched.current_price = current_price
-            if engine._get_intraday_bars:
-                try:
-                    candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-                    if candles and len(candles) >= 10:
-                        from nexus2.domain.indicators import get_technical_service
-                        from datetime import datetime, timezone
-                        tech = get_technical_service()
-                        
-                        # CRITICAL FIX (Feb 1 2026): Dual calculation approach
-                        # - MACD/EMA need ALL bars (including continuity) for warm-up at market open
-                        # - VWAP should only use TODAY's session bars (resets daily)
-                        
-                        # Get current simulation time to determine session phase
-                        current_hour = None
-                        try:
-                            from nexus2.adapters.simulation.sim_clock import get_sim_clock
-                            clock = get_sim_clock()
-                            if clock.is_active():
-                                time_str = clock.get_time_string()  # "HH:MM"
-                                current_hour = int(time_str.split(':')[0])
-                        except Exception:
-                            pass
-                        
-                        # Filter for TODAY's session bars only
-                        # Premarket: hours 4-9 (exclude afternoon continuity bars 15-16 from yesterday)
-                        # Regular hours: hours 9-16
-                        today_candles = []
-                        for c in candles:
-                            bar_time = getattr(c, 'time', '') or ''
-                            if not bar_time:
-                                # LIVE MODE FIX: Bars from Alpaca don't have .time attribute
-                                # Default to including them since Alpaca returns today's bars
-                                today_candles.append(c)
-                                continue
-                            try:
-                                hour = int(bar_time.split(':')[0])
-                                
-                                # If we know current sim hour, filter appropriately
-                                if current_hour is not None:
-                                    if current_hour < 10:  # Premarket (04:00-09:59)
-                                        # Only include premarket bars (4-9), exclude afternoon (10+)
-                                        if 4 <= hour < 10:
-                                            today_candles.append(c)
-                                    else:  # Regular hours (10:00+)
-                                        # Include all today's bars up to current hour
-                                        if 4 <= hour <= current_hour:
-                                            today_candles.append(c)
-                                else:
-                                    # LIVE MODE: Include all today's session bars (4 AM - 8 PM)
-                                    if 4 <= hour <= 20:
-                                        today_candles.append(c)
-                            except (ValueError, IndexError):
-                                today_candles.append(c)
-                        
-                        # ALL candles for MACD/EMA (includes continuity)
-                        all_candle_dicts = [
-                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                            for c in candles
-                        ]
-                        
-                        # TODAY's candles only for VWAP
-                        today_candle_dicts = [
-                            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                            for c in today_candles
-                        ]
-                        
-                        # Get MACD/EMA from full history
-                        snapshot = tech.get_snapshot(symbol, all_candle_dicts, float(current_price))
-                        
-                        # Update EMA from full snapshot
-                        if snapshot.ema_9:
-                            watched.current_ema_9 = Decimal(str(snapshot.ema_9))
-                            watched.is_above_ema_9 = current_price > watched.current_ema_9
-                        watched.trend_updated_at = datetime.now(timezone.utc)
-                        
-                        # Calculate VWAP separately from today's bars only
-                        if len(today_candle_dicts) >= 5:
-                            vwap_snapshot = tech.get_snapshot(symbol, today_candle_dicts, float(current_price))
-                            if vwap_snapshot.vwap:
-                                watched.current_vwap = Decimal(str(vwap_snapshot.vwap))
-                                watched.is_above_vwap = current_price > watched.current_vwap
-                                logger.debug(
-                                    f"[Warrior Entry] {symbol}: VWAP=${vwap_snapshot.vwap:.2f} (from {len(today_candles)} today bars), "
-                                    f"price=${current_price:.2f}, above={watched.is_above_vwap}"
-                                )
-                            else:
-                                logger.info(f"[Warrior Entry] {symbol}: No VWAP in snapshot (today_candles={len(today_candles)})")
-                        else:
-                            logger.info(f"[Warrior Entry] {symbol}: Not enough today's candles for VWAP ({len(today_candles)} < 5)")
-                    else:
-                        candle_count = len(candles) if candles else 0
-                        logger.info(f"[Warrior Entry] {symbol}: Not enough candles for technicals ({candle_count} < 10)")
-                except Exception as e:
-                    logger.warning(f"[Warrior Entry] {symbol}: Trend update failed: {e}")
-            else:
-                logger.info(f"[Warrior Entry] {symbol}: _get_intraday_bars not set")
+            # REFACTORED: Extracted to warrior_entry_helpers.py
+            await update_candidate_technicals(engine, watched, current_price)
             
             # EXTENDED STOCK DETECTION: Use micro-pullback for stocks already up >100%
             # Ross methodology: Don't wait for PMH break on highly extended stocks
@@ -550,77 +468,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             
             if watched.entry_triggered:
                 # PULLBACK PATTERN (above PMH): Ross's "break through high after dip"
-                # When price has run above PMH, then pulls back from HOD
-                # Re-entry on "first candle to make new high" after pullback
-                if engine.config.pullback_enabled and watched.recent_high:
-                    pullback_pct = float(
-                        (watched.recent_high - current_price) / watched.recent_high * 100
-                    )
-                    watched.dip_from_high_pct = pullback_pct
-                    
-                    # Trigger if 2-10% pullback from HOD and near a level (or VWAP)
-                    if 2.0 <= pullback_pct <= 10.0:
-                        # Get levels including VWAP
-                        levels = engine._get_key_levels(current_price)
-                        
-                        # Fetch VWAP from technical service
-                        vwap = None
-                        if engine._get_intraday_bars:
-                            try:
-                                candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-                                if candles and len(candles) >= 5:
-                                    from nexus2.domain.indicators import get_technical_service
-                                    tech = get_technical_service()
-                                    candle_dicts = [
-                                        {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                                        for c in candles
-                                    ]
-                                    snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
-                                    if snapshot.vwap:
-                                        vwap = snapshot.vwap
-                                        levels.append(vwap)
-                            except Exception as e:
-                                logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
-                        
-                        # Check for entry near levels OR at VWAP support
-                        should_enter = False
-                        entry_reason = None
-                        
-                        # Pattern 1: VWAP BOUNCE - price sitting at/near VWAP support
-                        # Ross: "VWAP bounce on stock meeting 5 pillars"
-                        if vwap and current_price >= vwap:
-                            distance_above_vwap = int((current_price - vwap) * 100)
-                            if distance_above_vwap <= 15:  # Within 15c above VWAP
-                                should_enter = True
-                                entry_reason = f"VWAP bounce (${vwap:.2f})"
-                        
-                        # Pattern 2: Near round-number level above
-                        if not should_enter:
-                            levels_above = [l for l in levels if l > current_price]
-                            if levels_above:
-                                nearest_level = min(levels_above)
-                                distance_cents = int((nearest_level - current_price) * 100)
-                                vwap_proximity = 15 if vwap and nearest_level == vwap else engine.config.level_proximity_cents
-                                
-                                if distance_cents <= vwap_proximity:
-                                    should_enter = True
-                                    entry_reason = f"${nearest_level}" if nearest_level != vwap else "VWAP"
-                                    watched.target_level = nearest_level
-                        
-                        if should_enter:
-                            watched.entry_triggered = False  # Reset to allow re-entry
-                            watched.entry_attempt_count += 1
-                            logger.info(
-                                f"[Warrior Entry] {symbol}: PULLBACK pattern "
-                                f"(HOD=${watched.recent_high:.2f}, dip {pullback_pct:.1f}%, "
-                                f"target {entry_reason})"
-                            )
-                            await enter_position(
-                                engine,
-                                watched,
-                                current_price,
-                                EntryTriggerType.PULLBACK
-                            )
+                # REFACTORED: Extracted to warrior_entry_patterns.py
+                pullback_trigger = await detect_pullback_pattern(engine, watched, current_price)
+                if pullback_trigger:
+                    await enter_position(engine, watched, current_price, pullback_trigger)
                 continue  # Already entered this breakout
             
             # ORB trigger at 9:30
@@ -644,191 +495,20 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         EntryTriggerType.ORB
                     )
             
-            # BULL FLAG - Ross Cameron: "First green after pullback"
-            # Pattern: 2+ consecutive red candles (pullback), then first green candle
-            # breaks above the previous candle's high
-            if engine.config.bull_flag_enabled and not watched.entry_triggered:
-                if engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
-                        if candles and len(candles) >= 3:
-                            # Analyze recent candles for bull flag pattern
-                            # candles[-1] = current, candles[-2] = previous, etc.
-                            current_candle = candles[-1]
-                            prev_candle = candles[-2]
-                            
-                            # Determine candle colors (green = close > open)
-                            current_is_green = current_candle.close > current_candle.open
-                            prev_is_green = prev_candle.close > prev_candle.open
-                            
-                            # Track consecutive red candles
-                            if not prev_is_green:
-                                # Count how many red candles in a row before this
-                                red_count = 0
-                                for i in range(len(candles) - 2, -1, -1):  # Walk back from prev
-                                    c = candles[i]
-                                    if c.close < c.open:  # Red candle
-                                        red_count += 1
-                                    else:
-                                        break  # Hit a green, stop counting
-                                watched.consecutive_red_candles = red_count
-                            
-                            # Bull flag trigger: First green after 2+ red candles,
-                            # AND current price > previous candle high (breakout)
-                            if (current_is_green and 
-                                watched.consecutive_red_candles >= 2 and
-                                current_price > Decimal(str(prev_candle.high))):
-                                
-                                logger.info(
-                                    f"[Warrior Entry] {symbol}: BULL FLAG at ${current_price:.2f} "
-                                    f"(first green after {watched.consecutive_red_candles} red candles, "
-                                    f"break of prev high ${prev_candle.high:.2f})"
-                                )
-                                watched.consecutive_red_candles = 0  # Reset for next detection
-                                await enter_position(
-                                    engine,
-                                    watched,
-                                    current_price,
-                                    EntryTriggerType.BULL_FLAG
-                                )
-                            
-                            # Update tracking for next iteration
-                            watched.last_candle_was_green = current_is_green
-                    except Exception as e:
-                        logger.debug(f"[Warrior Entry] {symbol}: Bull flag check failed: {e}")
+            # BULL FLAG - REFACTORED: Extracted to warrior_entry_patterns.py
+            bull_flag_trigger = await detect_bull_flag_pattern(engine, watched, current_price)
+            if bull_flag_trigger:
+                await enter_position(engine, watched, current_price, bull_flag_trigger)
             
-            # VWAP BREAK - Ross Cameron (Jan 20 2026): "I took this trade for the break through VWAP"
-            # Pattern: Stock pulls back below VWAP, consolidates, then breaks back above
-            # This is distinct from VWAP_RECLAIM (which is reclaiming after losing VWAP)
-            # PATTERN COMPETITION: Only check if setup_type matches
-            should_check_vwap_break = setup_type is None or setup_type == "vwap_break"
-            if engine.config.vwap_break_enabled and not watched.entry_triggered and should_check_vwap_break:
-                # Get current VWAP
-                vwap = None
-                if engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-                        if candles and len(candles) >= 5:
-                            from nexus2.domain.indicators import get_technical_service
-                            tech = get_technical_service()
-                            candle_dicts = [
-                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                                for c in candles
-                            ]
-                            snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
-                            if snapshot.vwap:
-                                vwap = Decimal(str(snapshot.vwap))
-                    except Exception as e:
-                        logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
-                
-                if vwap:
-                    # Track when price is below VWAP (setup for break)
-                    if current_price < vwap:
-                        if not watched.last_below_vwap:
-                            logger.debug(f"[Warrior Entry] {symbol}: Below VWAP ${vwap:.2f} - ready for break")
-                        watched.last_below_vwap = True
-                    
-                    # VWAP BREAK: Price crosses above VWAP after being below
-                    elif current_price >= vwap and watched.last_below_vwap:
-                        # Require price to be at least 5c above VWAP for confirmation
-                        buffer_above_vwap = Decimal("0.05")
-                        if current_price >= vwap + buffer_above_vwap:
-                            # FALLING KNIFE FILTER: Block on fading/weak stocks
-                            if candles and len(candles) >= 20:
-                                is_falling, reason = check_falling_knife(current_price, snapshot)
-                                if is_falling:
-                                    logger.info(
-                                        f"[Warrior Entry] {symbol}: VWAP BREAK blocked (FALLING KNIFE) - {reason}"
-                                    )
-                                    watched.last_below_vwap = False
-                                    continue
-                            
-                            # VOLUME CONFIRMATION: Break bar must have volume expansion
-                            vol_confirmed, curr_vol, avg_vol = check_volume_confirmed(candles)
-                            if not vol_confirmed:
-                                logger.info(
-                                    f"[Warrior Entry] {symbol}: VWAP BREAK blocked (LOW VOLUME) - "
-                                    f"bar vol {curr_vol:,} < avg {avg_vol:,.0f}"
-                                )
-                                # Don't reset last_below_vwap - wait for volume on next bar
-                                continue
-                            
-                            # HIGH VOLUME RED CANDLE FILTER: Block on distribution bars
-                            # Ross Cameron: "high volume red candle is a red flag literally"
-                            is_red_flag, red_vol, red_avg = check_high_volume_red_candle(candles)
-                            if is_red_flag:
-                                logger.info(
-                                    f"[Warrior Entry] {symbol}: VWAP BREAK blocked (HIGH VOL RED) - "
-                                    f"red bar vol {red_vol:,} >= 1.5x avg {red_avg:,.0f}"
-                                )
-                                watched.last_below_vwap = False
-                                continue
-                            
-                            logger.info(
-                                f"[Warrior Entry] {symbol}: VWAP BREAK at ${current_price:.2f} "
-                                f"(VWAP=${vwap:.2f}, vol={curr_vol:,})"
-                            )
-                            watched.last_below_vwap = False  # Reset for next break
-                            await enter_position(
-                                engine,
-                                watched,
-                                current_price,
-                                EntryTriggerType.VWAP_BREAK
-                            )
+            # VWAP BREAK - REFACTORED: Extracted to warrior_entry_patterns.py
+            vwap_break_trigger = await detect_vwap_break_pattern(engine, watched, current_price, setup_type)
+            if vwap_break_trigger:
+                await enter_position(engine, watched, current_price, vwap_break_trigger)
             
-            # INVERTED HEAD & SHOULDERS - Ross Cameron (Jan 28 2026): SXTP for +$1,900
-            # Pattern: Left Shoulder → Head (lowest) → Right Shoulder → Neckline break
-            # Entry: When price breaks above neckline with volume confirmation
-            if engine.config.inverted_hs_enabled and not watched.entry_triggered:
-                if engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-                        if candles and len(candles) >= 15:
-                            from nexus2.domain.indicators.pattern_service import get_pattern_service
-                            pattern_svc = get_pattern_service()
-                            
-                            candle_dicts = [
-                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                                for c in candles
-                            ]
-                            
-                            # Detect pattern
-                            pattern = pattern_svc.detect_inverted_hs(candle_dicts, lookback=20)
-                            
-                            if pattern:
-                                watched.inverted_hs_pattern = pattern
-                                from datetime import datetime, timezone
-                                watched.inverted_hs_detected_at = datetime.now(timezone.utc)
-                                
-                                # Check for neckline breakout with volume
-                                if pattern.is_breakout(current_price, buffer_cents=5):
-                                    # Volume confirmation: current bar should have higher volume
-                                    current_bar_vol = candles[-1].volume if candles else 0
-                                    prior_bar_vol = candles[-2].volume if len(candles) >= 2 else 0
-                                    avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else prior_bar_vol
-                                    
-                                    # Require volume above average or higher than prior bar
-                                    vol_confirmed = current_bar_vol >= avg_vol or current_bar_vol > prior_bar_vol
-                                    
-                                    if vol_confirmed:
-                                        logger.info(
-                                            f"[Warrior Entry] {symbol}: INVERTED H&S BREAKOUT at ${current_price:.2f} "
-                                            f"(neckline=${pattern.neckline:.2f}, head=${pattern.head_low:.2f}, "
-                                            f"confidence={pattern.confidence:.2f}, vol={current_bar_vol:,})"
-                                        )
-                                        await enter_position(
-                                            engine,
-                                            watched,
-                                            current_price,
-                                            EntryTriggerType.INVERTED_HS
-                                        )
-                                    else:
-                                        logger.debug(
-                                            f"[Warrior Entry] {symbol}: Inverted H&S neckline break "
-                                            f"but volume not confirmed ({current_bar_vol:,} < avg {avg_vol:,.0f})"
-                                        )
-                    except Exception as e:
-                        logger.debug(f"[Warrior Entry] {symbol}: Inverted H&S check failed: {e}")
+            # INVERTED HEAD & SHOULDERS - REFACTORED: Extracted to warrior_entry_patterns.py
+            inverted_hs_trigger = await detect_inverted_hs_pattern(engine, watched, current_price)
+            if inverted_hs_trigger:
+                await enter_position(engine, watched, current_price, inverted_hs_trigger)
             
             # ABCD PATTERN - REFACTORED: moved to warrior_entry_patterns.py
             # Uses extracted detect_abcd_pattern() function
@@ -837,70 +517,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             if abcd_trigger:
                 await enter_position(engine, watched, current_price, abcd_trigger)
             
-            # CUP & HANDLE VWAP BREAK - Ross Cameron (Jan 30 2026): LRHC for +$3,686
-            # Consolidation pattern that breaks through resistance (often VWAP):
-            # Left rim → Cup low → Right rim → Handle pullback → Breakout
-            # Entry: When price breaks above handle high through VWAP
-            if engine.config.cup_handle_enabled and not watched.entry_triggered:
-                if engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
-                        if candles and len(candles) >= 20:
-                            from nexus2.domain.indicators.pattern_service import get_pattern_service, CupHandlePattern
-                            from nexus2.domain.indicators import get_technical_service
-                            pattern_svc = get_pattern_service()
-                            
-                            candle_dicts = [
-                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                                for c in candles
-                            ]
-                            
-                            # Get VWAP for context (Cup & Handle VWAP Break)
-                            vwap = None
-                            try:
-                                tech = get_technical_service()
-                                snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
-                                if snapshot.vwap:
-                                    vwap = Decimal(str(snapshot.vwap))
-                            except:
-                                pass
-                            
-                            # Detect Cup & Handle pattern
-                            pattern = pattern_svc.detect_cup_handle(candle_dicts, vwap=vwap, lookback=40, symbol=symbol)
-                            
-                            if pattern:
-                                watched.cup_handle_pattern = pattern
-                                from datetime import datetime, timezone
-                                watched.cup_handle_detected_at = datetime.now(timezone.utc)
-                                
-                                # Check for breakout (price breaks above handle high)
-                                if pattern.is_breakout(current_price, buffer_cents=5):
-                                    # Volume confirmation
-                                    current_bar_vol = candles[-1].volume if candles else 0
-                                    avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else 0
-                                    vol_confirmed = current_bar_vol >= avg_vol * 0.8
-                                    
-                                    if vol_confirmed:
-                                        vwap_info = f", VWAP=${vwap:.2f}" if vwap else ""
-                                        logger.info(
-                                            f"[Warrior Entry] {symbol}: CUP & HANDLE BREAKOUT at ${current_price:.2f} "
-                                            f"(cup low=${pattern.cup_low:.2f}, breakout=${pattern.breakout_level:.2f}{vwap_info}, "
-                                            f"stop=${pattern.stop_price:.2f}, target=${pattern.target_price:.2f}, "
-                                            f"conf={pattern.confidence:.2f})"
-                                        )
-                                        await enter_position(
-                                            engine,
-                                            watched,
-                                            current_price,
-                                            EntryTriggerType.CUP_HANDLE
-                                        )
-                                    else:
-                                        logger.debug(
-                                            f"[Warrior Entry] {symbol}: Cup & Handle breakout "
-                                            f"but volume not confirmed ({current_bar_vol:,} < avg {avg_vol:,.0f})"
-                                        )
-                    except Exception as e:
-                        logger.debug(f"[Warrior Entry] {symbol}: Cup & Handle check failed: {e}")
+            # CUP & HANDLE - REFACTORED: Extracted to warrior_entry_patterns.py
+            cup_handle_trigger = await detect_cup_handle_pattern(engine, watched, current_price)
+            if cup_handle_trigger:
+                await enter_position(engine, watched, current_price, cup_handle_trigger)
                     
         except Exception as e:
             logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")
@@ -1294,105 +914,12 @@ async def enter_position(
     current_ask = getattr(watched, '_spread_check_ask', None)
     
     # =========================================================================
-    # TECHNICAL VALIDATION
+    # TECHNICAL VALIDATION (via extracted module)
     # =========================================================================
-    
-    # Technical Validation: Check VWAP/EMA alignment per Ross Cameron
-    # Entry should be above VWAP and near 9 EMA support
-    if engine._get_intraday_bars:
-        try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
-            if candles and len(candles) >= 10:
-                from nexus2.domain.indicators import get_technical_service
-                tech = get_technical_service()
-                
-                # CRITICAL FIX (Feb 1 2026): Filter out continuity bars for VWAP
-                # Continuity bars from previous day EOD (15:00-16:00) distort VWAP
-                # VWAP should only use TODAY's session bars
-                current_hour = None
-                try:
-                    from nexus2.adapters.simulation.sim_clock import get_sim_clock
-                    clock = get_sim_clock()
-                    if clock.is_active():
-                        time_str = clock.get_time_string()
-                        current_hour = int(time_str.split(':')[0])
-                except Exception:
-                    pass
-                
-                # Filter for today's session bars only (VWAP calculation)
-                today_candles = []
-                for c in candles:
-                    bar_time = getattr(c, 'time', '') or ''
-                    if not bar_time:
-                        continue
-                    try:
-                        hour = int(bar_time.split(':')[0])
-                        if current_hour is not None:
-                            if current_hour < 10:  # Premarket
-                                if 4 <= hour < 10:
-                                    today_candles.append(c)
-                            else:  # Regular hours
-                                if 4 <= hour <= current_hour:
-                                    today_candles.append(c)
-                        else:
-                            if 4 <= hour < 10:
-                                today_candles.append(c)
-                    except (ValueError, IndexError):
-                        today_candles.append(c)
-                
-                # Use filtered candles for VWAP
-                vwap_candle_dicts = [
-                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                    for c in today_candles
-                ] if today_candles else []
-                
-                # Use ALL candles for MACD/EMA (needs continuity for warm-up)
-                all_candle_dicts = [
-                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                    for c in candles
-                ]
-                
-                # Get VWAP from today's bars only
-                vwap_snapshot = tech.get_snapshot(symbol, vwap_candle_dicts, entry_price) if vwap_candle_dicts else None
-                # Get MACD/EMA from all bars (includes continuity)
-                snapshot = tech.get_snapshot(symbol, all_candle_dicts, entry_price)
-                
-                # Check: price should be above VWAP (Ross Cameron rule)
-                # Use vwap_snapshot (today's bars only) for accurate session VWAP
-                actual_vwap = vwap_snapshot.vwap if vwap_snapshot else snapshot.vwap
-                if actual_vwap and entry_price < actual_vwap:
-                    logger.warning(
-                        f"[Warrior Entry] {symbol}: REJECTED - below VWAP "
-                        f"(${entry_price:.2f} < VWAP ${actual_vwap:.2f})"
-                    )
-                    # NOTE: Do NOT set entry_triggered=True here - VWAP is a temporary condition
-                    # that can change. We want to re-check on next tick if price moves above VWAP.
-                    return
-                
-                # Check: price should be above 9 EMA (within 1% tolerance)
-                if snapshot.ema_9 and entry_price < snapshot.ema_9 * Decimal("0.99"):
-                    logger.warning(
-                        f"[Warrior Entry] {symbol}: REJECTED - below 9 EMA "
-                        f"(${entry_price:.2f} < 9EMA ${snapshot.ema_9:.2f})"
-                    )
-                    # NOTE: Do NOT set entry_triggered=True here - 9 EMA is a temporary condition
-                    return
-                
-                # Log technical confirmation
-                logger.info(
-                    f"[Warrior Entry] {symbol}: Technical OK - "
-                    f"VWAP=${f'{actual_vwap:.2f}' if actual_vwap else 'N/A'}, "
-                    f"9EMA=${f'{snapshot.ema_9:.2f}' if snapshot.ema_9 else 'N/A'}, "
-                    f"MACD={snapshot.macd_crossover}"
-                )
-        except Exception as e:
-            # FAIL-CLOSED: Cannot verify technicals - block entry
-            logger.warning(
-                f"[Warrior Entry] {symbol}: FAIL-CLOSED - Technical check failed: {e}. "
-                f"Cannot verify VWAP/EMA/MACD, blocking entry."
-            )
-            watched.entry_triggered = True  # Mark as triggered to prevent retries
-            return
+    tech_valid, tech_reason = await validate_technicals(engine, watched, entry_price)
+    if not tech_valid:
+        # NOTE: validate_technicals handles logging and entry_triggered flag for FAIL-CLOSED
+        return
     
     # Check if we can open new position (max positions, daily loss)
     if not await engine._can_open_position():
@@ -1734,53 +1261,9 @@ async def enter_position(
             if order_status and order_status.lower() not in ("filled", "partially_filled"):
                 return
             
-            # CRITICAL: Use ACTUAL fill price from Alpaca, not intended entry
-            # This prevents immediate stop-outs when market price differs from quote
-            # 
-            # ISSUE: Alpaca may return status="filled" but filled_avg_price=NULL
-            # in the immediate response. We must poll to get the actual fill price.
-            actual_fill_price = entry_price  # Default to intended price
-            slippage_cents = Decimal("0")  # Track slippage
             
-            # Try to get fill price from order result first
-            if hasattr(order_result, 'filled_avg_price') and order_result.filled_avg_price:
-                actual_fill_price = Decimal(str(order_result.filled_avg_price))
-            elif isinstance(order_result, dict) and order_result.get("filled_avg_price"):
-                actual_fill_price = Decimal(str(order_result["filled_avg_price"]))
-            else:
-                # Fill price not in immediate response - poll for it
-                # This fixes the phantom quote entry price bug (e.g., DVLT $5.44 -> $0.96)
-                logger.info(f"[Warrior Entry] {symbol}: Fill price null in response, polling for actual fill...")
-                
-                broker_order_id = None
-                if hasattr(order_result, 'broker_order_id'):
-                    broker_order_id = order_result.broker_order_id
-                elif isinstance(order_result, dict):
-                    broker_order_id = order_result.get("id") or order_result.get("broker_order_id")
-                
-                if broker_order_id and engine._get_order_status:
-                    import asyncio
-                    for attempt in range(5):  # Max 5 attempts, 500ms each = 2.5s max
-                        await asyncio.sleep(0.5)  # Wait 500ms before polling
-                        try:
-                            order_detail = await engine._get_order_status(broker_order_id)
-                            if order_detail:
-                                fill_price = getattr(order_detail, 'avg_fill_price', None)
-                                if fill_price and fill_price > 0:
-                                    actual_fill_price = Decimal(str(fill_price))
-                                    filled_qty = getattr(order_detail, 'filled_quantity', filled_qty) or filled_qty
-                                    logger.info(
-                                        f"[Warrior Entry] {symbol}: Got fill price on attempt {attempt+1}: "
-                                        f"${actual_fill_price:.4f}"
-                                    )
-                                    break
-                        except Exception as poll_err:
-                            logger.debug(f"[Warrior Entry] {symbol}: Poll attempt {attempt+1} failed: {poll_err}")
-                    else:
-                        logger.warning(
-                            f"[Warrior Entry] {symbol}: Could not get fill price after 5 attempts, "
-                            f"using quote price ${entry_price:.4f}"
-                        )
+            # NOTE: Fill price has already been polled above (lines 1177-1225)
+            # actual_fill_price is already set from the poll loop
             
             # Ensure Decimal types for all arithmetic (actual_fill_price may be float from MockBroker)
             actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price

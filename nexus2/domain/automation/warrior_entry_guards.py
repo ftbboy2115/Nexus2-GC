@@ -293,3 +293,136 @@ async def _check_spread_filter(
         logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - proceeding")
     
     return True, "", current_ask
+
+
+# =============================================================================
+# TECHNICAL VALIDATION (VWAP/EMA Gates)
+# =============================================================================
+
+
+async def validate_technicals(
+    engine: "WarriorEngine",
+    watched: WatchedCandidate,
+    entry_price: Decimal,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Validate technical conditions for entry (VWAP/EMA alignment).
+    
+    Technical Validation per Ross Cameron:
+    - Entry should be above VWAP
+    - Entry should be above 9 EMA (within 1% tolerance)
+    
+    Args:
+        engine: The WarriorEngine instance
+        watched: The watched candidate to validate
+        entry_price: Proposed entry price
+    
+    Returns:
+        (True, None) if technicals OK
+        (False, rejection_reason) if failed
+    """
+    symbol = watched.candidate.symbol
+    
+    if not engine._get_intraday_bars:
+        # Cannot validate - proceed with caution
+        return True, None
+    
+    try:
+        candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
+        if not candles or len(candles) < 10:
+            # Not enough data - proceed with caution
+            return True, None
+        
+        from nexus2.domain.indicators import get_technical_service
+        tech = get_technical_service()
+        
+        # CRITICAL FIX (Feb 1 2026): Filter out continuity bars for VWAP
+        # Continuity bars from previous day EOD (15:00-16:00) distort VWAP
+        # VWAP should only use TODAY's session bars
+        current_hour = None
+        try:
+            from nexus2.adapters.simulation.sim_clock import get_sim_clock
+            clock = get_sim_clock()
+            if clock.is_active():
+                time_str = clock.get_time_string()
+                current_hour = int(time_str.split(':')[0])
+        except Exception:
+            pass
+        
+        # Filter for today's session bars only (VWAP calculation)
+        today_candles = []
+        for c in candles:
+            bar_time = getattr(c, 'time', '') or ''
+            if not bar_time:
+                continue
+            try:
+                hour = int(bar_time.split(':')[0])
+                if current_hour is not None:
+                    if current_hour < 10:  # Premarket
+                        if 4 <= hour < 10:
+                            today_candles.append(c)
+                    else:  # Regular hours
+                        if 4 <= hour <= current_hour:
+                            today_candles.append(c)
+                else:
+                    if 4 <= hour < 10:
+                        today_candles.append(c)
+            except (ValueError, IndexError):
+                today_candles.append(c)
+        
+        # Use filtered candles for VWAP
+        vwap_candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in today_candles
+        ] if today_candles else []
+        
+        # Use ALL candles for MACD/EMA (needs continuity for warm-up)
+        all_candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in candles
+        ]
+        
+        # Get VWAP from today's bars only
+        vwap_snapshot = tech.get_snapshot(symbol, vwap_candle_dicts, entry_price) if vwap_candle_dicts else None
+        # Get MACD/EMA from all bars (includes continuity)
+        snapshot = tech.get_snapshot(symbol, all_candle_dicts, entry_price)
+        
+        # Check: price should be above VWAP (Ross Cameron rule)
+        # Use vwap_snapshot (today's bars only) for accurate session VWAP
+        actual_vwap = vwap_snapshot.vwap if vwap_snapshot else snapshot.vwap
+        if actual_vwap and entry_price < actual_vwap:
+            reason = (
+                f"REJECTED - below VWAP "
+                f"(${entry_price:.2f} < VWAP ${actual_vwap:.2f})"
+            )
+            logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+            # NOTE: Do NOT set entry_triggered=True here - VWAP is a temporary condition
+            # that can change. We want to re-check on next tick if price moves above VWAP.
+            return False, reason
+        
+        # Check: price should be above 9 EMA (within 1% tolerance)
+        if snapshot.ema_9 and entry_price < snapshot.ema_9 * Decimal("0.99"):
+            reason = (
+                f"REJECTED - below 9 EMA "
+                f"(${entry_price:.2f} < 9EMA ${snapshot.ema_9:.2f})"
+            )
+            logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+            # NOTE: Do NOT set entry_triggered=True here - 9 EMA is a temporary condition
+            return False, reason
+        
+        # Log technical confirmation
+        logger.info(
+            f"[Warrior Entry] {symbol}: Technical OK - "
+            f"VWAP=${f'{actual_vwap:.2f}' if actual_vwap else 'N/A'}, "
+            f"9EMA=${f'{snapshot.ema_9:.2f}' if snapshot.ema_9 else 'N/A'}, "
+            f"MACD={snapshot.macd_crossover}"
+        )
+        
+        return True, None
+        
+    except Exception as e:
+        # FAIL-CLOSED: Cannot verify technicals - block entry
+        reason = f"FAIL-CLOSED - Technical check failed: {e}. Cannot verify VWAP/EMA/MACD, blocking entry."
+        logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+        watched.entry_triggered = True  # Mark as triggered to prevent retries
+        return False, reason

@@ -11,7 +11,12 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Tuple
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional, Tuple
+
+if TYPE_CHECKING:
+    from nexus2.domain.automation.warrior_engine import WarriorEngine
+    from nexus2.domain.automation.warrior_engine_types import WatchedCandidate
 
 logger = logging.getLogger(__name__)
 
@@ -243,3 +248,123 @@ def check_falling_knife(
         return True, reason
     
     return False, ""
+
+
+# =============================================================================
+# TECHNICAL UPDATE HELPER FUNCTIONS
+# =============================================================================
+
+
+async def update_candidate_technicals(
+    engine: "WarriorEngine",
+    watched: "WatchedCandidate",
+    current_price: Decimal,
+) -> None:
+    """
+    Update VWAP/EMA tracking for dynamic_score (TOP_PICK_ONLY uses this).
+    
+    CRITICAL FIX (Feb 1 2026): Dual calculation approach
+    - MACD/EMA need ALL bars (including continuity) for warm-up at market open
+    - VWAP should only use TODAY's session bars (resets daily)
+    
+    Args:
+        engine: WarriorEngine instance with _get_intraday_bars
+        watched: WatchedCandidate to update with technicals
+        current_price: Current stock price
+    """
+    symbol = watched.candidate.symbol
+    watched.current_price = current_price
+    
+    if not engine._get_intraday_bars:
+        logger.info(f"[Warrior Entry] {symbol}: _get_intraday_bars not set")
+        return
+    
+    try:
+        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+        if not candles or len(candles) < 10:
+            candle_count = len(candles) if candles else 0
+            logger.info(f"[Warrior Entry] {symbol}: Not enough candles for technicals ({candle_count} < 10)")
+            return
+        
+        from nexus2.domain.indicators import get_technical_service
+        tech = get_technical_service()
+        
+        # Get current simulation time to determine session phase
+        current_hour = None
+        try:
+            from nexus2.adapters.simulation.sim_clock import get_sim_clock
+            clock = get_sim_clock()
+            if clock.is_active():
+                time_str = clock.get_time_string()  # "HH:MM"
+                current_hour = int(time_str.split(':')[0])
+        except Exception:
+            pass
+        
+        # Filter for TODAY's session bars only
+        # Premarket: hours 4-9 (exclude afternoon continuity bars 15-16 from yesterday)
+        # Regular hours: hours 9-16
+        today_candles = []
+        for c in candles:
+            bar_time = getattr(c, 'time', '') or ''
+            if not bar_time:
+                # LIVE MODE FIX: Bars from Alpaca don't have .time attribute
+                # Default to including them since Alpaca returns today's bars
+                today_candles.append(c)
+                continue
+            try:
+                hour = int(bar_time.split(':')[0])
+                
+                # If we know current sim hour, filter appropriately
+                if current_hour is not None:
+                    if current_hour < 10:  # Premarket (04:00-09:59)
+                        # Only include premarket bars (4-9), exclude afternoon (10+)
+                        if 4 <= hour < 10:
+                            today_candles.append(c)
+                    else:  # Regular hours (10:00+)
+                        # Include all today's bars up to current hour
+                        if 4 <= hour <= current_hour:
+                            today_candles.append(c)
+                else:
+                    # LIVE MODE: Include all today's session bars (4 AM - 8 PM)
+                    if 4 <= hour <= 20:
+                        today_candles.append(c)
+            except (ValueError, IndexError):
+                today_candles.append(c)
+        
+        # ALL candles for MACD/EMA (includes continuity)
+        all_candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in candles
+        ]
+        
+        # TODAY's candles only for VWAP
+        today_candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in today_candles
+        ]
+        
+        # Get MACD/EMA from full history
+        snapshot = tech.get_snapshot(symbol, all_candle_dicts, float(current_price))
+        
+        # Update EMA from full snapshot
+        if snapshot.ema_9:
+            watched.current_ema_9 = Decimal(str(snapshot.ema_9))
+            watched.is_above_ema_9 = current_price > watched.current_ema_9
+        watched.trend_updated_at = datetime.now(timezone.utc)
+        
+        # Calculate VWAP separately from today's bars only
+        if len(today_candle_dicts) >= 5:
+            vwap_snapshot = tech.get_snapshot(symbol, today_candle_dicts, float(current_price))
+            if vwap_snapshot.vwap:
+                watched.current_vwap = Decimal(str(vwap_snapshot.vwap))
+                watched.is_above_vwap = current_price > watched.current_vwap
+                logger.debug(
+                    f"[Warrior Entry] {symbol}: VWAP=${vwap_snapshot.vwap:.2f} (from {len(today_candles)} today bars), "
+                    f"price=${current_price:.2f}, above={watched.is_above_vwap}"
+                )
+            else:
+                logger.info(f"[Warrior Entry] {symbol}: No VWAP in snapshot (today_candles={len(today_candles)})")
+        else:
+            logger.info(f"[Warrior Entry] {symbol}: Not enough today's candles for VWAP ({len(today_candles)} < 5)")
+    except Exception as e:
+        logger.warning(f"[Warrior Entry] {symbol}: Trend update failed: {e}")

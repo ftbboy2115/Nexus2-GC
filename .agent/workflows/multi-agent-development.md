@@ -122,6 +122,27 @@ See: `.agent/rules/refactoring-verification-standard.md` for full protocol.
 
 > **Feb 2026 Lesson**: ABCD pattern was imported but never wired, causing production error.
 
+### Handoff Drift Prevention (CRITICAL)
+Multi-phase refactoring creates **handoff drift** when later handoffs lose critical context from earlier phases.
+
+**The Problem:**
+- Phase 1 handoff documented dependency: "Use `pattern_service.py`, don't reimplement"
+- Phase 3 handoff forgot to carry forward this context
+- Agent happened to do it correctly (luck), but could have duplicated logic
+
+**Prevention Protocol:**
+1. **Re-read previous handoffs** before writing new ones
+2. **Copy forward** any "Critical Context" or "Dependencies" sections
+3. **Or reference them**: "See Phase 1 handoff (`handoff_pattern_extraction.md`) for dependency context"
+4. **Handoff template** should include:
+   ```markdown
+   ## Dependencies (from prior phases)
+   - `file.py` - Contains X logic, CALL don't duplicate
+   - [Reference: handoff_phase1.md#L6-L21]
+   ```
+
+**Feb 2026 Lesson**: Phase 3 pattern extraction handoff forgot to mention `pattern_service.py` dependency that was documented in Phase 1. Agent did it correctly by luck.
+
 ### Conflict Prevention
 - **One agent per file at a time** – Avoid agents editing the same file concurrently
 - **Clear boundaries** – Assign distinct modules/directories to each agent

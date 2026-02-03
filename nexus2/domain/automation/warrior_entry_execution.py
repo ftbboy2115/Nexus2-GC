@@ -400,3 +400,235 @@ async def scale_into_existing_position(
     else:
         logger.warning(f"[Warrior Entry] {symbol}: Scale-in failed")
 
+
+# =============================================================================
+# ENTRY COMPLETION (DB + Monitor Integration)
+# =============================================================================
+
+
+async def complete_entry(
+    engine: "WarriorEngine",
+    watched: WatchedCandidate,
+    entry_price: Decimal,
+    actual_fill_price: Decimal,
+    order_id: str,
+    shares: int,
+    mental_stop: Decimal,
+    trigger_type: EntryTriggerType,
+    exit_mode: str,
+    support_level: Decimal,
+    stop_method: str,
+    limit_price: Decimal,
+    filled_qty: Optional[int] = None,
+    order_status: Optional[str] = None,
+) -> None:
+    """
+    Complete entry by logging to DB and adding to monitor.
+    
+    Handles:
+    - Intent logging to DB (before fill)
+    - Entry validation logging
+    - Trade event service logging
+    - Fill confirmation and slippage
+    - Monitor position addition
+    
+    Args:
+        engine: The WarriorEngine instance
+        watched: The watched candidate
+        entry_price: Intended entry price (quote price)
+        actual_fill_price: Actual fill price from broker
+        order_id: Client order ID
+        shares: Number of shares
+        mental_stop: Mental stop price
+        trigger_type: Entry trigger type
+        exit_mode: Exit mode (base_hit or home_run)
+        support_level: Support level for position
+        stop_method: Stop calculation method used
+        limit_price: Limit price sent to broker
+        filled_qty: Actual filled quantity (optional)
+        order_status: Order status string (optional)
+    """
+    symbol = watched.candidate.symbol
+    entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+    
+    # =================================================================
+    # INTENT LOGGING: Write to DB to preserve trigger_type
+    # =================================================================
+    try:
+        from nexus2.db.warrior_db import log_warrior_entry, set_entry_order_id
+        mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
+        profit_target_r = Decimal(str(engine.monitor.settings.profit_target_r))
+        target = entry_decimal + (mental_stop_cents / 100 * profit_target_r)
+        log_warrior_entry(
+            trade_id=order_id,
+            symbol=symbol,
+            entry_price=float(entry_price),  # Intended price (update on fill)
+            quantity=shares,
+            stop_price=float(mental_stop),
+            target_price=float(target),
+            trigger_type=trigger_type.value,  # CRITICAL: Preserve the real trigger
+            support_level=float(support_level),
+            stop_method=stop_method,
+            # Quote tracking for phantom quote detection
+            quote_price=float(entry_price),
+            limit_price=float(limit_price),
+            quote_source="unified",  # TODO: Pass actual source from quote
+            exit_mode=exit_mode,
+            is_sim=engine.monitor.sim_mode,
+        )
+        set_entry_order_id(order_id, order_id)
+        logger.info(
+            f"[Warrior Entry] {symbol}: Intent logged to DB "
+            f"(trigger={trigger_type.value}, order_id={order_id[:8]}...)"
+        )
+        
+        # ENTRY VALIDATION LOG: Capture expected outcome for data-driven tuning
+        validation_parts = []
+        if watched.expected_target:
+            validation_parts.append(f"target=${watched.expected_target:.2f}")
+        if watched.expected_stop:
+            validation_parts.append(f"stop=${watched.expected_stop:.2f}")
+        if watched.entry_confidence:
+            validation_parts.append(f"conf={watched.entry_confidence:.2f}")
+        if watched.ross_entry:
+            delta = float(entry_decimal) - float(watched.ross_entry)
+            validation_parts.append(f"ross=${watched.ross_entry:.2f} Δ${delta:+.2f}")
+        if validation_parts:
+            logger.info(
+                f"[ENTRY VALIDATION] {symbol}: {', '.join(validation_parts)}"
+            )
+            # Persist to DB for Data Explorer
+            from nexus2.db.warrior_db import log_entry_validation
+            log_entry_validation(
+                trade_id=order_id,
+                symbol=symbol,
+                entry_price=float(entry_decimal),
+                entry_trigger=trigger_type.value,
+                expected_target=float(watched.expected_target) if watched.expected_target else None,
+                expected_stop=float(watched.expected_stop) if watched.expected_stop else None,
+                entry_confidence=float(watched.entry_confidence) if watched.entry_confidence else None,
+                ross_entry=float(watched.ross_entry) if watched.ross_entry else None,
+                ross_pnl=float(watched.ross_pnl) if watched.ross_pnl else None,
+                is_sim=engine.monitor.sim_mode,
+            )
+        
+        # CRITICAL: Log ENTRY event to trade_event_service BEFORE fill confirmation
+        from nexus2.domain.automation.trade_event_service import trade_event_service
+        
+        # Use the SAME snapshot that was calculated at the MACD gate
+        tech_context = None
+        entry_snapshot = getattr(watched, 'entry_snapshot', None)
+        if entry_snapshot:
+            tech_context = {
+                "symbol_vwap": float(entry_snapshot.vwap) if entry_snapshot.vwap else None,
+                "symbol_above_vwap": float(entry_decimal) > float(entry_snapshot.vwap) if entry_snapshot.vwap else None,
+                "symbol_ema9": float(entry_snapshot.ema_9) if entry_snapshot.ema_9 else None,
+                "symbol_above_ema9": float(entry_decimal) > float(entry_snapshot.ema_9) if entry_snapshot.ema_9 else None,
+                "symbol_macd_value": float(entry_snapshot.macd_histogram) if entry_snapshot.macd_histogram else None,
+                "symbol_macd_status": "positive" if entry_snapshot.macd_histogram and entry_snapshot.macd_histogram > 0.05 else ("negative" if entry_snapshot.macd_histogram and entry_snapshot.macd_histogram < -0.05 else "flat"),
+                "data_insufficient": getattr(entry_snapshot, 'data_insufficient', False),
+                "source": "entry_decision",
+            }
+        else:
+            logger.warning(f"[Warrior Entry] {symbol}: No entry_snapshot available for audit logging")
+        
+        trade_event_service.log_warrior_entry(
+            position_id=order_id,
+            symbol=symbol,
+            entry_price=entry_decimal,
+            stop_price=mental_stop,
+            shares=shares,
+            trigger_type=trigger_type.value,
+            technical_context=tech_context,
+            exit_mode=exit_mode,
+        )
+    except Exception as e:
+        logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
+    
+    # =================================================================
+    # FILL CONFIRMATION: Update DB with actual fill price
+    # =================================================================
+    actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
+    
+    if actual_fill_price != entry_price or (order_status and order_status.lower() in ("filled", "partially_filled")):
+        try:
+            from nexus2.db.warrior_db import update_warrior_fill
+            mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
+            actual_stop = actual_fill_decimal - mental_stop_cents / 100
+            update_warrior_fill(
+                trade_id=order_id,
+                actual_entry_price=float(actual_fill_price),
+                actual_stop_price=float(actual_stop),
+                actual_quantity=int(filled_qty) if filled_qty else shares,
+            )
+            slippage = (float(actual_fill_price) - float(entry_price)) * 100
+            if abs(slippage) > 0.5:  # Log slippage > 0.5 cents
+                logger.info(
+                    f"[Warrior Entry] {symbol}: Fill ${actual_fill_price:.2f} vs quote ${entry_price:.2f} "
+                    f"= {slippage:+.1f}¢ slippage"
+                )
+            
+            # Log FILL_CONFIRMED event for Trade Events UI
+            from nexus2.domain.automation.trade_event_service import trade_event_service
+            trade_event_service.log_warrior_fill_confirmed(
+                position_id=order_id,
+                symbol=symbol,
+                quote_price=entry_price,
+                fill_price=actual_fill_decimal,
+                slippage_cents=slippage,
+                shares=int(filled_qty) if filled_qty else shares,
+            )
+        except Exception as e:
+            logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
+    
+    # If order is not filled yet, skip monitor add - DB has intent + any fill update
+    if order_status and order_status.lower() not in ("filled", "partially_filled"):
+        return
+    
+    # =================================================================
+    # MONITOR INTEGRATION: Add position to monitor
+    # =================================================================
+    # Calculate slippage and recalculate stop
+    slippage_cents = (actual_fill_decimal - entry_decimal) * 100
+    if abs(slippage_cents) > Decimal("0.01"):
+        slippage_bps = (actual_fill_decimal / entry_decimal - 1) * 10000
+        logger.info(
+            f"[Warrior Slippage] {symbol}: Fill ${actual_fill_decimal:.2f} vs "
+            f"intended ${entry_decimal:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
+        )
+    
+    # Recalculate stop based on actual fill price
+    actual_stop = actual_fill_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
+    
+    engine.monitor.add_position(
+        position_id=order_id,
+        symbol=symbol,
+        entry_price=actual_fill_decimal,
+        shares=int(filled_qty) if filled_qty else shares,
+        support_level=support_level,
+        trigger_type=trigger_type.value,
+        exit_mode_override=exit_mode,
+    )
+    
+    # Update DB record with actual fill price (intent was already logged above)
+    try:
+        from nexus2.db.warrior_db import update_warrior_fill
+        update_warrior_fill(
+            trade_id=order_id,
+            actual_entry_price=float(actual_fill_price),
+            actual_stop_price=float(actual_stop),
+            actual_quantity=int(filled_qty) if filled_qty else shares,
+        )
+        logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")
+    except Exception as e:
+        logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
+    
+    logger.info(
+        f"[Warrior Entry] {symbol}: Bought {shares} shares @ ${actual_fill_price} "
+        f"({trigger_type.value})"
+    )
+    
+    # Clear pending entry on successful fill
+    engine.clear_pending_entry(symbol)
+
+
