@@ -825,67 +825,12 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     except Exception as e:
                         logger.debug(f"[Warrior Entry] {symbol}: Inverted H&S check failed: {e}")
             
-            # ABCD PATTERN - Ross Cameron (Jan 29 2026): DCX for +$6,268
-            # Cold-day strategy: A (low) → B (rally high) → C (higher low) → D (break B)
-            # Entry: When price breaks above B high (D point) with volume
-            # Stop: Below C low
-            # Target: Measured move (AB distance from C)
-            # PATTERN COMPETITION: Only check if setup_type matches
-            should_check_abcd = setup_type is None or setup_type == "abcd"
-            if engine.config.abcd_enabled and not watched.entry_triggered and should_check_abcd:
-                if engine._get_intraday_bars:
-                    try:
-                        candles = await engine._get_intraday_bars(symbol, "1min", limit=40)
-                        if candles and len(candles) >= 15:
-                            from nexus2.domain.indicators.pattern_service import get_pattern_service
-                            pattern_svc = get_pattern_service()
-                            
-                            candle_dicts = [
-                                {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                                for c in candles
-                            ]
-                            
-                            # Detect ABCD pattern
-                            pattern = pattern_svc.detect_abcd(candle_dicts, lookback=30, symbol=symbol)
-                            
-                            if pattern:
-                                watched.abcd_pattern = pattern
-                                from datetime import datetime, timezone
-                                watched.abcd_detected_at = datetime.now(timezone.utc)
-                                
-                                # Check for D breakout (price breaks above B high)
-                                if pattern.is_breakout(current_price, buffer_cents=5):
-                                    # Volume confirmation: current bar should have higher volume
-                                    current_bar_vol = candles[-1].volume if candles else 0
-                                    avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else 0
-                                    
-                                    # Require volume above average
-                                    vol_confirmed = current_bar_vol >= avg_vol * 0.8  # 80% of avg is acceptable
-                                    
-                                    if vol_confirmed:
-                                        logger.info(
-                                            f"[Warrior Entry] {symbol}: ABCD BREAKOUT at ${current_price:.2f} "
-                                            f"(A=${pattern.a_low:.2f}, B=${pattern.b_high:.2f}, C=${pattern.c_low:.2f}, "
-                                            f"stop=${pattern.stop_price:.2f}, target=${pattern.target_price:.2f}, "
-                                            f"R:R={pattern.risk_reward:.1f}, conf={pattern.confidence:.2f})"
-                                        )
-                                        # ENTRY VALIDATION: Capture intent before entry
-                                        watched.expected_target = Decimal(str(pattern.target_price))
-                                        watched.expected_stop = Decimal(str(pattern.stop_price))
-                                        watched.entry_confidence = pattern.confidence
-                                        await enter_position(
-                                            engine,
-                                            watched,
-                                            current_price,
-                                            EntryTriggerType.ABCD
-                                        )
-                                    else:
-                                        logger.debug(
-                                            f"[Warrior Entry] {symbol}: ABCD breakout "
-                                            f"but volume not confirmed ({current_bar_vol:,} < avg {avg_vol:,.0f})"
-                                        )
-                    except Exception as e:
-                        logger.debug(f"[Warrior Entry] {symbol}: ABCD check failed: {e}")
+            # ABCD PATTERN - REFACTORED: moved to warrior_entry_patterns.py
+            # Uses extracted detect_abcd_pattern() function
+            # Ross Cameron (Jan 29 2026): DCX for +$6,268 - Cold-day strategy
+            abcd_trigger = await detect_abcd_pattern(engine, watched, current_price, setup_type)
+            if abcd_trigger:
+                await enter_position(engine, watched, current_price, abcd_trigger)
             
             # CUP & HANDLE VWAP BREAK - Ross Cameron (Jan 30 2026): LRHC for +$3,686
             # Consolidation pattern that breaks through resistance (often VWAP):
