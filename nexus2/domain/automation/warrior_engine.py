@@ -555,16 +555,30 @@ class WarriorEngine:
                 last_date = current_date
                 
                 # Skip on non-market days (weekends, holidays) and outside extended hours
-                # BUT: bypass in sim_only mode for Mock Market testing anytime
-                if not self.config.sim_only:
-                    from nexus2.adapters.market_data.market_calendar import get_market_calendar
-                    calendar = get_market_calendar(paper=True)
-                    if not calendar.is_extended_hours_active():
-                        status = calendar.get_market_status()
-                        reason = status.reason or "off_hours"
-                        logger.debug(f"[Warrior Watch] Market closed ({reason}) - skipping entry checks")
-                        await asyncio.sleep(60)  # Check again in 1 minute
-                        continue
+                # In historical replay mode: skip entry checks - sim step endpoint controls timing
+                if self.config.sim_only:
+                    # Check if we're in historical replay (HistoricalBarLoader has loaded symbols)
+                    # This distinguishes historical replay from real-time sim mode
+                    try:
+                        from nexus2.adapters.simulation import get_historical_bar_loader
+                        loader = get_historical_bar_loader()
+                        if loader.get_loaded_symbols():
+                            # Historical replay active - sim step endpoint controls timing
+                            # Skip here to avoid duplicate check_entry_triggers calls
+                            await asyncio.sleep(1)
+                            continue
+                    except Exception:
+                        pass
+                    # No historical bar data loaded - fall through to normal operation
+                
+                from nexus2.adapters.market_data.market_calendar import get_market_calendar
+                calendar = get_market_calendar(paper=True)
+                if not calendar.is_extended_hours_active():
+                    status = calendar.get_market_status()
+                    reason = status.reason or "off_hours"
+                    logger.debug(f"[Warrior Watch] Market closed ({reason}) - skipping entry checks")
+                    await asyncio.sleep(60)  # Check again in 1 minute
+                    continue
                 
                 # Check each watched candidate
                 await self._check_entry_triggers()
