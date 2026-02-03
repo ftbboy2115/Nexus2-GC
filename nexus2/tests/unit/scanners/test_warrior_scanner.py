@@ -132,6 +132,7 @@ class TestWarriorScannerService:
         mock.get_premarket_gainers.return_value = []
         mock.get_gainers.return_value = []
         mock.get_actives.return_value = []
+        mock.get_alpaca_movers.return_value = []  # Required for scan() to work
         return mock
     
     def test_chinese_stock_exclusion(self):

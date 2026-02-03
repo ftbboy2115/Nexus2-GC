@@ -325,9 +325,10 @@ class TestExtendedHoursActive:
             mock_dt.side_effect = lambda *args, **kw: datetime(*args, **kw)
             
             with patch.object(calendar, 'get_market_status') as mock_status:
-                # After hours: market closed but was open today
+                # After hours: market closed but was open today (post_market reason)
                 mock_status.return_value = MarketStatus(
                     is_open=False,
+                    reason="post_market",  # Required for is_extended_hours_active to return True
                     next_open=datetime(2026, 1, 13, 9, 30, 0, tzinfo=ET)  # Next day
                 )
                 

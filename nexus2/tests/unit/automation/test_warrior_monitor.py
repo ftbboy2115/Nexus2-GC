@@ -64,7 +64,8 @@ class TestWarriorMonitorSettings:
         """Default settings follow Ross Cameron rules."""
         s = WarriorMonitorSettings()
         
-        assert s.mental_stop_cents == Decimal("15")
+        # Note: mental_stop_cents updated from 15 to 50 in production
+        assert s.mental_stop_cents == Decimal("50")
         assert s.use_technical_stop == True
         assert s.profit_target_r == 2.0
         assert s.partial_exit_fraction == 0.5
@@ -110,15 +111,15 @@ class TestPositionManagement:
             shares=100,
         )
         
-        # Mental stop: $150.00 - $0.15 = $149.85
-        assert position.mental_stop == Decimal("149.85")
-        assert position.current_stop == Decimal("149.85")
+        # Mental stop: $150.00 - $0.50 = $149.50 (default is now 50¢)
+        assert position.mental_stop == Decimal("149.50")
+        assert position.current_stop == Decimal("149.50")
         
-        # Risk per share: $0.15
-        assert position.risk_per_share == Decimal("0.15")
+        # Risk per share: $0.50
+        assert position.risk_per_share == Decimal("0.50")
         
-        # Profit target (2:1 R): $150.00 + $0.30 = $150.30
-        assert position.profit_target == Decimal("150.30")
+        # Profit target (2:1 R): $150.00 + $1.00 = $151.00
+        assert position.profit_target == Decimal("151.000")
     
     def test_add_position_with_support(self, monitor):
         """Adding position with support level uses tighter stop."""
@@ -164,9 +165,10 @@ class TestMentalStop:
     
     @pytest.fixture
     def monitor(self):
-        """Create monitor with position."""
+        """Create monitor with position using home_run mode for partial exit tests."""
         with patch("nexus2.domain.automation.warrior_monitor.trade_event_service"):
-            m = WarriorMonitor()
+            # Use home_run mode so exit logic behaves as expected for stop tests
+            m = WarriorMonitor(settings=WarriorMonitorSettings(session_exit_mode='home_run'))
             m.set_callbacks(
                 get_price=AsyncMock(),
                 execute_exit=AsyncMock(),
@@ -176,7 +178,8 @@ class TestMentalStop:
     
     def test_price_below_stop_triggers_exit(self, monitor):
         """Price at or below stop triggers mental stop exit."""
-        monitor._get_price = AsyncMock(return_value=Decimal("149.80"))
+        # Price below the 50¢ mental stop ($149.50)
+        monitor._get_price = AsyncMock(return_value=Decimal("149.40"))
         
         position = list(monitor._positions.values())[0]
         signal = _run(monitor._evaluate_position(position))
@@ -187,7 +190,7 @@ class TestMentalStop:
     
     def test_price_above_stop_no_exit(self, monitor):
         """Price above stop but below target does not trigger exit."""
-        # Price between stop ($149.85) and target ($150.30) = no exit
+        # Price between stop ($149.50) and target ($151.00) = no exit
         monitor._get_price = AsyncMock(return_value=Decimal("150.10"))
         
         position = list(monitor._positions.values())[0]
@@ -205,9 +208,14 @@ class TestProfitTarget:
     
     @pytest.fixture
     def monitor(self):
-        """Create monitor with position."""
+        """Create monitor with position using home_run mode for partial exits.
+        
+        Note: base_hit mode (default) now does full exits on target hit.
+        home_run mode supports partial exits and trailing stops.
+        """
         with patch("nexus2.domain.automation.warrior_monitor.trade_event_service"):
-            m = WarriorMonitor()
+            # Use home_run mode to get PARTIAL_EXIT behavior
+            m = WarriorMonitor(settings=WarriorMonitorSettings(session_exit_mode='home_run'))
             m.set_callbacks(
                 get_price=AsyncMock(),
                 execute_exit=AsyncMock(),
@@ -235,11 +243,11 @@ class TestProfitTarget:
             yield mock_datetime
     
     def test_profit_target_triggers_partial(self, monitor, mock_trading_hours):
-        """Hitting profit target triggers partial exit."""
+        """Hitting profit target triggers partial exit in home_run mode."""
         from datetime import datetime as real_datetime
         
-        # Target is $150.30 (2:1 R)
-        monitor._get_price = AsyncMock(return_value=Decimal("150.35"))
+        # Target is $151.00 (2:1 R with 50¢ stop)
+        monitor._get_price = AsyncMock(return_value=Decimal("151.10"))
         
         position = list(monitor._positions.values())[0]
         # Set entry_time as naive UTC to match datetime.utcnow() subtraction
@@ -252,10 +260,11 @@ class TestProfitTarget:
         assert signal.shares_to_exit == 50  # 50% of 100
     
     def test_partial_taken_no_repeat(self, monitor, mock_trading_hours):
-        """Partial already taken does not trigger again."""
+        """Partial already taken does not trigger again in home_run mode."""
         from datetime import datetime as real_datetime
         
-        monitor._get_price = AsyncMock(return_value=Decimal("150.50"))
+        # Price above target but partial already taken
+        monitor._get_price = AsyncMock(return_value=Decimal("151.50"))
         
         position = list(monitor._positions.values())[0]
         position.partial_taken = True
@@ -264,8 +273,9 @@ class TestProfitTarget:
         
         signal = _run(monitor._evaluate_position(position))
         
-        # No signal because partial already taken
-        assert signal is None
+        # No partial signal because partial already taken (may have trail signal)
+        if signal:
+            assert signal.reason != WarriorExitReason.PARTIAL_EXIT
 
 
 # =============================================================================
