@@ -20,6 +20,55 @@ from nexus2.domain.automation.warrior_engine_types import (
 )
 from nexus2.utils.time_utils import now_utc
 
+# =============================================================================
+# SHARED HELPER IMPORTS (from dedicated helpers module)
+# =============================================================================
+# These are re-exported for backward compatibility with any code that
+# imports them from this file. The canonical source is warrior_entry_helpers.py.
+from nexus2.domain.automation.warrior_entry_helpers import (
+    check_volume_confirmed,
+    check_active_market,
+    check_volume_expansion,
+    check_falling_knife,
+    check_high_volume_red_candle,
+)
+
+# =============================================================================
+# EXTRACTED MODULE IMPORTS (Phase 2 Refactoring)
+# =============================================================================
+# Pattern detection functions (detect ABCD, whole/half, dip-for-level, PMH break)
+from nexus2.domain.automation.warrior_entry_patterns import (
+    detect_abcd_pattern,
+    detect_whole_half_anticipatory,
+    detect_dip_for_level,
+    detect_pmh_break,
+)
+
+# Entry guard functions (consolidated guard checks)
+from nexus2.domain.automation.warrior_entry_guards import (
+    check_entry_guards,
+    _check_macd_gate,
+    _check_position_guards,
+    _check_spread_filter,
+)
+
+# Position sizing functions
+from nexus2.domain.automation.warrior_entry_sizing import (
+    calculate_stop_price,
+    calculate_position_size,
+    calculate_profit_target,
+    calculate_limit_price,
+)
+
+# Order execution functions
+from nexus2.domain.automation.warrior_entry_execution import (
+    determine_exit_mode,
+    submit_entry_order,
+    poll_for_fill,
+    calculate_slippage,
+    extract_order_status,
+)
+
 if TYPE_CHECKING:
     from nexus2.domain.automation.warrior_engine import WarriorEngine
 

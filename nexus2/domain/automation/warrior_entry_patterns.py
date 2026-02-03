@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 from nexus2.domain.automation.warrior_engine_types import EntryTriggerType
 
-# Import shared helper functions from the original file
-from nexus2.domain.automation.warrior_engine_entry import (
+# Import shared helper functions from the helpers module (avoids circular import)
+from nexus2.domain.automation.warrior_entry_helpers import (
     check_active_market,
     check_falling_knife,
     check_volume_expansion,
