@@ -403,6 +403,82 @@ class WarriorScanResult:
 
 
 # =============================================================================
+# EVALUATION CONTEXT (for helper function extraction)
+# =============================================================================
+
+@dataclass
+class EvaluationContext:
+    """
+    Context object passed between _evaluate_symbol helper functions.
+    
+    This enables clean extraction of the god function without excessive parameters.
+    All intermediate state is stored here and passed between extraction helpers.
+    """
+    # Input parameters
+    symbol: str
+    name: str
+    price: Decimal
+    change_percent: Decimal
+    verbose: bool
+    
+    # Settings reference
+    settings: WarriorScanSettings = None
+    
+    # Session snapshot data
+    session_volume: int = 0
+    avg_volume: int = 0
+    session_high: Decimal = Decimal("0")
+    session_low: Decimal = Decimal("0")
+    last_price: Decimal = Decimal("0")
+    yesterday_close: Optional[Decimal] = None
+    
+    # Float data
+    float_shares: Optional[int] = None
+    is_ideal_float: bool = False
+    
+    # RVOL data
+    rvol: Decimal = Decimal("0")
+    is_ideal_rvol: bool = False
+    
+    # Catalyst data
+    has_catalyst: bool = False
+    catalyst_type: str = "none"
+    catalyst_desc: str = "No catalyst found"
+    catalyst_confidence: float = 0.0
+    catalyst_date: Optional[datetime] = None
+    
+    # Gap data
+    gap_pct: Decimal = Decimal("0")
+    is_ideal_gap: bool = False
+    
+    # Chinese stock data
+    is_chinese: bool = False
+    country: Optional[str] = None
+    
+    # Borrow status
+    hard_to_borrow: bool = False
+    easy_to_borrow: bool = True
+    
+    # Reverse split data
+    is_reverse_split: bool = False
+    split_date: Optional[str] = None
+    split_ratio: Optional[str] = None
+    
+    # 200 EMA data
+    ema_200_value: Optional[Decimal] = None
+    room_to_ema_pct: Optional[float] = None
+    
+    # ATR
+    atr: Decimal = Decimal("1")
+    
+    # Dollar volume
+    dollar_vol: Decimal = Decimal("0")
+    
+    # Former runner
+    is_former_runner: bool = False
+
+
+# =============================================================================
 # SCANNER SERVICE
 # =============================================================================
 
@@ -658,11 +734,24 @@ class WarriorScannerService:
         """
         Evaluate a single symbol against Warrior criteria (5 Pillars).
         
+        Refactored to use extracted helper methods for maintainability.
+        Each pillar check is now a separate method that modifies EvaluationContext.
+        
         Returns:
             WarriorCandidate if passes all criteria, None otherwise
         """
         tracker = get_rejection_tracker()
         s = self.settings
+        
+        # Build evaluation context
+        ctx = EvaluationContext(
+            symbol=symbol,
+            name=name,
+            price=price,
+            change_percent=change_percent,
+            verbose=verbose,
+            settings=s,
+        )
         
         # Get session snapshot for volume and range data
         snapshot = self.market_data.build_ep_session_snapshot(symbol)
@@ -676,380 +765,84 @@ class WarriorScannerService:
             scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: snapshot_failed")
             return None
         
-        # Extract metrics
-        session_volume = snapshot["session_volume"]
-        avg_volume = snapshot["avg_daily_volume"]
-        session_high = snapshot["session_high"]
-        session_low = snapshot["session_low"]
-        last_price = snapshot["last_price"]
+        # Populate context from snapshot
+        ctx.session_volume = snapshot["session_volume"]
+        ctx.avg_volume = snapshot["avg_daily_volume"]
+        ctx.session_high = Decimal(str(snapshot["session_high"]))
+        ctx.session_low = Decimal(str(snapshot["session_low"]))
+        ctx.last_price = Decimal(str(snapshot["last_price"]))
+        ctx.yesterday_close = Decimal(str(snapshot["yesterday_close"])) if snapshot.get("yesterday_close") else None
         
         # =========================================================================
-        # CHINESE STOCK CHECK (Country-based)
-        # With Icebreaker Exception: High-score Chinese stocks can pass with 50% size
-        # (Ross Cameron, Jan 20 TWWG: "breaking the ice with smaller positions")
+        # CHINESE STOCK CHECK (early exit if icebreaker not enabled)
         # =========================================================================
-        is_chinese = False
-        country = None
         if s.exclude_chinese_stocks:
-            country = self._get_country(symbol)
-            if self._is_likely_chinese(name, country=country):
-                is_chinese = True
-                # If icebreaker not enabled, reject immediately
+            ctx.country = self._get_country(symbol)
+            if self._is_likely_chinese(name, country=ctx.country):
+                ctx.is_chinese = True
                 if not s.chinese_icebreaker_enabled:
                     tracker.record(
                         symbol=symbol,
                         scanner="warrior",
                         reason=RejectionReason.COUNTRY_EXCLUDED,
-                        details=f"Chinese/HK stock excluded (country={country})",
+                        details=f"Chinese/HK stock excluded (country={ctx.country})",
                     )
-                    scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: chinese_stock | Country: {country}")
+                    scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: chinese_stock | Country: {ctx.country}")
                     if verbose:
-                        print(f"{symbol}: Rejected - Chinese/HK stock (country={country})")
+                        print(f"{symbol}: Rejected - Chinese/HK stock (country={ctx.country})")
                     return None
-                # Otherwise, continue evaluation - will check score after candidate built
         
         # =========================================================================
-        # PILLAR 1: Float (< 100M, ideal < 20M)
+        # PILLAR 1: Float
         # =========================================================================
-        # Note: FMP doesn't provide float directly in most endpoints
-        # We'll use the profile endpoint if available, or skip this check
-        float_shares = self._get_float_shares(symbol)
-        
-        if float_shares is not None and float_shares > s.max_float:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.FLOAT_TOO_HIGH,
-                values={"float": float_shares, "max": s.max_float},
-            )
-            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: float_too_high | Float: {_format_float(float_shares)} > {_format_float(s.max_float)}")
-            if verbose:
-                print(f"{symbol}: Rejected - Float {float_shares:,} > {s.max_float:,}")
+        if self._check_float_pillar(ctx, tracker):
             return None
         
-        is_ideal_float = float_shares is not None and float_shares < s.ideal_float
-        
         # =========================================================================
-        # PILLAR 2: Relative Volume (> 2x, ideal 3-5x)
-        # Time-adjusted projection: normalize for time of day since volume
-        # accumulates throughout the session. Projects current volume to full-day pace.
-        # 
-        # Trading windows:
-        # - Pre-market: 4:00 AM - 9:30 AM ET (5.5 hours = 330 minutes)
-        # - Regular:    9:30 AM - 4:00 PM ET (6.5 hours = 390 minutes)
-        # - Total:      12 hours = 720 minutes of potential volume
+        # PILLAR 2: Relative Volume
         # =========================================================================
-        if avg_volume > 0:
-            et_tz = pytz.timezone('America/New_York')
-            current_et = datetime.now(et_tz)
-            market_open_today = current_et.replace(hour=9, minute=30, second=0, microsecond=0)
-            premarket_start_today = current_et.replace(hour=4, minute=0, second=0, microsecond=0)
-            
-            # Total trading minutes in a day (pre-market + regular hours)
-            trading_minutes_per_day = 390  # 6.5 hours = 390 minutes (regular session only for avg)
-            
-            if current_et > market_open_today:
-                # Regular market hours - project based on elapsed time since open
-                minutes_since_open = (current_et - market_open_today).total_seconds() / 60
-                
-                # Project current volume to full-day pace
-                time_factor = trading_minutes_per_day / max(minutes_since_open, 1)
-                time_factor = min(time_factor, 20.0)  # Cap at 20x projection
-                
-                projected_volume = Decimal(session_volume) * Decimal(str(time_factor))
-                rvol = projected_volume / Decimal(avg_volume)
-            else:
-                # Pre-market (4:00 AM - 9:30 AM) - project based on elapsed pre-market time
-                # Ross trades 7AM-10AM, so pre-market RVOL projection is critical
-                minutes_since_premarket = max((current_et - premarket_start_today).total_seconds() / 60, 1)
-                premarket_minutes = 330  # 5.5 hours = 330 minutes
-                
-                # Project pre-market volume to what it would be at open (9:30 AM)
-                # Then compare to regular-hours average volume
-                # This gives us "on pace to have Xx volume by open"
-                premarket_factor = premarket_minutes / minutes_since_premarket
-                premarket_factor = min(premarket_factor, 50.0)  # Cap at 50x for very early scans
-                
-                projected_premarket_volume = Decimal(session_volume) * Decimal(str(premarket_factor))
-                
-                # Pre-market volume is typically 10% of daily - multiply by 10x to normalize to daily equivalent
-                # Based on analysis of Ross's trades (all ended 20x-4000x EOD RVOL)
-                # This ensures stocks with strong pre-market activity pass the RVOL check early
-                daily_equivalent_factor = 10.0  # Pre-market typically ~10% of daily volume
-                projected_daily = projected_premarket_volume * Decimal(str(daily_equivalent_factor))
-                
-                rvol = projected_daily / Decimal(avg_volume)
-        else:
-            rvol = Decimal("0")
-        
-        if rvol < s.min_rvol:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.RVOL_TOO_LOW,
-                values={"rvol": round(float(rvol), 2), "min": float(s.min_rvol)},
-            )
-            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: rvol_too_low | RVOL: {rvol:.1f}x < {s.min_rvol}x")
-            if verbose:
-                print(f"{symbol}: Rejected - RVOL {rvol:.1f}x < {s.min_rvol}x")
+        if self._calculate_rvol_pillar(ctx, tracker):
             return None
         
-        is_ideal_rvol = rvol >= s.ideal_rvol
-        
         # =========================================================================
-        # PILLAR 3: Catalyst (News/Earnings/Former Runner)
-        # Uses CatalystClassifier with confidence scoring to filter weak catalysts
-        # Now fetches from BOTH FMP and Alpaca (Benzinga) for better coverage
-        # (AQMS "battery supply agreement" was in Alpaca but not FMP)
+        # PILLAR 3: Catalyst (with multi-model and legacy fallbacks)
         # =========================================================================
-        classifier = get_classifier()
-        # Use merged headlines from FMP + Alpaca for better micro-cap coverage
         headlines = self.market_data.get_merged_headlines(
             symbol, 
             days=s.catalyst_lookback_days,
             alpaca_broker=self.alpaca_broker,
         )
         
-        has_catalyst = False
-        catalyst_type = "none"
-        catalyst_desc = "No catalyst found"
-        catalyst_confidence = 0.0
-        catalyst_date = None  # For freshness scoring (Ross's flame colors)
+        if self._evaluate_catalyst_pillar(ctx, tracker, headlines):
+            return None
         
-        # Check headlines with classifier (confidence-based)
-        if headlines:
-            if verbose:
-                print(f"[Catalyst Debug] {symbol}: Found {len(headlines)} headlines")
-                # Show first 2 raw headlines for debugging
-                for i, h in enumerate(headlines[:2]):
-                    print(f"[Catalyst Debug] {symbol}: [{i+1}] {h[:80]}...")
-            
-            has_positive, best_type, best_headline = classifier.has_positive_catalyst(headlines)
-            if has_positive and best_type:
-                # Get confidence for the best match
-                match = classifier.classify(best_headline)
-                catalyst_confidence = match.confidence
-                
-                # Debug logging when verbose
-                if verbose:
-                    print(f"[Catalyst Debug] {symbol}: type={best_type}, conf={catalyst_confidence:.2f}, headline='{best_headline[:60]}...'")
-                
-                # Require confidence >= 0.6 (filters weak catalysts like conferences)
-                if catalyst_confidence >= 0.6:
-                    has_catalyst = True
-                    catalyst_type = best_type
-                    catalyst_desc = best_headline[:80] if best_headline else ""
-                    # Try to get the publish date for this headline
-                    news_with_dates = self.market_data.fmp.get_news_with_dates(symbol, days=s.catalyst_lookback_days)
-                    for headline, pub_date in news_with_dates:
-                        if headline == best_headline or headline[:50] == best_headline[:50]:
-                            catalyst_date = pub_date
-                            break
-                else:
-                    catalyst_desc = f"Weak catalyst (confidence {catalyst_confidence:.1f})"
-            else:
-                if verbose:
-                    print(f"[Catalyst Debug] {symbol}: No positive catalyst pattern matched")
-            
-            # Also check for negative catalysts (offering, sec, miss) - reject these
-            has_negative, neg_type, neg_headline = classifier.has_negative_catalyst(headlines)
-            if has_negative:
-                # REVERSE SPLIT BYPASS: Ross trades offerings if stock is RS + fresh positive catalyst
-                # "Can't exclude all stocks with shelf registrations - that would exclude the most volatile movers"
-                should_bypass = False
-                is_reverse_split = False
-                
-                if s.allow_offering_for_reverse_splits and neg_type == "offering":
-                    # Check if stock is on reverse split watchlist
-                    try:
-                        from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
-                        rs_service = get_reverse_split_service()
-                        rs_record = rs_service.is_recent_reverse_split(symbol)
-                        if rs_record:
-                            is_reverse_split = True
-                            # Only bypass if we found a positive catalyst (news/earnings)
-                            if has_catalyst and catalyst_type not in ("none", "", None):
-                                should_bypass = True
-                                scan_logger.info(
-                                    f"🔄 BYPASS | {symbol} | RS+Offering allowed | "
-                                    f"RS: {rs_record.date} ({rs_record.ratio}) | "
-                                    f"Catalyst: {catalyst_type} | Offering: {neg_headline[:40]}"
-                                )
-                                if verbose:
-                                    print(f"[RS Bypass] {symbol}: Offering bypassed (RS + {catalyst_type})")
-                    except Exception as e:
-                        scan_logger.debug(f"[RS Check] {symbol}: Error - {e}")
-                
-                if not should_bypass:
-                    tracker.record(
-                        symbol=symbol,
-                        scanner="warrior",
-                        reason=RejectionReason.CATALYST_DILUTION,
-                        details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
-                    )
-                    scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: negative_catalyst | Type: {neg_type}")
-                    if verbose:
-                        print(f"{symbol}: Rejected - Negative catalyst: {neg_type}")
-                    return None
+        # Run multi-model validation if enabled
+        self._run_multi_model_catalyst_validation(ctx, headlines)
         
-        # Check for recent earnings as backup (strongest catalyst)
-        if not has_catalyst:
-            has_earnings, earnings_date = self.market_data.fmp.has_recent_earnings(symbol, days=s.catalyst_lookback_days)
-            if has_earnings:
-                has_catalyst = True
-                catalyst_type = "earnings"
-                catalyst_desc = f"Earnings {earnings_date}"
-                catalyst_confidence = 0.9
-                # Log PASS to catalyst audit for traceability
-                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
-                log_headline_evaluation(symbol, [f"Recent earnings on {earnings_date}"], "PASS", "earnings")
-                if verbose:
-                    print(f"[Catalyst Debug] {symbol}: EARNINGS catalyst - {earnings_date}")
+        # Run legacy AI fallback if multi-model disabled
+        self._run_legacy_ai_fallback(ctx, headlines)
         
-        # Check if it's a "former runner" (history of big moves)
-        if s.require_catalyst and not has_catalyst:
-            if s.include_former_runners:
-                is_former_runner = self._is_former_runner(symbol)
-                if is_former_runner:
-                    has_catalyst = True
-                    catalyst_type = "former_runner"
-                    catalyst_desc = "History of big moves"
-                    catalyst_confidence = 0.7
-                    if verbose:
-                        print(f"[Catalyst Debug] {symbol}: FORMER RUNNER catalyst")
-        
-        # =====================================================================
-        # SYNC DUAL CATALYST VALIDATION (HeadlineCache + Regex + Flash-Lite)
-        # 1. Check HeadlineCache for previously seen headlines
-        # 2. Filter to only NEW headlines not yet validated
-        # 3. Run sync dual validation: Regex vs Flash-Lite → Pro tiebreaker
-        # 4. Cache all results to avoid re-validating
-        # =====================================================================
-        if headlines and s.enable_multi_model_comparison:
-            headline_cache = get_headline_cache()
-            
-            # Check if we already have a valid catalyst from cached headlines
-            cached_valid, cached_type = headline_cache.has_valid_catalyst(symbol)
-            if cached_valid and not has_catalyst:
-                has_catalyst = True
-                catalyst_type = f"cached_{cached_type}"
-                catalyst_desc = f"Cached: {cached_type}"
-                catalyst_confidence = 0.85
-                # Log PASS to catalyst audit for traceability
-                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
-                log_headline_evaluation(symbol, [f"Cache hit: {cached_type}"], "PASS", cached_type)
-                if verbose:
-                    print(f"[Headline Cache] {symbol}: HIT - valid catalyst from cache ({cached_type})")
-            
-            # Filter to only NEW headlines we haven't seen before
-            new_headlines = headline_cache.get_new_headlines(symbol, headlines)
-            
-            if new_headlines and not has_catalyst:
-                # Need to validate new headlines
-                multi_validator = get_multi_validator()
-                
-                for headline in new_headlines[:3]:  # Limit to top 3 new headlines
-                    try:
-                        # Check regex first for this headline
-                        classifier = get_classifier()
-                        regex_match = classifier.classify(headline)
-                        regex_valid = regex_match.is_positive and regex_match.confidence >= 0.6
-                        regex_type_h = regex_match.catalyst_type if regex_valid else None
-                        
-                        # Sync dual validation: Regex + Flash-Lite
-                        final_valid, final_type, _, flash_passed, method = multi_validator.validate_sync(
-                            headline=headline,
-                            symbol=symbol,
-                            regex_passed=regex_valid,
-                            regex_type=regex_type_h,
-                        )
-                        
-                        # Cache the result
-                        headline_cache.add(
-                            symbol=symbol,
-                            headline=headline,
-                            is_valid=final_valid,
-                            catalyst_type=final_type,
-                            regex_passed=regex_valid,
-                            flash_passed=flash_passed,
-                            method=method,
-                        )
-                        
-                        # Use result if valid and we don't have a catalyst yet
-                        if final_valid and not has_catalyst:
-                            has_catalyst = True
-                            catalyst_type = final_type
-                            catalyst_desc = f"{method}: {headline[:50]}"
-                            catalyst_confidence = 0.85
-                            if verbose:
-                                print(f"[Catalyst Debug] {symbol}: {method.upper()} - {final_type}")
-                            # Log PASS to catalyst audit for traceability
-                            from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
-                            log_headline_evaluation(symbol, new_headlines, "PASS", final_type)
-                            break  # Found valid, no need to check more
-                            
-                    except Exception as e:
-                        if verbose:
-                            print(f"[Catalyst Debug] {symbol}: Validation error - {e}")
-                        # Cache the headline as invalid to avoid retrying
-                        headline_cache.add(
-                            symbol=symbol,
-                            headline=headline,
-                            is_valid=False,
-                            catalyst_type=None,
-                            regex_passed=False,
-                            flash_passed=None,
-                            method="error",
-                        )
-            elif new_headlines and verbose:
-                print(f"[Headline Cache] {symbol}: {len(new_headlines)} new headlines skipped (already have catalyst)")
-        
-        # Legacy single-model fallback (when multi-model is disabled)
-        elif headlines and s.use_ai_catalyst_fallback and not has_catalyst:
-            catalyst_cache = get_catalyst_cache()
-            cached = catalyst_cache.get(symbol)
-            if cached:
-                if not has_catalyst and cached.is_valid:
-                    has_catalyst = True
-                    catalyst_type = f"cached_{cached.catalyst_type}"
-                    catalyst_desc = cached.description
-                    catalyst_confidence = 0.8
-            else:
-                try:
-                    ai_validator = get_ai_validator()
-                    ai_valid, ai_type, ai_headline = ai_validator.validate_headlines(headlines, symbol)
-                    catalyst_cache.set(symbol, ai_valid, ai_type, ai_headline[:80] if ai_headline else f"AI: {ai_type}")
-                    if ai_valid:
-                        has_catalyst = True
-                        catalyst_type = f"ai_{ai_type}"
-                        catalyst_desc = f"AI: {ai_headline}" if ai_headline else f"AI: {ai_type}"
-                        catalyst_confidence = 0.8
-                except Exception as e:
-                    if verbose:
-                        print(f"[Catalyst Debug] {symbol}: AI fallback error - {e}")
-        
-        
-        if s.require_catalyst and not has_catalyst:
+        # Final catalyst requirement check
+        if s.require_catalyst and not ctx.has_catalyst:
             tracker.record(
                 symbol=symbol,
                 scanner="warrior",
                 reason=RejectionReason.NO_CATALYST,
-                details=catalyst_desc,
+                details=ctx.catalyst_desc,
             )
-            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{rvol:.1f}x | Reason: no_catalyst | {catalyst_desc}")
-            # Log all headlines to dedicated catalyst audit log for regex training
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | Reason: no_catalyst | {ctx.catalyst_desc}")
             if headlines:
                 from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
                 log_headline_evaluation(symbol, headlines, "FAIL", None)
             if verbose:
-                print(f"{symbol}: Rejected - {catalyst_desc}")
+                print(f"{symbol}: Rejected - {ctx.catalyst_desc}")
             return None
         
         # =========================================================================
-        # DILUTION CHECK - Reject bearish catalysts (ANPA trap avoidance)
+        # DILUTION CHECK
         # =========================================================================
-        if catalyst_desc:
-            catalyst_lower = catalyst_desc.lower()
+        if ctx.catalyst_desc:
+            catalyst_lower = ctx.catalyst_desc.lower()
             for dilution_kw in DILUTION_KEYWORDS:
                 if dilution_kw in catalyst_lower:
                     tracker.record(
@@ -1063,210 +856,61 @@ class WarriorScannerService:
                     return None
         
         # =========================================================================
-        # PILLAR 4: Price ($1.50 - $20)
+        # PILLAR 4: Price
         # =========================================================================
-        # Already pre-filtered, but double-check
-        if price < s.min_price or price > s.max_price:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.PRICE_OUT_OF_RANGE,
-                values={"price": float(price), "min": float(s.min_price), "max": float(s.max_price)},
-            )
+        if self._check_price_pillar(ctx, tracker):
             return None
         
         # =========================================================================
-        # PILLAR 5: Gap % (> 4%, ideal 5-10%)
+        # PILLAR 5: Gap
         # =========================================================================
-        # Recalculate gap from actual yesterday_close vs current price
-        # FMP's change_percent can be stale (from previous day's move, not today's)
-        yesterday_close = snapshot["yesterday_close"]
-        if yesterday_close and yesterday_close > 0:
-            gap_pct = ((last_price - yesterday_close) / yesterday_close) * 100
-        else:
-            gap_pct = change_percent  # Fallback to FMP data if no yesterday close
-        
-        # Re-check gap threshold with corrected value
-        if gap_pct < s.min_gap:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.GAP_TOO_LOW,
-                values={"gap": round(float(gap_pct), 1), "min": float(s.min_gap)},
-            )
-            if verbose:
-                print(f"{symbol}: Rejected - Gap {gap_pct:.1f}% < {s.min_gap}%")
-            return None
-        
-        is_ideal_gap = gap_pct >= s.ideal_gap
-        
-        # =========================================================================
-        # ADDITIONAL: Dollar Volume Check
-        # =========================================================================
-        dollar_vol = last_price * session_volume
-        if dollar_vol < s.min_dollar_volume:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.DOLLAR_VOL_LOW,
-                values={"dollar_vol": round(float(dollar_vol)), "min": float(s.min_dollar_volume)},
-            )
-            if verbose:
-                print(f"{symbol}: Rejected - Dollar volume ${dollar_vol:,.0f} < ${s.min_dollar_volume:,.0f}")
+        if self._calculate_gap_pillar(ctx, tracker):
             return None
         
         # =========================================================================
-        # PILLAR 6: Room to 200 EMA (Ross Cameron methodology)
-        # "200 EMA acts as ceiling until broken through with volume"
-        # Reject if 200 EMA is too close overhead (< min_room_to_200ema_pct)
+        # DOLLAR VOLUME CHECK
         # =========================================================================
-        ema_200_value = None
-        room_to_ema_pct = None
+        if self._check_dollar_volume(ctx, tracker):
+            return None
         
-        if s.check_200_ema:
-            ema_200_value = self._get_200_ema(symbol)
-            if ema_200_value and ema_200_value > 0 and float(last_price) > 0:
-                # Calculate room: how far the 200 EMA is above current price
-                room_to_ema_pct = ((float(ema_200_value) - float(last_price)) / float(last_price)) * 100
-                
-                # Only check if 200 EMA is ABOVE current price (potential ceiling)
-                if 0 < room_to_ema_pct < s.min_room_to_200ema_pct:
-                    # 200 EMA is too close overhead - acts as resistance ceiling
-                    tracker.record(
-                        symbol=symbol,
-                        scanner="warrior",
-                        reason=RejectionReason.EMA_200_CEILING,
-                        values={
-                            "price": round(float(last_price), 2),
-                            "ema_200": round(float(ema_200_value), 2),
-                            "room_pct": round(room_to_ema_pct, 1),
-                            "min_room": s.min_room_to_200ema_pct,
-                        },
-                    )
-                    scan_logger.info(
-                        f"FAIL | {symbol} | Gap:{gap_pct:.1f}% | RVOL:{rvol:.1f}x | "
-                        f"Reason: ema_200_ceiling | Price: ${last_price:.2f} | "
-                        f"200 EMA: ${ema_200_value:.2f} ({room_to_ema_pct:.1f}% room < {s.min_room_to_200ema_pct}%)"
-                    )
-                    if verbose:
-                        print(f"{symbol}: Rejected - 200 EMA ${ema_200_value:.2f} is only {room_to_ema_pct:.1f}% above price (need {s.min_room_to_200ema_pct}%)")
-                    return None
+        # =========================================================================
+        # PILLAR 6: 200 EMA
+        # =========================================================================
+        if self._check_200_ema_pillar(ctx, tracker):
+            return None
+        
+        # =========================================================================
+        # ATR
+        # =========================================================================
+        ctx.atr = self.market_data.get_atr(symbol, period=14) or Decimal("1")
+        
+        # =========================================================================
+        # FORMER RUNNER CHECK (for score boost)
+        # =========================================================================
+        ctx.is_former_runner = self._is_former_runner(symbol)
+        
+        # =========================================================================
+        # BORROW STATUS AND FLOAT DISQUALIFIERS
+        # =========================================================================
+        if self._check_borrow_and_float_disqualifiers(ctx, tracker):
+            return None
+        
+        # =========================================================================
+        # REVERSE SPLIT CHECK (for score bonus)
+        # =========================================================================
+        self._check_reverse_split(ctx)
         
         # =========================================================================
         # BUILD CANDIDATE
         # =========================================================================
-        atr = self.market_data.get_atr(symbol, period=14) or Decimal("1")
-        
-        # Check former runner status for score boost (but NOT as catalyst bypass)
-        is_former_runner = self._is_former_runner(symbol)
-        
-        # Check HTB/ETB status from Alpaca (if broker available)
-        # Ross Cameron: "If it's easy to borrow with no news, it's probably going to just drop right back down"
-        hard_to_borrow = False
-        easy_to_borrow = True  # Default assumption
-        if self.alpaca_broker:
-            try:
-                asset_info = self.alpaca_broker.get_asset_info(symbol)
-                hard_to_borrow = asset_info.get("hard_to_borrow", False)
-                easy_to_borrow = asset_info.get("easy_to_borrow", True)
-                # Debug: log borrow status for all stocks
-                scan_logger.debug(f"BORROW CHECK | {symbol} | HTB={hard_to_borrow}, ETB={easy_to_borrow}")
-                if hard_to_borrow:
-                    scan_logger.info(f"HTB BONUS | {symbol} is Hard-to-Borrow (+1 score)")
-            except Exception as e:
-                scan_logger.debug(f"Could not get HTB status for {symbol}: {e}")
-        else:
-            scan_logger.debug(f"BROKER MISSING | {symbol} | No alpaca_broker wired")
-        
-        # Pure High Float Disqualifier - Ross Cameron methodology (does NOT rely on broker)
-        # "30M+ float = choppy, institutionally-held, lots of shorts ready to flush it"
-        # This is the primary gate since Alpaca ETB data is unreliable
-        if float_shares and float_shares > s.high_float_threshold:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.ETB_HIGH_FLOAT,  # Reuse reason code
-                values={"float": float_shares, "threshold": s.high_float_threshold},
-            )
-            scan_logger.info(
-                f"FAIL | {symbol} | Reason: high_float | "
-                f"{_format_float(float_shares)} float > {_format_float(s.high_float_threshold)} threshold"
-            )
-            if verbose:
-                print(f"{symbol}: Rejected - High Float ({_format_float(float_shares)} > {_format_float(s.high_float_threshold)})")
-            return None
-        
-        # ETB + Medium-High Float Disqualifier (secondary check when broker data available)
-        # This catches stocks 10-30M that are also ETB
-        if easy_to_borrow and float_shares and float_shares > s.etb_high_float_threshold:
-            tracker.record(
-                symbol=symbol,
-                scanner="warrior",
-                reason=RejectionReason.ETB_HIGH_FLOAT,
-                values={"float": float_shares, "threshold": s.etb_high_float_threshold, "etb": True},
-            )
-            scan_logger.info(
-                f"FAIL | {symbol} | Reason: etb_high_float | "
-                f"ETB with {_format_float(float_shares)} float > {_format_float(s.etb_high_float_threshold)}"
-            )
-            if verbose:
-                print(f"{symbol}: Rejected - ETB + High Float ({_format_float(float_shares)} > {_format_float(s.etb_high_float_threshold)})")
-            return None
-        
-        # Check Reverse Split status - Ross Cameron Jan 21, 2026
-        # "Some of the biggest winners in the last 6 weeks were stocks that recently did reverse splits"
-        is_reverse_split = False
-        split_date = None
-        split_ratio = None
-        try:
-            from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
-            rsplit_service = get_reverse_split_service()
-            rsplit_record = rsplit_service.is_recent_reverse_split(symbol)
-            if rsplit_record:
-                is_reverse_split = True
-                split_date = rsplit_record.date
-                split_ratio = rsplit_record.ratio
-                scan_logger.info(f"RSPLIT BONUS | {symbol} has recent reverse split ({split_ratio} on {split_date}) +2 score")
-        except Exception as e:
-            scan_logger.debug(f"Could not check reverse split for {symbol}: {e}")
-        
-        candidate = WarriorCandidate(
-            symbol=symbol,
-            name=name,
-            float_shares=float_shares,
-            relative_volume=rvol,
-            catalyst_type=catalyst_type,
-            catalyst_description=catalyst_desc,
-            catalyst_date=catalyst_date,  # For freshness scoring
-            price=Decimal(str(last_price)),  # Use current quote price, not stale FMP price
-            gap_percent=Decimal(str(gap_pct)),  # Recalculated gap
-            is_ideal_float=is_ideal_float,
-            is_ideal_rvol=is_ideal_rvol,
-            is_ideal_gap=is_ideal_gap,
-            is_former_runner=is_former_runner,
-            hard_to_borrow=hard_to_borrow,
-            easy_to_borrow=easy_to_borrow,
-            is_reverse_split=is_reverse_split,  # Reverse split watchlist (Ross Jan 21)
-            split_date=split_date,
-            split_ratio=split_ratio,
-            session_high=Decimal(str(session_high)),
-            session_low=Decimal(str(session_low)),
-            session_volume=session_volume,
-            avg_volume=avg_volume,
-            dollar_volume=dollar_vol,
-            atr=atr,
-            ema_200=ema_200_value,
-            room_to_200_ema_pct=room_to_ema_pct,
-            scanned_at=now_et(),
-        )
+        candidate = self._build_candidate(ctx)
         
         # =========================================================================
-        # ICEBREAKER DECISION: Chinese stocks with high score pass with 50% size
+        # ICEBREAKER DECISION FOR CHINESE STOCKS
         # =========================================================================
-        if is_chinese:
+        if ctx.is_chinese:
             score = candidate.quality_score
             if score >= s.high_quality_threshold:
-                # High score - allow as icebreaker with reduced size
                 candidate.is_icebreaker = True
                 scan_logger.info(
                     f"ICEBREAKER | {symbol} | Score: {score} >= {s.high_quality_threshold} | "
@@ -1275,7 +919,6 @@ class WarriorScannerService:
                 if verbose:
                     print(f"🧊 {symbol}: ICEBREAKER - Chinese stock passes (score={score}, 50% size)")
             else:
-                # Low score - reject
                 tracker.record(
                     symbol=symbol,
                     scanner="warrior",
@@ -1287,7 +930,9 @@ class WarriorScannerService:
                     print(f"{symbol}: Rejected - Chinese stock, score {score} too low")
                 return None
         
-        # Calculate freshness bonus for logging
+        # =========================================================================
+        # FINAL LOGGING
+        # =========================================================================
         freshness_note = ""
         if candidate.catalyst_date:
             from datetime import timezone as tz
@@ -1298,27 +943,25 @@ class WarriorScannerService:
                     cat_date = cat_date.replace(tzinfo=tz.utc)
                 hours_old = (now - cat_date).total_seconds() / 3600
                 if hours_old <= 2:
-                    freshness_note = " 🔴+3"  # Red flame
+                    freshness_note = " 🔴+3"
                 elif hours_old <= 12:
-                    freshness_note = " 🟠+2"  # Orange flame
+                    freshness_note = " 🟠+2"
                 elif hours_old <= 24:
-                    freshness_note = " 🟡+1"  # Yellow flame
+                    freshness_note = " 🟡+1"
             except Exception:
                 pass
         
         if verbose:
-            htb_note = " [HTB]" if hard_to_borrow else ""
+            htb_note = " [HTB]" if ctx.hard_to_borrow else ""
             print(f"✅ {symbol}: Passed all 5 Pillars (score={candidate.quality_score}{freshness_note}){htb_note}")
         
-        # Log to scan file with freshness info (consolidated from PILLARS + SCAN)
         scan_logger.info(
             f"[PILLARS] PASS | {symbol} | Gap:{change_percent:.1f}% | Score: {candidate.quality_score}{freshness_note} | "
-            f"Catalyst: {catalyst_type} | Float: {_format_float(float_shares) if float_shares else 'N/A'} | RVOL: {rvol:.1f}x"
+            f"Catalyst: {ctx.catalyst_type} | Float: {_format_float(ctx.float_shares) if ctx.float_shares else 'N/A'} | RVOL: {ctx.rvol:.1f}x"
         )
         
-        # Log PASS to catalyst audit for traceability (definitive PILLARS pass)
         from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
-        log_headline_evaluation(symbol, [f"PILLARS pass: {catalyst_type}"], "PASS", catalyst_type)
+        log_headline_evaluation(symbol, [f"PILLARS pass: {ctx.catalyst_type}"], "PASS", ctx.catalyst_type)
         
         return candidate
     
@@ -1459,6 +1102,540 @@ class WarriorScannerService:
             return self.market_data.fmp.get_country(symbol)
         except Exception:
             return None
+    
+    # =========================================================================
+    # EXTRACTED HELPERS (from _evaluate_symbol god function refactor)
+    # =========================================================================
+    
+    def _check_float_pillar(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Pillar 1: Float check (<100M, ideal <20M).
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        ctx.float_shares = self._get_float_shares(ctx.symbol)
+        s = ctx.settings
+        
+        if ctx.float_shares is not None and ctx.float_shares > s.max_float:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.FLOAT_TOO_HIGH,
+                values={"float": ctx.float_shares, "max": s.max_float},
+            )
+            scan_logger.info(
+                f"FAIL | {ctx.symbol} | Gap:{ctx.change_percent:.1f}% | "
+                f"Reason: float_too_high | Float: {_format_float(ctx.float_shares)} > {_format_float(s.max_float)}"
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - Float {ctx.float_shares:,} > {s.max_float:,}")
+            return "float_too_high"
+        
+        ctx.is_ideal_float = ctx.float_shares is not None and ctx.float_shares < s.ideal_float
+        return None
+    
+    def _calculate_rvol_pillar(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Pillar 2: Relative Volume (>2x, ideal 3-5x).
+        Time-adjusted projection for pre-market and regular hours.
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        
+        if ctx.avg_volume > 0:
+            et_tz = pytz.timezone('America/New_York')
+            current_et = datetime.now(et_tz)
+            market_open_today = current_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            premarket_start_today = current_et.replace(hour=4, minute=0, second=0, microsecond=0)
+            
+            trading_minutes_per_day = 390
+            
+            if current_et > market_open_today:
+                # Regular market hours
+                minutes_since_open = (current_et - market_open_today).total_seconds() / 60
+                time_factor = trading_minutes_per_day / max(minutes_since_open, 1)
+                time_factor = min(time_factor, 20.0)
+                projected_volume = Decimal(ctx.session_volume) * Decimal(str(time_factor))
+                ctx.rvol = projected_volume / Decimal(ctx.avg_volume)
+            else:
+                # Pre-market
+                minutes_since_premarket = max((current_et - premarket_start_today).total_seconds() / 60, 1)
+                premarket_minutes = 330
+                premarket_factor = premarket_minutes / minutes_since_premarket
+                premarket_factor = min(premarket_factor, 50.0)
+                projected_premarket_volume = Decimal(ctx.session_volume) * Decimal(str(premarket_factor))
+                daily_equivalent_factor = 10.0
+                projected_daily = projected_premarket_volume * Decimal(str(daily_equivalent_factor))
+                ctx.rvol = projected_daily / Decimal(ctx.avg_volume)
+        else:
+            ctx.rvol = Decimal("0")
+        
+        if ctx.rvol < s.min_rvol:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.RVOL_TOO_LOW,
+                values={"rvol": round(float(ctx.rvol), 2), "min": float(s.min_rvol)},
+            )
+            scan_logger.info(
+                f"FAIL | {ctx.symbol} | Gap:{ctx.change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | "
+                f"Reason: rvol_too_low | RVOL: {ctx.rvol:.1f}x < {s.min_rvol}x"
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - RVOL {ctx.rvol:.1f}x < {s.min_rvol}x")
+            return "rvol_too_low"
+        
+        ctx.is_ideal_rvol = ctx.rvol >= s.ideal_rvol
+        return None
+    
+    def _evaluate_catalyst_pillar(
+        self, ctx: EvaluationContext, tracker, headlines: List[str]
+    ) -> Optional[str]:
+        """
+        Pillar 3: Catalyst evaluation (news/earnings/former runner).
+        
+        Handles: classifier, AI validation, headline cache, negative catalysts.
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        classifier = get_classifier()
+        
+        # Check headlines with classifier (confidence-based)
+        if headlines:
+            if ctx.verbose:
+                print(f"[Catalyst Debug] {ctx.symbol}: Found {len(headlines)} headlines")
+                for i, h in enumerate(headlines[:2]):
+                    print(f"[Catalyst Debug] {ctx.symbol}: [{i+1}] {h[:80]}...")
+            
+            has_positive, best_type, best_headline = classifier.has_positive_catalyst(headlines)
+            if has_positive and best_type:
+                match = classifier.classify(best_headline)
+                ctx.catalyst_confidence = match.confidence
+                
+                if ctx.verbose:
+                    print(f"[Catalyst Debug] {ctx.symbol}: type={best_type}, conf={ctx.catalyst_confidence:.2f}")
+                
+                if ctx.catalyst_confidence >= 0.6:
+                    ctx.has_catalyst = True
+                    ctx.catalyst_type = best_type
+                    ctx.catalyst_desc = best_headline[:80] if best_headline else ""
+                    # Get publish date for freshness scoring
+                    news_with_dates = self.market_data.fmp.get_news_with_dates(
+                        ctx.symbol, days=s.catalyst_lookback_days
+                    )
+                    for headline, pub_date in news_with_dates:
+                        if headline == best_headline or headline[:50] == best_headline[:50]:
+                            ctx.catalyst_date = pub_date
+                            break
+                else:
+                    ctx.catalyst_desc = f"Weak catalyst (confidence {ctx.catalyst_confidence:.1f})"
+            
+            # Check for negative catalysts
+            has_negative, neg_type, neg_headline = classifier.has_negative_catalyst(headlines)
+            if has_negative:
+                should_bypass = False
+                
+                if s.allow_offering_for_reverse_splits and neg_type == "offering":
+                    try:
+                        from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+                        rs_service = get_reverse_split_service()
+                        rs_record = rs_service.is_recent_reverse_split(ctx.symbol)
+                        if rs_record:
+                            ctx.is_reverse_split = True
+                            if ctx.has_catalyst and ctx.catalyst_type not in ("none", "", None):
+                                should_bypass = True
+                                scan_logger.info(
+                                    f"🔄 BYPASS | {ctx.symbol} | RS+Offering allowed | "
+                                    f"RS: {rs_record.date} ({rs_record.ratio}) | "
+                                    f"Catalyst: {ctx.catalyst_type}"
+                                )
+                    except Exception as e:
+                        scan_logger.debug(f"[RS Check] {ctx.symbol}: Error - {e}")
+                
+                if not should_bypass:
+                    tracker.record(
+                        symbol=ctx.symbol,
+                        scanner="warrior",
+                        reason=RejectionReason.CATALYST_DILUTION,
+                        details=f"Negative catalyst: {neg_type} - {neg_headline[:50]}",
+                    )
+                    scan_logger.info(
+                        f"FAIL | {ctx.symbol} | Gap:{ctx.change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | "
+                        f"Reason: negative_catalyst | Type: {neg_type}"
+                    )
+                    if ctx.verbose:
+                        print(f"{ctx.symbol}: Rejected - Negative catalyst: {neg_type}")
+                    return "negative_catalyst"
+        
+        # Check for recent earnings as backup
+        if not ctx.has_catalyst:
+            has_earnings, earnings_date = self.market_data.fmp.has_recent_earnings(
+                ctx.symbol, days=s.catalyst_lookback_days
+            )
+            if has_earnings:
+                ctx.has_catalyst = True
+                ctx.catalyst_type = "earnings"
+                ctx.catalyst_desc = f"Earnings {earnings_date}"
+                ctx.catalyst_confidence = 0.9
+                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                log_headline_evaluation(ctx.symbol, [f"Recent earnings on {earnings_date}"], "PASS", "earnings")
+        
+        # Check former runner
+        if s.require_catalyst and not ctx.has_catalyst and s.include_former_runners:
+            if self._is_former_runner(ctx.symbol):
+                ctx.has_catalyst = True
+                ctx.catalyst_type = "former_runner"
+                ctx.catalyst_desc = "History of big moves"
+                ctx.catalyst_confidence = 0.7
+        
+        return None  # Catalyst check is handled separately with require_catalyst
+    
+    def _run_multi_model_catalyst_validation(
+        self, ctx: EvaluationContext, headlines: List[str]
+    ) -> None:
+        """
+        Run sync dual catalyst validation (HeadlineCache + Regex + Flash-Lite).
+        Modifies ctx in place with catalyst results.
+        """
+        s = ctx.settings
+        if not headlines or not s.enable_multi_model_comparison:
+            return
+        
+        headline_cache = get_headline_cache()
+        
+        # Check cache first
+        cached_valid, cached_type = headline_cache.has_valid_catalyst(ctx.symbol)
+        if cached_valid and not ctx.has_catalyst:
+            ctx.has_catalyst = True
+            ctx.catalyst_type = f"cached_{cached_type}"
+            ctx.catalyst_desc = f"Cached: {cached_type}"
+            ctx.catalyst_confidence = 0.85
+            from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+            log_headline_evaluation(ctx.symbol, [f"Cache hit: {cached_type}"], "PASS", cached_type)
+            if ctx.verbose:
+                print(f"[Headline Cache] {ctx.symbol}: HIT - valid catalyst from cache ({cached_type})")
+            return
+        
+        # Filter to new headlines
+        new_headlines = headline_cache.get_new_headlines(ctx.symbol, headlines)
+        
+        if new_headlines and not ctx.has_catalyst:
+            multi_validator = get_multi_validator()
+            classifier = get_classifier()
+            
+            for headline in new_headlines[:3]:
+                try:
+                    regex_match = classifier.classify(headline)
+                    regex_valid = regex_match.is_positive and regex_match.confidence >= 0.6
+                    regex_type_h = regex_match.catalyst_type if regex_valid else None
+                    
+                    final_valid, final_type, _, flash_passed, method = multi_validator.validate_sync(
+                        headline=headline,
+                        symbol=ctx.symbol,
+                        regex_passed=regex_valid,
+                        regex_type=regex_type_h,
+                    )
+                    
+                    headline_cache.add(
+                        symbol=ctx.symbol,
+                        headline=headline,
+                        is_valid=final_valid,
+                        catalyst_type=final_type,
+                        regex_passed=regex_valid,
+                        flash_passed=flash_passed,
+                        method=method,
+                    )
+                    
+                    if final_valid and not ctx.has_catalyst:
+                        ctx.has_catalyst = True
+                        ctx.catalyst_type = final_type
+                        ctx.catalyst_desc = f"{method}: {headline[:50]}"
+                        ctx.catalyst_confidence = 0.85
+                        from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                        log_headline_evaluation(ctx.symbol, new_headlines, "PASS", final_type)
+                        break
+                        
+                except Exception as e:
+                    if ctx.verbose:
+                        print(f"[Catalyst Debug] {ctx.symbol}: Validation error - {e}")
+                    headline_cache.add(
+                        symbol=ctx.symbol,
+                        headline=headline,
+                        is_valid=False,
+                        catalyst_type=None,
+                        regex_passed=False,
+                        flash_passed=None,
+                        method="error",
+                    )
+    
+    def _run_legacy_ai_fallback(
+        self, ctx: EvaluationContext, headlines: List[str]
+    ) -> None:
+        """
+        Legacy single-model AI fallback when multi-model is disabled.
+        Modifies ctx in place.
+        """
+        s = ctx.settings
+        if not headlines or not s.use_ai_catalyst_fallback or ctx.has_catalyst:
+            return
+        if s.enable_multi_model_comparison:
+            return  # Multi-model takes precedence
+        
+        catalyst_cache = get_catalyst_cache()
+        cached = catalyst_cache.get(ctx.symbol)
+        if cached:
+            if not ctx.has_catalyst and cached.is_valid:
+                ctx.has_catalyst = True
+                ctx.catalyst_type = f"cached_{cached.catalyst_type}"
+                ctx.catalyst_desc = cached.description
+                ctx.catalyst_confidence = 0.8
+        else:
+            try:
+                ai_validator = get_ai_validator()
+                ai_valid, ai_type, ai_headline = ai_validator.validate_headlines(headlines, ctx.symbol)
+                catalyst_cache.set(
+                    ctx.symbol, ai_valid, ai_type, 
+                    ai_headline[:80] if ai_headline else f"AI: {ai_type}"
+                )
+                if ai_valid:
+                    ctx.has_catalyst = True
+                    ctx.catalyst_type = f"ai_{ai_type}"
+                    ctx.catalyst_desc = f"AI: {ai_headline}" if ai_headline else f"AI: {ai_type}"
+                    ctx.catalyst_confidence = 0.8
+            except Exception as e:
+                if ctx.verbose:
+                    print(f"[Catalyst Debug] {ctx.symbol}: AI fallback error - {e}")
+    
+    def _check_price_pillar(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Pillar 4: Price range check ($1.50 - $20).
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        if ctx.price < s.min_price or ctx.price > s.max_price:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.PRICE_OUT_OF_RANGE,
+                values={"price": float(ctx.price), "min": float(s.min_price), "max": float(s.max_price)},
+            )
+            return "price_out_of_range"
+        return None
+    
+    def _calculate_gap_pillar(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Pillar 5: Gap % check (>4%, ideal 5-10%).
+        Recalculates gap from yesterday_close vs current price.
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        
+        if ctx.yesterday_close and ctx.yesterday_close > 0:
+            ctx.gap_pct = ((ctx.last_price - ctx.yesterday_close) / ctx.yesterday_close) * 100
+        else:
+            ctx.gap_pct = ctx.change_percent
+        
+        if ctx.gap_pct < s.min_gap:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.GAP_TOO_LOW,
+                values={"gap": round(float(ctx.gap_pct), 1), "min": float(s.min_gap)},
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}%")
+            return "gap_too_low"
+        
+        ctx.is_ideal_gap = ctx.gap_pct >= s.ideal_gap
+        return None
+    
+    def _check_dollar_volume(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Dollar volume check (min $500K).
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        ctx.dollar_vol = ctx.last_price * ctx.session_volume
+        
+        if ctx.dollar_vol < s.min_dollar_volume:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.DOLLAR_VOL_LOW,
+                values={"dollar_vol": round(float(ctx.dollar_vol)), "min": float(s.min_dollar_volume)},
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - Dollar volume ${ctx.dollar_vol:,.0f} < ${s.min_dollar_volume:,.0f}")
+            return "dollar_vol_low"
+        return None
+    
+    def _check_200_ema_pillar(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Pillar 6: 200 EMA resistance check.
+        Reject if 200 EMA is too close overhead.
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        if not s.check_200_ema:
+            return None
+        
+        ctx.ema_200_value = self._get_200_ema(ctx.symbol)
+        if ctx.ema_200_value and ctx.ema_200_value > 0 and float(ctx.last_price) > 0:
+            ctx.room_to_ema_pct = ((float(ctx.ema_200_value) - float(ctx.last_price)) / float(ctx.last_price)) * 100
+            
+            if 0 < ctx.room_to_ema_pct < s.min_room_to_200ema_pct:
+                tracker.record(
+                    symbol=ctx.symbol,
+                    scanner="warrior",
+                    reason=RejectionReason.EMA_200_CEILING,
+                    values={
+                        "price": round(float(ctx.last_price), 2),
+                        "ema_200": round(float(ctx.ema_200_value), 2),
+                        "room_pct": round(ctx.room_to_ema_pct, 1),
+                        "min_room": s.min_room_to_200ema_pct,
+                    },
+                )
+                scan_logger.info(
+                    f"FAIL | {ctx.symbol} | Gap:{ctx.gap_pct:.1f}% | RVOL:{ctx.rvol:.1f}x | "
+                    f"Reason: ema_200_ceiling | Price: ${ctx.last_price:.2f} | "
+                    f"200 EMA: ${ctx.ema_200_value:.2f} ({ctx.room_to_ema_pct:.1f}% room < {s.min_room_to_200ema_pct}%)"
+                )
+                if ctx.verbose:
+                    print(
+                        f"{ctx.symbol}: Rejected - 200 EMA ${ctx.ema_200_value:.2f} is only "
+                        f"{ctx.room_to_ema_pct:.1f}% above price (need {s.min_room_to_200ema_pct}%)"
+                    )
+                return "ema_200_ceiling"
+        return None
+    
+    def _check_borrow_and_float_disqualifiers(
+        self, ctx: EvaluationContext, tracker
+    ) -> Optional[str]:
+        """
+        Check HTB/ETB status and high-float disqualifiers.
+        
+        Returns rejection reason string if failed, None if passed.
+        """
+        s = ctx.settings
+        
+        # Get borrow status from Alpaca
+        if self.alpaca_broker:
+            try:
+                asset_info = self.alpaca_broker.get_asset_info(ctx.symbol)
+                ctx.hard_to_borrow = asset_info.get("hard_to_borrow", False)
+                ctx.easy_to_borrow = asset_info.get("easy_to_borrow", True)
+                scan_logger.debug(f"BORROW CHECK | {ctx.symbol} | HTB={ctx.hard_to_borrow}, ETB={ctx.easy_to_borrow}")
+                if ctx.hard_to_borrow:
+                    scan_logger.info(f"HTB BONUS | {ctx.symbol} is Hard-to-Borrow (+1 score)")
+            except Exception as e:
+                scan_logger.debug(f"Could not get HTB status for {ctx.symbol}: {e}")
+        else:
+            scan_logger.debug(f"BROKER MISSING | {ctx.symbol} | No alpaca_broker wired")
+        
+        # Pure high float disqualifier
+        if ctx.float_shares and ctx.float_shares > s.high_float_threshold:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.ETB_HIGH_FLOAT,
+                values={"float": ctx.float_shares, "threshold": s.high_float_threshold},
+            )
+            scan_logger.info(
+                f"FAIL | {ctx.symbol} | Reason: high_float | "
+                f"{_format_float(ctx.float_shares)} float > {_format_float(s.high_float_threshold)} threshold"
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - High Float ({_format_float(ctx.float_shares)} > {_format_float(s.high_float_threshold)})")
+            return "high_float"
+        
+        # ETB + medium-high float disqualifier
+        if ctx.easy_to_borrow and ctx.float_shares and ctx.float_shares > s.etb_high_float_threshold:
+            tracker.record(
+                symbol=ctx.symbol,
+                scanner="warrior",
+                reason=RejectionReason.ETB_HIGH_FLOAT,
+                values={"float": ctx.float_shares, "threshold": s.etb_high_float_threshold, "etb": True},
+            )
+            scan_logger.info(
+                f"FAIL | {ctx.symbol} | Reason: etb_high_float | "
+                f"ETB with {_format_float(ctx.float_shares)} float > {_format_float(s.etb_high_float_threshold)}"
+            )
+            if ctx.verbose:
+                print(f"{ctx.symbol}: Rejected - ETB + High Float ({_format_float(ctx.float_shares)} > {_format_float(s.etb_high_float_threshold)})")
+            return "etb_high_float"
+        
+        return None
+    
+    def _check_reverse_split(self, ctx: EvaluationContext) -> None:
+        """
+        Check reverse split status for score bonus.
+        Modifies ctx in place.
+        """
+        try:
+            from nexus2.domain.automation.reverse_split_service import get_reverse_split_service
+            rsplit_service = get_reverse_split_service()
+            rsplit_record = rsplit_service.is_recent_reverse_split(ctx.symbol)
+            if rsplit_record:
+                ctx.is_reverse_split = True
+                ctx.split_date = rsplit_record.date
+                ctx.split_ratio = rsplit_record.ratio
+                scan_logger.info(
+                    f"RSPLIT BONUS | {ctx.symbol} has recent reverse split "
+                    f"({ctx.split_ratio} on {ctx.split_date}) +2 score"
+                )
+        except Exception as e:
+            scan_logger.debug(f"Could not check reverse split for {ctx.symbol}: {e}")
+    
+    def _build_candidate(self, ctx: EvaluationContext) -> WarriorCandidate:
+        """
+        Build the final WarriorCandidate from evaluation context.
+        """
+        return WarriorCandidate(
+            symbol=ctx.symbol,
+            name=ctx.name,
+            float_shares=ctx.float_shares,
+            relative_volume=ctx.rvol,
+            catalyst_type=ctx.catalyst_type,
+            catalyst_description=ctx.catalyst_desc,
+            catalyst_date=ctx.catalyst_date,
+            price=Decimal(str(ctx.last_price)),
+            gap_percent=Decimal(str(ctx.gap_pct)),
+            is_ideal_float=ctx.is_ideal_float,
+            is_ideal_rvol=ctx.is_ideal_rvol,
+            is_ideal_gap=ctx.is_ideal_gap,
+            is_former_runner=ctx.is_former_runner,
+            hard_to_borrow=ctx.hard_to_borrow,
+            easy_to_borrow=ctx.easy_to_borrow,
+            is_reverse_split=ctx.is_reverse_split,
+            split_date=ctx.split_date,
+            split_ratio=ctx.split_ratio,
+            session_high=Decimal(str(ctx.session_high)),
+            session_low=Decimal(str(ctx.session_low)),
+            session_volume=ctx.session_volume,
+            avg_volume=ctx.avg_volume,
+            dollar_volume=ctx.dollar_vol,
+            atr=ctx.atr,
+            ema_200=ctx.ema_200_value,
+            room_to_200_ema_pct=ctx.room_to_ema_pct,
+            scanned_at=now_et(),
+        )
 
 
 # =============================================================================

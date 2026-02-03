@@ -28,25 +28,30 @@ ssh root@100.113.178.7 "cd ~/Nexus2/nexus2/frontend && npm run build"
 
 **Backend changes:** No build step required (Python).
 
-### 4. Restart Services (tmux)
+### 4. Restart Backend (Primary Method: UI or API)
 
-**Session names:** `nexus` (backend), `frontend` (frontend)
+The server runs via `run_api.sh` wrapper script, which enables graceful restart.
 
-**Restart Backend (6x Ctrl+C with pauses + 60s API cooldown):**
+**Option A - From UI:**
+Go to **Warrior → 🔧 Server Admin** and click restart.
+
+**Option B - From API:**
 ```bash
-# All-in-one deploy command with proper shutdown and cooldown:
-ssh root@100.113.178.7 "cd ~/Nexus2 && git pull && tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c && echo 'Waiting 60s for FMP API cooldown...' && sleep 60 && tmux send-keys -t nexus:0 'python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000' Enter"
+curl -X POST http://100.113.178.7:8000/admin/restart
 ```
 
-**Why 60s cooldown?** FMP API may have been hammered before shutdown. The cooldown prevents rate limit issues on restart.
+The script handles:
+- Graceful shutdown (6x Ctrl+C with pauses)
+- 60s API cooldown (FMP rate limit protection)
+- Server restart
 
-**Restart Frontend:**
+### 5. Restart Frontend (if needed)
 ```bash
 ssh root@100.113.178.7 "tmux send-keys -t frontend C-c C-c C-c"
 ssh root@100.113.178.7 "tmux send-keys -t frontend 'cd ~/Nexus2/nexus2/frontend && npm start' Enter"
 ```
 
-### 5. Verify Deployment
+### 6. Verify Deployment
 ```bash
 ssh root@100.113.178.7 "curl -s http://localhost:8000/health"
 ```
@@ -59,15 +64,18 @@ ssh root@100.113.178.7 "curl -s http://localhost:8000/health"
 
 ---
 
-## 🔧 One-Time Setup: Wrapper Script
+## 🔧 Manual Alternative (if run_api.sh not running)
 
-For the `/admin/restart` endpoint to work, the server must run via `run_api.sh`:
+If the server was started directly with uvicorn (not via `run_api.sh`), use this:
 
+**Restart Backend (6x Ctrl+C with pauses + 60s API cooldown):**
 ```bash
-# After first deployment, switch to wrapper script (one-time only):
+ssh root@100.113.178.7 "cd ~/Nexus2 && git pull && tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c && echo 'Waiting 60s for FMP API cooldown...' && sleep 60 && tmux send-keys -t nexus:0 'python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000' Enter"
+```
+
+**To switch to run_api.sh (one-time setup):**
+```bash
 ssh root@100.113.178.7 "chmod +x ~/Nexus2/run_api.sh"
 ssh root@100.113.178.7 "tmux send-keys -t nexus:0 C-c C-c"  # Stop current server
 ssh root@100.113.178.7 "tmux send-keys -t nexus:0 './run_api.sh' Enter"
 ```
-
-Now you can restart the server from the UI (**Warrior → 🔧 Server Admin**) without SSH.

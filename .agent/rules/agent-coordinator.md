@@ -17,6 +17,7 @@ When coordinating multiple specialist agents in parallel, follow this pattern.
 | Testing | `@agent-testing-specialist.md` | Tests only, no impl changes |
 | Strategy Expert | `@agent-strategy-expert.md` | Methodology guidance |
 | **Algo Lab** | `@agent-algo-specialist.md` | R&D Lab, backtesting, strategy discovery |
+| **Code Auditor** | `@agent-code-auditor.md` | Code quality, dead code, refactoring |
 
 ---
 
