@@ -606,3 +606,155 @@ async def detect_pmh_break(
             )
     
     return None
+
+
+async def check_micro_pullback_entry(
+    engine: "WarriorEngine",
+    watched: "WatchedCandidate",
+    current_price: Decimal,
+) -> Optional[EntryTriggerType]:
+    """
+    MICRO-PULLBACK ENTRY for extended stocks (>100% gap).
+    
+    Pattern (Ross Cameron methodology):
+    1. Stock making higher highs (uptrend), above VWAP
+    2. Small dip occurs on LIGHT volume (healthy pullback)
+    3. Entry when price breaks prior swing high on HIGHER volume
+    4. MACD must be positive ("green light" system)
+    
+    Example: VERO at $5.92 - break of swing high, not PMH
+    
+    Args:
+        engine: WarriorEngine instance
+        watched: WatchedCandidate being evaluated
+        current_price: Current stock price
+        
+    Returns:
+        EntryTriggerType.MICRO_PULLBACK if pattern triggers, None otherwise
+    """
+    from datetime import datetime, timezone
+    
+    symbol = watched.candidate.symbol
+    
+    # NOTE: VWAP check removed for micro-pullback entries
+    # Ross doesn't explicitly require above-VWAP for extended stock scalps
+    # He focuses on: micro-pullback pattern, volume confirmation, MACD positive
+    
+    # REQUIREMENT 2: Get MACD and volume data
+    current_bar_volume = 0
+    prior_bar_volume = 0
+    is_macd_bullish = False
+    macd_val = 0  # Initialize before use
+    macd_debug_info = ""
+    
+    if engine._get_intraday_bars:
+        try:
+            candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+            if not candles or len(candles) < 20:
+                logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - not enough candles ({len(candles) if candles else 0} < 20)")
+                return None
+            if True:  # candles check passed
+                from nexus2.domain.indicators import get_technical_service
+                tech = get_technical_service()
+                candle_dicts = [
+                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+                    for c in candles
+                ]
+                snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+                is_macd_bullish = snapshot.is_macd_bullish
+                
+                # DEBUG: Log MACD details
+                first_time = getattr(candles[0], 'timestamp', getattr(candles[0], 't', 'N/A'))
+                last_time = getattr(candles[-1], 'timestamp', getattr(candles[-1], 't', 'N/A'))
+                macd_val = snapshot.macd_line if snapshot.macd_line else 0
+                signal_val = snapshot.macd_signal if snapshot.macd_signal else 0
+                macd_debug_info = (
+                    f"candles={len(candles)}, range={first_time}->{last_time}, "
+                    f"MACD={macd_val:.4f}, signal={signal_val:.4f}, bullish={is_macd_bullish}"
+                )
+                
+                # Get volume for current and prior bar
+                current_bar_volume = candles[-1].volume if candles else 0
+                prior_bar_volume = candles[-2].volume if len(candles) >= 2 else 0
+        except Exception as e:
+            logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD/volume error: {e}")
+            return None
+    
+    # MACD check (Ross relaxes for scalps - allow near-zero)
+    # Ross enters extended stock scalps when MACD is near zero, not strictly positive
+    macd_tolerance = engine.config.micro_pullback_macd_tolerance
+    macd_ok = is_macd_bullish or (macd_val >= macd_tolerance)
+    
+    if engine.config.require_macd_positive and not macd_ok:
+        logger.info(
+            f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - MACD too negative "
+            f"({macd_val:.4f} < {macd_tolerance}, {macd_debug_info})"
+        )
+        return None
+    
+    # TRACK SWING HIGHS
+    # DEBUG: Log current state
+    logger.info(
+        f"[Warrior Entry] {symbol}: MICRO state - swing_high=${watched.swing_high}, "
+        f"pullback_low=${watched.pullback_low}, ready={watched.micro_pullback_ready}, price=${current_price}"
+    )
+    
+    # ENTRY TRIGGER: Check FIRST - if ready and price breaks above swing high, ENTER
+    # This must happen BEFORE the "new swing high" check below
+    if watched.micro_pullback_ready and watched.swing_high and current_price > watched.swing_high:
+        # VOLUME CONFIRMATION: Break bar must have higher volume than prior bar
+        if current_bar_volume <= prior_bar_volume:
+            logger.info(
+                f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - volume not confirming "
+                f"({current_bar_volume:,} <= {prior_bar_volume:,})"
+            )
+            # Reset for next setup
+            watched.swing_high = current_price
+            watched.micro_pullback_ready = False
+            return None
+        
+        logger.info(
+            f"[Warrior Entry] {symbol}: MICRO_PULLBACK ENTRY "
+            f"(${current_price:.2f} breaks ${watched.swing_high:.2f}, "
+            f"vol {current_bar_volume:,} > {prior_bar_volume:,})"
+        )
+        # Update state for caller
+        watched.swing_high = current_price
+        watched.micro_pullback_ready = False
+        return EntryTriggerType.MICRO_PULLBACK
+    
+    # TRACK SWING HIGHS (only if not ready or first high)
+    if watched.swing_high is None or current_price > watched.swing_high:
+        watched.swing_high = current_price
+        watched.swing_high_time = datetime.now(timezone.utc).strftime("%H:%M")
+        watched.pullback_low = None
+        watched.micro_pullback_ready = False
+        logger.info(f"[Warrior Entry] {symbol}: New swing high ${watched.swing_high:.2f}")
+        return None
+    
+    # DETECT PULLBACK (price dips from swing high)
+    if current_price < watched.swing_high:
+        pullback_pct = float((watched.swing_high - current_price) / watched.swing_high * 100)
+        
+        if watched.pullback_low is None or current_price < watched.pullback_low:
+            watched.pullback_low = current_price
+        
+        min_dip = engine.config.micro_pullback_min_dip
+        max_dip = engine.config.micro_pullback_max_dip
+        
+        # VALID MICRO-PULLBACK: within configured dip range
+        if min_dip <= pullback_pct <= max_dip:
+            watched.micro_pullback_ready = True
+            logger.info(
+                f"[Warrior Entry] {symbol}: MICRO_PULLBACK detected "
+                f"(swing high ${watched.swing_high:.2f}, dip {pullback_pct:.1f}%)"
+            )
+        elif pullback_pct > 10.0:
+            # Too deep - this is a reversal, not a micro-pullback
+            watched.swing_high = None
+            watched.micro_pullback_ready = False
+            logger.info(f"[Warrior Entry] {symbol}: Pullback too deep ({pullback_pct:.1f}%) - reset")
+        return None
+    
+    # If we reach here, price == swing_high (rare edge case, do nothing)
+    return None

@@ -284,3 +284,119 @@ def extract_order_status(order_result: Any) -> Tuple[Optional[str], int]:
         filled_qty = order_result.get("filled_qty", 0) or 0
     
     return order_status, filled_qty
+
+
+# =============================================================================
+# SCALING INTO EXISTING POSITION (MICRO-PULLBACK RE-ENTRIES)
+# =============================================================================
+
+
+async def scale_into_existing_position(
+    engine: "WarriorEngine",
+    watched: WatchedCandidate,
+    entry_price: Decimal,
+    trigger_type: EntryTriggerType,
+) -> None:
+    """
+    Scale into an existing position (Ross Cameron averaging-in methodology).
+    
+    Called when micro-pullback triggers on a symbol we already hold.
+    Uses the monitor's scaling infrastructure for proper DB tracking.
+    
+    Args:
+        engine: The WarriorEngine instance
+        watched: The watched candidate triggering the scale
+        entry_price: Price to add at
+        trigger_type: Entry trigger type (for logging)
+    """
+    symbol = watched.candidate.symbol
+    
+    # Get the existing position from monitor
+    existing_position = None
+    for pos_id, pos in engine.monitor._positions.items():
+        if pos.symbol == symbol:
+            existing_position = pos
+            break
+    
+    if not existing_position:
+        logger.warning(
+            f"[Warrior Entry] {symbol}: Scale requested but no position in monitor - "
+            f"trying DB lookup"
+        )
+        # Try DB lookup as fallback
+        from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+        trade = get_warrior_trade_by_symbol(symbol)
+        if not trade:
+            logger.error(f"[Warrior Entry] {symbol}: No position found in DB either, cannot scale")
+            return
+        # Position exists in DB but not in monitor's memory - skip for now
+        logger.warning(f"[Warrior Entry] {symbol}: Position in DB but not monitor, skipping scale")
+        return
+    
+    # Calculate add shares (same sizing as initial entry)
+    add_shares = engine.config.position_size
+    
+    # ==========================================================================
+    # PROFIT-CHECK GUARD: Block scale-ins when position is already at profit target
+    # 
+    # PAVM LESSON (Jan 2026): DIP_FOR_LEVEL at $14.23 had target ~$14.50.
+    # Price reached $20.80 (+46%) → ABCD add reset target → held to $12.84 (-38%).
+    # 
+    # Ross Cameron pattern (HIND Jan 27): "I take profit off the table...then I 
+    # get back in" - he takes profit FIRST, then re-enters if setup reforms.
+    # ==========================================================================
+    current_price = entry_price  # Scale entry price
+    unrealized_pnl_per_share = current_price - existing_position.entry_price
+    unrealized_pnl_pct = (unrealized_pnl_per_share / existing_position.entry_price) * 100
+    
+    # Block if: (1) Current price >= profit target, OR (2) Unrealized P&L > 25%
+    profit_target = existing_position.profit_target or Decimal("0")
+    price_past_target = profit_target > 0 and current_price >= profit_target
+    pnl_above_threshold = unrealized_pnl_pct > 25  # 25% gain threshold
+    
+    if price_past_target or pnl_above_threshold:
+        reason = (
+            f"past target ${profit_target:.2f}" if price_past_target 
+            else f"+{unrealized_pnl_pct:.1f}% unrealized"
+        )
+        logger.warning(
+            f"[Warrior Entry] {symbol}: BLOCKING SCALE-IN - position already {reason}. "
+            f"Take profit first per Ross Cameron methodology. "
+            f"(entry=${existing_position.entry_price:.2f}, current=${current_price:.2f})"
+        )
+        return
+    
+    # Create scale signal matching what warrior_monitor_scale expects
+    scale_signal = {
+        "position_id": existing_position.position_id,
+        "symbol": symbol,
+        "add_shares": add_shares,
+        "price": float(entry_price),
+        "support": float(existing_position.current_stop or existing_position.mental_stop or 0),
+        "scale_count": existing_position.scale_count + 1,
+    }
+    
+    logger.info(
+        f"[Warrior Entry] {symbol}: MICRO_PULLBACK SCALE - adding {add_shares} shares "
+        f"@ ${entry_price:.2f} to existing position "
+        f"(entry=${existing_position.entry_price:.2f}, shares={existing_position.shares})"
+    )
+    
+    # Use monitor's execute_scale_in for proper DB tracking
+    from nexus2.domain.automation.warrior_monitor_scale import execute_scale_in
+    success = await execute_scale_in(engine.monitor, existing_position, scale_signal)
+    
+    if success:
+        # Calculate new average entry price
+        old_shares = existing_position.shares - add_shares  # shares before add
+        old_cost = float(existing_position.entry_price) * old_shares
+        new_cost = float(entry_price) * add_shares
+        new_avg = (old_cost + new_cost) / existing_position.shares
+        
+        logger.info(
+            f"[Warrior Entry] {symbol}: Scale complete - "
+            f"now {existing_position.shares} shares, avg=${new_avg:.2f}"
+        )
+    else:
+        logger.warning(f"[Warrior Entry] {symbol}: Scale-in failed")
+

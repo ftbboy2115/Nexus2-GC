@@ -124,9 +124,13 @@ async def check_entry_guards(
                 return False, f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
     
     # SPREAD FILTER
-    spread_result = await _check_spread_filter(engine, symbol)
-    if not spread_result[0]:
-        return spread_result
+    # Note: _check_spread_filter returns (bool, str, Optional[Decimal])
+    # We extract current_ask and store on watched for limit price calculation
+    spread_ok, spread_reason, current_ask = await _check_spread_filter(engine, symbol)
+    if current_ask is not None:
+        watched._spread_check_ask = current_ask  # Store for enter_position to use
+    if not spread_ok:
+        return False, spread_reason
     
     return True, ""
 

@@ -36,12 +36,13 @@ from nexus2.domain.automation.warrior_entry_helpers import (
 # =============================================================================
 # EXTRACTED MODULE IMPORTS (Phase 2 Refactoring)
 # =============================================================================
-# Pattern detection functions (detect ABCD, whole/half, dip-for-level, PMH break)
+# Pattern detection functions (detect ABCD, whole/half, dip-for-level, PMH break, micro-pullback)
 from nexus2.domain.automation.warrior_entry_patterns import (
     detect_abcd_pattern,
     detect_whole_half_anticipatory,
     detect_dip_for_level,
     detect_pmh_break,
+    check_micro_pullback_entry as _check_micro_pullback_pattern,
 )
 
 # Entry guard functions (consolidated guard checks)
@@ -67,6 +68,7 @@ from nexus2.domain.automation.warrior_entry_execution import (
     poll_for_fill,
     calculate_slippage,
     extract_order_status,
+    scale_into_existing_position as _scale_into_position,
 )
 
 if TYPE_CHECKING:
@@ -475,7 +477,10 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     f"[Warrior Entry] {symbol}: EXTENDED STOCK detected ({gap_percent:.0f}% gap > "
                     f"{engine.config.extension_threshold}% threshold) - routing to MICRO_PULLBACK"
                 )
-                await check_micro_pullback_entry(engine, watched, current_price)
+                # REFACTORED: Use extracted pattern function, then call enter_position
+                micro_trigger = await _check_micro_pullback_pattern(engine, watched, current_price)
+                if micro_trigger:
+                    await enter_position(engine, watched, current_price, micro_trigger)
                 continue  # Skip PMH break logic for extended stocks
             
             # =============================================================================
@@ -1242,8 +1247,10 @@ async def enter_position(
     """
     Execute entry for a candidate.
     
-    Performs all entry guards, calculates position size, submits order,
-    and integrates with the monitor.
+    Orchestrates entry by calling extracted modules:
+    - Guards: check_entry_guards()
+    - Sizing: calculate_stop_price(), calculate_position_size()
+    - Execution: submit_entry_order(), poll_for_fill()
     
     Args:
         engine: The WarriorEngine instance
@@ -1254,268 +1261,37 @@ async def enter_position(
     symbol = watched.candidate.symbol
     
     # =========================================================================
-    # ENTRY GUARDS
+    # ENTRY GUARDS (via extracted module)
     # =========================================================================
+    can_enter, block_reason = await check_entry_guards(
+        engine, watched, entry_price, trigger_type
+    )
     
-    # TOP X PICKS - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
-    # Only enter the top X highest-scoring candidates, skip the rest
-    # Uses dynamic_score which includes VWAP/EMA trend bonus (trending > fading)
-    # top_x_picks=0 means no limit, top_x_picks=1 is Ross-style single pick
-    if engine.config.top_x_picks > 0:
-        # Get all watched candidates sorted by dynamic score (highest first)
-        all_watched = sorted(
-            engine._watchlist.values(), 
-            key=lambda w: w.dynamic_score, 
-            reverse=True
-        )
-        if all_watched:
-            # Check if this candidate is in the top X
-            top_x_symbols = {w.candidate.symbol for w in all_watched[:engine.config.top_x_picks]}
-            if watched.candidate.symbol not in top_x_symbols:
-                # Not in top X - mark as triggered to prevent log spam
-                top_pick = all_watched[0]
-                our_dynamic = watched.dynamic_score
-                our_static = getattr(watched.candidate, 'quality_score', 0) or 0
-                top_dynamic = top_pick.dynamic_score
-                top_static = getattr(top_pick.candidate, 'quality_score', 0) or 0
-                our_rank = next((i+1 for i, w in enumerate(all_watched) if w.candidate.symbol == symbol), len(all_watched))
-                logger.info(
-                    f"[Warrior Entry] {symbol}: TOP_{engine.config.top_x_picks}_ONLY - blocked (rank={our_rank}, "
-                    f"dynamic={our_dynamic}, static={our_static}) "
-                    f"top pick is {top_pick.candidate.symbol} (dynamic={top_dynamic}, static={top_static})"
-                )
-                watched.entry_triggered = True
-                return
-    
-    # MIN SCORE CHECK - Require minimum quality score for entry
-    candidate_score = getattr(watched.candidate, 'quality_score', 0) or 0
-    if candidate_score < engine.config.min_entry_score:
-        logger.info(
-            f"[Warrior Entry] {symbol}: Score {candidate_score} < min {engine.config.min_entry_score}, skipping"
-        )
-        watched.entry_triggered = True  # Mark to prevent log spam
-        return
-    
-    # Check blacklist (static config + dynamic from broker rejections)
-    if symbol in engine.config.static_blacklist or symbol in engine._blacklist:
-        logger.info(f"[Warrior Entry] {symbol}: Blacklisted, skipping")
-        watched.entry_triggered = True  # Mark to prevent retries
-        return
-    
-    # Per-symbol fail limit: block entry if symbol has hit max failures today
-    symbol_fails = engine._symbol_fails.get(symbol, 0)
-    if symbol_fails >= engine._max_fails_per_symbol:
-        logger.info(
-            f"[Warrior Entry] {symbol}: Max fails hit - {symbol_fails} stops today, "
-            f"skipping (max={engine._max_fails_per_symbol})"
-        )
-        watched.entry_triggered = True  # Mark to prevent retries
-        return
-    
-    # ROSS MACD GATE: Block ALL entries when MACD is negative
-    # Per Ross Cameron: "Red light, green light - MACD negative = don't trade"
-    # Applies to ALL entries (first and re-entries alike)
-    # 
-    # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
-    # If we cannot verify technicals (bars missing), BLOCK the trade.
-    if engine._get_intraday_bars:
-        try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
-            
-            # FAIL-CLOSED: Block if bar data is missing or insufficient
-            if not candles or len(candles) < 10:
-                bar_count = len(candles) if candles else 0
-                logger.warning(
-                    f"[Warrior Entry] {symbol}: FAIL-CLOSED - insufficient bar data "
-                    f"({bar_count} bars, need 10+). Cannot verify MACD/technicals, blocking entry."
-                )
-                watched.entry_triggered = True
-                return
-            
-            if candles and len(candles) >= 10:
-                from nexus2.domain.indicators import get_technical_service
-                tech = get_technical_service()
-                candle_dicts = [
-                    {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-                    for c in candles
-                ]
-                snapshot = tech.get_snapshot(symbol, candle_dicts, entry_price)
-                
-                if not snapshot.is_macd_bullish:
-                    logger.info(
-                        f"[Warrior Entry] {symbol}: MACD GATE - blocking entry "
-                        f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'}, "
-                        f"crossover={snapshot.macd_crossover}) - Ross rule: no entry when MACD negative"
-                    )
-                    watched.entry_triggered = True  # Block this attempt
-                    return
-                else:
-                    # CRITICAL: Store snapshot for audit logging - ensures consistency between
-                    # entry decision and audit trail (fixes "Technical context unavailable" bug)
-                    watched.entry_snapshot = snapshot
-                    logger.info(
-                        f"[Warrior Entry] {symbol}: MACD OK for entry "
-                        f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'})"
-                    )
-        except Exception as e:
-            # FAIL-CLOSED: Cannot verify MACD - block entry
-            logger.warning(
-                f"[Warrior Entry] {symbol}: FAIL-CLOSED - MACD check failed: {e}. "
-                f"Cannot verify momentum, blocking entry."
-            )
-            watched.entry_triggered = True  # Mark as triggered to prevent retries
-            return
-    else:
-        # FAIL-CLOSED: No bar callback available - cannot verify technicals
-        logger.warning(
-            f"[Warrior Entry] {symbol}: FAIL-CLOSED - no intraday bar callback available. "
-            f"Cannot verify MACD/technicals, blocking entry."
-        )
-        watched.entry_triggered = True
-        return
-    # Check if we already hold this symbol
-    # - For regular entries: Block re-entry (prevents double-buying)
-    # - For MICRO_PULLBACK: Scale into existing position (Ross averaging-in methodology)
-    
-    # FIRST: Check MONITOR positions for max_scale enforcement
-    # This prevents submitting orders that would be rejected by add_position()
-    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
-    monitor = get_warrior_monitor()
-    for pos in monitor.get_positions():
-        if pos.symbol == symbol:
-            max_scales = monitor.settings.max_scale_count
-            if pos.scale_count >= max_scales:
-                logger.warning(
-                    f"[Warrior Entry] {symbol}: BLOCKED - already at max scale #{pos.scale_count} "
-                    f"(limit={max_scales})"
-                )
-                watched.entry_triggered = True
-                return
-            
-            # ==========================================================================
-            # PROFIT-CHECK GUARD: Block adds when position is past profit target
-            # PAVM LESSON: Adding resets profit_target, erasing unrealized gains
-            # Ross pattern (HIND Jan 27): Take profit FIRST, then re-enter
-            # ==========================================================================
-            unrealized_pnl_pct = ((entry_price - pos.entry_price) / pos.entry_price) * 100
-            profit_target = pos.profit_target or Decimal("0")
-            price_past_target = profit_target > 0 and entry_price >= profit_target
-            pnl_above_threshold = unrealized_pnl_pct > 25  # 25% gain threshold
-            
-            if price_past_target or pnl_above_threshold:
-                reason = (
-                    f"past target ${profit_target:.2f}" if price_past_target 
-                    else f"+{unrealized_pnl_pct:.1f}% unrealized"
-                )
-                logger.warning(
-                    f"[Warrior Entry] {symbol}: BLOCKING {trigger_type.name} - position already {reason}. "
-                    f"Take profit first per Ross methodology. "
-                    f"(entry=${pos.entry_price:.2f}, current=${entry_price:.2f})"
-                )
-                watched.entry_triggered = True
-                return
-            
-            # Allow if under max_scale AND not past profit target (will consolidate in add_position)
-            break
-    
-    # SECOND: Check BROKER positions for double-buy prevention
-    if engine._get_positions:
-        try:
-            positions = await engine._get_positions()
-            held_symbols = {p.get("symbol") or p.symbol for p in positions if p}
-            if symbol in held_symbols:
-                # MICRO_PULLBACK: Scale into existing position instead of blocking
-                if trigger_type == EntryTriggerType.MICRO_PULLBACK:
-                    logger.info(
-                        f"[Warrior Entry] {symbol}: Already holding - triggering SCALE-IN "
-                        f"(micro-pullback re-entry at ${entry_price:.2f})"
-                    )
-                    await _scale_into_existing_position(
-                        engine, watched, entry_price, trigger_type
-                    )
-                    watched.entry_triggered = True
-                    return
-                else:
-                    # Regular entry: block (prevents double-buying after restart)
-                    logger.info(f"[Warrior Entry] {symbol}: Already holding position, skipping")
-                    watched.entry_triggered = True  # Mark as triggered to prevent retries
-                    return
-        except Exception as e:
-            logger.warning(f"[Warrior Entry] {symbol}: Position check failed: {e}")
-    
-    # Check for pending entry orders (unfilled buy orders) - prevents duplicates
-    if symbol in engine._pending_entries:
-        logger.info(f"[Warrior Entry] {symbol}: Pending buy order exists, skipping")
-        watched.entry_triggered = True  # Mark as triggered to prevent retries
-        return
-    
-    # Check re-entry cooldown: block entry if symbol was recently exited
-    # This prevents immediately buying back after exit (e.g., after spread exit or stop)
-    # LIVE: Uses wall-clock time (now_utc())
-    # SIM: Uses simulation time (bar timestamps) - has its own block below to fix BATL over-trading issue
-    if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
-        exit_time = engine.monitor._recently_exited[symbol]
-        seconds_ago = (now_utc() - exit_time).total_seconds()
-        cooldown = engine.monitor._recovery_cooldown_seconds
-        if seconds_ago < cooldown:
+    if not can_enter:
+        if block_reason == "scale_into_existing":
+            # MICRO_PULLBACK: Scale into existing position instead of blocking
+            # REFACTORED: Use extracted scale function from warrior_entry_execution.py
             logger.info(
-                f"[Warrior Entry] {symbol}: Re-entry cooldown - exited {seconds_ago:.0f}s ago "
-                f"(waiting {cooldown}s), skipping"
+                f"[Warrior Entry] {symbol}: Already holding - triggering SCALE-IN "
+                f"(micro-pullback re-entry at ${entry_price:.2f})"
             )
-            watched.entry_triggered = True  # Mark as triggered to prevent retries
+            await _scale_into_position(
+                engine, watched, entry_price, trigger_type
+            )
+            watched.entry_triggered = True
             return
+        else:
+            logger.info(f"[Warrior Entry] {symbol}: {block_reason}")
+            watched.entry_triggered = True
+            return
+
+    # Note: All guard checks (MIN_SCORE, BLACKLIST, FAIL_LIMIT, MACD GATE, 
+    # POSITION GUARDS, PENDING ENTRIES, COOLDOWN, SPREAD FILTER) are now 
+    # handled by check_entry_guards() above.
     
-    # SIM MODE: Check simulation-time cooldown (fixes BATL 12-entry over-trading)
-    if engine.monitor.sim_mode and symbol in engine.monitor._recently_exited_sim_time:
-        exit_sim_time = engine.monitor._recently_exited_sim_time[symbol]
-        # Get current simulation time from clock
-        if hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
-            current_sim_time = engine.monitor._sim_clock.current_time
-            minutes_since_exit = (current_sim_time - exit_sim_time).total_seconds() / 60
-            cooldown_minutes = engine.monitor._reentry_cooldown_minutes
-            if minutes_since_exit < cooldown_minutes:
-                logger.info(
-                    f"[Warrior Entry] {symbol}: SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago "
-                    f"(waiting {cooldown_minutes}m), skipping"
-                )
-                watched.entry_triggered = True
-                return
-    
-    # Entry Spread Filter: reject stocks with wide bid-ask spreads
-    # Wide spreads cause unpredictable fills and difficult exits (e.g., SOGP 46% spread)
-    # Also capture current ask for limit price calculation
-    current_ask = None  # Will be set if we get valid quote data
-    if engine._get_quote_with_spread and engine.config.max_entry_spread_percent > 0:
-        try:
-            spread_data = await engine._get_quote_with_spread(symbol)
-            if spread_data:
-                bid = spread_data.get("bid", 0)
-                ask = spread_data.get("ask", 0)
-                
-                if bid > 0 and ask > 0:
-                    current_ask = Decimal(str(ask))  # Store for limit price
-                    spread_percent = ((ask - bid) / bid) * 100
-                    
-                    if spread_percent > engine.config.max_entry_spread_percent:
-                        logger.warning(
-                            f"[Warrior Entry] {symbol}: REJECTED - spread {spread_percent:.1f}% > "
-                            f"{engine.config.max_entry_spread_percent}% threshold "
-                            f"(bid=${bid:.2f}, ask=${ask:.2f})"
-                        )
-                        watched.entry_triggered = True  # Mark to prevent retries
-                        return
-                    else:
-                        logger.debug(
-                            f"[Warrior Entry] {symbol}: Spread OK {spread_percent:.1f}% "
-                            f"(max={engine.config.max_entry_spread_percent}%)"
-                        )
-                elif bid <= 0 or ask <= 0:
-                    logger.warning(
-                        f"[Warrior Entry] {symbol}: No valid bid/ask data "
-                        f"(bid=${bid}, ask=${ask}) - proceeding with caution"
-                    )
-        except Exception as e:
-            logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - proceeding")
+    # Get current_ask from spread check result (passed via watched metadata)
+    # The guards module stored it if spread check was performed
+    current_ask = getattr(watched, '_spread_check_ask', None)
     
     # =========================================================================
     # TECHNICAL VALIDATION
@@ -1624,42 +1400,17 @@ async def enter_position(
         return
     
     # =========================================================================
-    # POSITION SIZING
+    # POSITION SIZING (via extracted module)
     # =========================================================================
     
     # Mark as triggered
     watched.entry_triggered = True
     engine.stats.entries_triggered += 1
     
-    # Calculate position size
-    # Use CONSOLIDATION LOW (lowest of last 5 candles) - Ross Cameron methodology
-    # This prevents premature stops during normal consolidation dips before breakouts
-    # Example: GRI entry at $4.70, consolidation low was $4.60, stop should be ~$4.58
-    mental_stop = None
-    stop_method = "fallback_15c"
-    calculated_candle_low = None  # Track for passing to add_position
-    
-    if engine._get_intraday_bars:
-        try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=5)
-            if candles and len(candles) >= 1:
-                # MULTI-CANDLE LOW: Use lowest low of last 5 candles (consolidation support)
-                # This is more robust than single candle low for catching breakouts
-                consolidation_low = min(Decimal(str(c.low)) for c in candles)
-                entry_candle_low = Decimal(str(candles[-1].low))
-                
-                # Use consolidation low as support, with 2¢ buffer
-                calculated_candle_low = consolidation_low
-                mental_stop = consolidation_low - Decimal("0.02")
-                stop_method = "consolidation_low"
-                
-                logger.info(
-                    f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method} "
-                    f"(5-bar low=${consolidation_low:.2f}, entry bar=${entry_candle_low:.2f})"
-                )
-        except Exception as e:
-            # FAIL-CLOSED: Log as warning (trade will be blocked below when mental_stop is None)
-            logger.warning(f"[Warrior Entry] {symbol}: Entry candle stop calc failed: {e}")
+    # Calculate stop price using consolidation low methodology
+    mental_stop, stop_method, calculated_candle_low = await calculate_stop_price(
+        engine, symbol, entry_price
+    )
     
     if mental_stop is None:
         # BLOCK TRADE: Cannot make informed decision without candle data
@@ -1671,60 +1422,25 @@ async def enter_position(
         watched.entry_triggered = False  # Reset so we can retry
         engine.stats.entries_triggered -= 1  # Undo the increment
         return
-
+    # Calculate position size based on risk per trade and stop distance
+    shares = calculate_position_size(
+        engine, watched, entry_price, mental_stop
+    )
     
-    # Ensure Decimal arithmetic for risk calculation
-    entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
-    mental_stop_decimal = Decimal(str(mental_stop)) if not isinstance(mental_stop, Decimal) else mental_stop
-    risk_per_share = entry_decimal - mental_stop_decimal
-    
-    if risk_per_share <= 0:
-        logger.warning(f"[Warrior Entry] {symbol}: Invalid risk calculation")
-        return
-    
-    shares = int(engine.config.risk_per_trade / risk_per_share)
-    
-    # Cap by max capital
-    max_shares = int(engine.config.max_capital / entry_decimal)
-    shares = min(shares, max_shares)
-    
-    # Apply testing limits
-    if engine.config.max_shares_per_trade is not None:
-        shares = min(shares, engine.config.max_shares_per_trade)
-    if engine.config.max_value_per_trade is not None:
-        max_by_value = int(engine.config.max_value_per_trade / entry_decimal)
-        shares = min(shares, max_by_value)
-    
-    # ICEBREAKER: 50% size for high-score Chinese stocks
-    # (Ross Cameron, Jan 20 TWWG: "breaking the ice with smaller positions")
-    if getattr(watched.candidate, 'is_icebreaker', False):
-        original_shares = shares
-        shares = max(1, int(shares * 0.5))  # 50% reduction
-        logger.info(
-            f"[Warrior Entry] {symbol}: ICEBREAKER 50% size ({original_shares} -> {shares} shares)"
-        )
-    
-    if shares < 1:
-        logger.info(f"[Warrior Entry] {symbol}: Position too small")
+    if shares is None or shares < 1:
+        if shares is None:
+            logger.warning(f"[Warrior Entry] {symbol}: Invalid risk calculation")
+        else:
+            logger.info(f"[Warrior Entry] {symbol}: Position too small")
         return
     
     # =========================================================================
     # ORDER SUBMISSION
     # =========================================================================
     
-    # Submit order - Ross uses limit order with offset above ask
-    # Use current ask if available, otherwise fall back to percentage offset
-    limit_offset = Decimal("0.05")  # 5 cents offset when ask is available
-    if current_ask and current_ask > 0:
-        # Use current ask price (more accurate for fast movers)
-        limit_price = (current_ask + limit_offset).quantize(Decimal("0.01"))
-        logger.info(f"[Warrior Entry] {symbol}: Limit based on ask ${current_ask:.2f} + ${limit_offset} = ${limit_price:.2f}")
-    else:
-        # Fallback: 1.5% above entry price (scales better for runners)
-        # This handles pre-market when Alpaca doesn't provide bid/ask
-        fallback_multiplier = Decimal("1.015")  # 1.5% above entry
-        limit_price = (entry_decimal * fallback_multiplier).quantize(Decimal("0.01"))
-        logger.info(f"[Warrior Entry] {symbol}: Limit based on entry ${entry_decimal:.2f} x 1.015 = ${limit_price:.2f} (no bid/ask)")
+    # Calculate limit price using current ask or fallback
+    entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+    limit_price = calculate_limit_price(entry_decimal, current_ask)
     
     # Mark pending entry BEFORE submitting order (prevents duplicate entries on restart)
     engine._pending_entries[symbol] = now_utc()
