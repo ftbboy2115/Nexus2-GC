@@ -255,9 +255,6 @@ def check_high_volume_red_candle(candles: list, volume_multiplier: float = 1.5) 
 # ENTRY TRIGGER DETECTION
 # =============================================================================
 
-# Debug: Track call count to diagnose duplicate entries
-_check_entry_call_count = 0
-
 
 async def check_entry_triggers(engine: "WarriorEngine") -> None:
     """
@@ -272,10 +269,6 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
     Args:
         engine: The WarriorEngine instance
     """
-    global _check_entry_call_count
-    _check_entry_call_count += 1
-    print(f"[DEBUG] check_entry_triggers CALLED - count={_check_entry_call_count}, watchlist={list(engine._watchlist.keys())}")
-    
     if not engine._get_quote:
         return
     

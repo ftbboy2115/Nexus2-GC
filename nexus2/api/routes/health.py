@@ -46,36 +46,3 @@ async def health_check():
         uptime_seconds=uptime_seconds,
         memory_mb=memory_mb,
     )
-
-
-@router.get("/debug/loggers")
-async def debug_loggers():
-    """Debug endpoint to inspect logger handlers."""
-    import logging
-    
-    root = logging.getLogger()
-    root_handlers = [
-        {"type": type(h).__name__, "level": h.level, "stream": str(getattr(h, 'stream', 'N/A'))}
-        for h in root.handlers
-    ]
-    
-    # Check warrior entry logger
-    entry_logger = logging.getLogger("nexus2.domain.automation.warrior_engine_entry")
-    entry_handlers = [
-        {"type": type(h).__name__, "level": h.level}
-        for h in entry_logger.handlers
-    ]
-    
-    return {
-        "root_logger": {
-            "level": root.level,
-            "handler_count": len(root.handlers),
-            "handlers": root_handlers,
-        },
-        "entry_logger": {
-            "level": entry_logger.level,
-            "propagate": entry_logger.propagate,
-            "handler_count": len(entry_logger.handlers),
-            "handlers": entry_handlers,
-        }
-    }
