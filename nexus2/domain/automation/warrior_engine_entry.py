@@ -2532,16 +2532,8 @@ async def enter_position(
                 )
                 logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")
                 
-                # Log FILL_CONFIRMED event for Trade Events UI
-                from nexus2.domain.automation.trade_event_service import trade_event_service
-                trade_event_service.log_warrior_fill_confirmed(
-                    position_id=order_id,
-                    symbol=symbol,
-                    quote_price=entry_decimal,
-                    fill_price=actual_fill_decimal,
-                    slippage_cents=float(slippage_cents),
-                    shares=int(filled_qty) if filled_qty else shares,
-                )
+                # NOTE: FILL_CONFIRMED is logged in the poll block above (around line 2435)
+                # when actual fill price is obtained. Do not duplicate here.
             except Exception as e:
                 logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
             
