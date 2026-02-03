@@ -830,7 +830,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # Entry: When price breaks above B high (D point) with volume
             # Stop: Below C low
             # Target: Measured move (AB distance from C)
-            # PATTERN COMPETITION: Only check if setup_type matches (reuses should_check_abcd from earlier)
+            # PATTERN COMPETITION: Only check if setup_type matches
+            should_check_abcd = setup_type is None or setup_type == "abcd"
             if engine.config.abcd_enabled and not watched.entry_triggered and should_check_abcd:
                 if engine._get_intraday_bars:
                     try:
