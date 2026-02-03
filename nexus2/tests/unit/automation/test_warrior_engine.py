@@ -25,6 +25,7 @@ from nexus2.domain.automation.warrior_engine import (
     get_warrior_engine,
 )
 from nexus2.domain.scanner.warrior_scanner_service import WarriorCandidate
+from nexus2.adapters.market_data.protocol import OHLCV
 
 
 # =============================================================================
@@ -34,6 +35,46 @@ from nexus2.domain.scanner.warrior_scanner_service import WarriorCandidate
 def _run(coro):
     """Helper to run async code in sync tests."""
     return asyncio.get_event_loop().run_until_complete(coro)
+
+
+def _make_mock_candles(count: int = 30, base_price: float = 10.0) -> list:
+    """Create mock OHLCV candles for MACD gate tests.
+    
+    Returns list of OHLCV dataclass instances with positive price trend
+    to ensure MACD histogram is bullish.
+    """
+    from datetime import datetime, timedelta
+    base_time = datetime(2026, 1, 27, 10, 0, 0)
+    candles = []
+    for i in range(count):
+        # Slight uptrend to make MACD bullish
+        price = Decimal(str(base_price + i * 0.05))
+        candles.append(OHLCV(
+            timestamp=base_time + timedelta(minutes=i),
+            open=price - Decimal("0.02"),
+            high=price + Decimal("0.05"),
+            low=price - Decimal("0.05"),
+            close=price,
+            volume=10000 + i * 100,
+        ))
+    return candles
+
+
+def _get_bullish_macd_snapshot_mock():
+    """Create a mock TechnicalSnapshot with bullish MACD and valid VWAP/EMA values.
+    
+    VWAP and EMA values must be below expected entry prices to pass the
+    technical validation checks (price > VWAP and price > EMA*0.99).
+    """
+    mock_snapshot = MagicMock()
+    mock_snapshot.is_macd_bullish = True
+    mock_snapshot.macd_histogram = Decimal("0.05")
+    mock_snapshot.macd_crossover = "bullish"
+    # Set VWAP and EMA to low values so any entry price will pass checks
+    mock_snapshot.vwap = Decimal("5.00")  # Low enough to pass price > VWAP check
+    mock_snapshot.ema_9 = Decimal("5.00")  # Low enough to pass price > EMA*0.99 check
+    mock_snapshot.data_insufficient = False
+    return mock_snapshot
 
 
 def make_watched_candidate(symbol: str = "TEST", gap_percent: float = 10.0, price: float = 10.0) -> WatchedCandidate:
@@ -100,20 +141,28 @@ class TestEntrySpreadFilter:
             with patch("nexus2.domain.automation.warrior_monitor.get_warrior_monitor") as get_monitor:
                 get_monitor.return_value = mock_monitor
                 
-                config = WarriorEngineConfig(
-                    max_entry_spread_percent=3.0,
-                    max_shares_per_trade=100,
-                )
-                engine = WarriorEngine(config=config)
-                engine.monitor = mock_monitor
-                engine._symbol_fails = {}  # Real dict for 2-strike rule
-                
-                # Mock callbacks
-                engine._submit_order = AsyncMock(return_value={"order_id": "test-123"})
-                engine._get_quote = AsyncMock(return_value=10.0)
-                engine._get_positions = AsyncMock(return_value=[])
-                
-                yield engine
+                # Patch technical service for MACD gate (must patch source module, not import location)
+                with patch("nexus2.domain.indicators.get_technical_service") as mock_tech_svc:
+                    mock_tech = MagicMock()
+                    mock_tech.get_snapshot.return_value = _get_bullish_macd_snapshot_mock()
+                    mock_tech_svc.return_value = mock_tech
+                    
+                    config = WarriorEngineConfig(
+                        max_entry_spread_percent=3.0,
+                        max_shares_per_trade=100,
+                    )
+                    engine = WarriorEngine(config=config)
+                    engine.monitor = mock_monitor
+                    engine._symbol_fails = {}  # Real dict for 2-strike rule
+                    
+                    # Mock callbacks
+                    engine._submit_order = AsyncMock(return_value={"order_id": "test-123"})
+                    engine._get_quote = AsyncMock(return_value=10.0)
+                    engine._get_positions = AsyncMock(return_value=[])
+                    # MACD gate requires intraday bars callback
+                    engine._get_intraday_bars = AsyncMock(return_value=_make_mock_candles(30))
+                    
+                    yield engine
     
     def test_wide_spread_rejects_entry(self, engine):
         """Entry is rejected when spread exceeds threshold."""
@@ -137,15 +186,16 @@ class TestEntrySpreadFilter:
     def test_narrow_spread_allows_entry(self, engine):
         """Entry is allowed when spread is below threshold."""
         # Mock spread data: 0.5% spread (healthy)
+        # Use $10 price range to match mock candle data for position sizing
         engine._get_quote_with_spread = AsyncMock(return_value={
-            "price": 150.00,
-            "bid": 149.95,
-            "ask": 150.70,  # ~0.5% spread
+            "price": 10.00,
+            "bid": 9.95,
+            "ask": 10.05,  # ~1% spread (healthy)
         })
         
-        watched = make_watched_candidate("AAPL", price=150.00)
+        watched = make_watched_candidate("TEST", price=10.00)
         
-        _run(engine._enter_position(watched, Decimal("150.00"), EntryTriggerType.PMH_BREAK))
+        _run(engine._enter_position(watched, Decimal("10.00"), EntryTriggerType.PMH_BREAK))
         
         # Entry should proceed - submit_order should be called
         engine._submit_order.assert_called_once()
@@ -367,16 +417,24 @@ class TestSpreadCalculation:
             with patch("nexus2.domain.automation.warrior_monitor.get_warrior_monitor") as get_monitor:
                 get_monitor.return_value = mock_monitor
                 
-                config = WarriorEngineConfig(max_entry_spread_percent=3.0)
-                engine = WarriorEngine(config=config)
-                engine.monitor = mock_monitor
-                engine._symbol_fails = {}  # Real dict for 2-strike rule
-                
-                engine._submit_order = AsyncMock(return_value={"order_id": "test-123"})
-                engine._get_quote = AsyncMock(return_value=10.0)
-                engine._get_positions = AsyncMock(return_value=[])
-                
-                yield engine
+                # Patch technical service for MACD gate (must patch source module, not import location)
+                with patch("nexus2.domain.indicators.get_technical_service") as mock_tech_svc:
+                    mock_tech = MagicMock()
+                    mock_tech.get_snapshot.return_value = _get_bullish_macd_snapshot_mock()
+                    mock_tech_svc.return_value = mock_tech
+                    
+                    config = WarriorEngineConfig(max_entry_spread_percent=3.0)
+                    engine = WarriorEngine(config=config)
+                    engine.monitor = mock_monitor
+                    engine._symbol_fails = {}  # Real dict for 2-strike rule
+                    
+                    engine._submit_order = AsyncMock(return_value={"order_id": "test-123"})
+                    engine._get_quote = AsyncMock(return_value=10.0)
+                    engine._get_positions = AsyncMock(return_value=[])
+                    # MACD gate requires intraday bars callback
+                    engine._get_intraday_bars = AsyncMock(return_value=_make_mock_candles(30))
+                    
+                    yield engine
     
     def test_low_price_stock_spread(self, engine):
         """Spread filter works correctly for low-price stocks."""
