@@ -84,6 +84,15 @@ from nexus2.domain.automation.warrior_entry_execution import (
     complete_entry,
 )
 
+# Pattern Competition scoring (Phase 4 refactoring)
+from nexus2.domain.automation.warrior_entry_scoring import (
+    PatternCandidate,
+    score_pattern,
+    compute_level_proximity,
+    compute_time_score,
+    MIN_SCORE_THRESHOLD,
+)
+
 if TYPE_CHECKING:
     from nexus2.domain.automation.warrior_engine import WarriorEngine
 
@@ -402,29 +411,79 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 continue  # Skip PMH break logic for extended stocks
             
             # =============================================================================
-            # STANDALONE PATTERN CHECKS (run regardless of PMH relationship)
-            # These patterns don't depend on price being above/below PMH
+            # PATTERN COMPETITION: Parallel evaluation with scoring
             # =============================================================================
+            # Instead of sequential pattern checks with early enter_position() calls,
+            # we collect ALL matching patterns as candidates, score them, and pick the best.
+            # This prevents first-match bias and enables quality-based selection.
             
-            # PATTERN COMPETITION: Route to correct pattern based on setup_type
-            # If setup_type is specified (from test case YAML), only run matching pattern
-            # This prevents ABCD false triggers on PMH/VWAP_BREAK setups
             setup_type = getattr(watched, 'setup_type', None)
             if setup_type:
                 logger.debug(f"[Warrior Entry] {symbol}: Pattern routing - setup_type={setup_type}")
             
-            # ABCD PATTERN - REFACTORED: moved to warrior_entry_patterns.py
-            # Uses extracted detect_abcd_pattern() function
+            # -----------------------------------------------------------------
+            # COMPUTE SCORING CONTEXT (once per symbol per cycle)
+            # -----------------------------------------------------------------
+            # Volume ratio (from candidate metadata or computed)
+            volume_ratio = float(getattr(watched.candidate, 'relative_volume', 1.0) or 1.0)
+            
+            # Catalyst strength (from candidate metadata)
+            catalyst_strength = float(getattr(watched.candidate, 'catalyst_strength', 0.5) or 0.5)
+            
+            # Spread % (from candidate metadata)
+            spread_pct = float(getattr(watched.candidate, 'spread_percent', 0.5) or 0.5)
+            
+            # Level proximity (how close to whole/half dollar)
+            level_proximity = compute_level_proximity(current_price)
+            
+            # Time score (ORB window = optimal)
+            et_now = engine._get_eastern_time()
+            time_score = compute_time_score(et_now.hour, et_now.minute)
+            
+            # -----------------------------------------------------------------
+            # COLLECT PATTERN CANDIDATES
+            # -----------------------------------------------------------------
+            candidates: list[PatternCandidate] = []
+            
+            # Helper to add candidate with scoring
+            def add_candidate(trigger: Optional[EntryTriggerType], confidence: float = 0.7):
+                """Add pattern to candidates list if it triggered."""
+                if trigger:
+                    score = score_pattern(
+                        pattern=trigger,
+                        volume_ratio=volume_ratio,
+                        pattern_confidence=confidence,
+                        catalyst_strength=catalyst_strength,
+                        spread_pct=spread_pct,
+                        level_proximity=level_proximity,
+                        time_score=time_score,
+                    )
+                    candidates.append(PatternCandidate(
+                        pattern=trigger,
+                        score=score,
+                        factors={
+                            "confidence": confidence,
+                            "volume": volume_ratio,
+                            "catalyst": catalyst_strength,
+                            "spread": spread_pct,
+                            "level_prox": level_proximity,
+                            "time": time_score,
+                        }
+                    ))
+                    logger.debug(
+                        f"[Warrior Entry] {symbol}: Candidate {trigger.name} "
+                        f"score={score:.3f} (conf={confidence:.2f})"
+                    )
+            
+            # ABCD PATTERN (standalone - doesn't depend on PMH relationship)
             abcd_trigger = await detect_abcd_pattern(engine, watched, current_price, setup_type)
-            if abcd_trigger:
-                await enter_position(engine, watched, current_price, abcd_trigger)
+            add_candidate(abcd_trigger, confidence=0.75)  # ABCD has moderate-high confidence when detected
             
             # =============================================================================
             # PMH-RELATIVE CHECKS
             # =============================================================================
             
             # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
-            # This enables "curl back up" pattern detection for re-entries
             if current_price < watched.pmh:
                 if watched.entry_triggered and not watched.last_below_pmh:
                     logger.info(
@@ -439,88 +498,83 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         (watched.recent_high - current_price) / watched.recent_high * 100
                     )
                 
-                # =================================================================
-                # WHOLE/HALF DOLLAR ANTICIPATORY - REFACTORED: moved to warrior_entry_patterns.py
-                # Uses extracted detect_whole_half_anticipatory() function
-                # =================================================================
+                # WHOLE/HALF DOLLAR ANTICIPATORY (below PMH)
                 whole_half_trigger = await detect_whole_half_anticipatory(engine, watched, current_price)
-                if whole_half_trigger:
-                    await enter_position(engine, watched, current_price, whole_half_trigger)
+                add_candidate(whole_half_trigger, confidence=0.80)  # High confidence at psychological levels
                 
-                # DIP-FOR-LEVEL PATTERN - REFACTORED: moved to warrior_entry_patterns.py
-                # Uses extracted detect_dip_for_level() function
+                # DIP-FOR-LEVEL PATTERN (below PMH)
                 dip_trigger = await detect_dip_for_level(engine, watched, current_price, setup_type)
-                if dip_trigger:
-                    await enter_position(engine, watched, current_price, dip_trigger)
-                    
-                continue  # Skip PMH/ORB checks when below PMH
-            
-            # Price is above PMH - check if this is a fresh breakout after pullback
-            if watched.entry_triggered and watched.last_below_pmh:
-                # This is a RE-ENTRY attempt after price curled back up (Ross pattern)
-                watched.last_below_pmh = False
-                watched.entry_triggered = False  # Reset to allow new entry attempt
-                watched.entry_attempt_count += 1
-                logger.info(
-                    f"[Warrior Entry] {symbol}: Fresh breakout after pullback "
-                    f"(re-entry attempt #{watched.entry_attempt_count})"
-                )
-            
-            if watched.entry_triggered:
-                # PULLBACK PATTERN (above PMH): Ross's "break through high after dip"
-                # REFACTORED: Extracted to warrior_entry_patterns.py
-                pullback_trigger = await detect_pullback_pattern(engine, watched, current_price)
-                if pullback_trigger:
-                    await enter_position(engine, watched, current_price, pullback_trigger)
-                continue  # Already entered this breakout
-            
-            # ORB trigger at 9:30
-            if engine.config.orb_enabled and not watched.orb_established:
-                await check_orb_setup(engine, watched, current_price)
-            
-            # PMH breakout - REFACTORED: moved to warrior_entry_patterns.py
-            # Uses extracted detect_pmh_break() function (with candle confirmation logic)
-            pmh_trigger = await detect_pmh_break(engine, watched, current_price, setup_type)
-            if pmh_trigger:
-                await enter_position(engine, watched, current_price, pmh_trigger)
-            
-            # ORB breakout (after ORB established)
-            if watched.orb_established and watched.orb_high:
-                if current_price > watched.orb_high:
-                    logger.info(f"[Warrior Entry] {symbol}: ORB BREAKOUT at ${current_price}")
-                    await enter_position(
-                        engine,
-                        watched,
-                        current_price,
-                        EntryTriggerType.ORB
+                add_candidate(dip_trigger, confidence=0.70)
+                
+            else:
+                # Price is above PMH
+                
+                # Check if this is a fresh breakout after pullback
+                if watched.entry_triggered and watched.last_below_pmh:
+                    watched.last_below_pmh = False
+                    watched.entry_triggered = False  # Reset to allow new entry attempt
+                    watched.entry_attempt_count += 1
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Fresh breakout after pullback "
+                        f"(re-entry attempt #{watched.entry_attempt_count})"
                     )
+                
+                if watched.entry_triggered:
+                    # PULLBACK PATTERN (above PMH): Ross's "break through high after dip"
+                    pullback_trigger = await detect_pullback_pattern(engine, watched, current_price)
+                    add_candidate(pullback_trigger, confidence=0.65)
+                else:
+                    # ORB trigger at 9:30
+                    if engine.config.orb_enabled and not watched.orb_established:
+                        await check_orb_setup(engine, watched, current_price)
+                    
+                    # PMH breakout
+                    pmh_trigger = await detect_pmh_break(engine, watched, current_price, setup_type)
+                    add_candidate(pmh_trigger, confidence=0.85)  # PMH break is high confidence
+                    
+                    # ORB breakout (after ORB established)
+                    if watched.orb_established and watched.orb_high and current_price > watched.orb_high:
+                        logger.debug(f"[Warrior Entry] {symbol}: ORB BREAKOUT candidate at ${current_price}")
+                        add_candidate(EntryTriggerType.ORB, confidence=0.80)
+                    
+                    # BULL FLAG
+                    bull_flag_trigger = await detect_bull_flag_pattern(engine, watched, current_price)
+                    add_candidate(bull_flag_trigger, confidence=0.70)
+                    
+                    # VWAP BREAK
+                    vwap_break_trigger = await detect_vwap_break_pattern(engine, watched, current_price, setup_type)
+                    add_candidate(vwap_break_trigger, confidence=0.75)
+                    
+                    # INVERTED HEAD & SHOULDERS
+                    inverted_hs_trigger = await detect_inverted_hs_pattern(engine, watched, current_price)
+                    add_candidate(inverted_hs_trigger, confidence=0.65)  # Lower confidence - complex pattern
+                    
+                    # CUP & HANDLE
+                    cup_handle_trigger = await detect_cup_handle_pattern(engine, watched, current_price)
+                    add_candidate(cup_handle_trigger, confidence=0.70)
             
-            # BULL FLAG - REFACTORED: Extracted to warrior_entry_patterns.py
-            bull_flag_trigger = await detect_bull_flag_pattern(engine, watched, current_price)
-            if bull_flag_trigger:
-                await enter_position(engine, watched, current_price, bull_flag_trigger)
-            
-            # VWAP BREAK - REFACTORED: Extracted to warrior_entry_patterns.py
-            vwap_break_trigger = await detect_vwap_break_pattern(engine, watched, current_price, setup_type)
-            if vwap_break_trigger:
-                await enter_position(engine, watched, current_price, vwap_break_trigger)
-            
-            # INVERTED HEAD & SHOULDERS - REFACTORED: Extracted to warrior_entry_patterns.py
-            inverted_hs_trigger = await detect_inverted_hs_pattern(engine, watched, current_price)
-            if inverted_hs_trigger:
-                await enter_position(engine, watched, current_price, inverted_hs_trigger)
-            
-            # ABCD PATTERN - REFACTORED: moved to warrior_entry_patterns.py
-            # Uses extracted detect_abcd_pattern() function
-            # Ross Cameron (Jan 29 2026): DCX for +$6,268 - Cold-day strategy
-            abcd_trigger = await detect_abcd_pattern(engine, watched, current_price, setup_type)
-            if abcd_trigger:
-                await enter_position(engine, watched, current_price, abcd_trigger)
-            
-            # CUP & HANDLE - REFACTORED: Extracted to warrior_entry_patterns.py
-            cup_handle_trigger = await detect_cup_handle_pattern(engine, watched, current_price)
-            if cup_handle_trigger:
-                await enter_position(engine, watched, current_price, cup_handle_trigger)
+            # -----------------------------------------------------------------
+            # WINNER SELECTION: Pick best candidate and enter
+            # -----------------------------------------------------------------
+            if candidates:
+                winner = max(candidates, key=lambda c: c.score)
+                
+                if winner.score >= MIN_SCORE_THRESHOLD:
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: WINNER={winner.pattern.name} "
+                        f"score={winner.score:.3f} (threshold={MIN_SCORE_THRESHOLD}), "
+                        f"candidates={len(candidates)}"
+                    )
+                    
+                    # Store competition metadata on watched candidate for trade event
+                    watched.entry_confidence = winner.score
+                    
+                    await enter_position(engine, watched, current_price, winner.pattern)
+                else:
+                    logger.info(
+                        f"[Warrior Entry] {symbol}: Best candidate {winner.pattern.name} "
+                        f"BELOW THRESHOLD ({winner.score:.3f} < {MIN_SCORE_THRESHOLD})"
+                    )
                     
         except Exception as e:
             logger.error(f"[Warrior Watch] Error checking {symbol}: {e}")
