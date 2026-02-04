@@ -739,9 +739,16 @@ async def get_ai_comparisons(
     # Calculate total before pagination
     total = len(all_entries)
     
-    # Apply sorting
+    # Apply sorting (handle mixed types by converting to strings)
     reverse = sort_dir.lower() == "desc"
-    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
+    def sort_key(x):
+        val = x.get(sort_by)
+        if val is None:
+            return ""
+        if isinstance(val, bool):
+            return str(val).lower()  # "false" < "true" alphabetically
+        return str(val)
+    all_entries.sort(key=sort_key, reverse=reverse)
     
     # Apply pagination
     entries = all_entries[offset:offset + limit]
