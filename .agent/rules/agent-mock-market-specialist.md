@@ -60,6 +60,35 @@ See workflow: `/create-test-cases` or `.agent/workflows/create-test-cases.md`
 
 ---
 
+## Transcript Processing Rules
+
+> [!CAUTION]
+> **DO NOT move or rename transcript files.** The extraction script handles placement and naming automatically.
+
+### Extraction Script Behavior
+The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
+- **Saves directly to**: `.agent/knowledge/warrior_trading/`
+- **Naming pattern**: `{publish_date}_transcript_{videoId}.md`
+- **DO NOT CHANGE** the filename - the video ID is required for traceability
+
+### Date Handling
+- **Publish date** = the date YouTube says the video was uploaded (used in filename)
+- **Trade date** = the actual trading day being recapped (may differ by 1 day)
+- Ross typically publishes same-day, but occasionally next-day
+- If dates differ, note BOTH in the file header, but **keep the filename as-is**
+
+### What NOT to Do
+❌ Don't move files after extraction (already in correct location)
+❌ Don't rename to "descriptive" names (breaks pattern, loses video ID)
+❌ Don't change the date in the filename to match trade date
+
+### What TO Do
+✅ Run the extraction script and leave the file where it lands
+✅ If trade date differs from publish date, update the **Date:** line inside the file
+✅ Analyze content and proceed to Phase 2 (fetch bars, add to YAML)
+
+---
+
 ## Current Implementation Status
 
 ### Working

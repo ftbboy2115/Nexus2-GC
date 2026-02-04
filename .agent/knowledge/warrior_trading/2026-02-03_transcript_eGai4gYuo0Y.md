@@ -2,8 +2,8 @@
 
 **Date:** 2026-02-03  
 **Video:** [I wasn't expecting this...](https://www.youtube.com/watch?v=eGai4gYuo0Y)  
-**Stock:** [TICKER]  
-**Result:** [P/L]
+**Stock:** NPT  
+**Result:** +$81,000
 
 ---
 
@@ -11,27 +11,33 @@
 
 | Metric | Value |
 |--------|-------|
-| Entry | $ |
-| Peak | $ |
-| Catalyst | |
-| Setup Type | |
-| Exchange | |
-| Alert Time | |
+| Entry | $7.50-$10.00 (scaled) |
+| Peak | $30.00 |
+| Catalyst | None (pure blue sky) |
+| Setup Type | Blue Sky Breakout |
+| Exchange | Chinese IPO |
+| Alert Time | 7:42 AM |
 
 ---
 
 ## Setup Criteria (Why He Took It)
 
-1. 
-2. 
-3. 
+1. Blue sky setup above $9.18 ATH - no overhead resistance
+2. Recent IPO - one of Ross's three favorite daily chart patterns
+3. Despite no news, the technical setup was compelling enough to trade
 
 ---
 
 ## Entry Pattern
 
 ```
-[Describe the entry sequence]
+1. NPT pops on scanner at 7:42 AM
+2. First probe at $7.50 (wrong account) → +$869
+3. Re-entry at $7.75-7.84 → took profit at $8.14-8.19 → +$3k
+4. Added at $8.40 on micro pullback → REJECTED → stopped out → -$13k swing
+5. Watched $9.18 ATH level, waited for confirmation
+6. Re-entered at $10+ after blue sky breakout confirmed
+7. Added at $11, $12, $15, $20s as it squeezed to $30
 ```
 
 ---
@@ -40,15 +46,27 @@
 
 | Action | Price | Trigger |
 |--------|-------|---------|
-| Entry | $ | |
-| | | |
+| Entry | $7.50 | Break of level (wrong account) |
+| Entry | $7.75-7.84 | Re-entry in retirement account |
+| Profit | $8.14-8.19 | +$3k locked |
+| Add | $8.40 | Micro pullback |
+| Stop | ~$7.50 | Rejected, -$13k swing |
+| Entry | $10.00 | Blue sky confirmed above $9.18 ATH |
+| Add | $11.00 | Continuation |
+| Add | $12.00 | Break of whole dollar |
+| Profit | $11.20 | Partial |
+| Add | $15.00 | Squeeze continuation |
+| Profit | $15.00 | Partial at resistance |
+| Add | $20s | Final adds |
+| Profit | $28-30 | Major exits near peak |
 
 ---
 
 ## Exit Criteria
 
-- 
-- 
+- Took profits into strength at whole dollar levels ($11, $15, $28-30)
+- Gave back ~$10k trying dip trades after the squeeze ended
+- Recognized when "it's not bouncing" and stopped trading it
 
 ---
 
@@ -56,23 +74,39 @@
 
 | Stock | Reason |
 |-------|--------|
-| | |
+| FATN | Choppy premarket, double top forming, couldn't trust it |
+| ANL | 29M float too large despite $140M private placement news |
+| CYNERS | Previous poor performance on this name |
+| ELAB | Pattern of popping and reversing, already red 20% despite acquisition news |
 
 ---
 
 ## Key Patterns Extracted
 
 ### Entry Rules
-1. 
+1. Blue sky above ATH = strong setup even without news
+2. Recent IPOs and reverse splits are favored daily chart patterns
+3. Wait for confirmation of key levels before major position
+4. "If it holds over $9, consider seriously. Over $9.50, consider getting married to it."
 
 ### Add Rules
-1. 
+1. Add on whole dollar breaks ($10, $11, $12, $15)
+2. Use hotkey (Shift+1) for quick adds
+3. Add into strength, not weakness
 
 ### Exit Rules
-1. 
+1. Take partials at resistance/whole dollars
+2. Recognize when squeeze is over (shorts covered, longs not buying)
+3. Stop trading when "it's not bouncing"
 
 ### Avoid Rules
-1. 
+1. Choppy premarket action = distrust
+2. Double tops forming = skip
+3. Previous poor performance on a name = skip
+4. Pop-and-reverse patterns = avoid even with news
+
+### Chart Timeframe Note
+> **Ross uses 10-second charts** for micro-timing entries and exits on fast-moving stocks like NPT. Most of the chart analysis in this video is done on the 10s timeframe, not 1-minute bars.
 
 ---
 

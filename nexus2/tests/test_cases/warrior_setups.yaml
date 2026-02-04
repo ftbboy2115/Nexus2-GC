@@ -654,6 +654,30 @@ test_cases:
       stop_near: 4.40
     notes: "Cold market day. Ross 'broke the ice' with 10k shares at $4.60, added 10k at $5.00 squeeze. Sold at $5.40 on bigger sellers appearing. Low float recent RS."
 
+  - id: ross_npt_20260203
+    symbol: NPT
+    setup_type: blue_sky
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$81,000 - Chinese IPO Blue Sky Short Squeeze"
+    trade_date: "2026-02-03"
+    intraday_file: "intraday/ross_npt_20260203.json"
+    data_source: polygon
+    ross_pnl: 81000.00
+    ross_entry_time: "07:50"  # Early entry ~$7.50-7.75, main position $10+
+    premarket_data:
+      gap_percent: 39.1
+      premarket_high: 30.15
+      previous_close: 5.40  # Estimated from gap calc
+      float_shares: 15000000
+      catalyst: "momentum"  # No news, pure blue sky breakout
+    expected:
+      entry_near: 10.00  # Main position entry for $9.18 ATH breakout
+      stop_near: 9.00
+    notes: "Chinese IPO, blue sky above $9.18 ATH. Ross flipped from -$10k to +$81k. Squeeze from $9→$30 in ~1 minute. Short squeeze fueled move. Added at $10, $11, $12, $15, 20s. Took profits through $28-30."
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================

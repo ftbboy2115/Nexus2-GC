@@ -33,8 +33,8 @@ python fetch_ross_test_cases.py PDYN 2026-01-28 news
 ```
 
 This creates:
-- JSON file in `nexus2/tests/test_cases/intraday/ross_SYMBOL_DATE.json`
-- Console output with premarket data (PMH, gap, volume)
+- Transcript file in `.agent/knowledge/warrior_trading/{date}_transcript_{videoId}.md`
+- Console output with video metadata (title, date)
 
 ### 3. Verify Data Quality
 Check the console output for:

@@ -221,8 +221,11 @@ def main():
         # Generate template with publish date and title
         template = create_template(url, transcript, publish_date, video_title)
         
-        # Save to file with publish date prefix for sorting
-        output_file = Path(__file__).parent / f"{publish_date}_transcript_{video_id}.md"
+        # Save to .agent/knowledge/warrior_trading/ folder (project root relative)
+        project_root = Path(__file__).parent.parent.parent  # nexus2/scripts -> nexus2 -> project root
+        knowledge_dir = project_root / ".agent" / "knowledge" / "warrior_trading"
+        knowledge_dir.mkdir(parents=True, exist_ok=True)
+        output_file = knowledge_dir / f"{publish_date}_transcript_{video_id}.md"
         
         # Safety check: don't overwrite existing files
         if output_file.exists():
