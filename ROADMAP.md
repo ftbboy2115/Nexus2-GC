@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-02-03
+Last updated: 2026-02-03 (Pattern Competition validated)
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -329,6 +329,12 @@ Last updated: 2026-02-03
   - [x] Scanner: `_evaluate_symbol` god function → 12 helpers via EvaluationContext
   - [x] Dead code: `alpaca_streaming.py` removed (0 imports)
   - [x] Test fixes: 24/24 warrior engine tests passing
+- [x] **Pattern Competition Framework** — DEPLOYED & VALIDATED (Feb 3)
+  - [x] `warrior_entry_scoring.py`: PatternCandidate dataclass + score_pattern()
+  - [x] Parallel pattern evaluation (no more first-match-wins)
+  - [x] Scoring: Pattern Confidence 50%, Volume 20%, Catalyst 15%, Context 15%
+  - [x] MIN_SCORE_THRESHOLD 0.40 gate
+  - [x] Mock Market validated: 12 symbols, ROLR 5-winner streak, GRI 6¢ from Ross entry
 - [x] **Configure Gemini MCP** — DONE: Updated to google.genai package, set user env var
 - [ ] **Parabolic Ride Exit Mode** — NEW exit_mode for riding runners (Feb 1)
   - **Problem:** Current exit modes (base_hit, home_run) exit too early on parabolic movers
