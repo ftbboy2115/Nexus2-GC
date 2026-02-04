@@ -572,6 +572,83 @@ async def get_catalyst_audits(
     }
 
 
+@router.get("/catalyst-audits/distinct")
+async def get_catalyst_audits_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in catalyst audits.
+    
+    Used by filter dropdowns to show all available filter options,
+    not just values on the current page.
+    """
+    from pathlib import Path
+    import re
+    
+    log_dir = Path("data")
+    base_log = log_dir / "catalyst_audit.log"
+    
+    all_lines = []
+    if base_log.exists():
+        try:
+            with open(base_log, "r", encoding="utf-8") as f:
+                all_lines.extend(f.readlines())
+        except Exception:
+            pass
+    
+    # Read rotated logs too
+    for i in range(1, 8):
+        rotated_log = log_dir / f"catalyst_audit.log.{i}"
+        if rotated_log.exists():
+            try:
+                with open(rotated_log, "r", encoding="utf-8") as f:
+                    all_lines.extend(f.readlines())
+            except Exception:
+                pass
+    
+    # Same parsing patterns as main endpoint
+    header_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ===")
+    headline_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)")
+    
+    values = set()
+    current_header = None
+    
+    for line in all_lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        match = header_pattern.match(line)
+        if match:
+            current_header = {
+                "symbol": match.group(2),
+                "regex_result": match.group(3),
+            }
+            # Collect header-level columns
+            if column == "symbol":
+                values.add(match.group(2))
+            elif column == "regex_result":
+                values.add(match.group(3))
+            continue
+        
+        match = headline_pattern.match(line)
+        if match and current_header:
+            if column == "symbol":
+                values.add(current_header["symbol"])
+            elif column == "regex_result":
+                values.add(current_header["regex_result"])
+            elif column == "regex_match_type":
+                values.add(match.group(4))
+            elif column == "headline_index":
+                values.add(str(match.group(2)))
+            elif column == "confidence":
+                values.add(match.group(5))
+            elif column == "passed":
+                values.add("true" if match.group(3) == "✓" else "false")
+    
+    return {"column": column, "values": sorted(list(values))}
+
+
 # =============================================================================
 # AI COMPARISONS ENDPOINT (parses catalyst_comparison.jsonl)
 # =============================================================================
@@ -690,6 +767,62 @@ async def get_ai_comparisons(
         "limit": limit,
         "offset": offset,
     }
+
+
+@router.get("/ai-comparisons/distinct")
+async def get_ai_comparisons_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in AI comparisons.
+    """
+    from pathlib import Path
+    import json
+    
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
+    
+    log_path = log_dir / "catalyst_comparison.jsonl"
+    if not log_path.exists():
+        return {"column": column, "values": []}
+    
+    values = set()
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    flash_result = data.get("models", {}).get("flash_lite", {})
+                    pro_result = data.get("models", {}).get("pro", {})
+                    regex_info = data.get("regex", {})
+                    
+                    if column == "symbol":
+                        values.add(data.get("symbol", ""))
+                    elif column == "regex_type":
+                        values.add(regex_info.get("type", ""))
+                    elif column == "regex_conf":
+                        values.add(str(regex_info.get("conf", 0)))
+                    elif column == "flash_valid":
+                        values.add(str(flash_result.get("valid", "")))
+                    elif column == "flash_type":
+                        values.add(flash_result.get("type", ""))
+                    elif column == "pro_valid":
+                        if pro_result:
+                            values.add(str(pro_result.get("valid", "")))
+                    elif column == "used_tiebreaker":
+                        values.add(str(bool(pro_result)))
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        pass
+    
+    # Remove empty strings
+    values.discard("")
+    return {"column": column, "values": sorted(list(values))}
 
 
 # =============================================================================

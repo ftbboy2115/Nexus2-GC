@@ -392,8 +392,51 @@ export default function DataExplorer() {
     const currentPage = Math.floor(offset / limit) + 1
     const hasFilters = Object.keys(filters).length > 0 || dateFrom || dateTo
 
+    // Tabs that have backend /distinct endpoints for comprehensive filtering
+    const DISTINCT_ENDPOINT_TABS: Record<string, string> = {
+        'catalyst-audits': '/api/data/catalyst-audits/distinct',
+        'ai-comparisons': '/api/data/ai-comparisons/distinct',
+    }
+
+    // State to cache distinct values from backend
+    const [distinctValues, setDistinctValues] = useState<Record<string, string[]>>({})
+    const [loadingDistinct, setLoadingDistinct] = useState<string | null>(null)
+
+    // Fetch distinct values from backend when filter dropdown opens
+    const fetchDistinctValues = async (col: string) => {
+        const endpoint = DISTINCT_ENDPOINT_TABS[activeTab]
+        if (!endpoint) {
+            // No backend endpoint - fall back to current page data
+            return null
+        }
+
+        setLoadingDistinct(col)
+        try {
+            const res = await fetch(`${endpoint}?column=${col}`)
+            if (res.ok) {
+                const result = await res.json()
+                setDistinctValues(prev => ({
+                    ...prev,
+                    [`${activeTab}-${col}`]: result.values || []
+                }))
+            }
+        } catch (e) {
+            console.error('Failed to fetch distinct values:', e)
+        } finally {
+            setLoadingDistinct(null)
+        }
+    }
+
     // Get unique values for a column (for Excel-style filter dropdowns)
+    // Uses backend data if available, otherwise falls back to current page
     const getUniqueValues = (col: string): string[] => {
+        const cacheKey = `${activeTab}-${col}`
+        const cached = distinctValues[cacheKey]
+        if (cached && cached.length > 0) {
+            return cached
+        }
+
+        // Fall back to current page data
         const values = new Set<string>()
         data.forEach(row => {
             const val = row[col]
@@ -662,6 +705,8 @@ export default function DataExplorer() {
                                                     } else {
                                                         setFilterDropdownCol(col)
                                                         setFilterSearchText('')  // Reset search when opening new dropdown
+                                                        // Fetch distinct values from backend for supported tabs
+                                                        fetchDistinctValues(col)
                                                     }
                                                 }}
                                                 className={styles.filterBtn}
