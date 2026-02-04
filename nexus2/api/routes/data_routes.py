@@ -394,11 +394,15 @@ async def get_warrior_scan_history(
         all_entries = filtered
     
     if symbol:
-        all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
+        # Support multi-select: comma-separated values mean "include any of these"
+        symbol_set = {s.strip().upper() for s in symbol.split(',')}
+        all_entries = [e for e in all_entries if e["symbol"].upper() in symbol_set]
     if result:
-        all_entries = [e for e in all_entries if e["result"] == result.upper()]
+        result_set = {r.strip().upper() for r in result.split(',')}
+        all_entries = [e for e in all_entries if e["result"] in result_set]
     if source:
-        all_entries = [e for e in all_entries if (e.get("source") or "").upper() == source.upper()]
+        source_set = {s.strip().upper() for s in source.split(',')}
+        all_entries = [e for e in all_entries if (e.get("source") or "").upper() in source_set]
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -514,8 +518,12 @@ async def get_catalyst_audits(
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
+    regex_result: Optional[str] = Query(None, description="Alias for result filter"),
     match_type: Optional[str] = Query(None, description="Filter by match type"),
+    regex_match_type: Optional[str] = Query(None, description="Alias for match_type filter"),
     headline: Optional[str] = Query(None, description="Filter by headline text (case-insensitive)"),
+    confidence: Optional[str] = Query(None, description="Filter by confidence score"),
+    headline_index: Optional[str] = Query(None, description="Filter by headline index"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -555,14 +563,28 @@ async def get_catalyst_audits(
             filtered.append(e)
         all_entries = filtered
     if symbol:
-        all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
-    if result:
-        all_entries = [e for e in all_entries if e["regex_result"] == result.upper()]
-    if match_type:
-        all_entries = [e for e in all_entries if e["regex_match_type"] == match_type]
+        # Support multi-select: comma-separated values mean "include any of these"
+        symbol_set = {s.strip().upper() for s in symbol.split(',')}
+        all_entries = [e for e in all_entries if e["symbol"].upper() in symbol_set]
+    # Handle result filter (support both 'result' and 'regex_result' param names)
+    actual_result = result or regex_result
+    if actual_result:
+        result_set = {r.strip().upper() for r in actual_result.split(',')}
+        all_entries = [e for e in all_entries if e["regex_result"] in result_set]
+    # Handle match_type filter (support both 'match_type' and 'regex_match_type' param names)
+    actual_match_type = match_type or regex_match_type
+    if actual_match_type:
+        match_type_set = {m.strip() for m in actual_match_type.split(',')}
+        all_entries = [e for e in all_entries if e["regex_match_type"] in match_type_set]
     if headline:
         headline_lower = headline.lower()
         all_entries = [e for e in all_entries if headline_lower in e.get("headline", "").lower()]
+    if confidence:
+        conf_set = {c.strip() for c in confidence.split(',')}
+        all_entries = [e for e in all_entries if str(e.get("confidence", "")) in conf_set]
+    if headline_index:
+        idx_set = {i.strip() for i in headline_index.split(',')}
+        all_entries = [e for e in all_entries if str(e.get("headline_index", "")) in idx_set]
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -706,7 +728,9 @@ async def get_ai_comparisons(
             filtered.append(e)
         all_entries = filtered
     if symbol:
-        all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() == symbol.upper()]
+        # Support multi-select: comma-separated values mean "include any of these"
+        symbol_set = {s.strip().upper() for s in symbol.split(',')}
+        all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() in symbol_set]
     if flash_valid is not None:
         all_entries = [e for e in all_entries if e["flash_valid"] == flash_valid]
     if has_tiebreaker is not None:
