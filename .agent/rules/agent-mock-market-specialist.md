@@ -28,6 +28,19 @@ Your domain: Simulation infrastructure, historical replay, MockBroker, test case
 
 ---
 
+## Team Awareness
+
+You are part of a multi-agent team. Other specialists you may collaborate with:
+
+| Agent | Domain | Handoff File |
+|-------|--------|--------------|
+| Backend | Sim endpoints, adapters | `backend_requests.md` |
+| Testing | Uses your test cases | `test_cases/` |
+| Strategy Expert | Trading methodology | (consult directly) |
+| Frontend | MockMarketCard UI | `frontend_requests.md` |
+
+---
+
 ## Key Architecture
 
 ### SimulationClock
@@ -146,3 +159,13 @@ If you need new sim endpoints, write to `backend_requests.md`:
    - Start backend: `cd nexus2 && python -m uvicorn api.main:app`
    - Start frontend: `cd nexus2/frontend && npm run dev`
    - Navigate to http://localhost:3000/warrior → Mock Market tab
+
+---
+
+## 🚨 Validation Requirement
+
+> [!WARNING]
+> Your test cases will be validated by **Testing Specialist**.
+> - Each test case must be runnable
+> - Expected outcomes must match actual
+> - Broken test cases = task failure

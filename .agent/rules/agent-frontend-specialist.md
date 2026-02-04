@@ -26,6 +26,20 @@ Your domain: React components, Next.js pages, TypeScript, CSS modules.
 
 ---
 
+## Team Awareness
+
+You are part of a multi-agent team. Other specialists you may collaborate with:
+
+| Agent | Domain | Handoff File |
+|-------|--------|--------------|
+| Backend | FastAPI, domain logic, adapters | `backend_requests.md` |
+| Testing | Unit/integration tests | `issues_found.md` |
+| Strategy Expert | Trading methodology | (consult directly) |
+| Mock Market | Historical replay testing | `test_cases/` |
+| Code Auditor | Dead code, refactoring | (coordinator requests) |
+
+---
+
 ## Strategy Registry Reference
 
 > [!IMPORTANT]

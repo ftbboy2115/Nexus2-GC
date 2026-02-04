@@ -18,6 +18,8 @@ When coordinating multiple specialist agents in parallel, follow this pattern.
 | Strategy Expert | `@agent-strategy-expert.md` | Methodology guidance |
 | **Algo Lab** | `@agent-algo-specialist.md` | R&D Lab, backtesting, strategy discovery |
 | **Code Auditor** | `@agent-code-auditor.md` | Code quality, dead code, refactoring |
+| **Audit Validator** | `@agent-audit-validator.md` | Verify audit claims, quality assurance |
+| **Mock Market** | `@agent-mock-market-specialist.md` | Historical replay testing, test cases |
 
 ---
 
@@ -89,6 +91,70 @@ Before approving trading logic implementation:
 - [ ] Correct methodology (Warrior vs KK vs Algo)
 - [ ] RS ≠ RSI, EP = Episodic Pivot
 - [ ] Stop logic matches documented method
+
+---
+
+## 🚨 MANDATORY VALIDATION PROTOCOL 🚨
+
+> [!CAUTION]
+> **NO implementation task is complete until validated by the assigned validator.**
+> Agents have been found making unverified claims. Trust but verify.
+
+### Implementation → Validator Pairings
+
+Every implementation agent has a corresponding validator:
+
+| Implementer | Validator | Validation Method |
+|-------------|-----------|-------------------|
+| Backend | Testing Specialist | Run `pytest` on affected modules |
+| Frontend | (Human review) | Manual UI verification |
+| Code Auditor | Audit Validator | Verify grep claims, run commands |
+| Mock Market | Testing Specialist | Validate test cases work |
+| Algo Lab | Testing Specialist | Run backtest verification |
+
+### Validation Rules
+
+1. **Sequential Execution** - Validator runs AFTER implementer completes
+2. **Independent Verification** - Validator runs commands themselves, doesn't trust claims
+3. **Evidence Required** - Validator must provide:
+   - Exact commands run
+   - Actual output (not paraphrased)
+   - PASS/FAIL per claim
+4. **Failure Escalation** - If validation fails:
+   - Document specific failure
+   - Return to coordinator
+   - Re-assign to implementer with failure evidence
+
+### Coordinator Workflow
+
+```
+1. Spawn Implementer → Wait for completion
+2. Spawn Validator with implementer's claims
+3. Review validation report
+4. If FAIL: Loop back to step 1 with failure notes
+5. If PASS: Mark task complete
+```
+
+### Validation Report Format
+
+Validators MUST produce:
+
+```markdown
+## Validation Report: [Task Name]
+
+### Claims Verified
+| # | Claim | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | [claim] | PASS/FAIL | [command + output] |
+
+### Overall Rating
+- **HIGH**: All claims verified
+- **MEDIUM**: Minor issues (cosmetic)  
+- **LOW**: Major issues (requires rework)
+
+### Failures (if any)
+- Claim #X: Expected [X], got [Y]
+```
 
 ---
 

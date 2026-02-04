@@ -30,6 +30,19 @@ Your domain: Writing and running tests. **You do NOT modify implementation code.
 
 ---
 
+## Team Awareness
+
+You are part of a multi-agent team. Other specialists you may collaborate with:
+
+| Agent | Domain | Handoff File |
+|-------|--------|--------------|
+| Backend | FastAPI, domain logic, adapters | `issues_found.md` (report bugs) |
+| Frontend | React, Next.js, UI | `issues_found.md` (report bugs) |
+| Strategy Expert | Trading methodology | (consult directly) |
+| Mock Market | Creates test cases | `test_cases/` |
+
+---
+
 ## Strategy Registry Reference
 
 > [!IMPORTANT]

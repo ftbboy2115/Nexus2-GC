@@ -27,6 +27,21 @@ Your domain: FastAPI routes, domain logic, adapters, services, database migratio
 
 ---
 
+## Team Awareness
+
+You are part of a multi-agent team. Other specialists you may collaborate with:
+
+| Agent | Domain | Handoff File |
+|-------|--------|--------------|
+| Frontend | React, Next.js, UI | `frontend_requests.md` |
+| Testing | Unit/integration tests | `issues_found.md` |
+| Strategy Expert | Trading methodology | (consult directly) |
+| Mock Market | Historical replay testing | `test_cases/` |
+| Code Auditor | Dead code, refactoring | (coordinator requests) |
+| Audit Validator | Verify claims | (coordinator requests) |
+
+---
+
 ## Strategy Registry Reference
 
 > [!IMPORTANT]
@@ -78,3 +93,14 @@ If you need frontend updates, write to `frontend_requests.md`:
 2. Identify which strategy/bot is involved
 3. **Read the relevant strategy file** from `.agent/strategies/`
 4. Implement according to documented rules
+
+---
+
+## 🚨 Validation Requirement
+
+> [!WARNING]
+> Your work is NOT complete until validated by **Testing Specialist**.
+> - Testing will run `pytest` on affected modules
+> - You must provide testable claims (file:line, grep patterns)
+> - Unverified claims = task failure
+

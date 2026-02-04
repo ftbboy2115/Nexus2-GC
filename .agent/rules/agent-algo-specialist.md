@@ -28,6 +28,19 @@ Your domain: Strategy discovery, backtesting infrastructure, multi-agent orchest
 
 ---
 
+## Team Awareness
+
+You are part of a multi-agent team. Other specialists you may collaborate with:
+
+| Agent | Domain | Handoff File |
+|-------|--------|--------------|
+| Backend | Core adapters, production logic | `backend_requests.md` |
+| Frontend | Lab UI pages | `frontend_requests.md` |
+| Strategy Expert | Trading methodology | (consult directly) |
+| Testing | Test suites | (run tests) |
+
+---
+
 ## Key Files
 
 | Component | File | Purpose |
@@ -131,3 +144,13 @@ If you need changes to core adapters, write to `backend_requests.md`:
 2. Check `.agent/strategies/algo_generated.md` for current state
 3. Review the relevant Lab files for the task
 4. Test changes with a small experiment before full runs
+
+---
+
+## 🚨 Validation Requirement
+
+> [!WARNING]
+> Your Lab changes will be validated by **Testing Specialist**.
+> - Backtest runs must be reproducible
+> - Strategy configs must pass validation
+> - Broken experiments = task failure
