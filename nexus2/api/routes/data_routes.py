@@ -427,6 +427,83 @@ async def get_warrior_scan_history(
 # CATALYST AUDITS ENDPOINT (parses catalyst_audit.log)
 # =============================================================================
 
+# Shared patterns and parsing for catalyst audit logs
+import re
+from pathlib import Path
+from typing import List, Dict, Any
+
+CATALYST_HEADER_PATTERN = re.compile(
+    r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ==="
+)
+CATALYST_HEADLINE_PATTERN = re.compile(
+    r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)"
+)
+
+
+def _read_catalyst_audit_logs() -> List[str]:
+    """Read all catalyst audit log lines (including rotated logs)."""
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
+    
+    all_lines = []
+    base_log = log_dir / "catalyst_audit.log"
+    
+    if base_log.exists():
+        try:
+            with open(base_log, "r", encoding="utf-8") as f:
+                all_lines.extend(f.readlines())
+        except Exception:
+            pass
+    
+    # Read rotated logs
+    for i in range(1, 8):
+        rotated_log = log_dir / f"catalyst_audit.log.{i}"
+        if rotated_log.exists():
+            try:
+                with open(rotated_log, "r", encoding="utf-8") as f:
+                    all_lines.extend(f.readlines())
+            except Exception:
+                pass
+    
+    return all_lines
+
+
+def _parse_catalyst_audit_entries(all_lines: List[str]) -> List[Dict[str, Any]]:
+    """Parse catalyst audit log lines into structured entries."""
+    entries = []
+    current_header = None
+    
+    for line in all_lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        match = CATALYST_HEADER_PATTERN.match(line)
+        if match:
+            current_header = {
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": match.group(3),
+                "catalyst_type": match.group(4),
+            }
+            continue
+        
+        match = CATALYST_HEADLINE_PATTERN.match(line)
+        if match and current_header:
+            entries.append({
+                "timestamp": match.group(1),
+                "symbol": current_header["symbol"],
+                "regex_result": current_header["result"],
+                "headline_index": int(match.group(2)),
+                "passed": match.group(3) == "✓",
+                "regex_match_type": match.group(4),
+                "confidence": float(match.group(5)),
+                "headline": match.group(6),
+            })
+    
+    return entries
+
 @router.get("/catalyst-audits")
 async def get_catalyst_audits(
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
@@ -453,79 +530,12 @@ async def get_catalyst_audits(
         limit: Records per page
         offset: Current offset
     """
-    from pathlib import Path
-    import re
-    
-    # Find log directory
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
-    
-    if not log_dir.exists():
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    # Read all rotated log files
-    all_lines = []
-    base_log = log_dir / "catalyst_audit.log"
-    
-    if base_log.exists():
-        try:
-            with open(base_log, "r", encoding="utf-8") as f:
-                all_lines.extend(f.readlines())
-        except Exception:
-            pass
-    
-    # Read rotated logs
-    for i in range(1, 8):
-        rotated_log = log_dir / f"catalyst_audit.log.{i}"
-        if rotated_log.exists():
-            try:
-                with open(rotated_log, "r", encoding="utf-8") as f:
-                    all_lines.extend(f.readlines())
-            except Exception:
-                pass
-    
+    # Use shared helpers for reading and parsing logs
+    all_lines = _read_catalyst_audit_logs()
     if not all_lines:
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
-    # Patterns for parsing
-    # Header: 2026-01-30 13:41:00 | === CATX | Result: FAIL | Type: none ===
-    header_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ===")
-    # Headline: 2026-01-30 13:41:00 |   [1] ✗ no_match (conf=0.00): headline text
-    headline_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)")
-    
-    all_entries = []
-    current_header = None
-    
-    for line in all_lines:
-        line = line.strip()
-        if not line:
-            continue
-        
-        # Check for header line
-        match = header_pattern.match(line)
-        if match:
-            current_header = {
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": match.group(3),
-                "catalyst_type": match.group(4),
-            }
-            continue
-        
-        # Check for headline line
-        match = headline_pattern.match(line)
-        if match and current_header:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "symbol": current_header["symbol"],
-                "regex_result": current_header["result"],
-                "headline_index": int(match.group(2)),
-                "passed": match.group(3) == "✓",
-                "regex_match_type": match.group(4),
-                "confidence": float(match.group(5)),
-                "headline": match.group(6),
-            })
+    all_entries = _parse_catalyst_audit_entries(all_lines)
     
     # Apply filters with time support
     if date_from or date_to or time_from or time_to:
@@ -582,69 +592,20 @@ async def get_catalyst_audits_distinct(
     Used by filter dropdowns to show all available filter options,
     not just values on the current page.
     """
-    from pathlib import Path
-    import re
+    # Use shared helper for reading and parsing logs
+    all_lines = _read_catalyst_audit_logs()
+    if not all_lines:
+        return {"column": column, "values": []}
     
-    log_dir = Path("data")
-    base_log = log_dir / "catalyst_audit.log"
+    all_entries = _parse_catalyst_audit_entries(all_lines)
     
-    all_lines = []
-    if base_log.exists():
-        try:
-            with open(base_log, "r", encoding="utf-8") as f:
-                all_lines.extend(f.readlines())
-        except Exception:
-            pass
-    
-    # Read rotated logs too
-    for i in range(1, 8):
-        rotated_log = log_dir / f"catalyst_audit.log.{i}"
-        if rotated_log.exists():
-            try:
-                with open(rotated_log, "r", encoding="utf-8") as f:
-                    all_lines.extend(f.readlines())
-            except Exception:
-                pass
-    
-    # Same parsing patterns as main endpoint
-    header_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ===")
-    headline_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)")
-    
+    # Extract distinct values for the requested column
     values = set()
-    current_header = None
-    
-    for line in all_lines:
-        line = line.strip()
-        if not line:
-            continue
-        
-        match = header_pattern.match(line)
-        if match:
-            current_header = {
-                "symbol": match.group(2),
-                "regex_result": match.group(3),
-            }
-            # Collect header-level columns
-            if column == "symbol":
-                values.add(match.group(2))
-            elif column == "regex_result":
-                values.add(match.group(3))
-            continue
-        
-        match = headline_pattern.match(line)
-        if match and current_header:
-            if column == "symbol":
-                values.add(current_header["symbol"])
-            elif column == "regex_result":
-                values.add(current_header["regex_result"])
-            elif column == "regex_match_type":
-                values.add(match.group(4))
-            elif column == "headline_index":
-                values.add(str(match.group(2)))
-            elif column == "confidence":
-                values.add(match.group(5))
-            elif column == "passed":
-                values.add("true" if match.group(3) == "✓" else "false")
+    for entry in all_entries:
+        if column in entry:
+            val = entry[column]
+            if val is not None:
+                values.add(str(val))
     
     return {"column": column, "values": sorted(list(values))}
 

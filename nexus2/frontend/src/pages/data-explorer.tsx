@@ -15,6 +15,23 @@ import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
 import { useLoading } from '@/components/GlobalLoadingBar'
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core'
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 type TabType = 'trade-events' | 'warrior-trades' | 'nac-trades' | 'nac-scans' | 'warrior-scans' | 'catalyst-audits' | 'ai-comparisons' | 'quote-audits' | 'validation-log'
 
 // Columns that are numeric for right-alignment
@@ -48,6 +65,99 @@ interface TabFilterState {
     sortDir: 'asc' | 'desc'
 }
 
+// Props for the sortable header component
+interface SortableHeaderProps {
+    id: string
+    col: string
+    isNumeric: boolean
+    isSorted: boolean
+    sortDir: 'asc' | 'desc'
+    tooltip: string
+    hasFilter: boolean
+    onSort: () => void
+    onFilterClick: (e: React.MouseEvent) => void
+    children?: React.ReactNode
+}
+
+// Sortable header component for drag-and-drop
+function SortableHeader({
+    id,
+    col,
+    isNumeric,
+    isSorted,
+    sortDir,
+    tooltip,
+    hasFilter,
+    onSort,
+    onFilterClick,
+    children,
+}: SortableHeaderProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'grab',
+        position: 'relative' as const,
+    }
+
+    return (
+        <th
+            ref={setNodeRef}
+            style={style}
+            className={`${styles.sortable} ${isNumeric ? styles.numericHeader : ''}`}
+        >
+            <span
+                {...attributes}
+                {...listeners}
+                style={{ cursor: 'grab', marginRight: '4px', opacity: 0.5 }}
+                title="Drag to reorder"
+            >
+                ⋮⋮
+            </span>
+            <span
+                onClick={onSort}
+                style={{ cursor: 'pointer' }}
+                title={tooltip}
+            >
+                {col}
+                {isSorted && (
+                    <span className={styles.sortIndicator}>
+                        {sortDir === 'asc' ? ' ▲' : ' ▼'}
+                    </span>
+                )}
+            </span>
+            <button
+                onClick={onFilterClick}
+                className={styles.filterBtn}
+                title={`Filter by ${col}`}
+                style={{
+                    marginLeft: '6px',
+                    padding: '2px 5px',
+                    fontSize: '11px',
+                    background: hasFilter ? '#4caf50' : '#333',
+                    border: '1px solid #666',
+                    borderRadius: '3px',
+                    color: hasFilter ? '#fff' : '#ccc',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                }}
+            >
+                ▼
+            </button>
+            {children}
+        </th>
+    )
+}
+
 export default function DataExplorer() {
     const [activeTab, setActiveTab] = useState<TabType>('warrior-scans')
     const [data, setData] = useState<any[]>([])
@@ -72,6 +182,21 @@ export default function DataExplorer() {
     // Store filter state per tab so each tab has independent filters
     const [tabFilterStates, setTabFilterStates] = useState<Partial<Record<TabType, TabFilterState>>>({})
     const [previousTab, setPreviousTab] = useState<TabType | null>(null)
+
+    // Custom column order per tab (persisted to localStorage)
+    const [customColumnOrder, setCustomColumnOrder] = useState<Partial<Record<TabType, string[]>>>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('dataExplorer_columnOrder')
+            return saved ? JSON.parse(saved) : {}
+        }
+        return {}
+    })
+
+    // DnD sensors for drag-and-drop
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    )
 
     const tabEndpoints: Record<TabType, string> = {
         'trade-events': '/api/data/trade-events',
@@ -376,7 +501,11 @@ export default function DataExplorer() {
     const rawColumns = data.length > 0
         ? Array.from(new Set(data.flatMap(row => Object.keys(row))))
         : []
-    const preferredOrder = PREFERRED_COLUMN_ORDER[activeTab] || []
+
+    // Use custom order if set, otherwise use default preferred order
+    const customOrder = customColumnOrder[activeTab]
+    const preferredOrder = customOrder || PREFERRED_COLUMN_ORDER[activeTab] || []
+
     const allColumns = rawColumns.sort((a, b) => {
         const aIdx = preferredOrder.indexOf(a)
         const bIdx = preferredOrder.indexOf(b)
@@ -391,6 +520,37 @@ export default function DataExplorer() {
     const pageCount = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
     const hasFilters = Object.keys(filters).length > 0 || dateFrom || dateTo
+
+    // Handle drag-end for column reordering
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+
+        const oldIndex = columns.indexOf(active.id as string)
+        const newIndex = columns.indexOf(over.id as string)
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrder = arrayMove(columns, oldIndex, newIndex)
+            // Merge with hidden columns to preserve full order
+            const fullOrder = [...newOrder, ...Array.from(hiddenColumns)]
+
+            setCustomColumnOrder(prev => {
+                const updated = { ...prev, [activeTab]: fullOrder }
+                localStorage.setItem('dataExplorer_columnOrder', JSON.stringify(updated))
+                return updated
+            })
+        }
+    }
+
+    // Reset column order to default for current tab
+    const resetColumnOrder = () => {
+        setCustomColumnOrder(prev => {
+            const updated = { ...prev }
+            delete updated[activeTab]
+            localStorage.setItem('dataExplorer_columnOrder', JSON.stringify(updated))
+            return updated
+        })
+    }
 
     // Tabs that have backend /distinct endpoints for comprehensive filtering
     const DISTINCT_ENDPOINT_TABS: Record<string, string> = {
@@ -677,163 +837,171 @@ export default function DataExplorer() {
                         <div className={styles.empty}>No data found</div>
                     ) : (
                         <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    {columns.map(col => (
-                                        <th
-                                            key={col}
-                                            className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
-                                            style={{ position: 'relative' }}
-                                        >
-                                            <span
-                                                onClick={() => handleSort(col)}
-                                                style={{ cursor: 'pointer' }}
-                                                title={COLUMN_TOOLTIPS[col] || ''}
-                                            >
-                                                {col}
-                                                {sortBy === col && (
-                                                    <span className={styles.sortIndicator}>
-                                                        {sortDir === 'asc' ? ' ▲' : ' ▼'}
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    if (filterDropdownCol === col) {
-                                                        setFilterDropdownCol(null)
-                                                    } else {
-                                                        setFilterDropdownCol(col)
-                                                        setFilterSearchText('')  // Reset search when opening new dropdown
-                                                        // Fetch distinct values from backend for supported tabs
-                                                        fetchDistinctValues(col)
-                                                    }
-                                                }}
-                                                className={styles.filterBtn}
-                                                title={`Filter by ${col}`}
-                                                style={{
-                                                    marginLeft: '6px',
-                                                    padding: '2px 5px',
-                                                    fontSize: '11px',
-                                                    background: filters[col] ? '#4caf50' : '#333',
-                                                    border: '1px solid #666',
-                                                    borderRadius: '3px',
-                                                    color: filters[col] ? '#fff' : '#ccc',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold',
-                                                }}
-                                            >
-                                                ▼
-                                            </button>
-                                            {filterDropdownCol === col && (
-                                                <div
-                                                    className={styles.filterDropdown}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: '100%',
-                                                        left: 0,
-                                                        zIndex: 1000,
-                                                        background: '#1e1e1e',
-                                                        border: '1px solid #444',
-                                                        borderRadius: '4px',
-                                                        padding: '8px',
-                                                        minWidth: '150px',
-                                                        maxHeight: '300px',
-                                                        overflowY: 'auto',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <thead>
+                                    <tr>
+                                        <SortableContext items={columns} strategy={horizontalListSortingStrategy}>
+                                            {columns.map(col => (
+                                                <th
+                                                    key={col}
+                                                    className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
+                                                    style={{ position: 'relative' }}
                                                 >
-                                                    {/* Search input with inline clear button */}
-                                                    <div style={{ position: 'relative', marginBottom: '6px' }}>
-                                                        <input
-                                                            type="text"
-                                                            placeholder={`Search ${col}...`}
-                                                            value={filterSearchText}
-                                                            onChange={(e) => setFilterSearchText(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                    const value = filterSearchText.trim()
-                                                                    if (value) {
-                                                                        handleFilterByValue(col, value)
-                                                                    } else {
-                                                                        removeFilter(col)
-                                                                    }
-                                                                    setFilterDropdownCol(null)
-                                                                    setFilterSearchText('')
-                                                                }
+                                                    <span
+                                                        onClick={() => handleSort(col)}
+                                                        style={{ cursor: 'pointer' }}
+                                                        title={COLUMN_TOOLTIPS[col] || ''}
+                                                    >
+                                                        {col}
+                                                        {sortBy === col && (
+                                                            <span className={styles.sortIndicator}>
+                                                                {sortDir === 'asc' ? ' ▲' : ' ▼'}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            if (filterDropdownCol === col) {
+                                                                setFilterDropdownCol(null)
+                                                            } else {
+                                                                setFilterDropdownCol(col)
+                                                                setFilterSearchText('')  // Reset search when opening new dropdown
+                                                                // Fetch distinct values from backend for supported tabs
+                                                                fetchDistinctValues(col)
+                                                            }
+                                                        }}
+                                                        className={styles.filterBtn}
+                                                        title={`Filter by ${col}`}
+                                                        style={{
+                                                            marginLeft: '6px',
+                                                            padding: '2px 5px',
+                                                            fontSize: '11px',
+                                                            background: filters[col] ? '#4caf50' : '#333',
+                                                            border: '1px solid #666',
+                                                            borderRadius: '3px',
+                                                            color: filters[col] ? '#fff' : '#ccc',
+                                                            cursor: 'pointer',
+                                                            fontWeight: 'bold',
+                                                        }}
+                                                    >
+                                                        ▼
+                                                    </button>
+                                                    {filterDropdownCol === col && (
+                                                        <div
+                                                            className={styles.filterDropdown}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: '100%',
+                                                                left: 0,
+                                                                zIndex: 1000,
+                                                                background: '#1e1e1e',
+                                                                border: '1px solid #444',
+                                                                borderRadius: '4px',
+                                                                padding: '8px',
+                                                                minWidth: '150px',
+                                                                maxHeight: '300px',
+                                                                overflowY: 'auto',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                                                             }}
                                                             onClick={(e) => e.stopPropagation()}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '6px 28px 6px 8px',
-                                                                background: '#2a2a2a',
-                                                                border: '1px solid #555',
-                                                                borderRadius: '3px',
-                                                                color: '#fff',
-                                                                fontSize: '12px',
-                                                            }}
-                                                            autoFocus
-                                                        />
-                                                        {filters[col] && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    removeFilter(col)
-                                                                    setFilterDropdownCol(null)
-                                                                }}
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    right: '4px',
-                                                                    top: '50%',
-                                                                    transform: 'translateY(-50%)',
-                                                                    background: 'transparent',
-                                                                    border: 'none',
-                                                                    color: '#f44336',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '14px',
-                                                                    padding: '2px 6px',
-                                                                }}
-                                                                title="Clear filter"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px' }}>
-                                                        {filterSearchText ? `Matching "${filterSearchText}":` : 'Enter to search, or select:'}
-                                                    </div>
-                                                    {getUniqueValues(col)
-                                                        .filter(val => !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase()))
-                                                        .slice(0, 50)  // Limit to 50 results for performance
-                                                        .map(val => (
-                                                            <div
-                                                                key={val}
-                                                                onClick={() => {
-                                                                    handleFilterByValue(col, val === '(empty)' ? '' : val)
-                                                                    setFilterDropdownCol(null)
-                                                                }}
-                                                                style={{
-                                                                    padding: '6px 8px',
-                                                                    cursor: 'pointer',
-                                                                    borderRadius: '3px',
-                                                                    background: filters[col] === val ? '#4caf50' : 'transparent',
-                                                                    whiteSpace: 'nowrap',
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                }}
-                                                                title={val}
-                                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
-                                                                onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
-                                                            >
-                                                                {val.length > 30 ? val.slice(0, 30) + '...' : val}
+                                                        >
+                                                            {/* Search input with inline clear button */}
+                                                            <div style={{ position: 'relative', marginBottom: '6px' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder={`Search ${col}...`}
+                                                                    value={filterSearchText}
+                                                                    onChange={(e) => setFilterSearchText(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            const value = filterSearchText.trim()
+                                                                            if (value) {
+                                                                                handleFilterByValue(col, value)
+                                                                            } else {
+                                                                                removeFilter(col)
+                                                                            }
+                                                                            setFilterDropdownCol(null)
+                                                                            setFilterSearchText('')
+                                                                        }
+                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '6px 28px 6px 8px',
+                                                                        background: '#2a2a2a',
+                                                                        border: '1px solid #555',
+                                                                        borderRadius: '3px',
+                                                                        color: '#fff',
+                                                                        fontSize: '12px',
+                                                                    }}
+                                                                    autoFocus
+                                                                />
+                                                                {filters[col] && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            removeFilter(col)
+                                                                            setFilterDropdownCol(null)
+                                                                        }}
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            right: '4px',
+                                                                            top: '50%',
+                                                                            transform: 'translateY(-50%)',
+                                                                            background: 'transparent',
+                                                                            border: 'none',
+                                                                            color: '#f44336',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '14px',
+                                                                            padding: '2px 6px',
+                                                                        }}
+                                                                        title="Clear filter"
+                                                                    >
+                                                                        ✕
+                                                                    </button>
+                                                                )}
                                                             </div>
-                                                        ))}
-                                                </div>
-                                            )}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
+                                                            <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px' }}>
+                                                                {filterSearchText ? `Matching "${filterSearchText}":` : 'Enter to search, or select:'}
+                                                            </div>
+                                                            {getUniqueValues(col)
+                                                                .filter(val => !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase()))
+                                                                .slice(0, 50)  // Limit to 50 results for performance
+                                                                .map(val => (
+                                                                    <div
+                                                                        key={val}
+                                                                        onClick={() => {
+                                                                            handleFilterByValue(col, val === '(empty)' ? '' : val)
+                                                                            setFilterDropdownCol(null)
+                                                                        }}
+                                                                        style={{
+                                                                            padding: '6px 8px',
+                                                                            cursor: 'pointer',
+                                                                            borderRadius: '3px',
+                                                                            background: filters[col] === val ? '#4caf50' : 'transparent',
+                                                                            whiteSpace: 'nowrap',
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                        }}
+                                                                        title={val}
+                                                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
+                                                                        onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
+                                                                    >
+                                                                        {val.length > 30 ? val.slice(0, 30) + '...' : val}
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    )}
+                                                </th>
+                                            ))}
+                                        </SortableContext>
+                                    </tr>
+                                </thead>
+                            </DndContext>
                             <tbody>
                                 {data.map((row, i) => (
                                     <tr key={i}>
