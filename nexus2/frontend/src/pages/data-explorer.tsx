@@ -101,12 +101,13 @@ function SortableHeader({
         isDragging,
     } = useSortable({ id })
 
-    const style = {
+    const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
         cursor: 'grab',
-        position: 'relative' as const,
+        position: 'relative',
+        textAlign: isNumeric ? 'right' : 'left',
     }
 
     return (
