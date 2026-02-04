@@ -519,10 +519,10 @@ async def get_catalyst_audits(
             all_entries.append({
                 "timestamp": match.group(1),
                 "symbol": current_header["symbol"],
-                "result": current_header["result"],
-                "headline_num": int(match.group(2)),
+                "regex_result": current_header["result"],
+                "headline_index": int(match.group(2)),
                 "passed": match.group(3) == "✓",
-                "match_type": match.group(4),
+                "regex_match_type": match.group(4),
                 "confidence": float(match.group(5)),
                 "headline": match.group(6),
             })
@@ -547,9 +547,9 @@ async def get_catalyst_audits(
     if symbol:
         all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
     if result:
-        all_entries = [e for e in all_entries if e["result"] == result.upper()]
+        all_entries = [e for e in all_entries if e["regex_result"] == result.upper()]
     if match_type:
-        all_entries = [e for e in all_entries if e["match_type"] == match_type]
+        all_entries = [e for e in all_entries if e["regex_match_type"] == match_type]
     if headline:
         headline_lower = headline.lower()
         all_entries = [e for e in all_entries if headline_lower in e.get("headline", "").lower()]

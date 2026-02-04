@@ -28,7 +28,7 @@ const NUMERIC_COLS = new Set([
     // Scan columns (warrior/nac)
     'gap_percent', 'gap_pct', 'rvol', 'score',
     // Catalyst audit columns
-    'headline_num', 'confidence',
+    'headline_index', 'confidence',
     // AI comparison columns
     'regex_conf', 'flash_ms',
 ])
@@ -85,11 +85,40 @@ export default function DataExplorer() {
         'validation-log': '/api/data/validation-log',
     }
 
+    // Default sort column per tab - different tabs use different timestamp column names
+    const DEFAULT_SORT_COLUMNS: Record<TabType, string> = {
+        'warrior-scans': 'timestamp',
+        'nac-scans': 'timestamp',
+        'catalyst-audits': 'timestamp',
+        'ai-comparisons': 'timestamp',
+        'trade-events': 'created_at',
+        'warrior-trades': 'entry_time',
+        'nac-trades': 'entry_time',
+        'quote-audits': 'timestamp',
+        'validation-log': 'created_at',
+    }
+
+    // Column display names and tooltips for clarity
+    const COLUMN_TOOLTIPS: Record<string, string> = {
+        'regex_result': 'PASS = regex matched a catalyst pattern, FAIL = no match',
+        'regex_match_type': 'Pattern that matched: earnings, fda, contract, acquisition, ipo, clinical_advance, or no_match',
+        'headline_index': 'Position 1-5 of headlines evaluated for this symbol',
+        'confidence': 'Regex tier: 0.9 = primary catalyst (earnings/fda/contract), 0.5 = supportive only, 0.0 = no match. Threshold ≥0.6 to pass.',
+        'flash_valid': 'Whether Flash-Lite AI model classified the headline as a valid catalyst',
+        'pro_valid': 'Whether Pro AI model classified the headline as a valid catalyst (tiebreaker)',
+        'tiebreaker_used': 'True if Regex and Flash-Lite disagreed, requiring Pro model tiebreaker',
+        'regex_conf': 'Regex confidence score (0.0-0.9)',
+        'flash_ms': 'Flash-Lite model response latency in milliseconds',
+        'gap_pct': 'Pre-market gap percentage vs previous close',
+        'rvol': 'Relative volume vs 20-day average',
+        'score': 'Composite scanner score based on multiple criteria',
+    }
+
     // Preferred column order per tab - ensures stable column positions
     const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {
         'warrior-scans': ['timestamp', 'source', 'symbol', 'result', 'gap_pct', 'score', 'rvol', 'float', 'catalyst', 'reason'],
         'nac-scans': ['timestamp', 'symbol', 'result', 'gap_pct', 'rvol', 'volume', 'catalyst', 'reason'],
-        'catalyst-audits': ['timestamp', 'symbol', 'result', 'match_type', 'headline_num', 'confidence', 'headline', 'source', 'reason'],
+        'catalyst-audits': ['timestamp', 'symbol', 'regex_result', 'regex_match_type', 'headline_index', 'confidence', 'headline', 'passed'],
         'ai-comparisons': ['timestamp', 'symbol', 'flash_valid', 'pro_valid', 'tiebreaker_used', 'regex_conf', 'flash_ms', 'reason'],
         'trade-events': ['created_at', 'strategy', 'symbol', 'event_type', 'shares', 'metadata'],
         'warrior-trades': ['entry_time', 'symbol', 'status', 'entry_price', 'exit_price', 'stop_price', 'target_price', 'quantity', 'realized_pnl', 'exit_reason', 'trigger_type', 'stop_method', 'is_sim'],
@@ -172,7 +201,7 @@ export default function DataExplorer() {
             setTimeFrom('')
             setTimeTo('')
             setTimeWindow('')
-            setSortBy('created_at')
+            setSortBy(DEFAULT_SORT_COLUMNS[activeTab])
             setSortDir('desc')
         }
 
@@ -433,7 +462,7 @@ export default function DataExplorer() {
                     {([
                         { id: 'warrior-scans', label: 'Warrior Scans', tooltip: 'Real-time scanner PASS/FAIL decisions from warrior_scan.log. Shows gap%, RVOL, and rejection reasons.' },
                         { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
-                        { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Headline classification audit trail. Shows how catalysts were identified and categorized.' },
+                        { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc.' },
                         { id: 'ai-comparisons', label: 'AI Comparisons', tooltip: 'Side-by-side comparison of Regex vs Flash-Lite vs Pro catalyst classification.' },
                         { id: 'trade-events', label: 'Trade Events', tooltip: 'Event stream from nexus.db. Every state transition: ENTRY, FILL, EXIT, STOP_RAISED, etc.' },
                         { id: 'warrior-trades', label: 'Warrior Trades', tooltip: 'Position lifecycle from warrior.db. One row per trade: entry → exit with P&L.' },
@@ -613,7 +642,11 @@ export default function DataExplorer() {
                                             className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
                                             style={{ position: 'relative' }}
                                         >
-                                            <span onClick={() => handleSort(col)} style={{ cursor: 'pointer' }}>
+                                            <span
+                                                onClick={() => handleSort(col)}
+                                                style={{ cursor: 'pointer' }}
+                                                title={COLUMN_TOOLTIPS[col] || ''}
+                                            >
                                                 {col}
                                                 {sortBy === col && (
                                                     <span className={styles.sortIndicator}>

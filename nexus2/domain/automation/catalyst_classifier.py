@@ -1,7 +1,35 @@
 """
-Catalyst Classifier
+Catalyst Classifier (Regex Tier)
 
 Classify news headlines into catalyst categories using regex patterns.
+This is the FIRST TIER of the catalyst validation pipeline.
+
+PIPELINE ROLE:
+  ┌─────────────────────────────┐
+  │   PARALLEL ASSESSMENT       │
+  │  ┌─────────┐  ┌──────────┐  │
+  │  │ >>> REGEX │  │Flash-Lite│  │  ◄── YOU ARE HERE
+  │  │  (this) │  │   AI     │  │
+  │  └─────────┘  └──────────┘  │
+  └─────────────────────────────┘
+           │
+           ▼
+      Agreement? → Pro tiebreaker if needed
+  
+  Full pipeline diagram: See ai_catalyst_validator.py
+
+PATTERN CATEGORIES:
+  Tier 1 (Primary - 0.9 confidence):
+    - earnings, fda, contract, guidance_raise, acquisition, ipo, clinical_advance
+  Tier 2 (Supportive - 0.5 confidence, below threshold):
+    - analyst_valuation (not standalone per Ross methodology)
+  Negative (Avoid - 0.9 confidence):
+    - offering, sec_or_legal, guidance_cut, miss
+
+TRAINING FEEDBACK:
+  Logged to data/catalyst_audit.log for regex pattern refinement.
+  API: GET /warrior/scanner/catalyst-audit
+
 Ported from legacy: nexus_pipeline/catalyst_engine/catalyst_classifier.py
 """
 

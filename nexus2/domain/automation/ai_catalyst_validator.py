@@ -1,10 +1,68 @@
 """
-AI Catalyst Validator
+AI Catalyst Validator & Multi-Model Comparison System
 
-Uses Gemini AI to validate ambiguous headlines when regex doesn't match.
-Only called as a fallback when deterministic checks are inconclusive.
+CATALYST VALIDATION PIPELINE:
+==============================
+This module implements a parallel assessment system for catalyst validation,
+designed to improve accuracy while generating training data for regex pattern
+refinement.
 
-Includes shared cache for cross-strategy catalyst validation.
+FLOW:
+           Headline detected
+                  │
+                  ▼
+    ┌─────────────────────────────┐
+    │   PARALLEL ASSESSMENT       │
+    │  ┌─────────┐  ┌──────────┐  │
+    │  │  Regex  │  │Flash-Lite│  │
+    │  │Classify │  │   AI     │  │
+    │  └────┬────┘  └────┬─────┘  │
+    └───────┼────────────┼────────┘
+            │            │
+            ▼            ▼
+         ┌──────────────────┐
+         │   Agreement?     │
+         └────────┬─────────┘
+           ┌──────┴──────┐
+           │             │
+         YES            NO
+           │             │
+           ▼             ▼
+    ┌────────────┐  ┌────────────┐
+    │ Consensus  │  │Pro Model   │
+    │ Result     │  │Tiebreaker  │
+    └─────┬──────┘  └─────┬──────┘
+          │               │
+          └───────┬───────┘
+                  ▼
+    ┌─────────────────────────────┐
+    │  Cache in HeadlineCache     │
+    │  - regex_passed: bool       │
+    │  - flash_passed: bool       │
+    │  - method: consensus |      │
+    │           tiebreaker |      │
+    │           regex_only        │
+    └──────────────┬──────────────┘
+                   ▼
+    Log to data/catalyst_comparison.jsonl
+
+TRAINING FEEDBACK LOOP:
+  - API: GET /data/ai-comparisons - Review Regex vs Flash vs Pro results
+  - API: GET /warrior/scanner/catalyst-audit - Review headline evaluations
+  - Purpose: Identify false negatives where regex is missing patterns,
+    then add new patterns to catalyst_classifier.py
+
+COMPONENTS:
+  - CatalystCache: Short-term (5-min TTL) cross-strategy validation cache
+  - HeadlineCache: Persistent (14-day TTL) disk-backed headline storage
+  - AICatalystValidator: Single-model Gemini validator (legacy)
+  - MultiModelValidator: Parallel assessment with tiebreaker system
+
+USAGE:
+  # In warrior_scanner_service.py:
+  multi_validator = get_multi_validator()
+  final_valid, final_type, regex_passed, flash_passed, method = \\
+      multi_validator.validate_sync(headline, symbol, regex_passed, regex_type)
 """
 
 import os

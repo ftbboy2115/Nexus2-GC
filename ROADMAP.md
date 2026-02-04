@@ -121,27 +121,17 @@ Last updated: 2026-02-03
   - [x] **Order ID Linkage Fix** — Root cause of data loss (Jan 17)
     - Sync now recovers existing position_id from warrior_db
     - Preserves original trigger_type through restarts
-- [ ] **Alpaca Stale Quote Bug** — Returns stale/incorrect prices during premarket (Jan 21)
-  - IBRX showed $15.72 (Alpaca) vs actual $6.15 (FMP correct) — 142% divergence
-  - Unified adapter chose Alpaca as "median" despite being wildly wrong
-  - **Fix needed:** Prefer FMP when divergence >50% or add validation against prev close
-    - See [order_id_linkage_plan.md](file:///C:/Users/ftbbo/.gemini/antigravity/brain/0f443798-c140-4d29-99fc-fc284a48b8cf/order_id_linkage_plan.md)
-  - Root cause: Multiple data sources (in-memory monitor vs warrior_db vs broker)
-- [ ] **Pre-Market Quote Discrepancy (CRITICAL)** — Affects trade decisions, not just UI (Jan 22)
-  - IBRX showed $16.25 (Nexus) vs actual $7.07 (TradingView) — 130% divergence
-  - **Root Cause:** Both UI (`warrior_positions.py`) and Warrior decision-making (`warrior_monitor_exit.py`) use Alpaca as primary quote source
-  - This means stale/incorrect Alpaca quotes affect: stop-loss checks, P&L tracking, exit decisions
-  - **Fix Options:**
-    1. Add divergence check: reject Alpaca quote if >50% off FMP/Schwab
-    2. Prefer FMP during pre-market when Alpaca diverges
-    3. Cross-validate against previous close for sanity check
-  - Related: Alpaca Stale Quote Bug (line 101-106)
-- [ ] **Quote Fidelity Audit Service** — Systematic quote quality monitoring across providers
-  - Track quote divergence patterns by time window (early pre-market, late pre-market, regular hours)
-  - Log discrepancies between Alpaca/FMP/Schwab over time for trend analysis
-  - Identify reliability patterns: which providers are stable when, and which are unreliable
-  - Enable data-driven quote source selection based on time-of-day and historical accuracy
-  - Discovered from IBRX investigation: Alpaca wildly wrong early ($16.33) but stabilized near open ($7.39)
+- [x] **Alpaca Stale Quote Bug** — ✅ Fixed by Polygon integration (Jan 31)
+  - Issue: IBRX showed $15.72 (Alpaca) vs $6.15 (FMP) — 142% divergence
+  - Fix: Polygon now PRIMARY quote source with 3-source cross-validation
+  - See `unified.py` lines 106-283 for implementation
+- [x] **Pre-Market Quote Discrepancy (CRITICAL)** — ✅ Fixed by Polygon integration (Jan 31)
+  - Issue: IBRX showed $16.25 vs $7.07 — 130% divergence
+  - Fix: Polygon now PRIMARY with Schwab cross-validation; >20% divergence logs warning
+  - Fallback chain: Polygon → Schwab → Alpaca → FMP
+- [x] **Quote Fidelity Audit Service** — ✅ Implemented (Jan 31)
+  - `quote_audit_service.py` logs all quote checks with sources, divergence %, time window
+  - Integrated into `unified.py:get_quote()` for every quote request
 - [x] **Recovery Integrity Guards** — Ensure stop/target preserved through restarts (Jan 19)
   - DB-authoritative restoration of stop_price/target_price in `_sync_with_broker()`
   - Target sanity check prevents false partial-exit if price > target
