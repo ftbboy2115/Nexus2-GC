@@ -55,7 +55,7 @@ const NO_COMMA_COLS = new Set(['id', 'position_id', 'entry_order_id', 'exit_orde
 
 // Per-tab filter state type
 interface TabFilterState {
-    filters: Record<string, string>
+    filters: Record<string, Set<string>>
     dateFrom: string
     dateTo: string
     timeFrom: string
@@ -168,7 +168,7 @@ export default function DataExplorer() {
     const [offset, setOffset] = useState(0)
     const [sortBy, setSortBy] = useState('created_at')  // Default sort by timestamp
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-    const [filters, setFilters] = useState<Record<string, string>>({})
+    const [filters, setFilters] = useState<Record<string, Set<string>>>({})
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
     const [showColumnMenu, setShowColumnMenu] = useState(false)
     const [dateFrom, setDateFrom] = useState('')
@@ -269,9 +269,12 @@ export default function DataExplorer() {
             if (dateTo) params.set('date_to', dateTo)
             if (timeFrom) params.set('time_from', timeFrom)
             if (timeTo) params.set('time_to', timeTo)
-            // Apply all filters
-            Object.entries(filters).forEach(([key, value]) => {
-                if (value) params.set(key, value)
+            // Apply all filters (multi-select: send as comma-separated values)
+            Object.entries(filters).forEach(([key, valueSet]) => {
+                if (valueSet && valueSet.size > 0) {
+                    // Convert Set to comma-separated string for backend
+                    params.set(key, Array.from(valueSet).join(','))
+                }
             })
 
             const response = await fetch(`${tabEndpoints[activeTab]}?${params}`)
@@ -362,15 +365,53 @@ export default function DataExplorer() {
         }
     }
 
-    // Accumulate filters instead of replacing
-    const handleFilterByValue = (column: string, value: any) => {
-        // Use special marker for empty/null values
-        if (value === null || value === undefined || value === '' || value === '-' || value === 'null') {
-            setFilters(prev => ({ ...prev, [column]: '__EMPTY__' }))
-        } else {
-            setFilters(prev => ({ ...prev, [column]: String(value) }))
-        }
+    // Toggle a single value in the multi-select filter
+    const toggleFilterValue = (column: string, value: string, allValues: string[]) => {
+        setFilters(prev => {
+            const currentSet = prev[column] ? new Set(prev[column]) : new Set(allValues)
+            if (currentSet.has(value)) {
+                currentSet.delete(value)
+            } else {
+                currentSet.add(value)
+            }
+            // If all selected, remove the filter entirely (no filtering)
+            if (currentSet.size === allValues.length) {
+                const next = { ...prev }
+                delete next[column]
+                return next
+            }
+            // If none selected, keep empty set (show nothing)
+            return { ...prev, [column]: currentSet }
+        })
         setOffset(0)
+    }
+
+    // Select All / Deselect All toggle
+    const toggleSelectAll = (column: string, allValues: string[], selectAll: boolean) => {
+        setFilters(prev => {
+            if (selectAll) {
+                // Select all = remove filter (show everything)
+                const next = { ...prev }
+                delete next[column]
+                return next
+            } else {
+                // Deselect all = empty set (show nothing)
+                return { ...prev, [column]: new Set<string>() }
+            }
+        })
+        setOffset(0)
+    }
+
+    // Check if a value is selected (not filtered out)
+    const isValueSelected = (column: string, value: string, allValues: string[]): boolean => {
+        const filterSet = filters[column]
+        if (!filterSet) return true // No filter = all selected
+        return filterSet.has(value)
+    }
+
+    // Check if all values are selected (no filter active)
+    const isAllSelected = (column: string): boolean => {
+        return !filters[column]
     }
 
     const removeFilter = (column: string) => {
@@ -735,15 +776,16 @@ export default function DataExplorer() {
                         />
                         {activeTab === 'warrior-trades' && (
                             <select
-                                value={filters.is_sim || ''}
+                                value={filters.is_sim ? Array.from(filters.is_sim)[0] || '' : ''}
                                 onChange={e => {
                                     const val = e.target.value;
                                     setFilters(prev => {
                                         if (!val) {
-                                            const { is_sim, ...rest } = prev;
-                                            return rest;
+                                            const next = { ...prev };
+                                            delete next.is_sim;
+                                            return next;
                                         }
-                                        return { ...prev, is_sim: val };
+                                        return { ...prev, is_sim: new Set([val]) };
                                     });
                                     setOffset(0);
                                 }}
@@ -791,13 +833,17 @@ export default function DataExplorer() {
                 {/* Active filters display */}
                 {Object.keys(filters).length > 0 && (
                     <div className={styles.filterTags}>
-                        {Object.entries(filters).map(([key, value]) => {
-                            // Check if this is a symbol filter (for TradingView link)
-                            const isSymbolFilter = key.toLowerCase() === 'symbol' && value !== '__EMPTY__'
+                        {Object.entries(filters).map(([key, valueSet]) => {
+                            const valuesArray = Array.from(valueSet)
+                            const displayValue = valuesArray.length > 2
+                                ? `${valuesArray.slice(0, 2).join(', ')} (+${valuesArray.length - 2})`
+                                : valuesArray.join(', ')
+                            // Check if this is a symbol filter with single value (for TradingView link)
+                            const isSymbolFilter = key.toLowerCase() === 'symbol' && valuesArray.length === 1
 
                             return (
                                 <span key={key} className={styles.filterTag}>
-                                    {key}: {value.length > 20 ? value.slice(0, 20) + '...' : value}
+                                    {key}: {displayValue.length > 30 ? displayValue.slice(0, 30) + '...' : displayValue}
                                     {isSymbolFilter && (
                                         <button
                                             onClick={() => {
@@ -805,7 +851,7 @@ export default function DataExplorer() {
                                                 const width = window.screen.width
                                                 const height = window.screen.height
                                                 window.open(
-                                                    `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${value}`,
+                                                    `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${valuesArray[0]}`,
                                                     '_blank',
                                                     `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
                                                 )
@@ -887,29 +933,17 @@ export default function DataExplorer() {
                                                             }}
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            {/* Search input with inline clear button */}
+                                                            {/* Search input */}
                                                             <div style={{ position: 'relative', marginBottom: '6px' }}>
                                                                 <input
                                                                     type="text"
                                                                     placeholder={`Search ${col}...`}
                                                                     value={filterSearchText}
                                                                     onChange={(e) => setFilterSearchText(e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            const value = filterSearchText.trim()
-                                                                            if (value) {
-                                                                                handleFilterByValue(col, value)
-                                                                            } else {
-                                                                                removeFilter(col)
-                                                                            }
-                                                                            setFilterDropdownCol(null)
-                                                                            setFilterSearchText('')
-                                                                        }
-                                                                    }}
                                                                     onClick={(e) => e.stopPropagation()}
                                                                     style={{
                                                                         width: '100%',
-                                                                        padding: '6px 28px 6px 8px',
+                                                                        padding: '6px 8px',
                                                                         background: '#2a2a2a',
                                                                         border: '1px solid #555',
                                                                         borderRadius: '3px',
@@ -918,59 +952,70 @@ export default function DataExplorer() {
                                                                     }}
                                                                     autoFocus
                                                                 />
-                                                                {filters[col] && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            removeFilter(col)
-                                                                            setFilterDropdownCol(null)
-                                                                        }}
-                                                                        style={{
-                                                                            position: 'absolute',
-                                                                            right: '4px',
-                                                                            top: '50%',
-                                                                            transform: 'translateY(-50%)',
-                                                                            background: 'transparent',
-                                                                            border: 'none',
-                                                                            color: '#f44336',
-                                                                            cursor: 'pointer',
-                                                                            fontSize: '14px',
-                                                                            padding: '2px 6px',
-                                                                        }}
-                                                                        title="Clear filter"
-                                                                    >
-                                                                        ✕
-                                                                    </button>
-                                                                )}
                                                             </div>
-                                                            <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px' }}>
-                                                                {filterSearchText ? `Matching "${filterSearchText}":` : 'Enter to search, or select:'}
-                                                            </div>
-                                                            {getUniqueValues(col)
-                                                                .filter(val => !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase()))
-                                                                .slice(0, 50)
-                                                                .map(val => (
-                                                                    <div
-                                                                        key={val}
-                                                                        onClick={() => {
-                                                                            handleFilterByValue(col, val === '(empty)' ? '' : val)
-                                                                            setFilterDropdownCol(null)
-                                                                        }}
-                                                                        style={{
-                                                                            padding: '6px 8px',
-                                                                            cursor: 'pointer',
-                                                                            borderRadius: '3px',
-                                                                            background: filters[col] === val ? '#4caf50' : 'transparent',
-                                                                            whiteSpace: 'nowrap',
-                                                                            overflow: 'hidden',
-                                                                            textOverflow: 'ellipsis',
-                                                                        }}
-                                                                        title={val}
-                                                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
-                                                                        onMouseLeave={(e) => (e.currentTarget.style.background = filters[col] === val ? '#4caf50' : 'transparent')}
-                                                                    >
-                                                                        {val.length > 30 ? val.slice(0, 30) + '...' : val}
-                                                                    </div>
-                                                                ))}
+                                                            {/* Select All checkbox */}
+                                                            {(() => {
+                                                                const allValues = getUniqueValues(col)
+                                                                const filteredValues = allValues.filter(val =>
+                                                                    !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase())
+                                                                )
+                                                                const allSelected = isAllSelected(col)
+                                                                return (
+                                                                    <>
+                                                                        <label
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                padding: '6px 8px',
+                                                                                cursor: 'pointer',
+                                                                                borderBottom: '1px solid #333',
+                                                                                marginBottom: '4px',
+                                                                                fontWeight: 'bold',
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={allSelected}
+                                                                                onChange={() => toggleSelectAll(col, allValues, !allSelected)}
+                                                                                style={{ marginRight: '8px', accentColor: '#4dabf7' }}
+                                                                            />
+                                                                            (Select All)
+                                                                        </label>
+                                                                        {/* Individual value checkboxes */}
+                                                                        {filteredValues.slice(0, 50).map(val => (
+                                                                            <label
+                                                                                key={val}
+                                                                                style={{
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    padding: '4px 8px',
+                                                                                    cursor: 'pointer',
+                                                                                    borderRadius: '3px',
+                                                                                }}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
+                                                                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                                                            >
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={isValueSelected(col, val, allValues)}
+                                                                                    onChange={() => toggleFilterValue(col, val, allValues)}
+                                                                                    style={{ marginRight: '8px', accentColor: '#4dabf7' }}
+                                                                                />
+                                                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
+                                                                                    {val.length > 30 ? val.slice(0, 30) + '...' : val}
+                                                                                </span>
+                                                                            </label>
+                                                                        ))}
+                                                                        {filteredValues.length > 50 && (
+                                                                            <div style={{ padding: '4px 8px', color: '#888', fontSize: '11px' }}>
+                                                                                ...and {filteredValues.length - 50} more
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )
+                                                            })()}
                                                         </div>
                                                     )}
                                                 </SortableHeader>
@@ -998,7 +1043,10 @@ export default function DataExplorer() {
                                                         if (e.shiftKey && isTruncated) {
                                                             setExpandedCell(isExpanded ? null : { row: i, col })
                                                         } else {
-                                                            handleFilterByValue(col, rawVal)
+                                                            // Click on cell = filter to show only this value
+                                                            const clickedVal = rawVal === null || rawVal === undefined || rawVal === '' ? '(empty)' : String(rawVal)
+                                                            setFilters(prev => ({ ...prev, [col]: new Set([clickedVal]) }))
+                                                            setOffset(0)
                                                         }
                                                     }}
                                                 >
