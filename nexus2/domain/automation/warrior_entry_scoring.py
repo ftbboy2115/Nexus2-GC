@@ -69,6 +69,7 @@ def score_pattern(
     spread_pct: float,          # 0.5 = 0.5% spread
     level_proximity: float,     # 0.0-1.0 (at level = 1.0)
     time_score: float,          # 0.0-1.0 (ORB window = 1.0)
+    blue_sky_pct: Optional[float] = None,  # % distance to 52-week high (0 = at ATH)
 ) -> float:
     """
     Calculate composite score for pattern quality.
@@ -79,6 +80,10 @@ def score_pattern(
     - Catalyst: 15% (conviction)
     - Spread + Level + Time: 15% (context)
     
+    BONUS (not weighted, added on top):
+    - Blue Sky: +0.10 boost when price is within 5% of 52-week high
+      (No overhead resistance = smoother breakouts)
+    
     Args:
         pattern: The entry trigger type (for potential pattern-specific weights)
         volume_ratio: Current bar volume / average volume (e.g., 3.0 = 3x)
@@ -87,9 +92,10 @@ def score_pattern(
         spread_pct: Bid-ask spread as percentage (0.5 = 0.5%)
         level_proximity: How close to psychological level (0.0-1.0)
         time_score: Time-based factor (ORB window = 1.0)
+        blue_sky_pct: Optional distance to 52-week high (0 = at ATH, 5 = 5% below)
     
     Returns:
-        Composite score from 0.0 to 1.0
+        Composite score from 0.0 to 1.0 (can exceed 1.0 with Blue Sky bonus)
     """
     # Normalize volume ratio (cap at 20x for scoring)
     # >20x is great but doesn't need more weight
@@ -108,6 +114,13 @@ def score_pattern(
         level_proximity * 0.05 +
         time_score * 0.05
     )
+    
+    # Blue Sky Bonus: no overhead resistance = smoother breakouts
+    # Ross Cameron prefers stocks "in blue sky" (at or near ATH)
+    if blue_sky_pct is not None and blue_sky_pct <= 5.0:
+        # Within 5% of 52-week high = full boost
+        # Boost scales linearly from 0.10 (at 5%) to 0.10 (at 0%)
+        score += 0.10
     
     return round(score, 3)
 
@@ -156,3 +169,33 @@ def compute_time_score(et_hour: int, et_minute: int) -> float:
     # Pre-market/afternoon: acceptable but not ideal
     else:
         return 0.4
+
+
+def compute_blue_sky_pct(price: Decimal, year_high: Optional[Decimal]) -> Optional[float]:
+    """
+    Compute distance from current price to 52-week high.
+    
+    "Blue Sky" = stock trading at or near all-time/52-week high.
+    No overhead resistance leads to smoother breakouts.
+    
+    Args:
+        price: Current stock price
+        year_high: 52-week high price (from FMP quote)
+    
+    Returns:
+        Percentage distance from 52-week high (0 = at ATH, 5 = 5% below)
+        None if year_high is not available
+    """
+    if year_high is None or year_high <= 0:
+        return None
+    
+    price_float = float(price)
+    year_high_float = float(year_high)
+    
+    if price_float >= year_high_float:
+        # At or above 52-week high = full Blue Sky
+        return 0.0
+    
+    # Calculate percentage below 52-week high
+    pct_below = ((year_high_float - price_float) / year_high_float) * 100
+    return round(pct_below, 2)

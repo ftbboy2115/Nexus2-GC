@@ -90,6 +90,7 @@ from nexus2.domain.automation.warrior_entry_scoring import (
     score_pattern,
     compute_level_proximity,
     compute_time_score,
+    compute_blue_sky_pct,
     MIN_SCORE_THRESHOLD,
 )
 
@@ -440,6 +441,25 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             et_now = engine._get_eastern_time()
             time_score = compute_time_score(et_now.hour, et_now.minute)
             
+            # Blue Sky score boost (near 52-week high = no overhead resistance)
+            # Try candidate first, then fetch from FMP quote if not available
+            year_high = getattr(watched.candidate, 'year_high', None)
+            if year_high is None:
+                try:
+                    # Fresh FMP quote has yearHigh
+                    fmp_quote = engine.market_data.fmp.get_quote(symbol)
+                    if fmp_quote and fmp_quote.year_high:
+                        year_high = fmp_quote.year_high
+                except Exception:
+                    pass  # Blue Sky boost just won't apply
+            
+            blue_sky_pct = compute_blue_sky_pct(current_price, year_high)
+            if blue_sky_pct is not None and blue_sky_pct <= 5.0:
+                logger.info(
+                    f"[Warrior Entry] {symbol}: BLUE SKY boost - "
+                    f"price ${current_price:.2f} is {blue_sky_pct:.1f}% below 52w high ${year_high:.2f}"
+                )
+            
             # -----------------------------------------------------------------
             # COLLECT PATTERN CANDIDATES
             # -----------------------------------------------------------------
@@ -457,6 +477,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         spread_pct=spread_pct,
                         level_proximity=level_proximity,
                         time_score=time_score,
+                        blue_sky_pct=blue_sky_pct,
                     )
                     candidates.append(PatternCandidate(
                         pattern=trigger,
@@ -468,6 +489,7 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                             "spread": spread_pct,
                             "level_prox": level_proximity,
                             "time": time_score,
+                            "blue_sky": blue_sky_pct,
                         }
                     ))
                     logger.debug(

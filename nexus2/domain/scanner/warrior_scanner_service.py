@@ -290,6 +290,9 @@ class WarriorCandidate:
     # ATR for stop sizing
     atr: Decimal = Decimal("1.0")
     
+    # 52-week high for Blue Sky detection (no overhead resistance)
+    year_high: Optional[Decimal] = None
+    
     # 200 EMA Resistance (Ross Cameron methodology)
     # "200 EMA acts as ceiling until broken"
     ema_200: Optional[Decimal] = None  # Daily 200 EMA value

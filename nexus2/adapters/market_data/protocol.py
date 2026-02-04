@@ -34,6 +34,8 @@ class Quote:
     day_high: Optional[Decimal] = None  # Today's high
     bid: Optional[Decimal] = None  # Bid price for spread calculation
     ask: Optional[Decimal] = None  # Ask price for spread calculation
+    year_high: Optional[Decimal] = None  # 52-week high (for Blue Sky detection)
+    year_low: Optional[Decimal] = None  # 52-week low
 
 
 @dataclass

@@ -228,6 +228,8 @@ class FMPAdapter:
             timestamp=datetime.now(timezone.utc),
             day_low=Decimal(str(q.get("dayLow", 0))) if q.get("dayLow") else None,
             day_high=Decimal(str(q.get("dayHigh", 0))) if q.get("dayHigh") else None,
+            year_high=Decimal(str(q.get("yearHigh", 0))) if q.get("yearHigh") else None,
+            year_low=Decimal(str(q.get("yearLow", 0))) if q.get("yearLow") else None,
         )
     
     def get_premarket_quote(self, symbol: str) -> Optional[Quote]:

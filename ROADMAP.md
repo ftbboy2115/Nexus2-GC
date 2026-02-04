@@ -359,6 +359,15 @@ Last updated: 2026-02-03 (Pattern Competition validated)
   - Source: 2025-11-13 SGBX trade, 2024-03-14 Level 2 deep dive
 - [ ] **Flat Top Breakout** — Clean horizontal resistance breaks up
   - Clear pattern, easy detection
+- [x] **Blue Sky Score Boost** — ✅ IMPLEMENTED (Feb 4): +10% score boost when near 52w high
+  - Stock within 5% of 52-week high = smoother breakouts, no overhead resistance
+  - Data source: FMP `yearHigh` in quote data
+- [ ] **Blue Sky Pattern Detector** — FUTURE: Dedicated pattern for ATH breakouts
+  - Triggers when price breaks above prior 52-week high with volume confirmation
+  - Higher confidence than generic PMH_BREAK
+- [ ] **Blue Sky Scanner Boost** — FUTURE: Scanner quality score boost for ATH proximity
+  - If within 5% of 52w high → +1 quality_score
+  - If making NEW ATH today → +2 quality_score
 
 **Tier 2 — Warning Patterns (Avoid Bad Trades):**
 - [ ] **Bull Flag Trap** — Detect when consolidation fails instead of breaking out
