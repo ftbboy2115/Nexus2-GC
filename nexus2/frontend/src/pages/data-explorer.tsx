@@ -846,51 +846,27 @@ export default function DataExplorer() {
                                     <tr>
                                         <SortableContext items={columns} strategy={horizontalListSortingStrategy}>
                                             {columns.map(col => (
-                                                <th
+                                                <SortableHeader
                                                     key={col}
-                                                    className={`${styles.sortable} ${NUMERIC_COLS.has(col) ? styles.numericHeader : ''}`}
-                                                    style={{ position: 'relative' }}
+                                                    id={col}
+                                                    col={col}
+                                                    isNumeric={NUMERIC_COLS.has(col)}
+                                                    isSorted={sortBy === col}
+                                                    sortDir={sortDir}
+                                                    tooltip={COLUMN_TOOLTIPS[col] || ''}
+                                                    hasFilter={!!filters[col]}
+                                                    onSort={() => handleSort(col)}
+                                                    onFilterClick={(e) => {
+                                                        e.stopPropagation()
+                                                        if (filterDropdownCol === col) {
+                                                            setFilterDropdownCol(null)
+                                                        } else {
+                                                            setFilterDropdownCol(col)
+                                                            setFilterSearchText('')
+                                                            fetchDistinctValues(col)
+                                                        }
+                                                    }}
                                                 >
-                                                    <span
-                                                        onClick={() => handleSort(col)}
-                                                        style={{ cursor: 'pointer' }}
-                                                        title={COLUMN_TOOLTIPS[col] || ''}
-                                                    >
-                                                        {col}
-                                                        {sortBy === col && (
-                                                            <span className={styles.sortIndicator}>
-                                                                {sortDir === 'asc' ? ' ▲' : ' ▼'}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            if (filterDropdownCol === col) {
-                                                                setFilterDropdownCol(null)
-                                                            } else {
-                                                                setFilterDropdownCol(col)
-                                                                setFilterSearchText('')  // Reset search when opening new dropdown
-                                                                // Fetch distinct values from backend for supported tabs
-                                                                fetchDistinctValues(col)
-                                                            }
-                                                        }}
-                                                        className={styles.filterBtn}
-                                                        title={`Filter by ${col}`}
-                                                        style={{
-                                                            marginLeft: '6px',
-                                                            padding: '2px 5px',
-                                                            fontSize: '11px',
-                                                            background: filters[col] ? '#4caf50' : '#333',
-                                                            border: '1px solid #666',
-                                                            borderRadius: '3px',
-                                                            color: filters[col] ? '#fff' : '#ccc',
-                                                            cursor: 'pointer',
-                                                            fontWeight: 'bold',
-                                                        }}
-                                                    >
-                                                        ▼
-                                                    </button>
                                                     {filterDropdownCol === col && (
                                                         <div
                                                             className={styles.filterDropdown}
@@ -970,7 +946,7 @@ export default function DataExplorer() {
                                                             </div>
                                                             {getUniqueValues(col)
                                                                 .filter(val => !filterSearchText || val.toLowerCase().includes(filterSearchText.toLowerCase()))
-                                                                .slice(0, 50)  // Limit to 50 results for performance
+                                                                .slice(0, 50)
                                                                 .map(val => (
                                                                     <div
                                                                         key={val}
@@ -996,7 +972,7 @@ export default function DataExplorer() {
                                                                 ))}
                                                         </div>
                                                     )}
-                                                </th>
+                                                </SortableHeader>
                                             ))}
                                         </SortableContext>
                                     </tr>
