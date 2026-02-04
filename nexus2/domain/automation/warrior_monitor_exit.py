@@ -153,24 +153,47 @@ async def _check_after_hours_exit(
     if not s.enable_after_hours_exit:
         return None
     
-    # Use simulation clock if historical replay is active, otherwise real time
+    # Determine current time (sim clock vs real clock)
     from zoneinfo import ZoneInfo
     ET = ZoneInfo("America/New_York")
-    try:
-        from nexus2.adapters.simulation import get_simulation_clock
-        sim_clock = get_simulation_clock()
-        # Check if clock is set to a simulated date (not today)
-        clock_time = sim_clock.current_time
-        real_now = datetime.now(ET)
-        # If simulated date differs from today, use simulated time
-        if clock_time.date() != real_now.date():
-            et_now = clock_time.astimezone(ET) if clock_time.tzinfo else ET.localize(clock_time)
-            logger.debug(f"[Warrior] Using sim clock time {et_now.strftime('%H:%M')} for after-hours check")
-        else:
-            et_now = real_now
-    except Exception as e:
-        logger.debug(f"[Warrior] Sim clock error: {e}, using real time")
+    
+    sim_clock_active = False
+    et_now = None
+    
+    # PRIORITY 1: Check for monitor._sim_clock (attached by Mock Market)
+    if hasattr(monitor, '_sim_clock') and monitor._sim_clock:
+        try:
+            clock_time = monitor._sim_clock.current_time
+            if clock_time:
+                et_now = clock_time.astimezone(ET) if clock_time.tzinfo else clock_time.replace(tzinfo=ET)
+                sim_clock_active = True
+                logger.debug(f"[Warrior] Using monitor._sim_clock time {et_now.strftime('%H:%M')} for after-hours check")
+        except Exception as e:
+            logger.debug(f"[Warrior] monitor._sim_clock error: {e}")
+    
+    # PRIORITY 2: Check global simulation clock (for replay scenarios)
+    if not sim_clock_active:
+        try:
+            from nexus2.adapters.simulation import get_simulation_clock
+            sim_clock = get_simulation_clock()
+            clock_time = sim_clock.current_time
+            real_now = datetime.now(ET)
+            # Use sim clock if it's a different date OR if sim_mode is True
+            if clock_time.date() != real_now.date():
+                et_now = clock_time.astimezone(ET) if clock_time.tzinfo else clock_time.replace(tzinfo=ET)
+                sim_clock_active = True
+                logger.debug(f"[Warrior] Using global sim_clock time {et_now.strftime('%H:%M')} for after-hours check")
+        except Exception as e:
+            logger.debug(f"[Warrior] Global sim clock error: {e}")
+    
+    # PRIORITY 3: Real wall clock (live trading)
+    if et_now is None:
         et_now = datetime.now(ET)
+    
+    # Skip after-hours exit in sim_mode ONLY if no sim clock is active
+    # (For unit tests that set sim_mode=True but don't have Mock Market running)
+    if monitor.sim_mode and not sim_clock_active:
+        return None
     
     current_time_str = et_now.strftime("%H:%M")
     

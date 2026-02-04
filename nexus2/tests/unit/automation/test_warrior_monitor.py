@@ -169,6 +169,7 @@ class TestMentalStop:
         with patch("nexus2.domain.automation.warrior_monitor.trade_event_service"):
             # Use home_run mode so exit logic behaves as expected for stop tests
             m = WarriorMonitor(settings=WarriorMonitorSettings(session_exit_mode='home_run'))
+            m.sim_mode = True  # Bypass after-hours exit logic in tests
             m.set_callbacks(
                 get_price=AsyncMock(),
                 execute_exit=AsyncMock(),
@@ -216,6 +217,7 @@ class TestProfitTarget:
         with patch("nexus2.domain.automation.warrior_monitor.trade_event_service"):
             # Use home_run mode to get PARTIAL_EXIT behavior
             m = WarriorMonitor(settings=WarriorMonitorSettings(session_exit_mode='home_run'))
+            m.sim_mode = True  # Bypass after-hours exit logic in tests
             m.set_callbacks(
                 get_price=AsyncMock(),
                 execute_exit=AsyncMock(),
