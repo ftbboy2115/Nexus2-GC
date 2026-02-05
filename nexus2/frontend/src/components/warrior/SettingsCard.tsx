@@ -87,9 +87,21 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                                 onClick={() => updateConfig('max_shares_per_trade', Math.max(10, (config?.max_shares_per_trade || 100) - 10))}
                                 className={styles.btnSmall}
                             >-</button>
-                            <span>{config?.max_shares_per_trade || 100}</span>
+                            <input
+                                type="number"
+                                value={config?.max_shares_per_trade || 100}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10)
+                                    if (!isNaN(val) && val >= 10 && val <= 10000) {
+                                        updateConfig('max_shares_per_trade', val)
+                                    }
+                                }}
+                                className={styles.settingInput}
+                                min={10}
+                                max={10000}
+                            />
                             <button
-                                onClick={() => updateConfig('max_shares_per_trade', Math.min(1000, (config?.max_shares_per_trade || 100) + 10))}
+                                onClick={() => updateConfig('max_shares_per_trade', Math.min(10000, (config?.max_shares_per_trade || 100) + 10))}
                                 className={styles.btnSmall}
                             >+</button>
                         </div>
