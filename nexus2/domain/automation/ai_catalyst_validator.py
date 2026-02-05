@@ -841,10 +841,15 @@ Is this a valid Qullamaggie EP catalyst?"""
             final_valid = regex_passed
             final_type = regex_type if regex_passed else flash_result.catalyst_type
             logger.info(f"[AI vs Regex] {symbol}: Regex={'PASS' if regex_passed else 'FAIL'} Flash={'PASS' if flash_passed else 'FAIL'} → {method}")
+            
+            # Log comparison (consensus case - flash only)
+            model_results = {"flash_lite": flash_result}
         else:
             # Disagreement - need tiebreaker
+            model_results = {"flash_lite": flash_result}
             if "pro" in self.models and self._can_call_model("pro"):
                 pro_result = self._validate_with_model("pro", headline, symbol)
+                model_results["pro"] = pro_result  # Include Pro in model_results
                 final_valid = pro_result.is_valid
                 final_type = pro_result.catalyst_type if pro_result.is_valid else None
                 method = "tiebreaker"
@@ -856,14 +861,14 @@ Is this a valid Qullamaggie EP catalyst?"""
                 method = "flash_only"
                 logger.warning(f"[MultiModel] {symbol}: Pro rate limited, using Flash result")
         
-        # Log for training
+        # Log for training - now includes Pro when tiebreaker was used
         comparison = ComparisonResult(
             symbol=symbol,
             headline=headline,
             timestamp=now_et(),
             regex_type=regex_type,
             regex_confidence=0.9 if regex_passed else 0.0,
-            model_results={"flash_lite": flash_result},
+            model_results=model_results,
         )
         self._log_comparison(comparison)
         

@@ -321,6 +321,13 @@ async def get_warrior_scan_history(
         # Check FAIL (new format with Gap + RVOL)
         match = fail_pattern_new.match(line)
         if match:
+            reason_text = match.group(5)
+            # Extract Float value from reason if present (e.g., "float | Float: 166.7M > 100.0M")
+            float_value = None
+            if "Float:" in reason_text:
+                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
+                if float_match:
+                    float_value = float_match.group(1)
             all_entries.append({
                 "timestamp": match.group(1),
                 "symbol": match.group(2),
@@ -328,7 +335,8 @@ async def get_warrior_scan_history(
                 "gap_pct": float(match.group(3)),
                 "rvol": float(match.group(4)),
                 "score": None,
-                "reason": match.group(5),
+                "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text,
+                "float": float_value,
             })
             continue
         
@@ -425,6 +433,147 @@ async def get_warrior_scan_history(
         "limit": limit,
         "offset": offset,
     }
+
+
+# Helper function to parse warrior scan log entries (shared by main and distinct endpoints)
+def _parse_warrior_scan_log_entries() -> list:
+    """Parse warrior_scan.log and return all entries."""
+    from pathlib import Path
+    import re
+    
+    log_dir = Path("data")
+    if not log_dir.exists():
+        log_dir = Path.home() / "Nexus2" / "data"
+    
+    if not log_dir.exists():
+        return []
+    
+    # Read all rotated log files
+    all_lines = []
+    base_log = log_dir / "warrior_scan.log"
+    
+    if base_log.exists():
+        try:
+            with open(base_log, "r", encoding="utf-8") as f:
+                all_lines.extend(f.readlines())
+        except Exception:
+            pass
+    
+    for i in range(1, 8):
+        rotated_log = log_dir / f"warrior_scan.log.{i}"
+        if rotated_log.exists():
+            try:
+                with open(rotated_log, "r", encoding="utf-8") as f:
+                    all_lines.extend(f.readlines())
+            except Exception:
+                pass
+    
+    if not all_lines:
+        return []
+    
+    # Patterns
+    pass_pattern_pillars_consolidated = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Gap:([0-9.]+)% \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
+    pass_pattern_pillars_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
+    pass_pattern_scan = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[SCAN\] PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
+    pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
+    fail_pattern_new = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Reason: (.+)")
+    fail_pattern_old = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| Reason: (.+)")
+    fail_pattern_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
+    
+    all_entries = []
+    for line in all_lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        match = pass_pattern_pillars_consolidated.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "source": "PILLARS", "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "score": int(match.group(4)), "catalyst": match.group(5), "float": match.group(6), "rvol": float(match.group(7)), "reason": None})
+            continue
+        
+        match = pass_pattern_pillars_legacy.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "source": "PILLARS", "symbol": match.group(2), "result": "PASS", "gap_pct": None, "score": int(match.group(3)), "catalyst": match.group(4), "float": match.group(5), "rvol": float(match.group(6)), "reason": None})
+            continue
+        
+        match = pass_pattern_scan.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "source": "SCAN", "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": int(match.group(5)), "reason": None})
+            continue
+        
+        match = pass_pattern.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "source": None, "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": int(match.group(5)), "reason": None})
+            continue
+        
+        match = fail_pattern_new.match(line)
+        if match:
+            reason_text = match.group(5)
+            float_value = None
+            if "Float:" in reason_text:
+                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
+                if float_match:
+                    float_value = float_match.group(1)
+            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": None, "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text, "float": float_value})
+            continue
+        
+        match = fail_pattern_old.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": float(match.group(3)), "rvol": None, "score": None, "reason": match.group(4)})
+            continue
+        
+        match = fail_pattern_legacy.match(line)
+        if match:
+            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": None, "rvol": None, "score": None, "reason": match.group(3)})
+            continue
+    
+    return all_entries
+
+
+@router.get("/warrior-scan-history/distinct")
+async def get_warrior_scan_history_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in Warrior scan history.
+    Used by filter dropdowns to show all available options.
+    """
+    all_entries = _parse_warrior_scan_log_entries()
+    
+    values = set()
+    for entry in all_entries:
+        if column in entry:
+            val = entry[column]
+            if val is not None:
+                values.add(str(val))
+    
+    values.discard("")
+    return {"column": column, "values": sorted(list(values))}
+
+
+@router.get("/scan-history/distinct")
+async def get_nac_scan_history_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in NAC/EP scan history.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.domain.lab.scan_history_logger import get_scan_history_logger
+    
+    history = get_scan_history_logger()
+    
+    values = set()
+    for date_str, entries in history._history.items():
+        for entry in entries:
+            full_entry = {"date": date_str, "source": "scan", **entry}
+            if column in full_entry:
+                val = full_entry[column]
+                if val is not None:
+                    values.add(str(val))
+    
+    values.discard("")
+    return {"column": column, "values": sorted(list(values))}
 
 
 # =============================================================================
@@ -544,6 +693,20 @@ async def get_catalyst_audits(
         return {"entries": [], "total": 0, "limit": limit, "offset": offset}
     
     all_entries = _parse_catalyst_audit_entries(all_lines)
+    
+    # Convert timestamps from UTC to ET for display
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as dt
+    utc_tz = ZoneInfo("UTC")
+    et_tz = ZoneInfo("America/New_York")
+    
+    for entry in all_entries:
+        try:
+            utc_dt = dt.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
+            local_dt = utc_dt.astimezone(et_tz)
+            entry["timestamp"] = local_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except:
+            pass  # Keep original on parse failure
     
     # Apply filters with time support
     if date_from or date_to or time_from or time_to:
@@ -896,6 +1059,29 @@ async def get_trade_events(
     }
 
 
+@router.get("/trade-events/distinct")
+async def get_trade_events_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in trade events.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.domain.automation.trade_event_service import trade_event_service
+    
+    all_events = trade_event_service.get_recent_events(None, limit=1000)
+    
+    values = set()
+    for event in all_events:
+        if column in event:
+            val = event[column]
+            if val is not None:
+                values.add(str(val))
+    
+    values.discard("")
+    return {"column": column, "values": sorted(list(values))}
+
+
 # =============================================================================
 # WARRIOR TRADES ENDPOINT (with sorting/filtering)
 # =============================================================================
@@ -1000,6 +1186,51 @@ async def get_warrior_trades(
         }
 
 
+@router.get("/warrior-trades/distinct")
+async def get_warrior_trades_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in Warrior trades.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.db.warrior_db import get_warrior_session, WarriorTradeModel
+    from sqlalchemy import distinct
+    
+    with get_warrior_session() as db:
+        # Get distinct values from the specified column
+        col = getattr(WarriorTradeModel, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
+    
+    return {"column": column, "values": sorted(values)}
+
+
+@router.get("/nac-trades/distinct")
+async def get_nac_trades_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in NAC trades.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.db.nac_db import get_nac_session, NACTradeModel
+    from sqlalchemy import distinct
+    
+    with get_nac_session() as db:
+        col = getattr(NACTradeModel, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
+    
+    return {"column": column, "values": sorted(values)}
+
+
 # =============================================================================
 # QUOTE AUDITS ENDPOINT (data fidelity analysis)
 # =============================================================================
@@ -1076,6 +1307,29 @@ async def get_quote_audits(
         }
 
 
+@router.get("/quote-audits/distinct")
+async def get_quote_audits_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in quote audits.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.db.models import QuoteAuditModel
+    from nexus2.db.database import get_session
+    from sqlalchemy import distinct
+    
+    with get_session() as db:
+        col = getattr(QuoteAuditModel, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
+    
+    return {"column": column, "values": sorted(values)}
+
+
 # =============================================================================
 # ENTRY VALIDATION LOG ENDPOINT
 # =============================================================================
@@ -1136,6 +1390,28 @@ async def get_validation_log(
             "limit": limit,
             "offset": offset,
         }
+
+
+@router.get("/validation-log/distinct")
+async def get_validation_log_distinct(
+    column: str = Query(..., description="Column to get unique values for"),
+):
+    """
+    Get distinct values for a column in entry validation logs.
+    Used by filter dropdowns to show all available options.
+    """
+    from nexus2.db.warrior_db import get_warrior_session, EntryValidationLogModel
+    from sqlalchemy import distinct
+    
+    with get_warrior_session() as db:
+        col = getattr(EntryValidationLogModel, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
+    
+    return {"column": column, "values": sorted(values)}
 
 
 # =============================================================================

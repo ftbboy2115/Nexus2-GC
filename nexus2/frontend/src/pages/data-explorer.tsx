@@ -475,6 +475,72 @@ export default function DataExplorer() {
         setOffset(0)
     }
 
+    // Date presets - sets date range to specific periods (no time filtering)
+    const handleDatePreset = (preset: string) => {
+        const now = new Date()
+        const today = now.toISOString().split('T')[0]
+
+        // Get Monday of current week (Monday = 1, Sunday = 0)
+        const getMonday = (d: Date) => {
+            const date = new Date(d)
+            const day = date.getDay()
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+            return new Date(date.setDate(diff))
+        }
+
+        switch (preset) {
+            case 'today':
+                setDateFrom(today)
+                setDateTo(today)
+                break
+            case 'yesterday': {
+                const yesterday = new Date(now)
+                yesterday.setDate(yesterday.getDate() - 1)
+                const yDate = yesterday.toISOString().split('T')[0]
+                setDateFrom(yDate)
+                setDateTo(yDate)
+                break
+            }
+            case 'this-week': {
+                const monday = getMonday(now)
+                setDateFrom(monday.toISOString().split('T')[0])
+                setDateTo(today)
+                break
+            }
+            case 'last-week': {
+                const lastMonday = getMonday(now)
+                lastMonday.setDate(lastMonday.getDate() - 7)
+                const lastSunday = new Date(lastMonday)
+                lastSunday.setDate(lastSunday.getDate() + 6)
+                setDateFrom(lastMonday.toISOString().split('T')[0])
+                setDateTo(lastSunday.toISOString().split('T')[0])
+                break
+            }
+            default:
+                return
+        }
+        // Clear time filters and time window when using date presets
+        setTimeFrom('')
+        setTimeTo('')
+        setTimeWindow('')
+        setOffset(0)
+    }
+
+    // Clear only date/time filters (preserve other column filters)
+    const clearTimeFilters = () => {
+        setDateFrom('')
+        setDateTo('')
+        setTimeFrom('')
+        setTimeTo('')
+        setTimeWindow('')
+        setOffset(0)
+    }
+
+    // Get article URL from catalyst audit row (handles different provider schemas)
+    const getArticleUrl = (row: any): string | null => {
+        return row.article_url || row.url || null
+    }
+
     const toggleColumn = (col: string) => {
         setHiddenColumns(prev => {
             const next = new Set(prev)
@@ -774,6 +840,52 @@ export default function DataExplorer() {
                             title="To time (optional)"
                             style={{ width: '90px' }}
                         />
+                        {/* Date presets */}
+                        <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                            <button
+                                onClick={() => handleDatePreset('today')}
+                                className={styles.btn}
+                                style={{ padding: '4px 8px', fontSize: '11px' }}
+                                title="Show today only"
+                            >
+                                Today
+                            </button>
+                            <button
+                                onClick={() => handleDatePreset('yesterday')}
+                                className={styles.btn}
+                                style={{ padding: '4px 8px', fontSize: '11px' }}
+                                title="Show yesterday only"
+                            >
+                                Yesterday
+                            </button>
+                            <button
+                                onClick={() => handleDatePreset('this-week')}
+                                className={styles.btn}
+                                style={{ padding: '4px 8px', fontSize: '11px' }}
+                                title="Show this week (Mon-Today)"
+                            >
+                                This Week
+                            </button>
+                            <button
+                                onClick={() => handleDatePreset('last-week')}
+                                className={styles.btn}
+                                style={{ padding: '4px 8px', fontSize: '11px' }}
+                                title="Show last week (Mon-Sun)"
+                            >
+                                Last Week
+                            </button>
+                        </div>
+                        {/* Clear time button */}
+                        {(dateFrom || dateTo || timeFrom || timeTo) && (
+                            <button
+                                onClick={clearTimeFilters}
+                                className={styles.btn}
+                                style={{ padding: '4px 8px', fontSize: '11px', marginLeft: '4px', background: '#c9302c' }}
+                                title="Clear date/time filters only"
+                            >
+                                ✕ Time
+                            </button>
+                        )}
                         {activeTab === 'warrior-trades' && (
                             <select
                                 value={filters.is_sim ? Array.from(filters.is_sim)[0] || '' : ''}
@@ -1034,12 +1146,20 @@ export default function DataExplorer() {
                                             const isExpanded = expandedCell?.row === i && expandedCell?.col === col
                                             const isTruncated = fullVal.length > 50
 
+                                            // Special handling for headline column in catalyst-audits: make clickable if URL exists
+                                            const isHeadlineWithUrl = activeTab === 'catalyst-audits' && col === 'headline' && getArticleUrl(row)
+                                            const articleUrl = isHeadlineWithUrl ? getArticleUrl(row) : null
+
                                             return (
                                                 <td
                                                     key={col}
                                                     className={`${styles.clickable} ${NUMERIC_COLS.has(col) ? styles.numeric : ''}`}
                                                     title={fullVal}
                                                     onClick={(e) => {
+                                                        // If clicking on a headline link, let the anchor handle it
+                                                        if (isHeadlineWithUrl && (e.target as HTMLElement).tagName === 'A') {
+                                                            return
+                                                        }
                                                         if (e.shiftKey && isTruncated) {
                                                             setExpandedCell(isExpanded ? null : { row: i, col })
                                                         } else {
@@ -1052,6 +1172,20 @@ export default function DataExplorer() {
                                                 >
                                                     {isExpanded ? (
                                                         <pre className={styles.expandedCell}>{fullVal}</pre>
+                                                    ) : isHeadlineWithUrl ? (
+                                                        <a
+                                                            href={articleUrl!}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                color: '#4dabf7',
+                                                                textDecoration: 'underline',
+                                                            }}
+                                                            title={`Open article: ${fullVal}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {displayVal}
+                                                        </a>
                                                     ) : displayVal}
                                                 </td>
                                             )
