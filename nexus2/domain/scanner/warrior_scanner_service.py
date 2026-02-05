@@ -473,9 +473,7 @@ class EvaluationContext:
     ema_200_value: Optional[Decimal] = None
     room_to_ema_pct: Optional[float] = None
     
-
-
-    
+        
     # Former runner
     is_former_runner: bool = False
     
@@ -864,7 +862,19 @@ class WarriorScannerService:
             return None
         
         # =========================================================================
-        # PILLAR 3: Catalyst (with multi-model and legacy fallbacks)
+        # PILLAR 3: Price (moved before catalyst - cheap check)
+        # =========================================================================
+        if self._check_price_pillar(ctx, tracker):
+            return None
+        
+        # =========================================================================
+        # PILLAR 4: Gap (moved before catalyst - cheap check)
+        # =========================================================================
+        if self._calculate_gap_pillar(ctx, tracker):
+            return None
+        
+        # =========================================================================
+        # PILLAR 5: Catalyst (expensive - moved after cheap numeric checks)
         # =========================================================================
         headlines = self.market_data.get_merged_headlines(
             symbol, 
@@ -918,18 +928,7 @@ class WarriorScannerService:
                     self._write_scan_result_to_db(symbol, False, ctx, rejection_reason=f"dilution:{dilution_kw}")
                     return None
         
-        # =========================================================================
-        # PILLAR 4: Price
-        # =========================================================================
-        if self._check_price_pillar(ctx, tracker):
-            return None
-        
-        # =========================================================================
-        # PILLAR 5: Gap
-        # =========================================================================
-        if self._calculate_gap_pillar(ctx, tracker):
-            return None
-        
+
         
         # =========================================================================
         # 200 EMA CHECK (NOT a Ross-defined pillar, but a metric he uses)
