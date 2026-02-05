@@ -673,6 +673,7 @@ async def get_catalyst_audits(
     headline: Optional[str] = Query(None, description="Filter by headline text (case-insensitive)"),
     confidence: Optional[str] = Query(None, description="Filter by confidence score"),
     headline_index: Optional[str] = Query(None, description="Filter by headline index"),
+    timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -748,6 +749,9 @@ async def get_catalyst_audits(
     if headline_index:
         idx_set = {i.strip() for i in headline_index.split(',')}
         all_entries = [e for e in all_entries if str(e.get("headline_index", "")) in idx_set]
+    if timestamp:
+        ts_set = {t.strip() for t in timestamp.split(',')}
+        all_entries = [e for e in all_entries if e.get("timestamp", "") in ts_set]
     
     # Calculate total before pagination
     total = len(all_entries)
