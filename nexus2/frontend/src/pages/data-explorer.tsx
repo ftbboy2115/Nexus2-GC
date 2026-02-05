@@ -461,17 +461,19 @@ export default function DataExplorer() {
             default:
                 return
         }
-        // Set both date and time for precise filtering
-        setDateFrom(fromDate.toISOString().split('T')[0])
-        setDateTo(now.toISOString().split('T')[0])
-        // Extract time in HH:MM format (pad with zeros)
-        const formatTime = (d: Date) => {
-            const h = String(d.getHours()).padStart(2, '0')
-            const m = String(d.getMinutes()).padStart(2, '0')
-            return `${h}:${m}`
-        }
-        setTimeFrom(formatTime(fromDate))
-        setTimeTo(formatTime(now))
+        // Use ET for dates (YYYY-MM-DD) and times (HH:MM)
+        const toETDate = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+        const toETTime = (d: Date) => d.toLocaleTimeString('en-GB', {
+            timeZone: 'America/New_York',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        })
+
+        setDateFrom(toETDate(fromDate))
+        setDateTo(toETDate(now))
+        setTimeFrom(toETTime(fromDate))
+        setTimeTo(toETTime(now))
         setOffset(0)
     }
 
