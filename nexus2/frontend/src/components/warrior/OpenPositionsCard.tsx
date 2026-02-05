@@ -2,6 +2,7 @@
  * OpenPositionsCard - Active positions table with health indicators
  */
 import styles from '@/styles/Warrior.module.css'
+import { CollapsibleCard } from './CollapsibleCard'
 import { formatTime } from './formatters'
 import { PositionHealth } from './types'
 
@@ -30,10 +31,11 @@ export function OpenPositionsCard({
     openChart,
 }: OpenPositionsCardProps) {
     return (
-        <div className={styles.positionsCard}>
-            <div className={styles.cardHeader}>
-                <h2>📈 Open Positions</h2>
-            </div>
+        <CollapsibleCard
+            id="open-positions"
+            title="📈 Open Positions"
+            badge={<span style={{ color: '#888' }}>{positions.length}</span>}
+        >
             {positions.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
                     No open positions
@@ -108,6 +110,7 @@ export function OpenPositionsCard({
                     </table>
                 </div>
             )}
-        </div>
+        </CollapsibleCard>
     )
 }
+

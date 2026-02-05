@@ -11,6 +11,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import styles from '../../styles/Warrior.module.css';
+import { CollapsibleCard } from './CollapsibleCard';
 
 interface CatalystResult {
     symbol: string;
@@ -72,96 +73,97 @@ export const CatalystSearchCard: React.FC = () => {
     };
 
     return (
-        <div className={styles.card}>
-            <h3>🔍 Catalyst Search</h3>
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Search headlines... (FDA, earnings, partnership)"
-                    style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        borderRadius: '4px',
-                        border: '1px solid #444',
-                        background: '#2a2a2a',
-                        color: '#eee',
-                    }}
-                />
-                <button
-                    onClick={handleSearch}
-                    disabled={loading || query.length < 2}
-                    style={{
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        background: loading ? '#444' : '#3498db',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
-                >
-                    {loading ? '...' : 'Search'}
-                </button>
-                {results.length > 0 && (
-                    <button
-                        onClick={handleClear}
+        <CollapsibleCard id="catalyst-search" title="🔍 Catalyst Search">
+            <div style={{ padding: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Search headlines... (FDA, earnings, partnership)"
                         style={{
+                            flex: 1,
                             padding: '8px 12px',
                             borderRadius: '4px',
-                            background: '#666',
+                            border: '1px solid #444',
+                            background: '#2a2a2a',
+                            color: '#eee',
+                        }}
+                    />
+                    <button
+                        onClick={handleSearch}
+                        disabled={loading || query.length < 2}
+                        style={{
+                            padding: '8px 16px',
+                            borderRadius: '4px',
+                            background: loading ? '#444' : '#3498db',
                             color: '#fff',
                             border: 'none',
-                            cursor: 'pointer',
+                            cursor: loading ? 'not-allowed' : 'pointer',
                         }}
                     >
-                        Clear
+                        {loading ? '...' : 'Search'}
                     </button>
+                    {results.length > 0 && (
+                        <button
+                            onClick={handleClear}
+                            style={{
+                                padding: '8px 12px',
+                                borderRadius: '4px',
+                                background: '#666',
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
+
+                {error && <div style={{ color: '#e74c3c', marginBottom: '8px' }}>{error}</div>}
+
+                {searched && !loading && (
+                    <div style={{ marginBottom: '8px', color: '#888' }}>
+                        {results.length} result{results.length !== 1 ? 's' : ''} for "{query}"
+                    </div>
+                )}
+
+                {results.length > 0 && (
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                        <table className={styles.table} style={{ fontSize: '12px' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '60px' }}>Symbol</th>
+                                    <th>Headline</th>
+                                    <th style={{ width: '80px' }}>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {results.map((r, i) => (
+                                    <tr key={i}>
+                                        <td style={{ fontWeight: 600, color: '#3498db' }}>{r.symbol}</td>
+                                        <td style={{
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            maxWidth: '400px',
+                                            color: r.match_score === 1 ? '#2ecc71' : '#bbb',
+                                        }} title={r.headline}>
+                                            {r.headline}
+                                        </td>
+                                        <td style={{ color: '#888' }}>{r.catalyst_type || '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
-
-            {error && <div style={{ color: '#e74c3c', marginBottom: '8px' }}>{error}</div>}
-
-            {searched && !loading && (
-                <div style={{ marginBottom: '8px', color: '#888' }}>
-                    {results.length} result{results.length !== 1 ? 's' : ''} for "{query}"
-                </div>
-            )}
-
-            {results.length > 0 && (
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    <table className={styles.table} style={{ fontSize: '12px' }}>
-                        <thead>
-                            <tr>
-                                <th style={{ width: '60px' }}>Symbol</th>
-                                <th>Headline</th>
-                                <th style={{ width: '80px' }}>Type</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((r, i) => (
-                                <tr key={i}>
-                                    <td style={{ fontWeight: 600, color: '#3498db' }}>{r.symbol}</td>
-                                    <td style={{
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        maxWidth: '400px',
-                                        color: r.match_score === 1 ? '#2ecc71' : '#bbb',
-                                    }} title={r.headline}>
-                                        {r.headline}
-                                    </td>
-                                    <td style={{ color: '#888' }}>{r.catalyst_type || '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+        </CollapsibleCard>
     );
 };
 
 export default CatalystSearchCard;
+

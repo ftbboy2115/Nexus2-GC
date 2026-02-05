@@ -33,6 +33,89 @@ def _apply_exact_time_filter(entries: List[dict], column: str, filter_value: Opt
     value_set = {v.strip() for v in filter_value.split(',')}
     return [e for e in entries if e.get(column, "") in value_set]
 
+def apply_generic_filters(query, model, **filters):
+    """
+    Apply column filters dynamically to a query.
+    
+    Supports:
+    - Equality: "US" → col = 'US'
+    - Multi-select: "US,CN" → col IN ('US', 'CN')
+    - Range: ">=5" → col >= 5, "<=10" → col <= 10
+    - Combined: ">=5,<=10" → col >= 5 AND col <= 10
+    - NULL handling: "(empty)" → col IS NULL
+    
+    Args:
+        query: SQLAlchemy query object
+        model: SQLAlchemy model class
+        **filters: Column name → value pairs
+        
+    Returns:
+        Filtered query
+    """
+    from sqlalchemy import or_, and_
+    import re
+    
+    RANGE_PATTERN = re.compile(r'^(>=|<=|>|<)(.+)$')
+    
+    for col_name, value in filters.items():
+        if value is None:
+            continue
+            
+        col = getattr(model, col_name, None)
+        if col is None:
+            continue  # Skip invalid/unknown columns
+        
+        # Split comma-separated values
+        value_list = [v.strip() for v in value.split(',')]
+        
+        # Separate range operators from equality values
+        range_conditions = []
+        equality_values = []
+        has_empty = False
+        
+        for val in value_list:
+            if val == '(empty)':
+                has_empty = True
+            elif match := RANGE_PATTERN.match(val):
+                op, num = match.groups()
+                try:
+                    num_val = float(num) if '.' in num else int(num)
+                    if op == '>=':
+                        range_conditions.append(col >= num_val)
+                    elif op == '<=':
+                        range_conditions.append(col <= num_val)
+                    elif op == '>':
+                        range_conditions.append(col > num_val)
+                    elif op == '<':
+                        range_conditions.append(col < num_val)
+                except ValueError:
+                    pass  # Skip invalid numbers
+            else:
+                equality_values.append(val)
+        
+        # Build filter conditions
+        conditions = []
+        
+        if has_empty:
+            conditions.append(col.is_(None))
+        
+        if equality_values:
+            conditions.append(col.in_(equality_values))
+        
+        if range_conditions:
+            # Range conditions are ANDed together (e.g., >=5 AND <=10)
+            conditions.append(and_(*range_conditions))
+        
+        # Combine all conditions with OR (empty OR equality OR range)
+        if conditions:
+            if len(conditions) == 1:
+                query = query.filter(conditions[0])
+            else:
+                query = query.filter(or_(*conditions))
+    
+    return query
+
+
 # =============================================================================
 # NAC TRADES ENDPOINT
 # =============================================================================
@@ -239,37 +322,15 @@ async def get_warrior_scan_history(
     with get_telemetry_session() as db:
         query = db.query(WarriorScanResult)
         
-        # Apply symbol filter (supports comma-separated multi-select)
-        if symbol:
-            from sqlalchemy import or_
-            symbol_list = [s.strip().upper() for s in symbol.split(',')]
-            query = query.filter(WarriorScanResult.symbol.in_(symbol_list))
-        
-        # Apply result filter (PASS/FAIL, supports comma-separated)
-        if result:
-            result_list = [r.strip().upper() for r in result.split(',')]
-            query = query.filter(WarriorScanResult.result.in_(result_list))
-        
-        # Apply country filter (supports comma-separated)
-        if country:
-            country_list = [c.strip().upper() for c in country.split(',')]
-            query = query.filter(WarriorScanResult.country.in_(country_list))
-        
-        # Apply score filter (supports comma-separated, handles (empty) for NULL)
-        if score:
-            from sqlalchemy import or_
-            score_list = [s.strip() for s in score.split(',')]
-            conditions = []
-            for val in score_list:
-                if val == '(empty)':
-                    conditions.append(WarriorScanResult.score.is_(None))
-                else:
-                    try:
-                        conditions.append(WarriorScanResult.score == int(val))
-                    except ValueError:
-                        pass  # Skip invalid
-            if conditions:
-                query = query.filter(or_(*conditions))
+        # Apply generic column filters (supports equality, multi-select, range)
+        query = apply_generic_filters(
+            query, WarriorScanResult,
+            symbol=symbol,
+            result=result,
+            country=country,
+            score=score,
+            source=source,
+        )
         
         # Apply date/time filters (timestamps stored as UTC in DB)
         # Convert date_from/date_to from ET to UTC for proper filtering

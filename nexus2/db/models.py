@@ -518,3 +518,41 @@ class QuoteAuditModel(Base):
             "fmp_endpoint": self.fmp_endpoint,
             "high_divergence": self.high_divergence,
         }
+
+
+class TradingNoteModel(Base):
+    """Daily trading session notes for strategy comparison."""
+    __tablename__ = "trading_notes"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(String(10), nullable=False, unique=True, index=True)  # "2026-02-05"
+    
+    ross_trades = Column(Integer, nullable=True)
+    ross_pnl = Column(String(20), nullable=True)
+    ross_notes = Column(Text, nullable=True)
+    
+    warrior_trades = Column(Integer, nullable=True)
+    warrior_pnl = Column(String(20), nullable=True)
+    warrior_notes = Column(Text, nullable=True)
+    
+    market_context = Column(Text, nullable=True)
+    lessons = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "date": self.date,
+            "ross_trades": self.ross_trades,
+            "ross_pnl": self.ross_pnl,
+            "ross_notes": self.ross_notes,
+            "warrior_trades": self.warrior_trades,
+            "warrior_pnl": self.warrior_pnl,
+            "warrior_notes": self.warrior_notes,
+            "market_context": self.market_context,
+            "lessons": self.lessons,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

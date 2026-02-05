@@ -31,6 +31,7 @@ import {
     TradingModeCard,
     CatalystSearchCard,
     AdminCard,
+    TradingNotesCalendarCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -637,6 +638,9 @@ export default function Warrior() {
 
                             {/* 14. Server Admin */}
                             <AdminCard />
+
+                            {/* 15. Trading Notes Calendar */}
+                            <TradingNotesCalendarCard />
                         </div>
                     </>
                 )
