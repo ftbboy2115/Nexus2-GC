@@ -377,6 +377,13 @@ async def get_warrior_scan_history(
         # Check FAIL (old format with Gap only)
         match = fail_pattern_old.match(line)
         if match:
+            reason_text = match.group(4)
+            # Extract Float value from reason if present (e.g., "float_too_high | Float: 166.7M > 100.0M")
+            float_value = None
+            if "Float:" in reason_text:
+                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
+                if float_match:
+                    float_value = float_match.group(1)
             all_entries.append({
                 "timestamp": match.group(1),
                 "symbol": match.group(2),
@@ -384,7 +391,8 @@ async def get_warrior_scan_history(
                 "gap_pct": float(match.group(3)),
                 "rvol": None,
                 "score": None,
-                "reason": match.group(4),
+                "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text,
+                "float": float_value,
             })
             continue
         
