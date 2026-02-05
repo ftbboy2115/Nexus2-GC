@@ -92,3 +92,54 @@ async def admin_status():
         "timestamp": now_et().isoformat(),
         "pid": os.getpid(),
     }
+
+
+# ============================================================================
+# Log Retention Settings
+# ============================================================================
+
+import json
+
+_CONFIG_FILE = Path(os.path.expanduser("~/Nexus2/data/admin_config.json"))
+
+
+def _load_config() -> dict:
+    """Load admin config from JSON file."""
+    if _CONFIG_FILE.exists():
+        try:
+            return json.loads(_CONFIG_FILE.read_text())
+        except Exception:
+            pass
+    return {"log_retention_days": 30}  # Default
+
+
+def _save_config(config: dict):
+    """Save admin config to JSON file."""
+    _CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _CONFIG_FILE.write_text(json.dumps(config, indent=2))
+
+
+class LogRetentionRequest(BaseModel):
+    """Request to update log retention."""
+    days: int
+
+
+@router.get("/log-retention")
+async def get_log_retention():
+    """Get current log retention setting in days."""
+    config = _load_config()
+    return {"days": config.get("log_retention_days", 30)}
+
+
+@router.put("/log-retention")
+async def set_log_retention(request: LogRetentionRequest):
+    """Set log retention in days (1-365)."""
+    if request.days < 1 or request.days > 365:
+        raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+    
+    config = _load_config()
+    config["log_retention_days"] = request.days
+    _save_config(config)
+    
+    return {"status": "updated", "days": request.days}
+

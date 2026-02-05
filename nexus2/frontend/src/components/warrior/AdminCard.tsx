@@ -25,6 +25,8 @@ export function AdminCard() {
     const [isRestarting, setIsRestarting] = useState(false)
     const [message, setMessage] = useState('')
     const [adminStatus, setAdminStatus] = useState<AdminStatus | null>(null)
+    const [logRetentionDays, setLogRetentionDays] = useState<number>(30)
+    const [retentionSaving, setRetentionSaving] = useState(false)
 
     useEffect(() => {
         const fetchStatus = async () => {
@@ -43,6 +45,39 @@ export function AdminCard() {
         const interval = setInterval(fetchStatus, 30000)
         return () => clearInterval(interval)
     }, [])
+
+    // Fetch log retention setting
+    useEffect(() => {
+        const fetchRetention = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/admin/log-retention`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setLogRetentionDays(data.days)
+                }
+            } catch {
+                // ignore
+            }
+        }
+        fetchRetention()
+    }, [])
+
+    const handleRetentionChange = async (days: number) => {
+        setRetentionSaving(true)
+        try {
+            const res = await fetch(`${API_BASE}/admin/log-retention`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ days })
+            })
+            if (res.ok) {
+                setLogRetentionDays(days)
+            }
+        } catch {
+            // ignore
+        }
+        setRetentionSaving(false)
+    }
 
     const handleRestart = async () => {
         if (confirmText !== 'REBOOT') {
@@ -128,6 +163,42 @@ export function AdminCard() {
                         </div>
                     </div>
                 )}
+
+                {/* Log Retention Section */}
+                <div style={{
+                    padding: '12px',
+                    marginBottom: '16px',
+                    background: 'rgba(100, 150, 255, 0.1)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(100, 150, 255, 0.3)'
+                }}>
+                    <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#60a5fa' }}>
+                        📁 Log Retention
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px', color: '#aaa' }}>Keep logs for:</span>
+                        <select
+                            value={logRetentionDays}
+                            onChange={(e) => handleRetentionChange(parseInt(e.target.value))}
+                            disabled={retentionSaving}
+                            style={{
+                                padding: '6px 10px',
+                                borderRadius: '4px',
+                                border: '1px solid #444',
+                                background: '#1a1a1a',
+                                color: '#fff',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value={7}>7 days</option>
+                            <option value={14}>14 days</option>
+                            <option value={30}>30 days</option>
+                            <option value={60}>60 days</option>
+                            <option value={90}>90 days</option>
+                        </select>
+                        {retentionSaving && <span style={{ fontSize: '12px', color: '#888' }}>Saving...</span>}
+                    </div>
+                </div>
 
                 {/* Restart Section */}
                 <div style={{
