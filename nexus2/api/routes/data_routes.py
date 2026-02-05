@@ -316,7 +316,7 @@ async def get_warrior_scan_history(
         entries = []
         for row in rows:
             entry = row.to_dict()
-            # Convert float_shares to readable format for backward compatibility
+            # Convert float_shares to readable format for display
             if entry.get("float_shares"):
                 float_val = entry["float_shares"]
                 if float_val >= 1_000_000_000:
@@ -329,6 +329,11 @@ async def get_warrior_scan_history(
                     entry["float"] = str(float_val)
             else:
                 entry["float"] = None
+            # Remove raw float_shares from response (display uses formatted 'float')
+            entry.pop("float_shares", None)
+            # Rename catalyst_type to catalyst for cleaner display
+            if "catalyst_type" in entry:
+                entry["catalyst"] = entry.pop("catalyst_type")
 
             entries.append(entry)
         

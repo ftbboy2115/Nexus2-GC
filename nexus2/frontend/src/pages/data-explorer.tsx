@@ -239,6 +239,8 @@ export default function DataExplorer() {
         'rvol': 'Relative volume vs 20-day average',
         'score': 'Composite scanner score based on multiple criteria',
         'country': 'ISO country code where company is headquartered',
+        'float': 'DB column: float_shares (formatted for display)',
+        'catalyst': 'DB column: catalyst_type',
     }
 
     // Country code to full name mapping
