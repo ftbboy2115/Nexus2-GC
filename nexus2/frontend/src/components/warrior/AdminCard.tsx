@@ -141,8 +141,19 @@ export function AdminCard() {
                         <button
                             onClick={() => {
                                 const text = `Uptime: ${Math.floor(adminStatus.uptime_seconds / 3600)}h ${Math.floor((adminStatus.uptime_seconds % 3600) / 60)}m | Memory: ${adminStatus.memory_mb} MB | Storage: ${adminStatus.disk_used_gb ?? '?'}/${adminStatus.disk_total_gb ?? '?'} GB | Mode: ${adminStatus.mode?.replace('alpaca_', '').toUpperCase()}`
-                                navigator.clipboard.writeText(text)
+                                // Fallback for non-HTTPS (clipboard API requires secure context)
+                                if (navigator.clipboard && window.isSecureContext) {
+                                    navigator.clipboard.writeText(text)
+                                } else {
+                                    const textarea = document.createElement('textarea')
+                                    textarea.value = text
+                                    document.body.appendChild(textarea)
+                                    textarea.select()
+                                    document.execCommand('copy')
+                                    document.body.removeChild(textarea)
+                                }
                             }}
+
                             style={{
                                 position: 'absolute',
                                 top: '4px',
