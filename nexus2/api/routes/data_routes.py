@@ -809,7 +809,7 @@ async def get_ai_comparisons(
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     flash_valid: Optional[bool] = Query(None, description="Filter by Flash-Lite result"),
-    has_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
+    used_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -897,8 +897,8 @@ async def get_ai_comparisons(
         all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() in symbol_set]
     if flash_valid is not None:
         all_entries = [e for e in all_entries if e["flash_valid"] == flash_valid]
-    if has_tiebreaker is not None:
-        all_entries = [e for e in all_entries if e["used_tiebreaker"] == has_tiebreaker]
+    if used_tiebreaker is not None:
+        all_entries = [e for e in all_entries if e["used_tiebreaker"] == used_tiebreaker]
     
     # Calculate total before pagination
     total = len(all_entries)
