@@ -13,6 +13,27 @@ router = APIRouter(prefix="/data", tags=["data-explorer"])
 
 
 # =============================================================================
+# SHARED HELPER FUNCTIONS
+# =============================================================================
+
+def _apply_exact_time_filter(entries: List[dict], column: str, filter_value: Optional[str]) -> List[dict]:
+    """
+    Filter entries by exact timestamp match (supports comma-separated multi-select).
+    
+    Args:
+        entries: List of entry dicts
+        column: Column name to filter on (e.g., 'timestamp', 'entry_time', 'created_at')
+        filter_value: Comma-separated values to match exactly
+    
+    Returns:
+        Filtered list of entries
+    """
+    if not filter_value:
+        return entries
+    value_set = {v.strip() for v in filter_value.split(',')}
+    return [e for e in entries if e.get(column, "") in value_set]
+
+# =============================================================================
 # NAC TRADES ENDPOINT
 # =============================================================================
 
@@ -27,6 +48,7 @@ async def get_nac_trades(
     setup_type: Optional[str] = Query(None, description="Filter by setup type"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    entry_time: Optional[str] = Query(None, description="Filter by exact entry_time"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -72,6 +94,11 @@ async def get_nac_trades(
             query = query.filter(NACTradeModel.entry_time >= date_from)
         if date_to:
             query = query.filter(NACTradeModel.entry_time <= date_to + "T23:59:59")
+        # Exact entry_time filter (supports comma-separated values)
+        if entry_time:
+            from sqlalchemy import or_
+            time_values = [t.strip() for t in entry_time.split(',')]
+            query = query.filter(or_(*[NACTradeModel.entry_time == t for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -110,6 +137,7 @@ async def get_scan_history(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     source: Optional[str] = Query(None, description="Filter by source: scan or backfill"),
     catalyst: Optional[str] = Query(None, description="Filter by catalyst type"),
+    logged_at: Optional[str] = Query(None, description="Filter by exact logged_at timestamp"),
     sort_by: str = Query("logged_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -147,6 +175,7 @@ async def get_scan_history(
         all_entries = [e for e in all_entries if e.get("source", "scan") == source]
     if catalyst:
         all_entries = [e for e in all_entries if e.get("catalyst", "") == catalyst]
+    all_entries = _apply_exact_time_filter(all_entries, "logged_at", logged_at)
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -181,6 +210,7 @@ async def get_warrior_scan_history(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
     source: Optional[str] = Query(None, description="Filter by source: SCAN or PILLARS"),
+    timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -411,6 +441,7 @@ async def get_warrior_scan_history(
     if source:
         source_set = {s.strip().upper() for s in source.split(',')}
         all_entries = [e for e in all_entries if (e.get("source") or "").upper() in source_set]
+    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -749,9 +780,7 @@ async def get_catalyst_audits(
     if headline_index:
         idx_set = {i.strip() for i in headline_index.split(',')}
         all_entries = [e for e in all_entries if str(e.get("headline_index", "")) in idx_set]
-    if timestamp:
-        ts_set = {t.strip() for t in timestamp.split(',')}
-        all_entries = [e for e in all_entries if e.get("timestamp", "") in ts_set]
+    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -814,6 +843,7 @@ async def get_ai_comparisons(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     flash_valid: Optional[bool] = Query(None, description="Filter by Flash-Lite result"),
     used_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
+    timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -903,6 +933,7 @@ async def get_ai_comparisons(
         all_entries = [e for e in all_entries if e["flash_valid"] == flash_valid]
     if used_tiebreaker is not None:
         all_entries = [e for e in all_entries if e["used_tiebreaker"] == used_tiebreaker]
+    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -1000,6 +1031,7 @@ async def get_trade_events(
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
+    created_at: Optional[str] = Query(None, description="Filter by exact created_at timestamp"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -1034,6 +1066,7 @@ async def get_trade_events(
                     continue
             filtered.append(e)
         all_events = filtered
+    all_events = _apply_exact_time_filter(all_events, "created_at", created_at)
     
     # Get total before pagination
     total = len(all_events)
@@ -1106,6 +1139,7 @@ async def get_warrior_trades(
     partial_taken: Optional[str] = Query(None, description="Filter by partial taken: 'true', 'false', or '__EMPTY__' for null"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    entry_time: Optional[str] = Query(None, description="Filter by exact entry_time"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -1169,6 +1203,11 @@ async def get_warrior_trades(
             query = query.filter(WarriorTradeModel.entry_time >= date_from)
         if date_to:
             query = query.filter(WarriorTradeModel.entry_time <= date_to + "T23:59:59")
+        # Exact entry_time filter (supports comma-separated values)
+        if entry_time:
+            from sqlalchemy import or_
+            time_values = [t.strip() for t in entry_time.split(',')]
+            query = query.filter(or_(*[WarriorTradeModel.entry_time == t for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -1250,6 +1289,7 @@ async def get_quote_audits(
     high_divergence: Optional[bool] = Query(None, description="Filter by high divergence flag"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -1290,6 +1330,11 @@ async def get_quote_audits(
             query = query.filter(QuoteAuditModel.timestamp >= date_from)
         if date_to:
             query = query.filter(QuoteAuditModel.timestamp <= date_to + "T23:59:59")
+        # Exact timestamp filter (supports comma-separated values)
+        if timestamp:
+            from sqlalchemy import or_
+            time_values = [t.strip() for t in timestamp.split(',')]
+            query = query.filter(or_(*[QuoteAuditModel.timestamp == t for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -1346,6 +1391,7 @@ async def get_validation_log(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     entry_trigger: Optional[str] = Query(None, description="Filter by entry trigger (abcd, pmh_break, etc)"),
     target_hit: Optional[str] = Query(None, description="Filter by target hit: 'true', 'false', or '__EMPTY__'"),
+    created_at: Optional[str] = Query(None, description="Filter by exact created_at timestamp"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -1375,6 +1421,11 @@ async def get_validation_log(
                 query = query.filter(EntryValidationLogModel.target_hit == True)
             elif target_hit.lower() == 'false':
                 query = query.filter(EntryValidationLogModel.target_hit == False)
+        # Exact created_at filter (supports comma-separated values)
+        if created_at:
+            from sqlalchemy import or_
+            time_values = [t.strip() for t in created_at.split(',')]
+            query = query.filter(or_(*[EntryValidationLogModel.created_at == t for t in time_values]))
         
         # Get total count
         total = query.count()
