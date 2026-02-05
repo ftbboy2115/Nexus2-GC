@@ -1295,6 +1295,7 @@ class WarriorScannerService:
                     )
                     scan_logger.info(
                         f"FAIL | {ctx.symbol} | Gap:{ctx.change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | "
+                        f"Float: {_format_float(ctx.float_shares) if ctx.float_shares else '?'} | "
                         f"Reason: negative_catalyst | Type: {neg_type}"
                     )
                     if ctx.verbose:
