@@ -160,8 +160,8 @@ class WarriorScanSettings:
     macd_slow: int = 26
     macd_signal: int = 9
     
-    # Pillar 6: 200 EMA Resistance Check (Ross Cameron methodology)
-    # "200 EMA acts as ceiling until broken through with volume"
+    # 200 EMA Resistance Check (Nexus supplementary filter, NOT a Ross-defined pillar)
+    # NOTE: Ross defines exactly 5 Pillars. This is an additional Nexus technical check.
     # Reject if 200 EMA is too close overhead (less than min_room_to_200ema_pct)
     check_200_ema: bool = True  # Enable 200 EMA resistance check
     min_room_to_200ema_pct: float = 15.0  # Reject if < 15% room to 200 EMA
@@ -887,9 +887,10 @@ class WarriorScannerService:
             return None
         
         # =========================================================================
-        # PILLAR 6: 200 EMA
+        # 200 EMA CHECK (Nexus supplementary filter, NOT a Ross-defined pillar)
+        # NOTE: Ross defines exactly 5 Pillars. This is an additional technical check.
         # =========================================================================
-        if self._check_200_ema_pillar(ctx, tracker):
+        if self._check_200_ema(ctx, tracker):
             return None
         
         # =========================================================================
@@ -1525,11 +1526,11 @@ class WarriorScannerService:
             return "dollar_vol_low"
         return None
     
-    def _check_200_ema_pillar(
+    def _check_200_ema(
         self, ctx: EvaluationContext, tracker
     ) -> Optional[str]:
         """
-        Pillar 6: 200 EMA resistance check.
+        200 EMA resistance check (Nexus supplementary filter, NOT a Ross-defined pillar).
         Reject if 200 EMA is too close overhead.
         
         Returns rejection reason string if failed, None if passed.
