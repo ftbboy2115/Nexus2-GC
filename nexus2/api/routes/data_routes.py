@@ -856,6 +856,7 @@ async def get_ai_comparisons(
                         "timestamp": data.get("timestamp", "")[:19],  # Trim timezone
                         "symbol": data.get("symbol"),
                         "headline": data.get("headline", "")[:80],
+                        "url": data.get("article_url"),
                         "regex_type": regex_info.get("type"),
                         "regex_conf": regex_info.get("conf", 0),
                         "flash_valid": flash_result.get("valid"),

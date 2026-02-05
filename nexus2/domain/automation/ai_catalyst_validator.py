@@ -545,6 +545,7 @@ class ComparisonResult:
     regex_type: Optional[str]
     regex_confidence: float
     model_results: Dict[str, ModelResult]
+    article_url: Optional[str] = None
     
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dict for logging."""
@@ -562,6 +563,7 @@ class ComparisonResult:
                 }
                 for name, r in self.model_results.items()
             },
+            "article_url": self.article_url,
         }
 
 
@@ -807,6 +809,7 @@ Is this a valid Qullamaggie EP catalyst?"""
         symbol: str,
         regex_passed: bool,
         regex_type: Optional[str] = None,
+        article_url: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], bool, Optional[bool], str]:
         """
         Synchronous dual validation: Regex + Flash-Lite → Pro tiebreaker if disagree.
@@ -869,6 +872,7 @@ Is this a valid Qullamaggie EP catalyst?"""
             regex_type=regex_type,
             regex_confidence=0.9 if regex_passed else 0.0,
             model_results=model_results,
+            article_url=article_url,
         )
         self._log_comparison(comparison)
         
