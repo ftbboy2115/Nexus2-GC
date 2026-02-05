@@ -31,7 +31,8 @@ from nexus2.domain.automation.ai_catalyst_validator import (
     get_multi_validator,
     get_headline_cache,
 )
-from nexus2.utils.time_utils import now_et, now_utc_factory
+from nexus2.utils.time_utils import now_et, now_utc_factory, now_utc
+from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult as WarriorScanResultDB
 
 
 # =============================================================================
@@ -513,6 +514,42 @@ class WarriorScannerService:
         self.market_data = market_data or UnifiedMarketData()
         self.alpaca_broker = alpaca_broker  # Used for get_asset_info() HTB checks
     
+    def _write_scan_result_to_db(
+        self,
+        symbol: str,
+        passed: bool,
+        ctx: Optional['EvaluationContext'] = None,
+        candidate: Optional['WarriorCandidate'] = None,
+        rejection_reason: Optional[str] = None,
+    ):
+        """
+        Write scan result to telemetry DB for Data Explorer query.
+        
+        Args:
+            symbol: Stock symbol
+            passed: True if passed all pillars
+            ctx: EvaluationContext with gap_pct, rvol, float_shares, catalyst_type
+            candidate: WarriorCandidate (only for PASS, has quality_score)
+            rejection_reason: Reason for rejection (only for FAIL)
+        """
+        try:
+            with get_telemetry_session() as db:
+                db.add(WarriorScanResultDB(
+                    timestamp=now_utc(),  # IMPORTANT: Use now_utc() not datetime.now()
+                    symbol=symbol,
+                    result="PASS" if passed else "FAIL",
+                    gap_pct=float(ctx.change_percent) if ctx and ctx.change_percent else None,
+                    rvol=float(ctx.rvol) if ctx and ctx.rvol else None,
+                    score=candidate.quality_score if candidate else None,
+                    float_shares=ctx.float_shares if ctx else None,
+                    reason=rejection_reason if not passed else None,
+                    catalyst_type=ctx.catalyst_type if ctx else None,
+                ))
+                db.commit()
+        except Exception as e:
+            # Use module logger, not scan_logger (avoid cluttering scan logs)
+            logging.getLogger(__name__).warning(f"Failed to write scan result to DB: {e}")
+    
     def scan(self, verbose: bool = False) -> WarriorScanResult:
         """
         Run Warrior scan on top gainers + most active.
@@ -803,6 +840,7 @@ class WarriorScannerService:
                     scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | Reason: chinese_stock | Country: {ctx.country}")
                     if verbose:
                         print(f"{symbol}: Rejected - Chinese/HK stock (country={ctx.country})")
+                    self._write_scan_result_to_db(symbol, False, ctx, rejection_reason="chinese_stock")
                     return None
         
         # =========================================================================
@@ -849,6 +887,8 @@ class WarriorScannerService:
                 log_headline_evaluation(symbol, headlines, "FAIL", None)
             if verbose:
                 print(f"{symbol}: Rejected - {ctx.catalyst_desc}")
+            # Write FAIL to telemetry DB
+            self._write_scan_result_to_db(symbol, False, ctx, rejection_reason="no_catalyst")
             return None
         
         # =========================================================================
@@ -866,6 +906,8 @@ class WarriorScannerService:
                     )
                     if verbose:
                         print(f"{symbol}: Rejected - Dilution catalyst: {dilution_kw}")
+                    # Write FAIL to telemetry DB
+                    self._write_scan_result_to_db(symbol, False, ctx, rejection_reason=f"dilution:{dilution_kw}")
                     return None
         
         # =========================================================================
@@ -942,6 +984,11 @@ class WarriorScannerService:
                 scan_logger.info(f"FAIL | {symbol} | Reason: chinese_low_score | Score: {score} < {s.high_quality_threshold}")
                 if verbose:
                     print(f"{symbol}: Rejected - Chinese stock, score {score} too low")
+                # Write FAIL to telemetry DB (candidate exists, includes score)
+                self._write_scan_result_to_db(
+                    symbol, False, ctx, candidate=candidate, 
+                    rejection_reason=f"chinese_low_score:{score}"
+                )
                 return None
         
         # =========================================================================
@@ -976,6 +1023,14 @@ class WarriorScannerService:
         
         from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
         log_headline_evaluation(symbol, [f"PILLARS pass: {ctx.catalyst_type}"], "PASS", ctx.catalyst_type)
+        
+        # Write PASS to telemetry DB
+        self._write_scan_result_to_db(
+            symbol=symbol,
+            passed=True,
+            ctx=ctx,
+            candidate=candidate,
+        )
         
         return candidate
     
@@ -1145,6 +1200,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - Float {ctx.float_shares:,} > {s.max_float:,}")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="float_too_high")
             return "float_too_high"
         
         ctx.is_ideal_float = ctx.float_shares is not None and ctx.float_shares < s.ideal_float
@@ -1203,6 +1259,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - RVOL {ctx.rvol:.1f}x < {s.min_rvol}x")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="rvol_too_low")
             return "rvol_too_low"
         
         ctx.is_ideal_rvol = ctx.rvol >= s.ideal_rvol
@@ -1300,6 +1357,7 @@ class WarriorScannerService:
                     )
                     if ctx.verbose:
                         print(f"{ctx.symbol}: Rejected - Negative catalyst: {neg_type}")
+                    self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason=f"negative_catalyst:{neg_type}")
                     return "negative_catalyst"
         
         # Check for recent earnings as backup
@@ -1472,6 +1530,7 @@ class WarriorScannerService:
                 reason=RejectionReason.PRICE_OUT_OF_RANGE,
                 values={"price": float(ctx.price), "min": float(s.min_price), "max": float(s.max_price)},
             )
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="price_out_of_range")
             return "price_out_of_range"
         return None
     
@@ -1500,6 +1559,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}%")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="gap_too_low")
             return "gap_too_low"
         
         ctx.is_ideal_gap = ctx.gap_pct >= s.ideal_gap
@@ -1525,6 +1585,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - Dollar volume ${ctx.dollar_vol:,.0f} < ${s.min_dollar_volume:,.0f}")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="dollar_vol_low")
             return "dollar_vol_low"
         return None
     
@@ -1567,6 +1628,7 @@ class WarriorScannerService:
                         f"{ctx.symbol}: Rejected - 200 EMA ${ctx.ema_200_value:.2f} is only "
                         f"{ctx.room_to_ema_pct:.1f}% above price (need {s.min_room_to_200ema_pct}%)"
                     )
+                self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="ema_200_ceiling")
                 return "ema_200_ceiling"
         return None
     
@@ -1608,6 +1670,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - High Float ({_format_float(ctx.float_shares)} > {_format_float(s.high_float_threshold)})")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="high_float")
             return "high_float"
         
         # ETB + medium-high float disqualifier
@@ -1624,6 +1687,7 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - ETB + High Float ({_format_float(ctx.float_shares)} > {_format_float(s.etb_high_float_threshold)})")
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="etb_high_float")
             return "etb_high_float"
         
         return None

@@ -79,19 +79,15 @@ These specialists emerged during Phase 2 refactoring:
 
 ### Deployment Command
 
-To spawn a specialist:
-```
-CTRL+E → New Conversation → Paste:
-"Read .agent/rules/agent-[role]-specialist.md and execute the task defined in [ABSOLUTE_PATH_TO_HANDOFF].
+To spawn a specialist (CTRL+E → New Conversation):
 
-Example with absolute path:
-Read .agent/rules/agent-code-auditor.md and execute the task defined in C:\Users\ftbbo\.gemini\antigravity\brain\[conversation-id]\handoff_strategy_blending_audit.md
+```
+@.agent/rules/agent-backend-specialist.md Execute the task defined in C:\Users\ftbbo\.gemini\antigravity\brain\[conversation-id]\handoff_telemetry_schema.md
 ```
 
-> [!IMPORTANT]
-> **Always provide the ABSOLUTE PATH to handoff files.**
-> Using `@filename` or relative paths forces the agent to search, wasting tokens and risking failure.
-> Copy the full path from File Explorer or use `(Get-Item handoff.md).FullName` in PowerShell.
+> [!TIP]
+> Copy the line, paste into new conversation. When you type `@`, Antigravity autocomplete kicks in - select the file, then the rest pastes normally.
+> **Always use ABSOLUTE PATH for handoff files.**
 
 ### Pattern 2: Task-Parallel Agents
 For large features, spawn multiple agents working on independent subtasks:
@@ -129,6 +125,39 @@ After any extraction + wiring refactoring:
 See: `.agent/rules/refactoring-verification-standard.md` for full protocol.
 
 > **Feb 2026 Lesson**: ABCD pattern was imported but never wired, causing production error.
+
+### Handoff Quality Requirements (CRITICAL)
+
+Vague handoffs lead to incomplete implementations. Follow these rules:
+
+**1. Explicit Enumeration**
+- DON'T: "Find the PASS/FAIL decision point and add DB write"
+- DO: "Add DB write at these 13 specific locations: [enumerated list with line numbers]"
+
+**2. Mandatory Pre-Audit**
+Before creating implementation handoffs, the coordinator MUST:
+- Audit the target file to enumerate ALL change points
+- List each point explicitly in the handoff
+- Include approximate line numbers
+
+**3. Mandatory Post-Implementation Audit**
+After EACH implementation phase:
+- Spawn auditor to verify ALL points were addressed
+- Do NOT proceed to next phase until audit passes
+- Re-run implementation if coverage is incomplete
+
+**4. Multi-File Handoffs**
+If handoff mentions multiple files:
+- Create SEPARATE handoffs per file, OR
+- Use explicit checkboxes per file in single handoff
+
+> [!CAUTION]
+> **Feb 2026 Lesson (Telemetry Migration):**
+> - Phase 2 handoff said "add DB writes to scanner PASS/FAIL points"
+> - Agent only covered 3 of 13 rejection points
+> - Handoff mentioned 2 files but agent only did 1
+> - Required audit + fix handoff to complete the work
+> - **Fix**: Enumerate all 13 rejection reasons explicitly in handoff
 
 ### Handoff Drift Prevention (CRITICAL)
 Multi-phase refactoring creates **handoff drift** when later handoffs lose critical context from earlier phases.

@@ -71,7 +71,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List
 from dataclasses import dataclass
-from nexus2.utils.time_utils import now_et
+from nexus2.utils.time_utils import now_et, now_utc
+from nexus2.db.telemetry_db import get_telemetry_session, AIComparison as AIComparisonDB, CatalystAudit
 
 logger = logging.getLogger(__name__)
 
@@ -793,15 +794,56 @@ Is this a valid Qullamaggie EP catalyst?"""
         return results
     
     def _log_comparison(self, result: ComparisonResult):
-        """Log comparison to JSONL file for training data."""
+        """Log comparison to JSONL file for training data AND telemetry DB."""
         import json
         
+        # Existing JSONL logging
         try:
             self._log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self._log_path, "a") as f:
                 f.write(json.dumps(result.to_dict()) + "\n")
         except Exception as e:
             logger.error(f"[MultiModel] Failed to log comparison: {e}")
+        
+        # NEW: Write to telemetry DB for Data Explorer
+        try:
+            # Extract model results
+            flash_result = result.model_results.get("flash_lite")
+            pro_result = result.model_results.get("pro")
+            
+            # Determine winner based on method (from validate_sync logic)
+            # If pro was called, pro is tiebreaker; otherwise consensus
+            if pro_result:
+                winner = "pro"
+                final_result = "PASS" if pro_result.is_valid else "FAIL"
+            elif flash_result:
+                # Consensus with regex
+                regex_valid = result.regex_type is not None and result.regex_confidence >= 0.6
+                if regex_valid == flash_result.is_valid:
+                    winner = "consensus"
+                else:
+                    winner = "flash_only"  # Flash used when Pro rate limited
+                final_result = "PASS" if flash_result.is_valid else "FAIL"
+            else:
+                winner = "regex_only"
+                final_result = "PASS" if result.regex_type else "FAIL"
+            
+            with get_telemetry_session() as db:
+                db.add(AIComparisonDB(
+                    timestamp=now_utc(),
+                    symbol=result.symbol,
+                    headline=result.headline[:200] if result.headline else None,
+                    article_url=result.article_url,
+                    source=None,  # Source not tracked in ComparisonResult
+                    regex_result=result.regex_type if result.regex_type else "FAIL",
+                    flash_result="PASS" if flash_result and flash_result.is_valid else "FAIL" if flash_result else None,
+                    pro_result="PASS" if pro_result and pro_result.is_valid else "FAIL" if pro_result else None,
+                    final_result=final_result,
+                    winner=winner,
+                ))
+                db.commit()
+        except Exception as e:
+            logger.warning(f"[MultiModel] Failed to write AI comparison to DB: {e}")
     
     def validate_sync(
         self,
@@ -878,6 +920,23 @@ Is this a valid Qullamaggie EP catalyst?"""
         
         # Debug logging for tracing catalyst decisions
         logger.info(f"[validate_sync] {symbol}: regex={regex_passed}, flash={flash_passed}, final={final_valid}, method={method}")
+        
+        # Write CatalystAudit to telemetry DB
+        try:
+            with get_telemetry_session() as db:
+                db.add(CatalystAudit(
+                    timestamp=now_utc(),
+                    symbol=symbol,
+                    result="PASS" if final_valid else "FAIL",
+                    headline=headline[:200] if headline else None,
+                    article_url=article_url,
+                    source=None,  # Source not tracked in validate_sync
+                    match_type=final_type,
+                    confidence=method,  # Use method as confidence (consensus/tiebreaker)
+                ))
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to write catalyst audit to DB: {e}")
         
         return (final_valid, final_type, regex_passed, flash_passed, method)
     

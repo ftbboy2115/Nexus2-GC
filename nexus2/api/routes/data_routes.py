@@ -221,7 +221,7 @@ async def get_warrior_scan_history(
     """
     Get paginated Warrior scan history with filtering and sorting.
     
-    Parses warrior_scan.log to extract individual PASS/FAIL entries as flat rows.
+    Queries telemetry.db warrior_scan_results table (migrated from log parsing in Phase 3).
     
     Returns:
         entries: List of scan entries (symbol, result, gap_pct, rvol, score, reason, timestamp)
@@ -229,367 +229,99 @@ async def get_warrior_scan_history(
         limit: Records per page
         offset: Current offset
     """
-    from pathlib import Path
-    import re
-    
-    # Find log directory
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
-    
-    if not log_dir.exists():
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    # Read all rotated log files (warrior_scan.log, .1, .2, ... .7)
-    all_lines = []
-    base_log = log_dir / "warrior_scan.log"
-    
-    # Read main log file first
-    if base_log.exists():
-        try:
-            with open(base_log, "r", encoding="utf-8") as f:
-                all_lines.extend(f.readlines())
-        except Exception:
-            pass
-    
-    # Read rotated logs (.1 through .7)
-    for i in range(1, 8):
-        rotated_log = log_dir / f"warrior_scan.log.{i}"
-        if rotated_log.exists():
-            try:
-                with open(rotated_log, "r", encoding="utf-8") as f:
-                    all_lines.extend(f.readlines())
-            except Exception:
-                pass
-    
-    if not all_lines:
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    # Patterns for parsing
-    # NEW consolidated format: [PILLARS] PASS | SYMBOL | Gap:X% | Score: Y | Catalyst: Z | Float: N | RVOL: Mx
-    pass_pattern_pillars_consolidated = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Gap:([0-9.]+)% \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
-    # Legacy PILLARS format (no Gap%)
-    pass_pattern_pillars_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
-    # Legacy [SCAN] format (Gap/RVOL/Score)
-    pass_pattern_scan = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[SCAN\] PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
-    # Legacy format without label
-    pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
-    # New FAIL format: includes Gap% and RVOL before Reason
-    fail_pattern_new = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Reason: (.+)")
-    # New FAIL format with Float field: Gap%, RVOL, Float, then Reason
-    fail_pattern_with_float = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Float: ([^\|]+) \| Reason: (.+)")
-    # Old FAIL format: just Reason (for parsing historical logs)
-    fail_pattern_old = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| Reason: (.+)")
-    # Legacy format: no metrics at all
-    fail_pattern_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
-    
-    all_entries = []
-    
-    for line in all_lines:
-        line = line.strip()
-        if not line:
-            continue
-        
-        # Check NEW consolidated PILLARS format first (Gap + Score + Catalyst + Float + RVOL)
-        match = pass_pattern_pillars_consolidated.match(line)
-        if match:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "source": "PILLARS",
-                "symbol": match.group(2),
-                "result": "PASS",
-                "gap_pct": float(match.group(3)),
-                "score": int(match.group(4)),
-                "catalyst": match.group(5),
-                "float": match.group(6),
-                "rvol": float(match.group(7)),
-                "reason": None,
-            })
-            continue
-        
-        # Check legacy PILLARS format (no Gap%)
-        match = pass_pattern_pillars_legacy.match(line)
-        if match:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "source": "PILLARS",
-                "symbol": match.group(2),
-                "result": "PASS",
-                "gap_pct": None,  # Not in legacy PILLARS format
-                "score": int(match.group(3)),
-                "catalyst": match.group(4),
-                "float": match.group(5),
-                "rvol": float(match.group(6)),
-                "reason": None,
-            })
-            continue
-        
-        # Check legacy [SCAN] format (for old logs)
-        match = pass_pattern_scan.match(line)
-        if match:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "source": "SCAN",
-                "symbol": match.group(2),
-                "result": "PASS",
-                "gap_pct": float(match.group(3)),
-                "rvol": float(match.group(4)),
-                "score": int(match.group(5)),
-                "reason": None,
-            })
-            continue
-        
-        # Check legacy PASS (without label)
-        match = pass_pattern.match(line)
-        if match:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "source": None,  # No label
-                "symbol": match.group(2),
-                "result": "PASS",
-                "gap_pct": float(match.group(3)),
-                "rvol": float(match.group(4)),
-                "score": int(match.group(5)),
-                "reason": None,
-            })
-            continue
-        
-        # Check FAIL (format with explicit Float field: Gap%, RVOL, Float, then Reason)
-        match = fail_pattern_with_float.match(line)
-        if match:
-            float_str = match.group(5).strip()  # e.g., "133.1M" or "?"
-            float_value = float_str if float_str != '?' else None
-            all_entries.append({
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": "FAIL",
-                "gap_pct": float(match.group(3)),
-                "rvol": float(match.group(4)),
-                "score": None,
-                "reason": match.group(6).split(" | ")[0].strip() if " | " in match.group(6) else match.group(6),
-                "float": float_value,
-            })
-            continue
-        
-        # Check FAIL (new format with Gap + RVOL)
-        match = fail_pattern_new.match(line)
-        if match:
-            reason_text = match.group(5)
-            # Extract Float value from reason if present (e.g., "float | Float: 166.7M > 100.0M")
-            float_value = None
-            if "Float:" in reason_text:
-                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
-                if float_match:
-                    float_value = float_match.group(1)
-            all_entries.append({
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": "FAIL",
-                "gap_pct": float(match.group(3)),
-                "rvol": float(match.group(4)),
-                "score": None,
-                "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text,
-                "float": float_value,
-            })
-            continue
-        
-        # Check FAIL (old format with Gap only)
-        match = fail_pattern_old.match(line)
-        if match:
-            reason_text = match.group(4)
-            # Extract Float value from reason if present (e.g., "float_too_high | Float: 166.7M > 100.0M")
-            float_value = None
-            if "Float:" in reason_text:
-                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
-                if float_match:
-                    float_value = float_match.group(1)
-            all_entries.append({
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": "FAIL",
-                "gap_pct": float(match.group(3)),
-                "rvol": None,
-                "score": None,
-                "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text,
-                "float": float_value,
-            })
-            continue
-        
-        # Check FAIL (legacy format - no metrics)
-        match = fail_pattern_legacy.match(line)
-        if match:
-            all_entries.append({
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": "FAIL",
-                "gap_pct": None,
-                "rvol": None,
-                "score": None,
-                "reason": match.group(3),
-            })
-            continue
-    
-    # Apply filters
-    # Note: Log timestamps are in UTC. Convert to ET for date/time comparison.
+    from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult
+    from sqlalchemy import desc, asc, cast, Float, func
     from zoneinfo import ZoneInfo
     from datetime import datetime as dt
-    utc_tz = ZoneInfo("UTC")
-    et_tz = ZoneInfo("America/New_York")
     
-    def get_local_datetime(ts_str: str) -> tuple[str, str]:
-        """Convert UTC timestamp string to ET date and time strings."""
-        try:
-            utc_dt = dt.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
-            local_dt = utc_dt.astimezone(et_tz)
-            return local_dt.strftime("%Y-%m-%d"), local_dt.strftime("%H:%M")
-        except:
-            return ts_str[:10], ts_str[11:16]  # Fallback to raw date/time
-    
-    if date_from or date_to or time_from or time_to:
-        filtered = []
-        for e in all_entries:
-            local_date, local_time = get_local_datetime(e["timestamp"])
-            # Date filter
-            if date_from and local_date < date_from:
-                continue
-            if date_to and local_date > date_to:
-                continue
-            # Time filter (within the date range)
-            if time_from and local_time < time_from:
-                continue
-            if time_to and local_time > time_to:
-                continue
-            filtered.append(e)
-        all_entries = filtered
-    
-    if symbol:
-        # Support multi-select: comma-separated values mean "include any of these"
-        symbol_set = {s.strip().upper() for s in symbol.split(',')}
-        all_entries = [e for e in all_entries if e["symbol"].upper() in symbol_set]
-    if result:
-        result_set = {r.strip().upper() for r in result.split(',')}
-        all_entries = [e for e in all_entries if e["result"] in result_set]
-    if source:
-        source_set = {s.strip().upper() for s in source.split(',')}
-        all_entries = [e for e in all_entries if (e.get("source") or "").upper() in source_set]
-    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
-    
-    # Calculate total before pagination
-    total = len(all_entries)
-    
-    # Apply sorting (handle mixed types - numeric fields need special handling)
-    reverse = sort_dir.lower() == "desc"
-    numeric_fields = {"gap_pct", "rvol", "score"}
-    if sort_by in numeric_fields:
-        # For numeric fields, use 0 as default and ensure float comparison
-        all_entries.sort(key=lambda x: float(x.get(sort_by) or 0), reverse=reverse)
-    else:
-        all_entries.sort(key=lambda x: str(x.get(sort_by) or ""), reverse=reverse)
-    
-    # Apply pagination
-    entries = all_entries[offset:offset + limit]
-    
-    return {
-        "entries": entries,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
-
-
-# Helper function to parse warrior scan log entries (shared by main and distinct endpoints)
-def _parse_warrior_scan_log_entries() -> list:
-    """Parse warrior_scan.log and return all entries."""
-    from pathlib import Path
-    import re
-    
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
-    
-    if not log_dir.exists():
-        return []
-    
-    # Read all rotated log files
-    all_lines = []
-    base_log = log_dir / "warrior_scan.log"
-    
-    if base_log.exists():
-        try:
-            with open(base_log, "r", encoding="utf-8") as f:
-                all_lines.extend(f.readlines())
-        except Exception:
-            pass
-    
-    for i in range(1, 8):
-        rotated_log = log_dir / f"warrior_scan.log.{i}"
-        if rotated_log.exists():
+    with get_telemetry_session() as db:
+        query = db.query(WarriorScanResult)
+        
+        # Apply symbol filter (supports comma-separated multi-select)
+        if symbol:
+            from sqlalchemy import or_
+            symbol_list = [s.strip().upper() for s in symbol.split(',')]
+            query = query.filter(WarriorScanResult.symbol.in_(symbol_list))
+        
+        # Apply result filter (PASS/FAIL, supports comma-separated)
+        if result:
+            result_list = [r.strip().upper() for r in result.split(',')]
+            query = query.filter(WarriorScanResult.result.in_(result_list))
+        
+        # Apply date/time filters (timestamps stored as UTC in DB)
+        # Convert date_from/date_to from ET to UTC for proper filtering
+        utc_tz = ZoneInfo("UTC")
+        et_tz = ZoneInfo("America/New_York")
+        
+        if date_from:
+            # Convert ET date to UTC datetime at start of day
             try:
-                with open(rotated_log, "r", encoding="utf-8") as f:
-                    all_lines.extend(f.readlines())
-            except Exception:
-                pass
-    
-    if not all_lines:
-        return []
-    
-    # Patterns
-    pass_pattern_pillars_consolidated = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Gap:([0-9.]+)% \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
-    pass_pattern_pillars_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[PILLARS\] PASS \| (\w+) \| Score: (\d+)[^|]* \| Catalyst: (\w+) \| Float: ([^|]+) \| RVOL: ([0-9.]+)x")
-    pass_pattern_scan = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| \[SCAN\] PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
-    pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
-    fail_pattern_new = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Reason: (.+)")
-    fail_pattern_old = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| Reason: (.+)")
-    fail_pattern_legacy = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Reason: (.+)")
-    
-    all_entries = []
-    for line in all_lines:
-        line = line.strip()
-        if not line:
-            continue
+                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_start = et_start.astimezone(utc_tz)
+                query = query.filter(WarriorScanResult.timestamp >= utc_start)
+            except ValueError:
+                pass  # Invalid date format, skip filter
         
-        match = pass_pattern_pillars_consolidated.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "source": "PILLARS", "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "score": int(match.group(4)), "catalyst": match.group(5), "float": match.group(6), "rvol": float(match.group(7)), "reason": None})
-            continue
+        if date_to:
+            # Convert ET date to UTC datetime at end of day
+            try:
+                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_end = et_end.astimezone(utc_tz)
+                query = query.filter(WarriorScanResult.timestamp <= utc_end)
+            except ValueError:
+                pass  # Invalid date format, skip filter
         
-        match = pass_pattern_pillars_legacy.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "source": "PILLARS", "symbol": match.group(2), "result": "PASS", "gap_pct": None, "score": int(match.group(3)), "catalyst": match.group(4), "float": match.group(5), "rvol": float(match.group(6)), "reason": None})
-            continue
+        # Get total count before pagination
+        total = query.count()
         
-        match = pass_pattern_scan.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "source": "SCAN", "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": int(match.group(5)), "reason": None})
-            continue
+        # Apply sorting
+        sort_column_map = {
+            "timestamp": WarriorScanResult.timestamp,
+            "symbol": WarriorScanResult.symbol,
+            "result": WarriorScanResult.result,
+            "gap_pct": WarriorScanResult.gap_pct,
+            "rvol": WarriorScanResult.rvol,
+            "score": WarriorScanResult.score,
+            "reason": WarriorScanResult.reason,
+        }
+        sort_column = sort_column_map.get(sort_by, WarriorScanResult.timestamp)
         
-        match = pass_pattern.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "source": None, "symbol": match.group(2), "result": "PASS", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": int(match.group(5)), "reason": None})
-            continue
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
         
-        match = fail_pattern_new.match(line)
-        if match:
-            reason_text = match.group(5)
-            float_value = None
-            if "Float:" in reason_text:
-                float_match = re.search(r"Float:\s*([0-9.]+[KMB]?)", reason_text)
-                if float_match:
-                    float_value = float_match.group(1)
-            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": float(match.group(3)), "rvol": float(match.group(4)), "score": None, "reason": reason_text.split(" | ")[0].strip() if " | " in reason_text else reason_text, "float": float_value})
-            continue
+        # Apply pagination
+        query = query.offset(offset).limit(limit)
+        rows = query.all()
         
-        match = fail_pattern_old.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": float(match.group(3)), "rvol": None, "score": None, "reason": match.group(4)})
-            continue
+        # Convert to dict format matching legacy log-parsing output
+        entries = []
+        for row in rows:
+            entry = row.to_dict()
+            # Convert float_shares to readable format for backward compatibility
+            if entry.get("float_shares"):
+                float_val = entry["float_shares"]
+                if float_val >= 1_000_000_000:
+                    entry["float"] = f"{float_val / 1_000_000_000:.1f}B"
+                elif float_val >= 1_000_000:
+                    entry["float"] = f"{float_val / 1_000_000:.1f}M"
+                elif float_val >= 1_000:
+                    entry["float"] = f"{float_val / 1_000:.1f}K"
+                else:
+                    entry["float"] = str(float_val)
+            else:
+                entry["float"] = None
+            # Map catalyst_type to catalyst for backward compatibility
+            entry["catalyst"] = entry.get("catalyst_type")
+            entries.append(entry)
         
-        match = fail_pattern_legacy.match(line)
-        if match:
-            all_entries.append({"timestamp": match.group(1), "symbol": match.group(2), "result": "FAIL", "gap_pct": None, "rvol": None, "score": None, "reason": match.group(3)})
-            continue
-    
-    return all_entries
+        return {
+            "entries": entries,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
 
 @router.get("/warrior-scan-history/distinct")
@@ -599,18 +331,31 @@ async def get_warrior_scan_history_distinct(
     """
     Get distinct values for a column in Warrior scan history.
     Used by filter dropdowns to show all available options.
+    
+    Queries telemetry.db (migrated from log parsing in Phase 3).
     """
-    all_entries = _parse_warrior_scan_log_entries()
+    from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult
+    from sqlalchemy import distinct
     
-    values = set()
-    for entry in all_entries:
-        if column in entry:
-            val = entry[column]
-            if val is not None:
-                values.add(str(val))
+    # Map API column names to DB columns
+    column_map = {
+        "symbol": WarriorScanResult.symbol,
+        "result": WarriorScanResult.result,
+        "reason": WarriorScanResult.reason,
+        "catalyst_type": WarriorScanResult.catalyst_type,
+        "catalyst": WarriorScanResult.catalyst_type,  # Alias for backward compatibility
+    }
     
-    values.discard("")
-    return {"column": column, "values": sorted(list(values))}
+    db_column = column_map.get(column)
+    if not db_column:
+        return {"column": column, "values": []}
+    
+    with get_telemetry_session() as db:
+        query = db.query(distinct(db_column)).filter(db_column.isnot(None))
+        results = query.all()
+        values = sorted([str(r[0]) for r in results if r[0]])
+    
+    return {"column": column, "values": values}
 
 
 @router.get("/scan-history/distinct")

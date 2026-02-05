@@ -1,5 +1,22 @@
 # Artifact Protection Rules
 
+> [!CAUTION]
+> **READ THIS FILE** before creating any artifact in the brain directory.
+> This rule applies EVERY TIME you create `plan_*.md`, `handoff_*.md`, `walkthrough_*.md`, or `investigation_*.md`.
+
+## Pre-Creation Checklist
+
+Before creating ANY artifact:
+
+1. ✅ Read this file (`artifact-protection.md`)
+2. ✅ Use feature-specific naming (e.g., `plan_data_storage.md`, NOT `implementation_plan.md`)
+3. ✅ Check if a similar file already exists
+
+> [!WARNING]
+> **NEVER rename artifacts via PowerShell** (e.g., `Move-Item`).  
+> This breaks Antigravity's internal tracking and makes files unviewable in the UI.  
+> If you need a different name, **delete and recreate** using `write_to_file`.
+
 ## NEVER Overwrite Plans Without Checking
 
 Before using `Overwrite=true` on ANY artifact file in the brain directory:
