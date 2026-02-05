@@ -170,6 +170,9 @@ class HealthResponse(BaseModel):
     timestamp: str  # Always ET for consistency
     uptime_seconds: Optional[int] = None
     memory_mb: Optional[float] = None  # RSS memory usage
+    disk_used_gb: Optional[float] = None  # Disk storage used
+    disk_total_gb: Optional[float] = None  # Disk storage total
+    disk_percent: Optional[float] = None  # Disk usage percentage
 
 
 # ============================================================================

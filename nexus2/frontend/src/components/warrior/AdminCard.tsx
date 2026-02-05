@@ -14,6 +14,9 @@ interface AdminStatus {
     mode: string
     uptime_seconds: number
     memory_mb: number
+    disk_used_gb?: number
+    disk_total_gb?: number
+    disk_percent?: number
 }
 
 export function AdminCard() {
@@ -90,7 +93,7 @@ export function AdminCard() {
                 {adminStatus && (
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
                         gap: '12px',
                         marginBottom: '16px',
                         padding: '12px',
@@ -107,6 +110,15 @@ export function AdminCard() {
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Memory</div>
                             <div style={{ fontWeight: 'bold', color: '#4ade80' }}>{adminStatus.memory_mb} MB</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#888' }}>Storage</div>
+                            <div style={{
+                                fontWeight: 'bold',
+                                color: (adminStatus.disk_percent ?? 0) > 80 ? '#f87171' : '#4ade80'
+                            }}>
+                                {adminStatus.disk_used_gb ?? '?'}/{adminStatus.disk_total_gb ?? '?'} GB
+                            </div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Mode</div>
