@@ -843,7 +843,7 @@ class WarriorScannerService:
                 reason=RejectionReason.NO_CATALYST,
                 details=ctx.catalyst_desc,
             )
-            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | Reason: no_catalyst | {ctx.catalyst_desc}")
+            scan_logger.info(f"FAIL | {symbol} | Gap:{change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | Float: {_format_float(ctx.float_shares) if ctx.float_shares else '?'} | Reason: no_catalyst | {ctx.catalyst_desc}")
             if headlines:
                 from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
                 log_headline_evaluation(symbol, headlines, "FAIL", None)
@@ -1198,6 +1198,7 @@ class WarriorScannerService:
             )
             scan_logger.info(
                 f"FAIL | {ctx.symbol} | Gap:{ctx.change_percent:.1f}% | RVOL:{ctx.rvol:.1f}x | "
+                f"Float: {_format_float(ctx.float_shares) if ctx.float_shares else '?'} | "
                 f"Reason: rvol_too_low | RVOL: {ctx.rvol:.1f}x < {s.min_rvol}x"
             )
             if ctx.verbose:

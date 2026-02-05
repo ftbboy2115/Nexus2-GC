@@ -276,6 +276,8 @@ async def get_warrior_scan_history(
     pass_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| PASS \| (\w+) \| Gap:([0-9.]+)% \| RVOL:([0-9.]+)x \| Score:(\d+)")
     # New FAIL format: includes Gap% and RVOL before Reason
     fail_pattern_new = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Reason: (.+)")
+    # New FAIL format with Float field: Gap%, RVOL, Float, then Reason
+    fail_pattern_with_float = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| RVOL:([0-9.]+)x \| Float: ([^\|]+) \| Reason: (.+)")
     # Old FAIL format: just Reason (for parsing historical logs)
     fail_pattern_old = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| FAIL \| (\w+) \| Gap:([0-9.-]+)% \| Reason: (.+)")
     # Legacy format: no metrics at all
@@ -349,6 +351,23 @@ async def get_warrior_scan_history(
                 "rvol": float(match.group(4)),
                 "score": int(match.group(5)),
                 "reason": None,
+            })
+            continue
+        
+        # Check FAIL (format with explicit Float field: Gap%, RVOL, Float, then Reason)
+        match = fail_pattern_with_float.match(line)
+        if match:
+            float_str = match.group(5).strip()  # e.g., "133.1M" or "?"
+            float_value = float_str if float_str != '?' else None
+            all_entries.append({
+                "timestamp": match.group(1),
+                "symbol": match.group(2),
+                "result": "FAIL",
+                "gap_pct": float(match.group(3)),
+                "rvol": float(match.group(4)),
+                "score": None,
+                "reason": match.group(6).split(" | ")[0].strip() if " | " in match.group(6) else match.group(6),
+                "float": float_value,
             })
             continue
         
