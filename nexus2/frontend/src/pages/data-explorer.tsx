@@ -1224,11 +1224,14 @@ export default function DataExplorer() {
                                                             style={{
                                                                 color: '#4dabf7',
                                                                 textDecoration: 'underline',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
                                                             }}
                                                             title={`Open article: ${fullVal}`}
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            {displayVal}
+                                                            {displayVal} <span style={{ fontSize: '10px' }}>↗</span>
                                                         </a>
                                                     ) : displayVal}
                                                 </td>
