@@ -1331,17 +1331,32 @@ class WarriorScannerService:
             multi_validator = get_multi_validator()
             classifier = get_classifier()
             
+            # Build headline→URL lookup from FMP (for logging with URLs)
+            headline_url_map = {}
+            try:
+                news_with_urls = self.market_data.fmp.get_headlines_with_urls(
+                    ctx.symbol, days=ctx.settings.catalyst_lookback_days
+                )
+                for item in news_with_urls:
+                    headline_url_map[item.get("headline", "")] = item.get("url", "")
+            except Exception:
+                pass  # URL lookup is optional, proceed without if it fails
+            
             for headline in new_headlines[:3]:
                 try:
                     regex_match = classifier.classify(headline)
                     regex_valid = regex_match.is_positive and regex_match.confidence >= 0.6
                     regex_type_h = regex_match.catalyst_type if regex_valid else None
                     
+                    # Look up URL for this headline
+                    article_url = headline_url_map.get(headline)
+                    
                     final_valid, final_type, _, flash_passed, method = multi_validator.validate_sync(
                         headline=headline,
                         symbol=ctx.symbol,
                         regex_passed=regex_valid,
                         regex_type=regex_type_h,
+                        article_url=article_url,
                     )
                     
                     headline_cache.add(

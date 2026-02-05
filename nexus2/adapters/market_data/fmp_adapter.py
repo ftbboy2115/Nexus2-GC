@@ -928,6 +928,47 @@ class FMPAdapter:
         
         return headlines
     
+    def get_headlines_with_urls(self, symbol: str, days: int = 5) -> List[Dict[str, str]]:
+        """
+        Get headlines WITH URLs for AI validation logging.
+        
+        Args:
+            symbol: Stock symbol
+            days: Days to look back
+            
+        Returns:
+            List of dicts with 'headline' and 'url' keys
+        """
+        from datetime import timedelta
+        
+        news = self.get_stock_news(symbol, limit=20)
+        
+        if not news:
+            return []
+        
+        today = datetime.now(timezone.utc).date()
+        cutoff = today - timedelta(days=days)
+        
+        results = []
+        for item in news:
+            try:
+                pub_date_str = item.get("date", "")
+                if pub_date_str:
+                    pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00")).date()
+                    if pub_date >= cutoff:
+                        results.append({
+                            "headline": item.get("title", ""),
+                            "url": item.get("url", ""),
+                        })
+            except (ValueError, TypeError):
+                # If date parsing fails, include anyway
+                results.append({
+                    "headline": item.get("title", ""),
+                    "url": item.get("url", ""),
+                })
+        
+        return results
+    
     def get_news_with_dates(self, symbol: str, days: int = 5) -> List[tuple]:
         """
         Get headlines WITH publish dates for freshness scoring.
