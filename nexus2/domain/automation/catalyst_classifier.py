@@ -52,6 +52,18 @@ def _get_catalyst_audit_logger() -> logging.Logger:
         log_dir = Path("data")
         log_dir.mkdir(exist_ok=True)
         
+        # Custom formatter that uses Eastern Time
+        class ETFormatter(logging.Formatter):
+            """Formatter that logs in Eastern Time instead of server local time."""
+            def formatTime(self, record, datefmt=None):
+                from datetime import datetime
+                from zoneinfo import ZoneInfo
+                et = ZoneInfo("America/New_York")
+                ct = datetime.fromtimestamp(record.created, tz=et)
+                if datefmt:
+                    return ct.strftime(datefmt)
+                return ct.strftime("%Y-%m-%d %H:%M:%S")
+        
         # Rotating file handler: 1MB max, keep 7 files
         handler = RotatingFileHandler(
             log_dir / "catalyst_audit.log",
@@ -60,7 +72,7 @@ def _get_catalyst_audit_logger() -> logging.Logger:
             encoding="utf-8",
         )
         handler.setFormatter(
-            logging.Formatter("%(asctime)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+            ETFormatter("%(asctime)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         )
         audit_logger.addHandler(handler)
         audit_logger.setLevel(logging.INFO)
