@@ -820,7 +820,7 @@ export default function DataExplorer() {
                             id: 'warrior-scans', label: 'Warrior Scans', tooltip: `Scanner evaluates stocks in fail-fast order:
 1. Snapshot → 2. Country (no CN/HK) → 3. Float (<100M)
 4. RVOL (>2x) → 5. Catalyst → 6. Price ($1.50-$20)
-7. Gap% (>4%) → 8. Dollar Vol → 9. 200 EMA → 10. Score
+7. Gap% (>4%) → 8. 200 EMA → 9. Score (0-16)
 Stocks fail at first unmet check.` },
                         { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
                         { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc.' },

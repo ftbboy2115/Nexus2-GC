@@ -124,7 +124,6 @@ class WarriorScanSettings:
     ideal_gap: Decimal = Decimal("5.0")  # 5-10% ideal
     
     # Additional Filters
-    min_dollar_volume: Decimal = Decimal("500000")  # $500K minimum turnover
     exclude_chinese_stocks: bool = True  # Ross avoids HKD, TOP, MEGL, etc.
     # Icebreaker Exception: Ross trades Chinese with reduced size when score is exceptional (Jan 20 TWWG)
     chinese_icebreaker_enabled: bool = True  # Allow high-score Chinese stocks
@@ -292,10 +291,6 @@ class WarriorCandidate:
     # Volume
     session_volume: int = 0
     avg_volume: int = 0
-    dollar_volume: Decimal = Decimal("0")
-    
-    # ATR for stop sizing
-    atr: Decimal = Decimal("1.0")
     
     # 52-week high for Blue Sky detection (no overhead resistance)
     year_high: Optional[Decimal] = None
@@ -478,11 +473,8 @@ class EvaluationContext:
     ema_200_value: Optional[Decimal] = None
     room_to_ema_pct: Optional[float] = None
     
-    # ATR
-    atr: Decimal = Decimal("1")
-    
-    # Dollar volume
-    dollar_vol: Decimal = Decimal("0")
+
+
     
     # Former runner
     is_former_runner: bool = False
@@ -938,24 +930,15 @@ class WarriorScannerService:
         if self._calculate_gap_pillar(ctx, tracker):
             return None
         
-        # =========================================================================
-        # DOLLAR VOLUME CHECK
-        # =========================================================================
-        if self._check_dollar_volume(ctx, tracker):
-            return None
         
         # =========================================================================
-        # 200 EMA CHECK (Nexus supplementary filter, NOT a Ross-defined pillar)
-        # NOTE: Ross defines exactly 5 Pillars. This is an additional technical check.
+        # 200 EMA CHECK (NOT a Ross-defined pillar, but a metric he uses)
+        # NOTE: Ross defines exactly 5 Pillars. If below, he sees if there's room to run to the 200 EMA.
         # =========================================================================
         if self._check_200_ema(ctx, tracker):
             return None
         
-        # =========================================================================
-        # ATR
-        # =========================================================================
-        ctx.atr = self.market_data.get_atr(symbol, period=14) or Decimal("1")
-        
+
         # =========================================================================
         # FORMER RUNNER CHECK (for score boost)
         # =========================================================================
@@ -1609,8 +1592,8 @@ class WarriorScannerService:
         self, ctx: EvaluationContext, tracker
     ) -> Optional[str]:
         """
-        200 EMA resistance check (Nexus supplementary filter, NOT a Ross-defined pillar).
-        Reject if 200 EMA is too close overhead.
+        200 EMA resistance check. Reject if 200 EMA is too close overhead.
+        (Ross uses 200 EMA as a key resistance level, but it's not one of the 5 Pillars)
         
         Returns rejection reason string if failed, None if passed.
         """
@@ -1757,8 +1740,6 @@ class WarriorScannerService:
             session_low=Decimal(str(ctx.session_low)),
             session_volume=ctx.session_volume,
             avg_volume=ctx.avg_volume,
-            dollar_volume=ctx.dollar_vol,
-            atr=ctx.atr,
             ema_200=ctx.ema_200_value,
             room_to_200_ema_pct=ctx.room_to_ema_pct,
             scanned_at=now_et(),

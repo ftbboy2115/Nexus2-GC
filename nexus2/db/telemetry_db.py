@@ -54,7 +54,7 @@ class WarriorScanResult(TelemetryBase):
     # Extended telemetry columns (Feb 2026)
     price = Column(Float, nullable=True)  # Last price at scan time
     country = Column(String(10), nullable=True)  # Country code (US, CN, HK)
-    dollar_volume = Column(BigInteger, nullable=True)  # Price × session volume
+
     ema_200 = Column(Float, nullable=True)  # 200-day EMA value
     room_to_ema_pct = Column(Float, nullable=True)  # % position vs 200 EMA (+ve = above, -ve = below)
     is_etb = Column(String(5), nullable=True)  # Easy to borrow status (True/False/None)
