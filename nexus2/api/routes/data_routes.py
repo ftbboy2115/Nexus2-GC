@@ -354,26 +354,16 @@ async def get_warrior_scan_history_distinct(
     from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult
     from sqlalchemy import distinct
     
-    # Map API column names to DB columns
-    column_map = {
-        "symbol": WarriorScanResult.symbol,
-        "result": WarriorScanResult.result,
-        "reason": WarriorScanResult.reason,
-        "catalyst_type": WarriorScanResult.catalyst_type,
-        "catalyst": WarriorScanResult.catalyst_type,  # Alias for backward compatibility
-        "score": WarriorScanResult.score,
-    }
-    
-    db_column = column_map.get(column)
-    if not db_column:
-        return {"column": column, "values": []}
-    
     with get_telemetry_session() as db:
-        query = db.query(distinct(db_column)).filter(db_column.isnot(None))
-        results = query.all()
-        values = sorted([str(r[0]) for r in results if r[0]])
+        # Dynamic column lookup
+        col = getattr(WarriorScanResult, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
     
-    return {"column": column, "values": values}
+    return {"column": column, "values": sorted(values)}
 
 
 @router.get("/scan-history/distinct")

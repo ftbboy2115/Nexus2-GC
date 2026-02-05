@@ -671,8 +671,14 @@ export default function DataExplorer() {
     // Tabs that have backend /distinct endpoints for comprehensive filtering
     const DISTINCT_ENDPOINT_TABS: Record<string, string> = {
         'warrior-scans': '/api/data/warrior-scan-history/distinct',
+        'nac-scans': '/api/data/scan-history/distinct',
         'catalyst-audits': '/api/data/catalyst-audits/distinct',
         'ai-comparisons': '/api/data/ai-comparisons/distinct',
+        'trade-events': '/api/data/trade-events/distinct',
+        'warrior-trades': '/api/data/warrior-trades/distinct',
+        'nac-trades': '/api/data/nac-trades/distinct',
+        'quote-audits': '/api/data/quote-audits/distinct',
+        'validation-log': '/api/data/validation-log/distinct',
     }
 
     // State to cache distinct values from backend
