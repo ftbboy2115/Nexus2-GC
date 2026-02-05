@@ -138,6 +138,12 @@ class WarriorScanSettings:
     # If stock is on RS watchlist AND has fresh positive catalyst → bypass offering rejection
     allow_offering_for_reverse_splits: bool = True  # Configurable for risk management
     
+    # Momentum Override Thresholds (Ross: "trade them, manage risk")
+    # Bypass offering rejection for exceptional momentum (NPT, GRI, PAVM case studies)
+    momentum_override_rvol: float = 50.0    # Override if RVOL >= this
+    momentum_override_gap: float = 30.0     # AND gap_percent >= this
+    momentum_override_size_reduction: float = 0.25  # Reduce position size by 25%
+    
     # Multi-Model Comparison (for training regex patterns)
     enable_multi_model_comparison: bool = True  # Queue headlines for AI comparison
     comparison_models: list = None  # Default: ["flash_lite", "pro"] - set in __post_init__
@@ -479,6 +485,10 @@ class EvaluationContext:
     
     # Former runner
     is_former_runner: bool = False
+    
+    # Momentum override (Ross: "trade them, manage risk" for offering stocks)
+    momentum_override: bool = False
+    position_size_multiplier: float = 1.0
 
 
 # =============================================================================
@@ -1259,6 +1269,20 @@ class WarriorScannerService:
                                 )
                     except Exception as e:
                         scan_logger.debug(f"[RS Check] {ctx.symbol}: Error - {e}")
+                
+                # Momentum Override - Ross's "trade them, manage risk" philosophy
+                # Bypass offering rejection for exceptional momentum (RVOL >= 50x AND gap >= 30%)
+                if not should_bypass and neg_type in ("offering", "shelf_registration"):
+                    if ctx.rvol >= s.momentum_override_rvol and ctx.change_percent >= s.momentum_override_gap:
+                        should_bypass = True
+                        ctx.momentum_override = True
+                        ctx.position_size_multiplier = 1.0 - s.momentum_override_size_reduction
+                        scan_logger.warning(
+                            f"⚡ MOMENTUM_OVERRIDE | {ctx.symbol} | "
+                            f"RVOL:{ctx.rvol:.0f}x >= {s.momentum_override_rvol:.0f} | "
+                            f"Gap:{ctx.change_percent:.1f}% >= {s.momentum_override_gap:.0f}% | "
+                            f"Type: {neg_type} | Size reduced by {s.momentum_override_size_reduction*100:.0f}%"
+                        )
                 
                 if not should_bypass:
                     tracker.record(
