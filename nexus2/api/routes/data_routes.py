@@ -215,6 +215,7 @@ async def get_warrior_scan_history(
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
     source: Optional[str] = Query(None, description="Filter by source: SCAN or PILLARS"),
     timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
+    score: Optional[str] = Query(None, description="Filter by score (comma-separated, use '(empty)' for NULL)"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
@@ -247,6 +248,22 @@ async def get_warrior_scan_history(
         if result:
             result_list = [r.strip().upper() for r in result.split(',')]
             query = query.filter(WarriorScanResult.result.in_(result_list))
+        
+        # Apply score filter (supports comma-separated, handles (empty) for NULL)
+        if score:
+            from sqlalchemy import or_
+            score_list = [s.strip() for s in score.split(',')]
+            conditions = []
+            for val in score_list:
+                if val == '(empty)':
+                    conditions.append(WarriorScanResult.score.is_(None))
+                else:
+                    try:
+                        conditions.append(WarriorScanResult.score == int(val))
+                    except ValueError:
+                        pass  # Skip invalid
+            if conditions:
+                query = query.filter(or_(*conditions))
         
         # Apply date/time filters (timestamps stored as UTC in DB)
         # Convert date_from/date_to from ET to UTC for proper filtering
