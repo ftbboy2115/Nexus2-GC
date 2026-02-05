@@ -95,10 +95,14 @@ async def get_nac_trades(
         if date_to:
             query = query.filter(NACTradeModel.entry_time <= date_to + "T23:59:59")
         # Exact entry_time filter (supports comma-separated values)
+        # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
             from sqlalchemy import or_
-            time_values = [t.strip() for t in entry_time.split(',')]
-            query = query.filter(or_(*[NACTradeModel.entry_time == t for t in time_values]))
+            time_values = []
+            for t in entry_time.split(','):
+                t = t.strip().replace('T', ' ').rstrip('Z')  # Convert ISO to DB format
+                time_values.append(t)
+            query = query.filter(or_(*[NACTradeModel.entry_time.like(f"{t}%") for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -1204,10 +1208,14 @@ async def get_warrior_trades(
         if date_to:
             query = query.filter(WarriorTradeModel.entry_time <= date_to + "T23:59:59")
         # Exact entry_time filter (supports comma-separated values)
+        # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
             from sqlalchemy import or_
-            time_values = [t.strip() for t in entry_time.split(',')]
-            query = query.filter(or_(*[WarriorTradeModel.entry_time == t for t in time_values]))
+            time_values = []
+            for t in entry_time.split(','):
+                t = t.strip().replace('T', ' ').rstrip('Z')  # Convert ISO to DB format
+                time_values.append(t)
+            query = query.filter(or_(*[WarriorTradeModel.entry_time.like(f"{t}%") for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -1331,10 +1339,14 @@ async def get_quote_audits(
         if date_to:
             query = query.filter(QuoteAuditModel.timestamp <= date_to + "T23:59:59")
         # Exact timestamp filter (supports comma-separated values)
+        # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if timestamp:
             from sqlalchemy import or_
-            time_values = [t.strip() for t in timestamp.split(',')]
-            query = query.filter(or_(*[QuoteAuditModel.timestamp == t for t in time_values]))
+            time_values = []
+            for t in timestamp.split(','):
+                t = t.strip().replace('T', ' ').rstrip('Z')  # Convert ISO to DB format
+                time_values.append(t)
+            query = query.filter(or_(*[QuoteAuditModel.timestamp.like(f"{t}%") for t in time_values]))
         
         # Get total count
         total = query.count()
@@ -1422,10 +1434,14 @@ async def get_validation_log(
             elif target_hit.lower() == 'false':
                 query = query.filter(EntryValidationLogModel.target_hit == False)
         # Exact created_at filter (supports comma-separated values)
+        # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if created_at:
             from sqlalchemy import or_
-            time_values = [t.strip() for t in created_at.split(',')]
-            query = query.filter(or_(*[EntryValidationLogModel.created_at == t for t in time_values]))
+            time_values = []
+            for t in created_at.split(','):
+                t = t.strip().replace('T', ' ').rstrip('Z')  # Convert ISO to DB format
+                time_values.append(t)
+            query = query.filter(or_(*[EntryValidationLogModel.created_at.like(f"{t}%") for t in time_values]))
         
         # Get total count
         total = query.count()
