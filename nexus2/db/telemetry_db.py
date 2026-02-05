@@ -75,7 +75,7 @@ class WarriorScanResult(TelemetryBase):
             # Extended telemetry columns
             "price": self.price,
             "country": self.country,
-            "dollar_volume": self.dollar_volume,
+
             "ema_200": self.ema_200,
             "room_to_ema_pct": self.room_to_ema_pct,
             "is_etb": self.is_etb,
