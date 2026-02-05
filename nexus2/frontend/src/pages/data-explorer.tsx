@@ -917,8 +917,8 @@ export default function DataExplorer() {
                                 Last Week
                             </button>
                         </div>
-                        {/* Clear time button - only shows when date filters are set */}
-                        {(dateFrom || dateTo) && (
+                        {/* Clear time button - only shows when time filters are set */}
+                        {(timeFrom || timeTo) && (
                             <button
                                 onClick={clearTimeFilters}
                                 className={styles.btn}
