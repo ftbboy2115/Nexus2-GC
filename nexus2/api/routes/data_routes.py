@@ -329,8 +329,7 @@ async def get_warrior_scan_history(
                     entry["float"] = str(float_val)
             else:
                 entry["float"] = None
-            # Map catalyst_type to catalyst for backward compatibility
-            entry["catalyst"] = entry.get("catalyst_type")
+
             entries.append(entry)
         
         return {
