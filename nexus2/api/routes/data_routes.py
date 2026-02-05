@@ -361,6 +361,7 @@ async def get_warrior_scan_history_distinct(
         "reason": WarriorScanResult.reason,
         "catalyst_type": WarriorScanResult.catalyst_type,
         "catalyst": WarriorScanResult.catalyst_type,  # Alias for backward compatibility
+        "score": WarriorScanResult.score,
     }
     
     db_column = column_map.get(column)

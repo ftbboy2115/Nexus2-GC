@@ -670,6 +670,7 @@ export default function DataExplorer() {
 
     // Tabs that have backend /distinct endpoints for comprehensive filtering
     const DISTINCT_ENDPOINT_TABS: Record<string, string> = {
+        'warrior-scans': '/api/data/warrior-scan-history/distinct',
         'catalyst-audits': '/api/data/catalyst-audits/distinct',
         'ai-comparisons': '/api/data/ai-comparisons/distinct',
     }
