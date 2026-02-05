@@ -463,7 +463,7 @@ class UnifiedMarketData:
     # EP-Specific Methods
     # =========================================================================
     
-    def build_ep_session_snapshot(
+    def build_session_snapshot(
         self,
         symbol: str,
         rvol_lookback: int = 50,

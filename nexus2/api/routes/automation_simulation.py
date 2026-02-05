@@ -449,7 +449,7 @@ async def debug_simulation():
     # Build EP snapshots for top gainers to show gap vs change
     ep_snapshots = []
     for g in gainers:
-        snap = data.build_ep_session_snapshot(g["symbol"])
+        snap = data.build_session_snapshot(g["symbol"])
         if snap:
             # Calculate gap (open vs yesterday close)
             gap_pct = ((snap["session_open"] - snap["yesterday_close"]) / snap["yesterday_close"]) * 100

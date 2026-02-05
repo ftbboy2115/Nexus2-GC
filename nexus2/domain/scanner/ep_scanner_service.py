@@ -178,7 +178,7 @@ class EPScannerService:
             EPCandidate if passes criteria, None otherwise
         """
         # Get EP session snapshot
-        snapshot = self.market_data.build_ep_session_snapshot(symbol)
+        snapshot = self.market_data.build_session_snapshot(symbol)
         if not snapshot:
             get_rejection_tracker().record(
                 symbol=symbol,

@@ -187,6 +187,7 @@ Last updated: 2026-02-03 (Pattern Competition validated)
   - Auto-refresh every second via `useWarriorData.ts`
 - [ ] **Smart Scheduler Interval Change** — When interval is reduced, run scan immediately if time_remaining > new_interval
 - [ ] **GUI Interval Validation Fix** — Frontend rejects 5-minute interval but backend accepts [5, 10, 15, 30]
+- [x] **Max Shares/Trade Editable Input** — Settings card input field now editable (Feb 5)
 
 ---
 

@@ -82,8 +82,16 @@ These specialists emerged during Phase 2 refactoring:
 To spawn a specialist:
 ```
 CTRL+E → New Conversation → Paste:
-"Read @agent-[role]-specialist.md and implement [Task] as defined in [Plan]."
+"Read .agent/rules/agent-[role]-specialist.md and execute the task defined in [ABSOLUTE_PATH_TO_HANDOFF].
+
+Example with absolute path:
+Read .agent/rules/agent-code-auditor.md and execute the task defined in C:\Users\ftbbo\.gemini\antigravity\brain\[conversation-id]\handoff_strategy_blending_audit.md
 ```
+
+> [!IMPORTANT]
+> **Always provide the ABSOLUTE PATH to handoff files.**
+> Using `@filename` or relative paths forces the agent to search, wasting tokens and risking failure.
+> Copy the full path from File Explorer or use `(Get-Item handoff.md).FullName` in PowerShell.
 
 ### Pattern 2: Task-Parallel Agents
 For large features, spawn multiple agents working on independent subtasks:

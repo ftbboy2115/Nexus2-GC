@@ -527,7 +527,7 @@ class MockMarketData:
         sim_date = self._sim_clock.get_trading_day() if self._sim_clock else None
         return (True, sim_date)
     
-    def build_ep_session_snapshot(self, symbol: str) -> Optional[Dict]:
+    def build_session_snapshot(self, symbol: str) -> Optional[Dict]:
         """
         Build EP session snapshot for scanner.
         

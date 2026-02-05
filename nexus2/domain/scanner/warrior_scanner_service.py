@@ -767,7 +767,7 @@ class WarriorScannerService:
         )
         
         # Get session snapshot for volume and range data
-        snapshot = self.market_data.build_ep_session_snapshot(symbol)
+        snapshot = self.market_data.build_session_snapshot(symbol)
         if not snapshot:
             tracker.record(
                 symbol=symbol,
