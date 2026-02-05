@@ -864,7 +864,7 @@ async def get_ai_comparisons(
                         "flash_ms": flash_result.get("latency_ms", 0),
                         "pro_valid": pro_result.get("valid") if pro_result else None,
                         "pro_type": pro_result.get("type") if pro_result else None,
-                        "pro_reason": pro_result.get("reason", "")[:40] if pro_result else None,
+                        "pro_reason": (pro_result.get("reason") or "")[:40] if pro_result else None,
                         "used_tiebreaker": bool(pro_result),
                     }
                     all_entries.append(entry)

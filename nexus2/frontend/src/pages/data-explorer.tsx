@@ -816,14 +816,32 @@ export default function DataExplorer() {
                             className={styles.dateInput}
                             title="From date"
                         />
-                        <input
-                            type="time"
-                            value={timeFrom}
-                            onChange={e => { setTimeFrom(e.target.value); setTimeWindow(''); setOffset(0); }}
-                            className={styles.dateInput}
-                            title="From time (optional)"
-                            style={{ width: '90px' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <input
+                                type="time"
+                                value={timeFrom}
+                                onChange={e => { setTimeFrom(e.target.value); setTimeWindow(''); setOffset(0); }}
+                                className={styles.dateInput}
+                                title="From time (optional)"
+                                style={{ width: '90px' }}
+                            />
+                            {timeFrom && (
+                                <button
+                                    onClick={() => { setTimeFrom(''); setOffset(0); }}
+                                    style={{
+                                        padding: '2px 5px',
+                                        fontSize: '10px',
+                                        background: '#666',
+                                        border: 'none',
+                                        borderRadius: '3px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        lineHeight: 1
+                                    }}
+                                    title="Clear from time"
+                                >✕</button>
+                            )}
+                        </div>
                         <span style={{ color: '#888' }}>→</span>
                         <input
                             type="date"
@@ -832,14 +850,32 @@ export default function DataExplorer() {
                             className={styles.dateInput}
                             title="To date"
                         />
-                        <input
-                            type="time"
-                            value={timeTo}
-                            onChange={e => { setTimeTo(e.target.value); setTimeWindow(''); setOffset(0); }}
-                            className={styles.dateInput}
-                            title="To time (optional)"
-                            style={{ width: '90px' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <input
+                                type="time"
+                                value={timeTo}
+                                onChange={e => { setTimeTo(e.target.value); setTimeWindow(''); setOffset(0); }}
+                                className={styles.dateInput}
+                                title="To time (optional)"
+                                style={{ width: '90px' }}
+                            />
+                            {timeTo && (
+                                <button
+                                    onClick={() => { setTimeTo(''); setOffset(0); }}
+                                    style={{
+                                        padding: '2px 5px',
+                                        fontSize: '10px',
+                                        background: '#666',
+                                        border: 'none',
+                                        borderRadius: '3px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        lineHeight: 1
+                                    }}
+                                    title="Clear to time"
+                                >✕</button>
+                            )}
+                        </div>
                         {/* Date presets */}
                         <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
                             <button
@@ -875,15 +911,15 @@ export default function DataExplorer() {
                                 Last Week
                             </button>
                         </div>
-                        {/* Clear time button */}
-                        {(dateFrom || dateTo || timeFrom || timeTo) && (
+                        {/* Clear time button - only shows when date filters are set */}
+                        {(dateFrom || dateTo) && (
                             <button
                                 onClick={clearTimeFilters}
                                 className={styles.btn}
                                 style={{ padding: '4px 8px', fontSize: '11px', marginLeft: '4px', background: '#c9302c' }}
-                                title="Clear date/time filters only"
+                                title="Clear all date/time filters"
                             >
-                                ✕ Time
+                                ✕ Clear All
                             </button>
                         )}
                         {activeTab === 'warrior-trades' && (
