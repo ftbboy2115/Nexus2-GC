@@ -50,6 +50,15 @@ class WarriorScanResult(TelemetryBase):
     float_shares = Column(BigInteger, nullable=True)
     reason = Column(String(100), nullable=True)  # Rejection reason (null for PASS)
     catalyst_type = Column(String(50), nullable=True)
+    
+    # Extended telemetry columns (Feb 2026)
+    price = Column(Float, nullable=True)  # Last price at scan time
+    country = Column(String(10), nullable=True)  # Country code (US, CN, HK)
+    dollar_volume = Column(BigInteger, nullable=True)  # Price × session volume
+    ema_200 = Column(Float, nullable=True)  # 200-day EMA value
+    room_to_ema_pct = Column(Float, nullable=True)  # % position vs 200 EMA (+ve = above, -ve = below)
+    is_etb = Column(String(5), nullable=True)  # Easy to borrow status (True/False/None)
+    name = Column(String(100), nullable=True)  # Company name
 
     def to_dict(self):
         return {
@@ -63,6 +72,14 @@ class WarriorScanResult(TelemetryBase):
             "float_shares": self.float_shares,
             "reason": self.reason,
             "catalyst_type": self.catalyst_type,
+            # Extended telemetry columns
+            "price": self.price,
+            "country": self.country,
+            "dollar_volume": self.dollar_volume,
+            "ema_200": self.ema_200,
+            "room_to_ema_pct": self.room_to_ema_pct,
+            "is_etb": self.is_etb,
+            "name": self.name,
         }
 
 
