@@ -238,6 +238,36 @@ export default function DataExplorer() {
         'gap_pct': 'Pre-market gap percentage vs previous close',
         'rvol': 'Relative volume vs 20-day average',
         'score': 'Composite scanner score based on multiple criteria',
+        'country': 'ISO country code where company is headquartered',
+    }
+
+    // Country code to full name mapping
+    const COUNTRY_NAMES: Record<string, string> = {
+        'US': 'United States',
+        'CN': 'China',
+        'HK': 'Hong Kong',
+        'SG': 'Singapore',
+        'SE': 'Sweden',
+        'GR': 'Greece',
+        'CA': 'Canada',
+        'UK': 'United Kingdom',
+        'GB': 'United Kingdom',
+        'DE': 'Germany',
+        'FR': 'France',
+        'JP': 'Japan',
+        'AU': 'Australia',
+        'IL': 'Israel',
+        'KR': 'South Korea',
+        'TW': 'Taiwan',
+        'IN': 'India',
+        'BR': 'Brazil',
+        'CH': 'Switzerland',
+        'NL': 'Netherlands',
+        'IE': 'Ireland',
+        'BE': 'Belgium',
+        'IT': 'Italy',
+        'ES': 'Spain',
+        'MX': 'Mexico',
     }
 
     // Preferred column order per tab - ensures stable column positions
@@ -786,7 +816,12 @@ export default function DataExplorer() {
                 {/* Tabs */}
                 <div className={styles.tabs}>
                     {([
-                        { id: 'warrior-scans', label: 'Warrior Scans', tooltip: 'Real-time scanner PASS/FAIL decisions from warrior_scan.log. Shows gap%, RVOL, and rejection reasons.' },
+                        {
+                            id: 'warrior-scans', label: 'Warrior Scans', tooltip: `Scanner evaluates stocks in fail-fast order:
+1. Snapshot → 2. Country (no CN/HK) → 3. Float (<100M)
+4. RVOL (>2x) → 5. Catalyst → 6. Price ($1.50-$20)
+7. Gap% (>4%) → 8. Dollar Vol → 9. 200 EMA → 10. Score
+Stocks fail at first unmet check.` },
                         { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
                         { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc.' },
                         { id: 'ai-comparisons', label: 'AI Comparisons', tooltip: 'Side-by-side comparison of Regex vs Flash-Lite vs Pro catalyst classification.' },
@@ -1240,6 +1275,10 @@ export default function DataExplorer() {
                                                         >
                                                             {displayVal} <span style={{ fontSize: '10px' }}>↗</span>
                                                         </a>
+                                                    ) : col === 'country' && rawVal ? (
+                                                        <span title={COUNTRY_NAMES[rawVal as string] || rawVal as string}>
+                                                            {displayVal}
+                                                        </span>
                                                     ) : displayVal}
                                                 </td>
                                             )

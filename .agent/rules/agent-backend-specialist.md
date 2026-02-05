@@ -59,6 +59,18 @@ You are part of a multi-agent team. Other specialists you may collaborate with:
 
 ---
 
+## Database Migration (Critical)
+
+> [!CAUTION]
+> SQLAlchemy `create_all()` does NOT add columns to existing tables.
+> If you add columns to a model, you MUST run ALTER TABLE on the VPS:
+> ```bash
+> sqlite3 ~/Nexus2/data/<db_name>.db "ALTER TABLE <table> ADD COLUMN <col> <type>;"
+> ```
+> Failure to do this = silent INSERT failures on deployed server.
+
+---
+
 ## API Standards
 
 - **Base URL**: `http://localhost:8000` (no `/v1` prefix)

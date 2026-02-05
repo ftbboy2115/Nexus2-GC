@@ -28,6 +28,17 @@ ssh root@100.113.178.7 "cd ~/Nexus2/nexus2/frontend && npm run build"
 
 **Backend changes:** No build step required (Python).
 
+### 3.5. Database Migration (if new columns added)
+
+> [!CAUTION]
+> SQLAlchemy `create_all()` does NOT add columns to existing tables.
+
+If the change adds columns to an existing table, run ALTER TABLE:
+```bash
+ssh root@100.113.178.7 "sqlite3 ~/Nexus2/data/<db>.db 'ALTER TABLE <table> ADD COLUMN <col> <type>;'"
+```
+Verify schema matches Python model before restart.
+
 ### 4. Restart Backend (Primary Method: UI or API)
 
 The server runs via `run_api.sh` wrapper script, which enables graceful restart.
