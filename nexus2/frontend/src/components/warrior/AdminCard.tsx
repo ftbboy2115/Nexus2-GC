@@ -134,8 +134,32 @@ export function AdminCard() {
                         padding: '12px',
                         background: 'rgba(50, 200, 100, 0.1)',
                         borderRadius: '8px',
-                        border: '1px solid rgba(50, 200, 100, 0.3)'
+                        border: '1px solid rgba(50, 200, 100, 0.3)',
+                        position: 'relative'
                     }}>
+                        {/* Copy button */}
+                        <button
+                            onClick={() => {
+                                const text = `Uptime: ${Math.floor(adminStatus.uptime_seconds / 3600)}h ${Math.floor((adminStatus.uptime_seconds % 3600) / 60)}m | Memory: ${adminStatus.memory_mb} MB | Storage: ${adminStatus.disk_used_gb ?? '?'}/${adminStatus.disk_total_gb ?? '?'} GB | Mode: ${adminStatus.mode?.replace('alpaca_', '').toUpperCase()}`
+                                navigator.clipboard.writeText(text)
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: '4px',
+                                right: '4px',
+                                padding: '2px 6px',
+                                fontSize: '10px',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: '4px',
+                                color: '#888',
+                                cursor: 'pointer'
+                            }}
+                            title="Copy stats to clipboard"
+                        >
+                            📋
+                        </button>
+
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Uptime</div>
                             <div style={{ fontWeight: 'bold', color: '#4ade80' }}>
