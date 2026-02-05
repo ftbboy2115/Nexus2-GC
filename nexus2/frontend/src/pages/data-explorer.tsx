@@ -477,8 +477,15 @@ export default function DataExplorer() {
 
     // Date presets - sets date range to specific periods (no time filtering)
     const handleDatePreset = (preset: string) => {
+        // Use Eastern Time for date calculations
         const now = new Date()
-        const today = now.toISOString().split('T')[0]
+
+        // Get date in ET as YYYY-MM-DD using en-CA locale
+        const toETDate = (d: Date): string => {
+            return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+        }
+
+        const today = toETDate(now)
 
         // Get Monday of current week (Monday = 1, Sunday = 0)
         const getMonday = (d: Date) => {
@@ -496,14 +503,13 @@ export default function DataExplorer() {
             case 'yesterday': {
                 const yesterday = new Date(now)
                 yesterday.setDate(yesterday.getDate() - 1)
-                const yDate = yesterday.toISOString().split('T')[0]
-                setDateFrom(yDate)
-                setDateTo(yDate)
+                setDateFrom(toETDate(yesterday))
+                setDateTo(toETDate(yesterday))
                 break
             }
             case 'this-week': {
                 const monday = getMonday(now)
-                setDateFrom(monday.toISOString().split('T')[0])
+                setDateFrom(toETDate(monday))
                 setDateTo(today)
                 break
             }
@@ -512,8 +518,8 @@ export default function DataExplorer() {
                 lastMonday.setDate(lastMonday.getDate() - 7)
                 const lastSunday = new Date(lastMonday)
                 lastSunday.setDate(lastSunday.getDate() + 6)
-                setDateFrom(lastMonday.toISOString().split('T')[0])
-                setDateTo(lastSunday.toISOString().split('T')[0])
+                setDateFrom(toETDate(lastMonday))
+                setDateTo(toETDate(lastSunday))
                 break
             }
             default:
@@ -919,7 +925,7 @@ export default function DataExplorer() {
                                 style={{ padding: '4px 8px', fontSize: '11px', marginLeft: '4px', background: '#c9302c' }}
                                 title="Clear all date/time filters"
                             >
-                                ✕ Clear All
+                                ✕ Time
                             </button>
                         )}
                         {activeTab === 'warrior-trades' && (
