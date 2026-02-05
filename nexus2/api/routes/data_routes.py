@@ -213,6 +213,7 @@ async def get_warrior_scan_history(
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
+    country: Optional[str] = Query(None, description="Filter by country code (comma-separated)"),
     source: Optional[str] = Query(None, description="Filter by source: SCAN or PILLARS"),
     timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     score: Optional[str] = Query(None, description="Filter by score (comma-separated, use '(empty)' for NULL)"),
@@ -248,6 +249,11 @@ async def get_warrior_scan_history(
         if result:
             result_list = [r.strip().upper() for r in result.split(',')]
             query = query.filter(WarriorScanResult.result.in_(result_list))
+        
+        # Apply country filter (supports comma-separated)
+        if country:
+            country_list = [c.strip().upper() for c in country.split(',')]
+            query = query.filter(WarriorScanResult.country.in_(country_list))
         
         # Apply score filter (supports comma-separated, handles (empty) for NULL)
         if score:
