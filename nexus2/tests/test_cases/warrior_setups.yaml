@@ -678,6 +678,54 @@ test_cases:
       stop_near: 9.00
     notes: "Chinese IPO, blue sky above $9.18 ATH. Ross flipped from -$10k to +$81k. Squeeze from $9→$30 in ~1 minute. Short squeeze fueled move. Added at $10, $11, $12, $15, 20s. Took profits through $28-30."
 
+  - id: ross_flye_20260206
+    symbol: FLYE
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$5,500 day - PMH Breakout Multi-Add Scalp"
+    trade_date: "2026-02-06"
+    intraday_file: "intraday/ross_flye_20260206.json"
+    data_source: polygon
+    ross_pnl: 5500.00  # Total day P/L, ~$4,800 from FLYE
+    ross_entry_time: "~08:50"  # Re-alerted at 8:50, entry as candle pulled away
+    premarket_data:
+      gap_percent: 37.6
+      premarket_high: 8.50
+      previous_close: 4.31
+      float_shares: 5000000
+      catalyst: "momentum"  # No specific news — pure momentum/squeeze
+    expected:
+      entry_near: 6.32  # Starter position as candle pulled away toward PMH
+      stop_near: 6.00
+    notes: "No news catalyst. FLYE popped to $6.60 early, Ross passed. Pulled back, curled up — took starter at ~$6.32. Multiple add/trim cycles: $7→$7.50→$8→$8.50. Gave back half profit on dip. Choppy market, end of week. Transcript: 2026-02-06_transcript_Z5D8nhEtzOo.md"
+
+  - id: ross_rdib_20260206
+    symbol: RDIB
+    setup_type: vwap_reclaim
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$700 - VWAP Reclaim Light Volume"
+    trade_date: "2026-02-06"
+    intraday_file: "intraday/ross_rdib_20260206.json"
+    data_source: polygon
+    ross_pnl: 700.00
+    premarket_data:
+      gap_percent: 35.8
+      premarket_high: 34.96
+      previous_close: 12.00
+      float_shares: 5000000
+      catalyst: "momentum"  # Prior big move, similar to KELB pattern
+    expected:
+      entry_near: 15.00  # VWAP reclaim area (estimated)
+      stop_near: 14.00
+    notes: "Light volume VWAP reclaim. Ross took small position after prior big move (similar to KELB/TCGL pattern from previous day). Quick $700, 'nothing crazy'. Transcript: 2026-02-06_transcript_Z5D8nhEtzOo.md"
+
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
