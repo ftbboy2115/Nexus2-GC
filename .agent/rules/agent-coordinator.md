@@ -1,4 +1,5 @@
 ---
+trigger: always_on
 description: Use when YOU are coordinating multiple specialist agents in Agent Manager
 ---
 
@@ -55,7 +56,7 @@ Reference the rule file at the start of your prompt:
 @agent-backend-specialist.md
 
 Task: [Describe backend work]
-Reference: implementation_plan.md
+Reference: /path/to/implementation_plan.md
 ```
 
 ---
@@ -91,6 +92,49 @@ Before approving trading logic implementation:
 - [ ] Correct methodology (Warrior vs KK vs Algo)
 - [ ] RS ≠ RSI, EP = Episodic Pivot
 - [ ] Stop logic matches documented method
+
+---
+
+## 🚨 MANDATORY CODEBASE RESEARCH 🚨
+
+> [!CAUTION]
+> **Coordinators MUST research the actual codebase before creating implementation plans.**
+> Past coordinators have given misleading instructions based on assumptions, causing downstream agents to waste effort on non-existent files or endpoints.
+
+### Before Writing an Implementation Plan
+
+1. **Use search tools** to locate relevant files:
+   - `find_by_name` - Find files by pattern
+   - `grep_search` - Search for code patterns
+   - `view_file_outline` - Understand file structure
+   - `view_file` - Read actual implementation
+
+2. **Verify endpoints exist** before referencing them:
+   - Check `*_routes.py` files for actual API paths
+   - Check frontend `fetch()` calls for actual endpoints
+   - Do NOT assume endpoint names from conventions
+
+3. **Verify component structure** before referencing:
+   - Check if it's a library component or custom implementation
+   - Check import statements for actual dependencies
+   - Check state management patterns used
+
+### Example: The Phantom Endpoint Problem
+
+In a past session, a coordinator gave this instruction:
+```
+POST /api/telemetry/catalyst-audit
+```
+
+**Reality:** This endpoint did not exist. The coordinator made it up and/or got the path wrong. 
+
+This wasted significant agent effort debugging a non-existent route, including the testing agent writing tests for non-existent routes.
+
+### If Uncertain
+
+- **DO NOT** invent file paths, endpoint names, or component structures
+- **DO** ask clarifying questions before spawning agents
+- **DO** admit "I need to research this first" rather than guess
 
 ---
 

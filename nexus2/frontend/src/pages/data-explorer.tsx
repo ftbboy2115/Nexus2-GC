@@ -63,6 +63,7 @@ interface TabFilterState {
     timeWindow: string
     sortBy: string
     sortDir: 'asc' | 'desc'
+    syncDates: boolean
 }
 
 // Props for the sortable header component
@@ -179,6 +180,7 @@ export default function DataExplorer() {
     const [filterDropdownCol, setFilterDropdownCol] = useState<string | null>(null)
     const [filterSearchText, setFilterSearchText] = useState<string>('')  // Live filter text for dropdown
     const [timeWindow, setTimeWindow] = useState<string>('')  // 1h, 4h, 8h, 24h, 7d, or '' for custom
+    const [syncDates, setSyncDates] = useState<boolean>(false)  // When true, From and To dates are synchronized
 
     // Store filter state per tab so each tab has independent filters
     const [tabFilterStates, setTabFilterStates] = useState<Partial<Record<TabType, TabFilterState>>>({})
@@ -339,6 +341,7 @@ export default function DataExplorer() {
                     timeWindow,
                     sortBy,
                     sortDir,
+                    syncDates,
                 }
             }))
         }
@@ -354,6 +357,7 @@ export default function DataExplorer() {
             setTimeWindow(savedState.timeWindow)
             setSortBy(savedState.sortBy)
             setSortDir(savedState.sortDir)
+            setSyncDates(savedState.syncDates ?? false)
         } else {
             // Fresh tab - reset to defaults
             setFilters({})
@@ -362,6 +366,7 @@ export default function DataExplorer() {
             setTimeFrom('')
             setTimeTo('')
             setTimeWindow('')
+            setSyncDates(false)
             setSortBy(DEFAULT_SORT_COLUMNS[activeTab])
             setSortDir('desc')
         }
@@ -864,7 +869,12 @@ Stocks fail at first unmet check.` },
                         <input
                             type="date"
                             value={dateFrom}
-                            onChange={e => { setDateFrom(e.target.value); setTimeWindow(''); setOffset(0); }}
+                            onChange={e => {
+                                const val = e.target.value;
+                                setDateFrom(val);
+                                if (syncDates) setDateTo(val);
+                                setTimeWindow(''); setOffset(0);
+                            }}
                             className={styles.dateInput}
                             title="From date"
                         />
@@ -894,11 +904,55 @@ Stocks fail at first unmet check.` },
                                 >✕</button>
                             )}
                         </div>
-                        <span style={{ color: '#888' }}>→</span>
+                        {/* Date sync slider toggle */}
+                        <div
+                            onClick={() => setSyncDates(prev => !prev)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                                padding: '4px 8px',
+                                background: '#333',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                fontSize: '12px',
+                            }}
+                            title={syncDates ? 'Sync mode: dates linked' : 'Range mode: dates independent'}
+                            role="switch"
+                            aria-checked={syncDates}
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setSyncDates(p => !p) }}
+                        >
+                            <span style={{ opacity: syncDates ? 1 : 0.4 }}>🔗</span>
+                            <div style={{
+                                width: '24px', height: '12px',
+                                background: syncDates ? '#4dabf7' : '#666',
+                                borderRadius: '6px',
+                                position: 'relative',
+                                transition: 'background 0.2s',
+                            }}>
+                                <div style={{
+                                    width: '10px', height: '10px',
+                                    background: '#fff',
+                                    borderRadius: '50%',
+                                    position: 'absolute',
+                                    top: '1px',
+                                    left: syncDates ? '1px' : '13px',
+                                    transition: 'left 0.2s',
+                                }} />
+                            </div>
+                            <span style={{ opacity: syncDates ? 0.4 : 1 }}>→</span>
+                        </div>
                         <input
                             type="date"
                             value={dateTo}
-                            onChange={e => { setDateTo(e.target.value); setTimeWindow(''); setOffset(0); }}
+                            onChange={e => {
+                                const val = e.target.value;
+                                setDateTo(val);
+                                if (syncDates) setDateFrom(val);
+                                setTimeWindow(''); setOffset(0);
+                            }}
                             className={styles.dateInput}
                             title="To date"
                         />
