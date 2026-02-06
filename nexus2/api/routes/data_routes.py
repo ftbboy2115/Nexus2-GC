@@ -463,85 +463,8 @@ async def get_nac_scan_history_distinct(
 
 
 # =============================================================================
-# CATALYST AUDITS ENDPOINT (parses catalyst_audit.log)
+# CATALYST AUDITS ENDPOINT (queries telemetry.db)
 # =============================================================================
-
-# Shared patterns and parsing for catalyst audit logs
-import re
-from pathlib import Path
-from typing import List, Dict, Any
-
-CATALYST_HEADER_PATTERN = re.compile(
-    r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| === (\w+) \| Result: (PASS|FAIL) \| Type: (\w+) ==="
-)
-CATALYST_HEADLINE_PATTERN = re.compile(
-    r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \|   \[(\d+)\] ([✓✗]) (\w+) \(conf=([0-9.]+)\): (.+)"
-)
-
-
-def _read_catalyst_audit_logs() -> List[str]:
-    """Read all catalyst audit log lines (including rotated logs)."""
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
-    
-    all_lines = []
-    base_log = log_dir / "catalyst_audit.log"
-    
-    if base_log.exists():
-        try:
-            with open(base_log, "r", encoding="utf-8") as f:
-                all_lines.extend(f.readlines())
-        except Exception:
-            pass
-    
-    # Read rotated logs
-    for i in range(1, 8):
-        rotated_log = log_dir / f"catalyst_audit.log.{i}"
-        if rotated_log.exists():
-            try:
-                with open(rotated_log, "r", encoding="utf-8") as f:
-                    all_lines.extend(f.readlines())
-            except Exception:
-                pass
-    
-    return all_lines
-
-
-def _parse_catalyst_audit_entries(all_lines: List[str]) -> List[Dict[str, Any]]:
-    """Parse catalyst audit log lines into structured entries."""
-    entries = []
-    current_header = None
-    
-    for line in all_lines:
-        line = line.strip()
-        if not line:
-            continue
-        
-        match = CATALYST_HEADER_PATTERN.match(line)
-        if match:
-            current_header = {
-                "timestamp": match.group(1),
-                "symbol": match.group(2),
-                "result": match.group(3),
-                "catalyst_type": match.group(4),
-            }
-            continue
-        
-        match = CATALYST_HEADLINE_PATTERN.match(line)
-        if match and current_header:
-            entries.append({
-                "timestamp": match.group(1),
-                "symbol": current_header["symbol"],
-                "regex_result": current_header["result"],
-                "headline_index": int(match.group(2)),
-                "passed": match.group(3) == "✓",
-                "regex_match_type": match.group(4),
-                "confidence": float(match.group(5)),
-                "headline": match.group(6),
-            })
-    
-    return entries
 
 @router.get("/catalyst-audits")
 async def get_catalyst_audits(
@@ -553,12 +476,10 @@ async def get_catalyst_audits(
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     result: Optional[str] = Query(None, description="Filter by result: PASS or FAIL"),
-    regex_result: Optional[str] = Query(None, description="Alias for result filter"),
     match_type: Optional[str] = Query(None, description="Filter by match type"),
-    regex_match_type: Optional[str] = Query(None, description="Alias for match_type filter"),
     headline: Optional[str] = Query(None, description="Filter by headline text (case-insensitive)"),
     confidence: Optional[str] = Query(None, description="Filter by confidence score"),
-    headline_index: Optional[str] = Query(None, description="Filter by headline index"),
+    source: Optional[str] = Query(None, description="Filter by source (FMP, Benzinga, etc.)"),
     timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
@@ -566,7 +487,7 @@ async def get_catalyst_audits(
     """
     Get paginated catalyst audit entries with filtering and sorting.
     
-    Parses catalyst_audit.log to show headline evaluations for debugging.
+    Queries telemetry.db catalyst_audits table (migrated from log parsing in Phase 6).
     
     Returns:
         entries: List of catalyst audit entries (symbol, result, headline, match_type, confidence)
@@ -574,85 +495,81 @@ async def get_catalyst_audits(
         limit: Records per page
         offset: Current offset
     """
-    # Use shared helpers for reading and parsing logs
-    all_lines = _read_catalyst_audit_logs()
-    if not all_lines:
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    all_entries = _parse_catalyst_audit_entries(all_lines)
-    
-    # Convert timestamps from UTC to ET for display
+    from nexus2.db.telemetry_db import get_telemetry_session, CatalystAudit
+    from sqlalchemy import desc, asc
     from zoneinfo import ZoneInfo
     from datetime import datetime as dt
-    utc_tz = ZoneInfo("UTC")
-    et_tz = ZoneInfo("America/New_York")
     
-    for entry in all_entries:
-        try:
-            utc_dt = dt.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
-            local_dt = utc_dt.astimezone(et_tz)
-            entry["timestamp"] = local_dt.strftime("%Y-%m-%d %H:%M:%S")
-        except:
-            pass  # Keep original on parse failure
-    
-    # Apply filters with time support
-    if date_from or date_to or time_from or time_to:
-        filtered = []
-        for e in all_entries:
-            ts = e["timestamp"]
-            entry_date = ts[:10]
-            entry_time = ts[11:16]
-            if date_from and entry_date < date_from:
-                continue
-            if date_to and entry_date > date_to:
-                continue
-            if time_from and entry_time < time_from:
-                continue
-            if time_to and entry_time > time_to:
-                continue
-            filtered.append(e)
-        all_entries = filtered
-    if symbol:
-        # Support multi-select: comma-separated values mean "include any of these"
-        symbol_set = {s.strip().upper() for s in symbol.split(',')}
-        all_entries = [e for e in all_entries if e["symbol"].upper() in symbol_set]
-    # Handle result filter (support both 'result' and 'regex_result' param names)
-    actual_result = result or regex_result
-    if actual_result:
-        result_set = {r.strip().upper() for r in actual_result.split(',')}
-        all_entries = [e for e in all_entries if e["regex_result"] in result_set]
-    # Handle match_type filter (support both 'match_type' and 'regex_match_type' param names)
-    actual_match_type = match_type or regex_match_type
-    if actual_match_type:
-        match_type_set = {m.strip() for m in actual_match_type.split(',')}
-        all_entries = [e for e in all_entries if e["regex_match_type"] in match_type_set]
-    if headline:
-        headline_lower = headline.lower()
-        all_entries = [e for e in all_entries if headline_lower in e.get("headline", "").lower()]
-    if confidence:
-        conf_set = {c.strip() for c in confidence.split(',')}
-        all_entries = [e for e in all_entries if str(e.get("confidence", "")) in conf_set]
-    if headline_index:
-        idx_set = {i.strip() for i in headline_index.split(',')}
-        all_entries = [e for e in all_entries if str(e.get("headline_index", "")) in idx_set]
-    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
-    
-    # Calculate total before pagination
-    total = len(all_entries)
-    
-    # Apply sorting
-    reverse = sort_dir.lower() == "desc"
-    all_entries.sort(key=lambda x: x.get(sort_by) or "", reverse=reverse)
-    
-    # Apply pagination
-    entries = all_entries[offset:offset + limit]
-    
-    return {
-        "entries": entries,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+    with get_telemetry_session() as db:
+        query = db.query(CatalystAudit)
+        
+        # Apply generic column filters (supports equality, multi-select, range)
+        query = apply_generic_filters(
+            query, CatalystAudit,
+            symbol=symbol,
+            result=result,
+            match_type=match_type,
+            confidence=confidence,
+            source=source,
+        )
+        
+        # Apply headline substring filter (case-insensitive)
+        if headline:
+            query = query.filter(CatalystAudit.headline.ilike(f"%{headline}%"))
+        
+        # Apply date/time filters (timestamps stored as UTC in DB)
+        utc_tz = ZoneInfo("UTC")
+        et_tz = ZoneInfo("America/New_York")
+        
+        if date_from:
+            try:
+                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_start = et_start.astimezone(utc_tz)
+                query = query.filter(CatalystAudit.timestamp >= utc_start)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_end = et_end.astimezone(utc_tz)
+                query = query.filter(CatalystAudit.timestamp <= utc_end)
+            except ValueError:
+                pass
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply sorting
+        sort_column_map = {
+            "timestamp": CatalystAudit.timestamp,
+            "symbol": CatalystAudit.symbol,
+            "result": CatalystAudit.result,
+            "headline": CatalystAudit.headline,
+            "match_type": CatalystAudit.match_type,
+            "confidence": CatalystAudit.confidence,
+            "source": CatalystAudit.source,
+        }
+        sort_column = sort_column_map.get(sort_by, CatalystAudit.timestamp)
+        
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
+        
+        # Apply pagination
+        query = query.offset(offset).limit(limit)
+        rows = query.all()
+        
+        # Convert to dict format
+        entries = [row.to_dict() for row in rows]
+        
+        return {
+            "entries": entries,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
 
 @router.get("/catalyst-audits/distinct")
@@ -662,29 +579,26 @@ async def get_catalyst_audits_distinct(
     """
     Get distinct values for a column in catalyst audits.
     
-    Used by filter dropdowns to show all available filter options,
-    not just values on the current page.
+    Queries telemetry.db (migrated from log parsing in Phase 6).
+    Used by filter dropdowns to show all available filter options.
     """
-    # Use shared helper for reading and parsing logs
-    all_lines = _read_catalyst_audit_logs()
-    if not all_lines:
-        return {"column": column, "values": []}
+    from nexus2.db.telemetry_db import get_telemetry_session, CatalystAudit
+    from sqlalchemy import distinct
     
-    all_entries = _parse_catalyst_audit_entries(all_lines)
+    with get_telemetry_session() as db:
+        # Dynamic column lookup
+        col = getattr(CatalystAudit, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
     
-    # Extract distinct values for the requested column
-    values = set()
-    for entry in all_entries:
-        if column in entry:
-            val = entry[column]
-            if val is not None:
-                values.add(str(val))
-    
-    return {"column": column, "values": sorted(list(values))}
+    return {"column": column, "values": sorted(values)}
 
 
 # =============================================================================
-# AI COMPARISONS ENDPOINT (parses catalyst_comparison.jsonl)
+# AI COMPARISONS ENDPOINT (queries telemetry.db)
 # =============================================================================
 
 @router.get("/ai-comparisons")
@@ -696,123 +610,95 @@ async def get_ai_comparisons(
     time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
     time_to: Optional[str] = Query(None, description="End time (HH:MM)"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    flash_valid: Optional[bool] = Query(None, description="Filter by Flash-Lite result"),
-    used_tiebreaker: Optional[bool] = Query(None, description="Filter entries that used Pro tiebreaker"),
+    flash_result: Optional[str] = Query(None, description="Filter by Flash result"),
+    pro_result: Optional[str] = Query(None, description="Filter by Pro result"),
+    winner: Optional[str] = Query(None, description="Filter by winner (flash, pro, regex)"),
     timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
 ):
     """
-    Get paginated AI comparison entries showing Regex vs Flash-Lite vs Pro.
+    Get paginated AI comparison entries showing Regex vs Flash vs Pro.
     
-    Parses catalyst_comparison.jsonl to show the multi-model validation pipeline.
+    Queries telemetry.db ai_comparisons table (migrated from JSONL parsing in Phase 6).
     
     Returns:
-        entries: List of comparison entries with regex_conf, flash_valid, pro_valid, etc.
+        entries: List of comparison entries with regex_result, flash_result, pro_result, etc.
         total: Total count for pagination
         limit: Records per page
         offset: Current offset
     """
-    from pathlib import Path
-    import json
+    from nexus2.db.telemetry_db import get_telemetry_session, AIComparison
+    from sqlalchemy import desc, asc
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as dt
     
-    # Find log directory
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
-    
-    log_path = log_dir / "catalyst_comparison.jsonl"
-    if not log_path.exists():
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    # Read JSONL file
-    all_entries = []
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line)
-                    
-                    # Flatten the nested structure for table display
-                    flash_result = data.get("models", {}).get("flash_lite", {})
-                    pro_result = data.get("models", {}).get("pro", {})
-                    regex_info = data.get("regex", {})
-                    
-                    entry = {
-                        "timestamp": data.get("timestamp", "")[:19],  # Trim timezone
-                        "symbol": data.get("symbol"),
-                        "headline": data.get("headline", "")[:80],
-                        "url": data.get("article_url"),
-                        "regex_type": regex_info.get("type"),
-                        "regex_conf": regex_info.get("conf", 0),
-                        "flash_valid": flash_result.get("valid"),
-                        "flash_type": flash_result.get("type"),
-                        "flash_reason": flash_result.get("reason", "")[:40],
-                        "flash_ms": flash_result.get("latency_ms", 0),
-                        "pro_valid": pro_result.get("valid") if pro_result else None,
-                        "pro_type": pro_result.get("type") if pro_result else None,
-                        "pro_reason": (pro_result.get("reason") or "")[:40] if pro_result else None,
-                        "used_tiebreaker": bool(pro_result),
-                    }
-                    all_entries.append(entry)
-                except json.JSONDecodeError:
-                    continue
-    except Exception:
-        return {"entries": [], "total": 0, "limit": limit, "offset": offset}
-    
-    # Apply filters with time support
-    if date_from or date_to or time_from or time_to:
-        filtered = []
-        for e in all_entries:
-            ts = e["timestamp"]
-            entry_date = ts[:10]
-            entry_time = ts[11:16]
-            if date_from and entry_date < date_from:
-                continue
-            if date_to and entry_date > date_to:
-                continue
-            if time_from and entry_time < time_from:
-                continue
-            if time_to and entry_time > time_to:
-                continue
-            filtered.append(e)
-        all_entries = filtered
-    if symbol:
-        # Support multi-select: comma-separated values mean "include any of these"
-        symbol_set = {s.strip().upper() for s in symbol.split(',')}
-        all_entries = [e for e in all_entries if e["symbol"] and e["symbol"].upper() in symbol_set]
-    if flash_valid is not None:
-        all_entries = [e for e in all_entries if e["flash_valid"] == flash_valid]
-    if used_tiebreaker is not None:
-        all_entries = [e for e in all_entries if e["used_tiebreaker"] == used_tiebreaker]
-    all_entries = _apply_exact_time_filter(all_entries, "timestamp", timestamp)
-    
-    # Calculate total before pagination
-    total = len(all_entries)
-    
-    # Apply sorting (handle mixed types by converting to strings)
-    reverse = sort_dir.lower() == "desc"
-    def sort_key(x):
-        val = x.get(sort_by)
-        if val is None:
-            return ""
-        if isinstance(val, bool):
-            return str(val).lower()  # "false" < "true" alphabetically
-        return str(val)
-    all_entries.sort(key=sort_key, reverse=reverse)
-    
-    # Apply pagination
-    entries = all_entries[offset:offset + limit]
-    
-    return {
-        "entries": entries,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+    with get_telemetry_session() as db:
+        query = db.query(AIComparison)
+        
+        # Apply generic column filters (supports equality, multi-select, range)
+        query = apply_generic_filters(
+            query, AIComparison,
+            symbol=symbol,
+            flash_result=flash_result,
+            pro_result=pro_result,
+            winner=winner,
+        )
+        
+        # Apply date/time filters (timestamps stored as UTC in DB)
+        utc_tz = ZoneInfo("UTC")
+        et_tz = ZoneInfo("America/New_York")
+        
+        if date_from:
+            try:
+                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_start = et_start.astimezone(utc_tz)
+                query = query.filter(AIComparison.timestamp >= utc_start)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                utc_end = et_end.astimezone(utc_tz)
+                query = query.filter(AIComparison.timestamp <= utc_end)
+            except ValueError:
+                pass
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply sorting
+        sort_column_map = {
+            "timestamp": AIComparison.timestamp,
+            "symbol": AIComparison.symbol,
+            "headline": AIComparison.headline,
+            "regex_result": AIComparison.regex_result,
+            "flash_result": AIComparison.flash_result,
+            "pro_result": AIComparison.pro_result,
+            "final_result": AIComparison.final_result,
+            "winner": AIComparison.winner,
+        }
+        sort_column = sort_column_map.get(sort_by, AIComparison.timestamp)
+        
+        if sort_dir.lower() == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(asc(sort_column))
+        
+        # Apply pagination
+        query = query.offset(offset).limit(limit)
+        rows = query.all()
+        
+        # Convert to dict format
+        entries = [row.to_dict() for row in rows]
+        
+        return {
+            "entries": entries,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
 
 @router.get("/ai-comparisons/distinct")
@@ -821,54 +707,22 @@ async def get_ai_comparisons_distinct(
 ):
     """
     Get distinct values for a column in AI comparisons.
+    
+    Queries telemetry.db (migrated from JSONL parsing in Phase 6).
     """
-    from pathlib import Path
-    import json
+    from nexus2.db.telemetry_db import get_telemetry_session, AIComparison
+    from sqlalchemy import distinct
     
-    log_dir = Path("data")
-    if not log_dir.exists():
-        log_dir = Path.home() / "Nexus2" / "data"
+    with get_telemetry_session() as db:
+        # Dynamic column lookup
+        col = getattr(AIComparison, column, None)
+        if col is None:
+            return {"column": column, "values": []}
+        
+        results = db.query(distinct(col)).all()
+        values = [str(r[0]) for r in results if r[0] is not None]
     
-    log_path = log_dir / "catalyst_comparison.jsonl"
-    if not log_path.exists():
-        return {"column": column, "values": []}
-    
-    values = set()
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line)
-                    flash_result = data.get("models", {}).get("flash_lite", {})
-                    pro_result = data.get("models", {}).get("pro", {})
-                    regex_info = data.get("regex", {})
-                    
-                    if column == "symbol":
-                        values.add(data.get("symbol", ""))
-                    elif column == "regex_type":
-                        values.add(regex_info.get("type", ""))
-                    elif column == "regex_conf":
-                        values.add(str(regex_info.get("conf", 0)))
-                    elif column == "flash_valid":
-                        values.add(str(flash_result.get("valid", "")))
-                    elif column == "flash_type":
-                        values.add(flash_result.get("type", ""))
-                    elif column == "pro_valid":
-                        if pro_result:
-                            values.add(str(pro_result.get("valid", "")))
-                    elif column == "used_tiebreaker":
-                        values.add(str(bool(pro_result)))
-                except json.JSONDecodeError:
-                    continue
-    except Exception:
-        pass
-    
-    # Remove empty strings
-    values.discard("")
-    return {"column": column, "values": sorted(list(values))}
+    return {"column": column, "values": sorted(values)}
 
 
 # =============================================================================
