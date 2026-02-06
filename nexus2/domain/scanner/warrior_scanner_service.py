@@ -523,14 +523,6 @@ class WarriorScannerService:
             rejection_reason: Reason for rejection (only for FAIL)
         """
         try:
-            # Calculate dollar_volume from ctx
-            dollar_volume = None
-            if ctx and ctx.session_volume and ctx.last_price:
-                try:
-                    dollar_volume = int(ctx.session_volume * float(ctx.last_price))
-                except (ValueError, TypeError):
-                    pass
-            
             with get_telemetry_session() as db:
                 db.add(WarriorScanResultDB(
                     timestamp=now_utc(),  # IMPORTANT: Use now_utc() not datetime.now()
@@ -545,7 +537,6 @@ class WarriorScannerService:
                     # Extended telemetry columns
                     price=float(ctx.last_price) if ctx and ctx.last_price else None,
                     country=ctx.country if ctx else None,
-                    dollar_volume=dollar_volume,
                     ema_200=float(ctx.ema_200_value) if ctx and ctx.ema_200_value else None,
                     room_to_ema_pct=float(ctx.room_to_ema_pct) if ctx and ctx.room_to_ema_pct else None,
                     is_etb=str(ctx.easy_to_borrow) if ctx else None,
