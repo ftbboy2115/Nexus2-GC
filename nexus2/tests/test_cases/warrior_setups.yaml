@@ -678,6 +678,76 @@ test_cases:
       stop_near: 9.00
     notes: "Chinese IPO, blue sky above $9.18 ATH. Ross flipped from -$10k to +$81k. Squeeze from $9→$30 in ~1 minute. Short squeeze fueled move. Added at $10, $11, $12, $15, 20s. Took profits through $28-30."
 
+  - id: ross_bnai_20260205
+    symbol: BNAI
+    setup_type: news_bounce
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron -$7,900 - News Gap Bounce, Fatal Add into Reversal"
+    trade_date: "2026-02-05"
+    intraday_file: "intraday/ross_bnai_20260205.json"
+    data_source: polygon
+    ross_pnl: -7900.00
+    ross_entry_time: "07:07"  # Entry at $33.81 on follow-through push
+    premarket_data:
+      gap_percent: 27.9
+      premarket_high: 37.00
+      previous_close: 21.71
+      float_shares: 5000000
+      catalyst: "news"  # Terminated $50M equity purchase agreement
+    expected:
+      entry_near: 33.81  # Ross avg from transcript
+      stop_near: 33.00
+    notes: "Red day. BNAI squeezed to $36 (+$11K), Ross sold half. Re-entered, added for $38 squeeze — huge seller appeared, slippage → -$17K on sequence, net -$7,900. Recent RS stock ($5→$85→$28). Transcript: 2026-02-05_transcript_HGATds95-p4.md"
+
+  - id: ross_rnaz_20260205
+    symbol: RNAZ
+    setup_type: momentum_scalp
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$1,700 - Momentum Scalp, 20K Share Sellers"
+    trade_date: "2026-02-05"
+    intraday_file: "intraday/ross_rnaz_20260205.json"
+    data_source: polygon
+    ross_pnl: 1700.00
+    premarket_data:
+      gap_percent: 23.7
+      premarket_high: 14.80
+      previous_close: 9.50
+      float_shares: 5000000
+      catalyst: "momentum"  # US company, squeezing up scanner
+    expected:
+      entry_near: 12.00  # Estimated — transcript doesn't give exact entry
+      stop_near: 11.50
+    notes: "Tricky trade — first candle huge spike then all red. 3 trades: +$1,500, +$1,500, -$1,500 = net +$1,700. 20K share sellers kept reloading on ask. Transcript: 2026-02-05_transcript_HGATds95-p4.md"
+
+  - id: ross_rvsn_20260205
+    symbol: RVSN
+    setup_type: room_to_ma
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron -$3,000 - Hail Mary, Room to 200 MA"
+    trade_date: "2026-02-05"
+    intraday_file: "intraday/ross_rvsn_20260205.json"
+    data_source: polygon
+    ross_pnl: -3000.00
+    premarket_data:
+      gap_percent: 2.4
+      premarket_high: 6.08
+      previous_close: 4.16
+      float_shares: 5000000
+      catalyst: "reverse_split"  # Israeli company, recent RS, news
+    expected:
+      entry_near: 5.50  # Ross entry from transcript
+      stop_near: 5.00
+    notes: "Hail Mary pass. Entry $5.50, peaked $6, immediately reversed to $4-4.50 → lost ~$1/share. Relative volume still low (didn't meet 5 Pillars). Transcript: 2026-02-05_transcript_HGATds95-p4.md"
+
   - id: ross_flye_20260206
     symbol: FLYE
     setup_type: pmh
@@ -733,9 +803,10 @@ test_cases:
 # BAD_DATA (ticker collision): 3 (ALMS, ELAB, LHAI)
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
-# SYNTHETIC:                   2 (WLSR, WWNR)
-# REAL_TRADE:                  0 (all migrated to POLYGON_DATA)
-# POLYGON_DATA:               13 (PAVM, LCFY, ROLR, TNMG, GWAV, VERO, BATL x2, GRI, LRHC, HIND, DCX, BNKK)
+# SYNTHETIC:                   3 (WLSR, WWNR, test_pmh_breakout)
+# REAL_TRADE:                  4 (LCFY, TNMG, GWAV, VERO)
+# MISSED_OPPORTUNITY:          1 (BATL)
+# POLYGON_DATA:               16 (PAVM, ROLR, BNKK, GRI, LRHC, HIND, DCX, NPT, BNAI, RNAZ, RVSN, FLYE, RDIB + BATL x2 counted once)
 # ==========================================================================
 
 
