@@ -176,11 +176,17 @@ async def get_nac_trades(
             else:
                 query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
-            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(NACTradeModel.entry_time >= et_to_utc(et_start))
+            try:
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(NACTradeModel.entry_time >= et_to_utc(et_start))
+            except ValueError:
+                pass
         if date_to:
-            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(NACTradeModel.entry_time <= et_to_utc(et_end))
+            try:
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(NACTradeModel.entry_time <= et_to_utc(et_end))
+            except ValueError:
+                pass
         # Exact entry_time filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
@@ -913,11 +919,17 @@ async def get_warrior_trades(
             elif partial_taken.lower() == 'false':
                 query = query.filter(WarriorTradeModel.partial_taken == False)
         if date_from:
-            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(WarriorTradeModel.entry_time >= et_to_utc(et_start))
+            try:
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(WarriorTradeModel.entry_time >= et_to_utc(et_start))
+            except ValueError:
+                pass
         if date_to:
-            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(WarriorTradeModel.entry_time <= et_to_utc(et_end))
+            try:
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(WarriorTradeModel.entry_time <= et_to_utc(et_end))
+            except ValueError:
+                pass
         # Exact entry_time filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
@@ -1046,11 +1058,17 @@ async def get_quote_audits(
         if high_divergence is not None:
             query = query.filter(QuoteAuditModel.high_divergence == high_divergence)
         if date_from:
-            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(QuoteAuditModel.timestamp >= et_to_utc(et_start))
+            try:
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(QuoteAuditModel.timestamp >= et_to_utc(et_start))
+            except ValueError:
+                pass
         if date_to:
-            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
-            query = query.filter(QuoteAuditModel.timestamp <= et_to_utc(et_end))
+            try:
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(QuoteAuditModel.timestamp <= et_to_utc(et_end))
+            except ValueError:
+                pass
         # Exact timestamp filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if timestamp:

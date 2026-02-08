@@ -347,16 +347,10 @@ class TestDateFilterETConversion:
         response = client.get("/data/quote-audits?date_from=2026-02-01&date_to=2026-02-08")
         assert response.status_code == 200
     
-    def test_warrior_trades_invalid_date_raises_error(self, client):
-        """Invalid date format causes a server error (known bug).
-        
-        BUG: data_routes.py does not handle malformed date_from/date_to values.
-        An invalid date string like 'not-a-date' causes an unhandled ValueError
-        in strptime, resulting in a 500. Ideally this should return 400 or skip
-        the filter gracefully.
-        """
-        with pytest.raises(ValueError):
-            client.get("/data/warrior-trades?date_from=not-a-date")
+    def test_warrior_trades_invalid_date_skips_filter(self, client):
+        """Invalid date format skips the filter gracefully (returns 200)."""
+        response = client.get("/data/warrior-trades?date_from=not-a-date")
+        assert response.status_code == 200
     
     def test_warrior_trades_single_date_filter(self, client):
         """Only date_from without date_to works."""
