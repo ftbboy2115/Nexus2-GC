@@ -971,7 +971,7 @@ async def detect_vwap_break_pattern(
     symbol = watched.candidate.symbol
     
     # PATTERN COMPETITION: Only check if setup_type matches
-    should_check_vwap_break = setup_type is None or setup_type == "vwap_break"
+    should_check_vwap_break = setup_type is None or setup_type in ("vwap_break", "vwap_reclaim")
     if not (engine.config.vwap_break_enabled and not watched.entry_triggered and should_check_vwap_break):
         return None
     
