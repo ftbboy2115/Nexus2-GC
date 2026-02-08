@@ -365,15 +365,21 @@ def log_warrior_exit(
             trade.exit_time = now_utc()
             trade.exit_reason = exit_reason
             
-            # Calculate P&L
+            # Calculate P&L for remaining shares only, add to accumulated partial P&L
             entry = float(trade.entry_price)
-            pnl = (exit_price - entry) * trade.quantity
-            trade.realized_pnl = str(round(pnl, 2))
+            remaining_pnl = (exit_price - entry) * trade.remaining_quantity
+            trade.realized_pnl = str(round(float(trade.realized_pnl or "0") + remaining_pnl, 2))
+            trade.remaining_quantity = 0
         else:
             # Partial exit - transition to PARTIAL state
             trade.status = PositionStatus.PARTIAL.value
             trade.partial_taken = True
             trade.remaining_quantity -= quantity_exited
+            
+            # Calculate and accumulate P&L for partial shares
+            entry = float(trade.entry_price)
+            partial_pnl = (exit_price - entry) * quantity_exited
+            trade.realized_pnl = str(round(float(trade.realized_pnl or "0") + partial_pnl, 2))
         
         db.commit()
         print(f"[Warrior DB] Logged exit: {trade.symbol} @ ${exit_price:.2f} ({exit_reason})")
@@ -761,11 +767,11 @@ def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
                 if exit_price:
                     print(f"[Warrior DB] Closing orphan: {trade.symbol} @ ${exit_price:.2f}")
                     trade.exit_price = str(exit_price)
-                    # Calculate P&L: (exit - entry) * quantity
+                    # Calculate P&L: (exit - entry) * remaining shares, add to accumulated
                     entry = float(trade.entry_price) if trade.entry_price else 0
-                    qty = trade.quantity or 0
-                    pnl = (exit_price - entry) * qty
-                    trade.realized_pnl = str(round(pnl, 2))
+                    qty = trade.remaining_quantity or trade.quantity or 0
+                    remaining_pnl = (exit_price - entry) * qty
+                    trade.realized_pnl = str(round(float(trade.realized_pnl or "0") + remaining_pnl, 2))
                 else:
                     print(f"[Warrior DB] Closing orphan: {trade.symbol} (no exit price)")
                 
