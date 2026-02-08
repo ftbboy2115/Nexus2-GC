@@ -168,6 +168,27 @@
     border-radius: 6px;
     overflow: auto;
     max-height: calc(100vh - 280px);
+    min-height: 300px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.tableContainer::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.tableContainer::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tableContainer::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.tableContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .table {

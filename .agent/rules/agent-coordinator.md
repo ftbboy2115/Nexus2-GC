@@ -50,7 +50,7 @@ Before spawning specialists, create `implementation_plan.md`
 Press `CTRL+E`
 
 ### Step 3: Start Specialist Conversations
-Reference the rule file at the start of your prompt:
+Reference the rule file at the start of your prompt using the **short filename only** (not the full path). This enables tab-autocomplete in the Agent Manager:
 
 ```
 @agent-backend-specialist.md
@@ -58,6 +58,9 @@ Reference the rule file at the start of your prompt:
 Task: [Describe backend work]
 Reference: /path/to/implementation_plan.md
 ```
+
+> [!IMPORTANT]
+> Use `@agent-frontend-specialist.md` — **NOT** the full filesystem path like `@c:\Users\...\agent-frontend-specialist.md`. The short name triggers autocomplete; the full path does not.
 
 ---
 

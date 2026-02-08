@@ -3,7 +3,7 @@
  * 
  * Includes historical replay with time-based playback controls.
  */
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import styles from '@/styles/Warrior.module.css'
 import { CollapsibleCard } from './CollapsibleCard'
 import { ChartPanel, BarData, OrderMarker, SimPosition } from './ChartPanel'
@@ -96,6 +96,108 @@ export function MockMarketCard({
     const [isHistoricalMode, setIsHistoricalMode] = useState(false)
     const [isPlaying, setIsPlaying] = useState(false)
 
+    // Item 7: Cliffnotes editing state
+    const [editingField, setEditingField] = useState<string | null>(null)
+    const [editValue, setEditValue] = useState('')
+
+    // Item 8: Per-test-case notepad state
+    const [showNotepad, setShowNotepad] = useState(false)
+    const [notepadText, setNotepadText] = useState('')
+    const [notepadLoading, setNotepadLoading] = useState(false)
+
+    // Item 9: Global notepad state
+    const [showGlobalNotepad, setShowGlobalNotepad] = useState(false)
+    const [globalNotepadText, setGlobalNotepadText] = useState('')
+    const [globalNotepadLoading, setGlobalNotepadLoading] = useState(false)
+
+    // Item 7: Save cliffnotes handler
+    const saveCliffnotes = async (caseId: string, field: string, value: string) => {
+        try {
+            const res = await fetch('/warrior/mock-market/test-case-notes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ case_id: caseId, field, value }),
+            })
+            if (res.ok) {
+                setEditingField(null)
+            }
+        } catch (err) {
+            console.error('Failed to save:', err)
+        }
+    }
+
+    // Item 8: Load per-test-case notes
+    const loadNotes = useCallback(async (caseId: string) => {
+        setNotepadLoading(true)
+        try {
+            const res = await fetch(`/warrior/mock-market/notes?case_id=${caseId}`)
+            if (res.ok) {
+                const data = await res.json()
+                setNotepadText(data.notes || '')
+            }
+        } catch (err) {
+            console.error('Failed to load notes:', err)
+        } finally {
+            setNotepadLoading(false)
+        }
+    }, [])
+
+    // Item 8: Save per-test-case notes
+    const saveNotes = async (caseId: string, notes: string) => {
+        try {
+            await fetch('/warrior/mock-market/notes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ case_id: caseId, notes }),
+            })
+        } catch (err) {
+            console.error('Failed to save notes:', err)
+        }
+    }
+
+    // Item 9: Load global notes
+    const loadGlobalNotes = useCallback(async () => {
+        setGlobalNotepadLoading(true)
+        try {
+            const res = await fetch('/warrior/mock-market/notes?case_id=_global')
+            if (res.ok) {
+                const data = await res.json()
+                setGlobalNotepadText(data.notes || '')
+            }
+        } catch (err) {
+            console.error('Failed to load global notes:', err)
+        } finally {
+            setGlobalNotepadLoading(false)
+        }
+    }, [])
+
+    // Item 9: Save global notes
+    const saveGlobalNotes = async (notes: string) => {
+        try {
+            await fetch('/warrior/mock-market/notes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ case_id: '_global', notes }),
+            })
+        } catch (err) {
+            console.error('Failed to save global notes:', err)
+        }
+    }
+
+    // Load per-test-case notes when notepad opened
+    useEffect(() => {
+        if (showNotepad && selectedTestCase) {
+            loadNotes(selectedTestCase)
+        }
+    }, [showNotepad, selectedTestCase, loadNotes])
+
+    // Load global notes when global notepad opened
+    useEffect(() => {
+        if (showGlobalNotepad) {
+            loadGlobalNotes()
+        }
+    }, [showGlobalNotepad, loadGlobalNotes])
+
     // Convert filled orders to chart markers
     const orderMarkers: OrderMarker[] = useMemo(() => {
         return orders
@@ -173,9 +275,58 @@ export function MockMarketCard({
         <CollapsibleCard
             id="mockmarket"
             title="🎮 Mock Market"
-            badge={loadedTestCase ? <span className={styles.badge}>{loadedTestCase.symbol}</span> : undefined}
+            badge={
+                <>
+                    {loadedTestCase && <span className={styles.badge}>{loadedTestCase.symbol}</span>}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowGlobalNotepad(!showGlobalNotepad) }}
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            fontSize: '1rem', padding: '0 0.25rem',
+                            color: showGlobalNotepad ? '#4dabf7' : '#888',
+                        }}
+                        title="Global Notepad"
+                    >
+                        📋
+                    </button>
+                </>
+            }
         >
             <div className={styles.cardBody}>
+                {/* Item 9: Global Notepad */}
+                {showGlobalNotepad && (
+                    <div style={{
+                        padding: '0.75rem', marginBottom: '0.75rem',
+                        background: 'rgba(77, 171, 247, 0.08)', borderRadius: '6px',
+                        border: '1px solid rgba(77, 171, 247, 0.2)',
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4dabf7' }}>📋 Global Notes</span>
+                            <button
+                                onClick={() => saveGlobalNotes(globalNotepadText)}
+                                className={styles.btnSmall}
+                                style={{ fontSize: '0.75rem' }}
+                            >
+                                💾 Save
+                            </button>
+                        </div>
+                        {globalNotepadLoading ? (
+                            <span style={{ color: '#888', fontSize: '0.8rem' }}>Loading...</span>
+                        ) : (
+                            <textarea
+                                value={globalNotepadText}
+                                onChange={(e) => setGlobalNotepadText(e.target.value)}
+                                placeholder="Global mock market notes..."
+                                style={{
+                                    width: '100%', minHeight: '80px', padding: '0.5rem',
+                                    background: 'rgba(0,0,0,0.3)', border: '1px solid #444',
+                                    borderRadius: '4px', color: '#e0e0e0', fontSize: '0.8rem',
+                                    resize: 'vertical', fontFamily: 'inherit',
+                                }}
+                            />
+                        )}
+                    </div>
+                )}
                 {/* Test Case Selector */}
                 <div className={styles.testCaseSelector}>
                     <select
@@ -225,8 +376,112 @@ export function MockMarketCard({
                             <span className={tc.ross_traded === false ? styles.missedTrade : styles.rossTrade}>
                                 {tc.ross_traded === false ? '❌ Ross MISSED' : '✅ Ross traded'}
                             </span>
-                            <span className={styles.descriptionText}>{tc.description}</span>
-                            {tc.notes && <span className={styles.notesText}>{tc.notes}</span>}
+
+                            {/* Item 7: Editable description */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                {editingField === `desc-${tc.id}` ? (
+                                    <>
+                                        <textarea
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            style={{
+                                                flex: 1, minHeight: '60px', padding: '0.5rem',
+                                                background: 'rgba(0,0,0,0.3)', border: '1px solid #4dabf7',
+                                                borderRadius: '4px', color: '#e0e0e0', fontSize: '0.8rem',
+                                                resize: 'vertical', fontFamily: 'inherit',
+                                            }}
+                                        />
+                                        <button onClick={() => saveCliffnotes(tc.id, 'description', editValue)} className={styles.btnSmall}>💾</button>
+                                        <button onClick={() => setEditingField(null)} className={styles.btnSmall} style={{ color: '#888' }}>✕</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className={styles.descriptionText}>{tc.description}</span>
+                                        <button
+                                            onClick={() => { setEditingField(`desc-${tc.id}`); setEditValue(tc.description) }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '0.85rem', flexShrink: 0 }}
+                                            title="Edit description"
+                                        >✏️</button>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Item 7: Editable notes */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                {editingField === `notes-${tc.id}` ? (
+                                    <>
+                                        <textarea
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            style={{
+                                                flex: 1, minHeight: '60px', padding: '0.5rem',
+                                                background: 'rgba(0,0,0,0.3)', border: '1px solid #4dabf7',
+                                                borderRadius: '4px', color: '#e0e0e0', fontSize: '0.8rem',
+                                                resize: 'vertical', fontFamily: 'inherit',
+                                            }}
+                                        />
+                                        <button onClick={() => saveCliffnotes(tc.id, 'notes', editValue)} className={styles.btnSmall}>💾</button>
+                                        <button onClick={() => setEditingField(null)} className={styles.btnSmall} style={{ color: '#888' }}>✕</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className={styles.notesText}>{tc.notes || '(no notes)'}</span>
+                                        <button
+                                            onClick={() => { setEditingField(`notes-${tc.id}`); setEditValue(tc.notes || '') }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '0.85rem', flexShrink: 0 }}
+                                            title="Edit notes"
+                                        >✏️</button>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Item 8: Per-test-case notepad toggle */}
+                            <div style={{ marginTop: '0.5rem' }}>
+                                <button
+                                    onClick={() => setShowNotepad(!showNotepad)}
+                                    style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        color: showNotepad ? '#4dabf7' : '#888', fontSize: '0.85rem',
+                                    }}
+                                    title="Open notepad for this test case"
+                                >
+                                    📝 {showNotepad ? 'Hide' : 'Notepad'}
+                                </button>
+                            </div>
+
+                            {/* Item 8: Per-test-case notepad */}
+                            {showNotepad && (
+                                <div style={{
+                                    marginTop: '0.5rem', padding: '0.5rem',
+                                    background: 'rgba(0,0,0,0.2)', borderRadius: '4px',
+                                    border: '1px solid #333',
+                                }}>
+                                    {notepadLoading ? (
+                                        <span style={{ color: '#888', fontSize: '0.8rem' }}>Loading...</span>
+                                    ) : (
+                                        <>
+                                            <textarea
+                                                value={notepadText}
+                                                onChange={(e) => setNotepadText(e.target.value)}
+                                                placeholder={`Notes for ${tc.symbol}...`}
+                                                style={{
+                                                    width: '100%', minHeight: '80px', padding: '0.5rem',
+                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid #444',
+                                                    borderRadius: '4px', color: '#e0e0e0', fontSize: '0.8rem',
+                                                    resize: 'vertical', fontFamily: 'inherit',
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => saveNotes(tc.id, notepadText)}
+                                                className={styles.btnSmall}
+                                                style={{ marginTop: '0.35rem', fontSize: '0.75rem' }}
+                                            >
+                                                💾 Save Notes
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )
                 })()}

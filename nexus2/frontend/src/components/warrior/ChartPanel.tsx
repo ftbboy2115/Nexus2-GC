@@ -342,7 +342,14 @@ export function ChartPanel({
             )}
 
             <div className={styles.chartHeader}>
-                <span className={styles.chartSymbol}>{symbol}</span>
+                <span
+                    className={styles.chartSymbol}
+                    onClick={() => window.open(`https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`, '_blank')}
+                    style={{ cursor: 'pointer' }}
+                    title={`Open ${symbol} on TradingView`}
+                >
+                    {symbol}
+                </span>
                 <span className={styles.chartBarCount}>
                     {currentBarIndex + 1} / {bars.length} bars
                 </span>

@@ -15,6 +15,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import styles from '@/styles/DataExplorer.module.css'
 import { useLoading } from '@/components/GlobalLoadingBar'
+import { COUNTRY_NAMES } from '../utils/countryNames'
 import {
     DndContext,
     closestCenter,
@@ -245,34 +246,6 @@ export default function DataExplorer() {
         'catalyst': 'DB column: catalyst_type',
     }
 
-    // Country code to full name mapping
-    const COUNTRY_NAMES: Record<string, string> = {
-        'US': 'United States',
-        'CN': 'China',
-        'HK': 'Hong Kong',
-        'SG': 'Singapore',
-        'SE': 'Sweden',
-        'GR': 'Greece',
-        'CA': 'Canada',
-        'UK': 'United Kingdom',
-        'GB': 'United Kingdom',
-        'DE': 'Germany',
-        'FR': 'France',
-        'JP': 'Japan',
-        'AU': 'Australia',
-        'IL': 'Israel',
-        'KR': 'South Korea',
-        'TW': 'Taiwan',
-        'IN': 'India',
-        'BR': 'Brazil',
-        'CH': 'Switzerland',
-        'NL': 'Netherlands',
-        'IE': 'Ireland',
-        'BE': 'Belgium',
-        'IT': 'Italy',
-        'ES': 'Spain',
-        'MX': 'Mexico',
-    }
 
     // Preferred column order per tab - ensures stable column positions
     const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {

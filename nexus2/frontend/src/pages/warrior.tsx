@@ -38,6 +38,30 @@ import {
 // Main Component
 // ============================================================================
 
+const CARD_IDS = [
+    'engine-control', 'watchlist', 'open-positions', 'trade-events',
+    'trade-history', 'event-log', 'engine-scan', 'scanner',
+    'trading-mode', 'mock-market', 'exit-rules', 'settings',
+    'catalyst-search', 'admin', 'trading-calendar',
+] as const
+
+const CARD_LABELS: Record<string, string> = {
+    'engine-control': 'Engine Control',
+    'watchlist': 'Watchlist',
+    'open-positions': 'Open Positions',
+    'trade-events': 'Trade Events',
+    'trade-history': 'Trade History',
+    'event-log': 'Event Log',
+    'engine-scan': 'Last Engine Scan',
+    'scanner': 'Scanner',
+    'trading-mode': 'Trading Mode',
+    'mock-market': 'Mock Market',
+    'exit-rules': 'Exit Rules',
+    'settings': 'Settings',
+    'catalyst-search': 'Catalyst Search',
+    'admin': 'Admin',
+    'trading-calendar': 'Trading Calendar',
+}
 
 export default function Warrior() {
     // Core data from custom hook
@@ -111,7 +135,27 @@ export default function Warrior() {
     const [analyzingTrade, setAnalyzingTrade] = useState<string | null>(null)
     const [tradeAnalysis, setTradeAnalysis] = useState<any | null>(null)
 
+    // Card visibility toggle state
+    const [hiddenCards, setHiddenCards] = useState<Set<string>>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('warrior-card-visibility')
+            return saved ? new Set(JSON.parse(saved)) : new Set()
+        }
+        return new Set()
+    })
+    const [showCardMenu, setShowCardMenu] = useState(false)
 
+    const toggleCard = (id: string) => {
+        setHiddenCards(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            localStorage.setItem('warrior-card-visibility', JSON.stringify(Array.from(next)))
+            return next
+        })
+    }
+
+    const isCardVisible = (id: string) => !hiddenCards.has(id)
     // Monitor settings (including scaling)
     const [monitorSettings, setMonitorSettings] = useState<{
         enable_scaling?: boolean
@@ -490,6 +534,29 @@ export default function Warrior() {
                         <span className={styles.subtitle}>Ross Cameron Strategy</span>
                     </div>
                     <div className={styles.headerRight}>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setShowCardMenu(!showCardMenu)}
+                                className={styles.refreshBtn}
+                                title="Toggle card visibility"
+                            >
+                                ⚙️ Cards
+                            </button>
+                            {showCardMenu && (
+                                <div className={styles.cardVisibilityDropdown}>
+                                    {CARD_IDS.map(id => (
+                                        <label key={id} className={styles.cardVisibilityItem}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isCardVisible(id)}
+                                                onChange={() => toggleCard(id)}
+                                            />
+                                            {CARD_LABELS[id]}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <Link href="/warrior-performance" className={styles.refreshBtn} style={{ textDecoration: 'none' }}>
                             📊 Performance
                         </Link>
@@ -512,135 +579,165 @@ export default function Warrior() {
                         {/* Main Grid - Ordered by priority: active trading views first, config/testing last */}
                         <div className={styles.grid}>
                             {/* 1. Engine Control Card */}
-                            <EngineControlCard
-                                state={status?.state}
-                                stats={status?.stats || {}}
-                                config={status?.config || {}}
-                                brokerStatus={brokerStatus}
-                                monitorSettings={monitorSettings}
-                                countdown={countdown}
-                                isRunning={isRunning}
-                                isPaused={isPaused}
-                                actionLoading={actionLoading}
-                                startEngine={startEngine}
-                                stopEngine={stopEngine}
-                                pauseEngine={pauseEngine}
-                                resumeEngine={resumeEngine}
-                                updateMonitorSettings={updateMonitorSettings}
-                            />
+                            {isCardVisible('engine-control') && (
+                                <EngineControlCard
+                                    state={status?.state}
+                                    stats={status?.stats || {}}
+                                    config={status?.config || {}}
+                                    brokerStatus={brokerStatus}
+                                    monitorSettings={monitorSettings}
+                                    countdown={countdown}
+                                    isRunning={isRunning}
+                                    isPaused={isPaused}
+                                    actionLoading={actionLoading}
+                                    startEngine={startEngine}
+                                    stopEngine={stopEngine}
+                                    pauseEngine={pauseEngine}
+                                    resumeEngine={resumeEngine}
+                                    updateMonitorSettings={updateMonitorSettings}
+                                />
+                            )}
 
                             {/* 2. Watchlist Card */}
-                            <WatchlistCard
-                                watchlist={status?.watchlist}
-                                watchlistCount={status?.watchlist_count || 0}
-                                watchlistSort={watchlistSort}
-                                setWatchlistSort={setWatchlistSort}
-                                openChart={openChart}
-                            />
+                            {isCardVisible('watchlist') && (
+                                <WatchlistCard
+                                    watchlist={status?.watchlist}
+                                    watchlistCount={status?.watchlist_count || 0}
+                                    watchlistSort={watchlistSort}
+                                    setWatchlistSort={setWatchlistSort}
+                                    openChart={openChart}
+                                />
+                            )}
                         </div>
 
                         {/* 3. Open Positions Table */}
-                        <OpenPositionsCard
-                            positions={positions}
-                            positionHealth={positionHealth}
-                            openChart={openChart}
-                        />
+                        {isCardVisible('open-positions') && (
+                            <OpenPositionsCard
+                                positions={positions}
+                                positionHealth={positionHealth}
+                                openChart={openChart}
+                            />
+                        )}
 
                         {/* 4. Trade Events Log - Collapsible */}
-                        <TradeEventsCard
-                            tradeEvents={tradeEvents}
-                            showTradeEvents={showTradeEvents}
-                            setShowTradeEvents={setShowTradeEvents}
-                        />
+                        {isCardVisible('trade-events') && (
+                            <TradeEventsCard
+                                tradeEvents={tradeEvents}
+                                showTradeEvents={showTradeEvents}
+                                setShowTradeEvents={setShowTradeEvents}
+                            />
+                        )}
 
                         {/* 5. Trade History - Closed Trades with AI Analysis */}
-                        <TradeHistoryCard
-                            tradeHistory={tradeHistory}
-                            showTradeHistory={showTradeHistory}
-                            setShowTradeHistory={setShowTradeHistory}
-                            analyzeTradeWithAI={analyzeTradeWithAI}
-                            analyzingTrade={analyzingTrade}
-                            tradeAnalysis={tradeAnalysis}
-                            setTradeAnalysis={setTradeAnalysis}
-                        />
+                        {isCardVisible('trade-history') && (
+                            <TradeHistoryCard
+                                tradeHistory={tradeHistory}
+                                showTradeHistory={showTradeHistory}
+                                setShowTradeHistory={setShowTradeHistory}
+                                analyzeTradeWithAI={analyzeTradeWithAI}
+                                analyzingTrade={analyzingTrade}
+                                tradeAnalysis={tradeAnalysis}
+                                setTradeAnalysis={setTradeAnalysis}
+                            />
+                        )}
 
                         {/* 6. Event Log */}
-                        <EventLogCard eventLog={eventLog} onClear={() => setEventLog([])} />
+                        {isCardVisible('event-log') && (
+                            <EventLogCard eventLog={eventLog} onClear={() => setEventLog([])} />
+                        )}
 
                         {/* Secondary Grid - Less frequently used cards */}
                         <div className={styles.grid} style={{ marginTop: '1.25rem' }}>
                             {/* 7. Last Engine Scan Card */}
-                            <EngineCard
-                                lastScanResult={status?.last_scan_result}
-                                engineScanSort={engineScanSort}
-                                setEngineScanSort={setEngineScanSort}
-                                openChart={openChart}
-                            />
+                            {isCardVisible('engine-scan') && (
+                                <EngineCard
+                                    lastScanResult={status?.last_scan_result}
+                                    engineScanSort={engineScanSort}
+                                    setEngineScanSort={setEngineScanSort}
+                                    openChart={openChart}
+                                />
+                            )}
 
                             {/* 8. Scanner Card (Manual Scan) */}
-                            <ScannerCard
-                                scanResult={scanResult}
-                                runScan={runScan}
-                                openChart={openChart}
-                                actionLoading={actionLoading}
-                            />
+                            {isCardVisible('scanner') && (
+                                <ScannerCard
+                                    scanResult={scanResult}
+                                    runScan={runScan}
+                                    openChart={openChart}
+                                    actionLoading={actionLoading}
+                                />
+                            )}
 
                             {/* 9. Trading Mode Card */}
-                            <TradingModeCard
-                                simStatus={simStatus}
-                                brokerStatus={brokerStatus}
-                                autoEnable={status?.auto_enable}
-                                actionLoading={actionLoading}
-                                enableSim={enableSim}
-                                disableSim={disableSim}
-                                resetSim={resetSim}
-                                enableBroker={enableBroker}
-                                toggleAutoEnable={toggleAutoEnable}
-                            />
+                            {isCardVisible('trading-mode') && (
+                                <TradingModeCard
+                                    simStatus={simStatus}
+                                    brokerStatus={brokerStatus}
+                                    autoEnable={status?.auto_enable}
+                                    actionLoading={actionLoading}
+                                    enableSim={enableSim}
+                                    disableSim={disableSim}
+                                    resetSim={resetSim}
+                                    enableBroker={enableBroker}
+                                    toggleAutoEnable={toggleAutoEnable}
+                                />
+                            )}
 
                             {/* 10. Mock Market Card */}
-                            <MockMarketCard
-                                testCases={testCases}
-                                selectedTestCase={selectedTestCase}
-                                setSelectedTestCase={setSelectedTestCase}
-                                loadedTestCase={loadedTestCase}
-                                loadTestCase={loadTestCase}
-                                setMockPrice={setMockPrice}
-                                actionLoading={actionLoading}
-                                clockState={clockState}
-                                onLoadHistorical={loadHistoricalTestCase}
-                                onStep={stepClock}
-                                onStepBack={stepClockBack}
-                                onResetClock={resetClock}
-                                onSetSpeed={setPlaybackSpeed}
-                                orders={simOrders}
-                                onClearOrders={clearSimOrders}
-                                visibleBars={visibleBars}
-                                currentBarIndex={currentBarIndex}
-                                chartSymbol={chartSymbol}
-                                simPositions={(simStatus?.positions || []).map((p: any) => ({
-                                    symbol: p.symbol || '',
-                                    qty: p.qty || 0,
-                                    avg: p.avg_price || 0,
-                                    pnl: p.unrealized_pnl || p.pnl || 0,
-                                }))}
-                                realizedPnl={simStatus?.account?.realized_pnl || 0}
-                            />
+                            {isCardVisible('mock-market') && (
+                                <MockMarketCard
+                                    testCases={testCases}
+                                    selectedTestCase={selectedTestCase}
+                                    setSelectedTestCase={setSelectedTestCase}
+                                    loadedTestCase={loadedTestCase}
+                                    loadTestCase={loadTestCase}
+                                    setMockPrice={setMockPrice}
+                                    actionLoading={actionLoading}
+                                    clockState={clockState}
+                                    onLoadHistorical={loadHistoricalTestCase}
+                                    onStep={stepClock}
+                                    onStepBack={stepClockBack}
+                                    onResetClock={resetClock}
+                                    onSetSpeed={setPlaybackSpeed}
+                                    orders={simOrders}
+                                    onClearOrders={clearSimOrders}
+                                    visibleBars={visibleBars}
+                                    currentBarIndex={currentBarIndex}
+                                    chartSymbol={chartSymbol}
+                                    simPositions={(simStatus?.positions || []).map((p: any) => ({
+                                        symbol: p.symbol || '',
+                                        qty: p.qty || 0,
+                                        avg: p.avg_price || 0,
+                                        pnl: p.unrealized_pnl || p.pnl || 0,
+                                    }))}
+                                    realizedPnl={simStatus?.account?.realized_pnl || 0}
+                                />
+                            )}
 
                             {/* 11. Exit Rules Card */}
-                            <ExitRulesCard monitor={status?.monitor} />
+                            {isCardVisible('exit-rules') && (
+                                <ExitRulesCard monitor={status?.monitor} />
+                            )}
 
                             {/* 12. Settings Card */}
-                            <SettingsCard config={status?.config} updateConfig={updateConfig} />
+                            {isCardVisible('settings') && (
+                                <SettingsCard config={status?.config} updateConfig={updateConfig} />
+                            )}
 
                             {/* 13. Catalyst Search */}
-                            <CatalystSearchCard />
+                            {isCardVisible('catalyst-search') && (
+                                <CatalystSearchCard />
+                            )}
 
                             {/* 14. Server Admin */}
-                            <AdminCard />
+                            {isCardVisible('admin') && (
+                                <AdminCard />
+                            )}
 
                             {/* 15. Trading Notes Calendar */}
-                            <TradingNotesCalendarCard />
+                            {isCardVisible('trading-calendar') && (
+                                <TradingNotesCalendarCard />
+                            )}
                         </div>
                     </>
                 )
