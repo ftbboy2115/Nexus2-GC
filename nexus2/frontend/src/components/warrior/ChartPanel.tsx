@@ -344,7 +344,7 @@ export function ChartPanel({
             <div className={styles.chartHeader}>
                 <span
                     className={styles.chartSymbol}
-                    onClick={() => window.open(`https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`, '_blank')}
+                    onClick={() => window.open(`https://www.tradingview.com/chart/D7F9NNnO/?symbol=${symbol}`, '_blank', 'noopener,noreferrer')}
                     style={{ cursor: 'pointer' }}
                     title={`Open ${symbol} on TradingView`}
                 >

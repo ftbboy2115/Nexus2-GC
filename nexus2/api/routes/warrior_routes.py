@@ -1034,7 +1034,9 @@ async def get_mock_market_notes(case_id: str):
         try:
             with open(notes_path, "r", encoding="utf-8") as f:
                 notes_data = json.load(f)
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to parse mock_market_notes.json: {e}")
             notes_data = {}
     
     return {"case_id": case_id, "notes": notes_data.get(case_id, "")}

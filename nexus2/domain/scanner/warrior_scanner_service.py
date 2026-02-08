@@ -622,7 +622,7 @@ class WarriorScannerService:
                     seen.add(sym)
                     all_movers.append(g)
         except Exception as e:
-            scan_logger.debug(f"POLYGON GAINERS | Error: {e}")
+            scan_logger.warning(f"POLYGON GAINERS | Error: {e}")
         
         # FMP gainers second (has name)
         for g in gainers:
