@@ -6,8 +6,10 @@ access to NAC trades and scan history data.
 """
 
 from datetime import date, datetime
+from datetime import datetime as dt
 from typing import Optional, List
 from fastapi import APIRouter, Query
+from nexus2.utils.time_utils import et_to_utc, EASTERN
 
 router = APIRouter(prefix="/data", tags=["data-explorer"])
 
@@ -174,9 +176,11 @@ async def get_nac_trades(
             else:
                 query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
-            query = query.filter(NACTradeModel.entry_time >= date_from)
+            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(NACTradeModel.entry_time >= et_to_utc(et_start))
         if date_to:
-            query = query.filter(NACTradeModel.entry_time <= date_to + "T23:59:59")
+            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(NACTradeModel.entry_time <= et_to_utc(et_end))
         # Exact entry_time filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
@@ -909,9 +913,11 @@ async def get_warrior_trades(
             elif partial_taken.lower() == 'false':
                 query = query.filter(WarriorTradeModel.partial_taken == False)
         if date_from:
-            query = query.filter(WarriorTradeModel.entry_time >= date_from)
+            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(WarriorTradeModel.entry_time >= et_to_utc(et_start))
         if date_to:
-            query = query.filter(WarriorTradeModel.entry_time <= date_to + "T23:59:59")
+            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(WarriorTradeModel.entry_time <= et_to_utc(et_end))
         # Exact entry_time filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
@@ -1040,9 +1046,11 @@ async def get_quote_audits(
         if high_divergence is not None:
             query = query.filter(QuoteAuditModel.high_divergence == high_divergence)
         if date_from:
-            query = query.filter(QuoteAuditModel.timestamp >= date_from)
+            et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(QuoteAuditModel.timestamp >= et_to_utc(et_start))
         if date_to:
-            query = query.filter(QuoteAuditModel.timestamp <= date_to + "T23:59:59")
+            et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+            query = query.filter(QuoteAuditModel.timestamp <= et_to_utc(et_end))
         # Exact timestamp filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if timestamp:

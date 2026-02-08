@@ -15,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import pytz
 
@@ -503,6 +503,20 @@ class WarriorScannerService:
         self.settings = settings or WarriorScanSettings()
         self.market_data = market_data or UnifiedMarketData()
         self.alpaca_broker = alpaca_broker  # Used for get_asset_info() HTB checks
+        self._cache: Dict[str, Tuple[Any, datetime]] = {}
+    
+    def _cached(self, key: str, ttl_seconds: int, fetch_fn) -> Any:
+        """Return cached value if within TTL, otherwise fetch and cache."""
+        now = datetime.now()
+        if key in self._cache:
+            value, cached_at = self._cache[key]
+            if (now - cached_at).total_seconds() < ttl_seconds:
+                scan_logger.debug(f"CACHE HIT | {key}")
+                return value
+        value = fetch_fn()
+        self._cache[key] = (value, now)
+        scan_logger.debug(f"CACHE MISS | {key}")
+        return value
     
     def _write_scan_result_to_db(
         self,
@@ -598,7 +612,19 @@ class WarriorScannerService:
         seen = set()
         all_movers = []
         
-        # FMP gainers first (has name)
+        # Polygon gainers first (real-time, $200/mo Advanced tier)
+        try:
+            polygon_gainers = self.market_data.polygon.get_gainers()
+            scan_logger.info(f"POLYGON GAINERS | Found: {len(polygon_gainers)} stocks")
+            for g in polygon_gainers:
+                sym = g["symbol"]
+                if sym not in seen:
+                    seen.add(sym)
+                    all_movers.append(g)
+        except Exception as e:
+            scan_logger.debug(f"POLYGON GAINERS | Error: {e}")
+        
+        # FMP gainers second (has name)
         for g in gainers:
             sym = g["symbol"]
             if sym not in seen:
@@ -665,7 +691,7 @@ class WarriorScannerService:
         ]
         
         # Exclude ETFs
-        etf_set = self.market_data.fmp.get_etf_symbols()
+        etf_set = self._cached("etf_set", 86400, lambda: self.market_data.fmp.get_etf_symbols())
         filtered_movers = [g for g in filtered_movers if g["symbol"] not in etf_set]
         
         # Exclude non-equity tickers (warrants, units, rights, private funds)
@@ -824,7 +850,7 @@ class WarriorScannerService:
         # CHINESE STOCK CHECK (early exit if icebreaker not enabled)
         # =========================================================================
         if s.exclude_chinese_stocks:
-            ctx.country = self._get_country(symbol)
+            ctx.country = self._cached(f"country:{symbol}", 2592000, lambda: self._get_country(symbol))
             if self._is_likely_chinese(name, country=ctx.country):
                 ctx.is_chinese = True
                 if not s.chinese_icebreaker_enabled:
@@ -932,7 +958,7 @@ class WarriorScannerService:
         # =========================================================================
         # FORMER RUNNER CHECK (for score boost)
         # =========================================================================
-        ctx.is_former_runner = self._is_former_runner(symbol)
+        ctx.is_former_runner = self._cached(f"runner:{symbol}", 21600, lambda: self._is_former_runner(symbol))
         
         # =========================================================================
         # BORROW STATUS AND FLOAT DISQUALIFIERS
@@ -1173,7 +1199,7 @@ class WarriorScannerService:
         
         Returns rejection reason string if failed, None if passed.
         """
-        ctx.float_shares = self._get_float_shares(ctx.symbol)
+        ctx.float_shares = self._cached(f"float:{ctx.symbol}", 86400, lambda: self._get_float_shares(ctx.symbol))
         s = ctx.settings
         
         if ctx.float_shares is not None and ctx.float_shares > s.max_float:
@@ -1591,7 +1617,7 @@ class WarriorScannerService:
         if not s.check_200_ema:
             return None
         
-        ctx.ema_200_value = self._get_200_ema(ctx.symbol)
+        ctx.ema_200_value = self._cached(f"ema200:{ctx.symbol}", 21600, lambda: self._get_200_ema(ctx.symbol))
         if ctx.ema_200_value and ctx.ema_200_value > 0 and float(ctx.last_price) > 0:
             ctx.room_to_ema_pct = ((float(ctx.last_price) - float(ctx.ema_200_value)) / float(ctx.ema_200_value)) * 100
             

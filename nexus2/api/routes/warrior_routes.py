@@ -957,6 +957,119 @@ async def get_trade_analytics():
 
 
 # =============================================================================
+# MOCK MARKET NOTES & CLIFFNOTES ENDPOINTS
+# =============================================================================
+
+
+class TestCaseNotesUpdateRequest(BaseModel):
+    """Request to update a field in warrior_setups.yaml (cliffnotes editing)."""
+    case_id: str = Field(..., description="Test case ID (e.g., ross_bnai_20260205)")
+    field: str = Field(..., description="Field to update (only 'notes' or 'description')")
+    value: str = Field(..., description="New value for the field")
+
+
+class MockMarketNotesRequest(BaseModel):
+    """Request to save per-test-case notes."""
+    case_id: str = Field(..., description="Test case ID or '_global' for global notepad")
+    notes: str = Field(..., description="Notes content")
+
+
+@router.put("/mock-market/test-case-notes")
+async def update_test_case_notes(request: TestCaseNotesUpdateRequest):
+    """
+    Update a field (notes or description) in warrior_setups.yaml.
+    
+    Used for inline editing of test case cliffnotes from the Mock Market UI.
+    """
+    import yaml
+    from pathlib import Path
+    
+    ALLOWED_FIELDS = {"notes", "description"}
+    if request.field not in ALLOWED_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Field '{request.field}' not allowed. Use: {ALLOWED_FIELDS}")
+    
+    yaml_path = Path(__file__).parent.parent.parent / "tests" / "test_cases" / "warrior_setups.yaml"
+    if not yaml_path.exists():
+        raise HTTPException(status_code=500, detail="warrior_setups.yaml not found")
+    
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse YAML: {e}")
+    
+    # Find the test case by ID
+    test_cases = data.get("test_cases", [])
+    found = False
+    for case in test_cases:
+        if case.get("id") == request.case_id:
+            case[request.field] = request.value
+            found = True
+            break
+    
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Test case '{request.case_id}' not found")
+    
+    try:
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write YAML: {e}")
+    
+    return {"status": "ok", "case_id": request.case_id}
+
+
+@router.get("/mock-market/notes")
+async def get_mock_market_notes(case_id: str):
+    """
+    Get notes for a specific test case (or global notepad with case_id='_global').
+    """
+    import json
+    from pathlib import Path
+    
+    notes_path = Path(__file__).parent.parent.parent / "tests" / "test_cases" / "mock_market_notes.json"
+    
+    notes_data = {}
+    if notes_path.exists():
+        try:
+            with open(notes_path, "r", encoding="utf-8") as f:
+                notes_data = json.load(f)
+        except Exception:
+            notes_data = {}
+    
+    return {"case_id": case_id, "notes": notes_data.get(case_id, "")}
+
+
+@router.put("/mock-market/notes")
+async def save_mock_market_notes(request: MockMarketNotesRequest):
+    """
+    Save notes for a specific test case (or global notepad with case_id='_global').
+    """
+    import json
+    from pathlib import Path
+    
+    notes_path = Path(__file__).parent.parent.parent / "tests" / "test_cases" / "mock_market_notes.json"
+    
+    notes_data = {}
+    if notes_path.exists():
+        try:
+            with open(notes_path, "r", encoding="utf-8") as f:
+                notes_data = json.load(f)
+        except Exception:
+            notes_data = {}
+    
+    notes_data[request.case_id] = request.notes
+    
+    try:
+        with open(notes_path, "w", encoding="utf-8") as f:
+            json.dump(notes_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save notes: {e}")
+    
+    return {"status": "ok"}
+
+
+# =============================================================================
 # INCLUDE SUB-ROUTERS
 # =============================================================================
 
