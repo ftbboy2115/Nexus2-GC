@@ -1030,7 +1030,7 @@ async def enter_position(
     # Ross uses tight stops (1-3%). If consolidation low produces an absurdly wide stop
     # (e.g., 30% on RDIB), block the trade entirely — don't enter with a bad stop.
     # "Better to not trade than trade blind."
-    max_stop_distance_pct = Decimal("0.05")  # 5% max
+    max_stop_distance_pct = Decimal("0.15")  # 15% max (volatile gappers have 5-10% ranges; RDIB was 30%)
     stop_distance = abs(entry_price - mental_stop)
     stop_distance_pct = stop_distance / entry_price if entry_price > 0 else Decimal("1")
     
