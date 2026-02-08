@@ -1,7 +1,7 @@
 """
 Fetch Historical Bar Data for Ross Cameron Test Cases
 
-Fetches 1-minute bars (including premarket) from Alpaca for creating realistic test cases.
+Fetches 1-minute bars (including premarket) from Polygon for creating realistic test cases.
 """
 
 import os
@@ -31,19 +31,20 @@ import pytz
 # Use nexus2 config for credentials
 from nexus2 import config as app_config
 
-API_KEY = app_config.ALPACA_KEY
-API_SECRET = app_config.ALPACA_SECRET
+# 
+# API_KEY = app_config.ALPACA_KEY
+# API_SECRET = app_config.ALPACA_SECRET
 
-if not API_KEY or not API_SECRET:
-    print(f"Error: Missing Alpaca credentials")
-    print(f"  ALPACA_KEY: {'SET' if API_KEY else 'MISSING'}")
-    print(f"  ALPACA_SECRET: {'SET' if API_SECRET else 'MISSING'}")
-    exit(1)
+# if not API_KEY or not API_SECRET:
+#     print(f"Error: Missing Alpaca credentials")
+#     print(f"  ALPACA_KEY: {'SET' if API_KEY else 'MISSING'}")
+#     print(f"  ALPACA_SECRET: {'SET' if API_SECRET else 'MISSING'}")
+#     exit(1)
 
-print(f"Using Alpaca key: {API_KEY[:8]}...")
+# print(f"Using Alpaca key: {API_KEY[:8]}...")
 
 # Initialize client
-client = StockHistoricalDataClient(API_KEY, API_SECRET)
+# client = StockHistoricalDataClient(API_KEY, API_SECRET)
 
 ET = pytz.timezone("US/Eastern")
 
