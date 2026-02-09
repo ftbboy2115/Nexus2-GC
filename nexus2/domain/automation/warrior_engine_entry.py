@@ -1013,6 +1013,7 @@ async def enter_position(
     
     # Mark as triggered
     watched.entry_triggered = True
+    watched.last_below_vwap = False  # Reset VWAP break tracking after successful entry
     engine.stats.entries_triggered += 1
     
     # Calculate stop price using consolidation low methodology

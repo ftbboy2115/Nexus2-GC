@@ -984,7 +984,7 @@ async def detect_vwap_break_pattern(
     snapshot = None
     
     try:
-        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+        candles = await engine._get_intraday_bars(symbol, "1min", limit=1000)
         if candles and len(candles) >= 5:
             from nexus2.domain.indicators import get_technical_service
             tech = get_technical_service()
@@ -1051,7 +1051,10 @@ async def detect_vwap_break_pattern(
             f"[Warrior Entry] {symbol}: VWAP BREAK at ${current_price:.2f} "
             f"(VWAP=${vwap:.2f}, vol={curr_vol:,})"
         )
-        watched.last_below_vwap = False  # Reset for next break
+        # NOTE: Do NOT reset last_below_vwap here. If the entry guard rejects
+        # (e.g., price is below the full-session VWAP), we want the pattern to
+        # re-fire when price genuinely crosses above. Reset happens in enter_position
+        # after the entry succeeds, or after guards pass.
         return EntryTriggerType.VWAP_BREAK
     
     return None
