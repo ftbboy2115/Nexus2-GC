@@ -1164,8 +1164,11 @@ async def step_clock(minutes: int = 1, headless: bool = False):
                 
                 await engine.monitor._check_all_positions()
             except Exception as e:
-                if not headless:
-                    print(f"[Historical Replay] Monitor check error at {time_str}: {e}")
+                # ALWAYS log monitor errors — silent failures here mean stops never trigger
+                import logging
+                logging.getLogger(__name__).error(
+                    f"[Historical Replay] Monitor check error at {time_str}: {e}"
+                )
 
     # =========================================================================
     # HEADLESS MODE: Return minimal response, skip chart data entirely
