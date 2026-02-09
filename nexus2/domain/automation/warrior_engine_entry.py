@@ -563,10 +563,6 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     bull_flag_trigger = await detect_bull_flag_pattern(engine, watched, current_price)
                     add_candidate(bull_flag_trigger, confidence=0.70)
                     
-                    # VWAP BREAK
-                    vwap_break_trigger = await detect_vwap_break_pattern(engine, watched, current_price, setup_type)
-                    add_candidate(vwap_break_trigger, confidence=0.75)
-                    
                     # INVERTED HEAD & SHOULDERS
                     inverted_hs_trigger = await detect_inverted_hs_pattern(engine, watched, current_price)
                     add_candidate(inverted_hs_trigger, confidence=0.65)  # Lower confidence - complex pattern
@@ -574,6 +570,15 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     # CUP & HANDLE
                     cup_handle_trigger = await detect_cup_handle_pattern(engine, watched, current_price)
                     add_candidate(cup_handle_trigger, confidence=0.70)
+            
+            # =============================================================================
+            # PMH-INDEPENDENT PATTERNS (run at all price levels)
+            # =============================================================================
+            # VWAP breaks are about price crossing the volume-weighted average,
+            # NOT about pre-market high relationship. RDIB's VWAP reclaim at $15-19
+            # was never detected because PMH was $34.96 (always gated out).
+            vwap_break_trigger = await detect_vwap_break_pattern(engine, watched, current_price, setup_type)
+            add_candidate(vwap_break_trigger, confidence=0.75)
             
             # -----------------------------------------------------------------
             # WINNER SELECTION: Pick best candidate and enter
