@@ -999,6 +999,14 @@ async def enter_position(
     # =========================================================================
     tech_valid, tech_reason = await validate_technicals(engine, watched, entry_price)
     if not tech_valid:
+        # If VWAP_BREAK was rejected because price is below session VWAP,
+        # reset last_below_vwap to prevent the pattern from endlessly re-firing.
+        # The pattern's VWAP (all candles) diverges from the guard's VWAP
+        # (today's session only), so the pattern thinks price crossed VWAP
+        # when it actually hasn't according to the accurate session VWAP.
+        if trigger_type == EntryTriggerType.VWAP_BREAK and tech_reason and "below VWAP" in tech_reason:
+            watched.last_below_vwap = False
+            logger.info(f"[Warrior Entry] {symbol}: Reset last_below_vwap after guard VWAP rejection")
         # NOTE: validate_technicals handles logging and entry_triggered flag for FAIL-CLOSED
         return
     
