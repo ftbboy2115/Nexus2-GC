@@ -6,10 +6,11 @@ Includes test case loading for historical scenario replay.
 """
 
 import os
+import time
 import threading
 import yaml
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
@@ -1068,7 +1069,7 @@ async def load_historical_test_case(case_id: str):
 
 
 @sim_router.post("/sim/step")
-async def step_clock(minutes: int = 1):
+async def step_clock(minutes: int = 1, headless: bool = False):
     """
     Step the simulation clock forward by specified minutes.
     
@@ -1077,6 +1078,11 @@ async def step_clock(minutes: int = 1):
     
     IMPORTANT: When stepping multiple minutes, each minute is processed
     individually to ensure entry/exit triggers are not missed at high speeds.
+    
+    Args:
+        minutes: Number of minutes to step forward
+        headless: If True, skip chart data generation for faster batch execution.
+                  All entry/exit logic is still processed — only UI response data is skipped.
     """
     from nexus2.adapters.simulation import (
         get_simulation_clock,
@@ -1100,7 +1106,8 @@ async def step_clock(minutes: int = 1):
         # 10s stepping: each "minute" becomes 6 x 10s steps
         total_steps = minutes * 6
         step_seconds = 10
-        print(f"[Historical Replay] 10s precision enabled - {total_steps} steps")
+        if not headless:
+            print(f"[Historical Replay] 10s precision enabled - {total_steps} steps")
     else:
         # 1-min stepping (original behavior)
         total_steps = minutes
@@ -1137,7 +1144,8 @@ async def step_clock(minutes: int = 1):
             try:
                 await check_entry_triggers(engine)
             except Exception as e:
-                print(f"[Historical Replay] Entry check error at {time_str}: {e}")
+                if not headless:
+                    print(f"[Historical Replay] Entry check error at {time_str}: {e}")
         
         # Check positions for exits (monitor tick)
         if engine and engine.monitor and engine.monitor._positions:
@@ -1156,7 +1164,26 @@ async def step_clock(minutes: int = 1):
                 
                 await engine.monitor._check_all_positions()
             except Exception as e:
-                print(f"[Historical Replay] Monitor check error at {time_str}: {e}")
+                if not headless:
+                    print(f"[Historical Replay] Monitor check error at {time_str}: {e}")
+
+    # =========================================================================
+    # HEADLESS MODE: Return minimal response, skip chart data entirely
+    # =========================================================================
+    if headless:
+        if use_10s_stepping:
+            time_str = clock.get_time_string_with_seconds()
+        else:
+            time_str = clock.get_time_string()
+        return {
+            "status": "stepped",
+            "minutes": minutes,
+            "time": time_str,
+        }
+
+    # =========================================================================
+    # NORMAL MODE: Full response with chart data for UI
+    # =========================================================================
     # Final state after all steps processed
     if use_10s_stepping:
         time_str = clock.get_time_string_with_seconds()
@@ -1232,6 +1259,224 @@ async def step_clock(minutes: int = 1):
         "current_bar_index": current_bar_index,
         "chart_symbol": chart_symbol,
     }
+
+
+# =============================================================================
+# BATCH TEST RUNNER
+# =============================================================================
+
+class BatchTestRequest(BaseModel):
+    """Request body for batch test runner."""
+    case_ids: Optional[List[str]] = Field(None, description="List of test case IDs to run. If None, runs all POLYGON_DATA cases.")
+
+
+@sim_router.post("/sim/run_batch")
+async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
+    """
+    Run all (or selected) test cases headlessly and return P&L results.
+    
+    Iterates through POLYGON_DATA test cases, replays each through all bars,
+    and collects trading results for comparison against Ross Cameron's actual P&L.
+    
+    This replaces 30+ minutes of manual testing with a single API call.
+    """
+    import json
+    
+    start_time = time.time()
+    
+    # Load all test cases from YAML
+    base_path = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "test_cases")
+    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
+    
+    if not os.path.exists(yaml_path):
+        raise HTTPException(status_code=404, detail="warrior_setups.yaml not found")
+    
+    with open(yaml_path, "r") as f:
+        yaml_data = yaml.safe_load(f)
+    
+    all_cases = yaml_data.get("test_cases", [])
+    
+    # Filter to POLYGON_DATA cases only (these have intraday bar data from Polygon)
+    cases = [c for c in all_cases if c.get("status") == "POLYGON_DATA"]
+    
+    # If specific case_ids provided, filter further
+    if request.case_ids:
+        cases = [c for c in cases if c.get("id") in request.case_ids]
+    
+    if not cases:
+        return {
+            "results": [],
+            "summary": {
+                "total_pnl": 0,
+                "total_ross_pnl": 0,
+                "cases_run": 0,
+                "cases_profitable": 0,
+                "runtime_seconds": 0,
+            },
+            "error": "No matching POLYGON_DATA test cases found",
+        }
+    
+    results = []
+    
+    for case in cases:
+        case_id = case.get("id")
+        symbol = case.get("symbol")
+        ross_pnl = case.get("ross_pnl", 0) or 0
+        
+        print(f"\n[Batch Runner] === Running: {case_id} ({symbol}) ===")
+        case_start = time.time()
+        
+        try:
+            # Step 1: Load test case (resets broker, wires callbacks, sets clock)
+            load_result = await load_historical_test_case(case_id)
+            bar_count = load_result.get("bar_count", 0)
+            
+            if bar_count == 0:
+                results.append({
+                    "case_id": case_id,
+                    "symbol": symbol,
+                    "date": case.get("trade_date"),
+                    "bar_count": 0,
+                    "trades": [],
+                    "total_pnl": 0,
+                    "ross_pnl": ross_pnl,
+                    "delta": -ross_pnl,
+                    "error": "No bars loaded",
+                })
+                continue
+            
+            # Step 2: Step through all bars + 30 min EOD buffer (headless)
+            step_minutes = bar_count + 30
+            await step_clock(minutes=step_minutes, headless=True)
+            
+            # Step 3: Collect P&L from MockBroker
+            broker = get_warrior_sim_broker()
+            if broker is None:
+                results.append({
+                    "case_id": case_id,
+                    "symbol": symbol,
+                    "date": case.get("trade_date"),
+                    "bar_count": bar_count,
+                    "trades": [],
+                    "total_pnl": 0,
+                    "ross_pnl": ross_pnl,
+                    "delta": -ross_pnl,
+                    "error": "MockBroker not available after replay",
+                })
+                continue
+            
+            # Extract trade details from broker orders
+            orders = broker.get_orders()
+            trades = []
+            
+            # Match buy/sell order pairs to build trade records
+            buy_orders = [o for o in orders if o["side"] == "buy" and o["status"] == "filled"]
+            sell_orders = [o for o in orders if o["side"] == "sell" and o["status"] == "filled"]
+            
+            for buy in buy_orders:
+                # Find matching sell(s) for this buy
+                matching_sells = [s for s in sell_orders if s["symbol"] == buy["symbol"]]
+                
+                if matching_sells:
+                    # Use first matching sell for this entry
+                    sell = matching_sells[0]
+                    sell_orders.remove(sell)  # Don't reuse
+                    
+                    entry_price = buy.get("avg_fill_price", 0)
+                    exit_price = sell.get("avg_fill_price", 0)
+                    shares = buy.get("filled_qty", 0)
+                    pnl = (exit_price - entry_price) * shares
+                    
+                    trades.append({
+                        "entry_price": round(entry_price, 2) if entry_price else 0,
+                        "exit_price": round(exit_price, 2) if exit_price else 0,
+                        "shares": shares,
+                        "pnl": round(pnl, 2),
+                        "entry_trigger": buy.get("entry_trigger"),
+                        "exit_mode": buy.get("exit_mode"),
+                        "entry_time": buy.get("sim_time"),
+                        "exit_time": sell.get("sim_time"),
+                    })
+                else:
+                    # Buy with no matching sell — still open position
+                    entry_price = buy.get("avg_fill_price", 0)
+                    shares = buy.get("filled_qty", 0)
+                    trades.append({
+                        "entry_price": round(entry_price, 2) if entry_price else 0,
+                        "exit_price": None,
+                        "shares": shares,
+                        "pnl": 0,
+                        "entry_trigger": buy.get("entry_trigger"),
+                        "exit_mode": buy.get("exit_mode"),
+                        "entry_time": buy.get("sim_time"),
+                        "exit_time": None,
+                        "note": "position_still_open",
+                    })
+            
+            # Get account-level P&L
+            account = broker.get_account()
+            realized_pnl = round(account.get("realized_pnl", 0), 2)
+            unrealized_pnl = round(account.get("unrealized_pnl", 0), 2)
+            total_pnl = round(realized_pnl + unrealized_pnl, 2)
+            
+            case_time = round(time.time() - case_start, 2)
+            
+            results.append({
+                "case_id": case_id,
+                "symbol": symbol,
+                "date": case.get("trade_date"),
+                "bar_count": bar_count,
+                "trades": trades,
+                "realized_pnl": realized_pnl,
+                "unrealized_pnl": unrealized_pnl,
+                "total_pnl": total_pnl,
+                "ross_pnl": ross_pnl,
+                "delta": round(total_pnl - ross_pnl, 2),
+                "max_capital_deployed": round(account.get("max_capital_deployed", 0), 2),
+                "max_shares_held": account.get("max_shares_held", 0),
+                "runtime_seconds": case_time,
+            })
+            
+            print(f"[Batch Runner] {case_id}: P&L=${total_pnl:+.2f} (Ross: ${ross_pnl:+.2f}, Δ=${total_pnl - ross_pnl:+.2f}) [{case_time}s]")
+            
+        except Exception as e:
+            print(f"[Batch Runner] ERROR on {case_id}: {e}")
+            results.append({
+                "case_id": case_id,
+                "symbol": symbol,
+                "date": case.get("trade_date"),
+                "bar_count": 0,
+                "trades": [],
+                "total_pnl": 0,
+                "ross_pnl": ross_pnl,
+                "delta": -ross_pnl,
+                "error": str(e),
+            })
+    
+    # Build summary
+    total_runtime = round(time.time() - start_time, 2)
+    total_pnl = sum(r.get("total_pnl", 0) for r in results)
+    total_ross_pnl = sum(r.get("ross_pnl", 0) for r in results)
+    cases_profitable = sum(1 for r in results if r.get("total_pnl", 0) > 0)
+    cases_with_errors = sum(1 for r in results if "error" in r)
+    
+    print(f"\n[Batch Runner] === COMPLETE ===")
+    print(f"[Batch Runner] {len(results)} cases, {cases_profitable} profitable, P&L=${total_pnl:+.2f} (Ross: ${total_ross_pnl:+.2f})")
+    print(f"[Batch Runner] Runtime: {total_runtime}s")
+    
+    return {
+        "results": results,
+        "summary": {
+            "total_pnl": round(total_pnl, 2),
+            "total_ross_pnl": round(total_ross_pnl, 2),
+            "delta": round(total_pnl - total_ross_pnl, 2),
+            "cases_run": len(results),
+            "cases_profitable": cases_profitable,
+            "cases_with_errors": cases_with_errors,
+            "runtime_seconds": total_runtime,
+        },
+    }
+
 
 
 @sim_router.get("/sim/orders")
