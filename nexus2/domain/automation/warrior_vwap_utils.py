@@ -39,6 +39,44 @@ SESSION_START_HOUR = 4
 SESSION_START_MINUTE = 0
 
 
+def _get_current_hour() -> Optional[int]:
+    """Get current hour in ET from sim clock or real time."""
+    try:
+        from nexus2.adapters.simulation.sim_clock import get_simulation_clock
+        clock = get_simulation_clock()
+        if clock and clock._active:
+            time_str = clock.get_time_string()  # "HH:MM"
+            return int(time_str.split(':')[0])
+    except Exception:
+        pass
+    
+    try:
+        from nexus2.utils.time_utils import now_et
+        return now_et().hour
+    except Exception:
+        return None
+
+
+def _get_current_time() -> tuple[Optional[int], Optional[int]]:
+    """Get current (hour, minute) in ET from sim clock or real time."""
+    try:
+        from nexus2.adapters.simulation.sim_clock import get_simulation_clock
+        clock = get_simulation_clock()
+        if clock and clock._active:
+            time_str = clock.get_time_string()  # "HH:MM"
+            parts = time_str.split(':')
+            return int(parts[0]), int(parts[1])
+    except Exception:
+        pass
+    
+    try:
+        from nexus2.utils.time_utils import now_et
+        et_now = now_et()
+        return et_now.hour, et_now.minute
+    except Exception:
+        return None, None
+
+
 def get_session_bar_limit() -> int:
     """
     Calculate the exact number of 1-minute bars from 4 AM ET to now.
@@ -49,33 +87,13 @@ def get_session_bar_limit() -> int:
     Returns:
         Number of 1-minute bars to request (minimum 30, maximum 1000)
     """
-    current_hour = None
-    current_minute = None
-    
-    try:
-        from nexus2.adapters.simulation.sim_clock import get_simulation_clock
-        clock = get_simulation_clock()
-        if clock and clock._active:
-            time_str = clock.get_time_string()  # "HH:MM"
-            parts = time_str.split(':')
-            current_hour = int(parts[0])
-            current_minute = int(parts[1])
-    except Exception:
-        pass
+    current_hour, current_minute = _get_current_time()
     
     if current_hour is None:
-        # Not in simulation — use real Eastern Time
-        try:
-            from nexus2.utils.time_utils import now_et
-            et_now = now_et()
-            current_hour = et_now.hour
-            current_minute = et_now.minute
-        except Exception:
-            # Fallback: request plenty of bars
-            return 500
+        return 500
     
     # Calculate minutes since session start (4:00 AM ET)
-    minutes_since_start = (current_hour * 60 + current_minute) - (SESSION_START_HOUR * 60 + SESSION_START_MINUTE)
+    minutes_since_start = (current_hour * 60 + (current_minute or 0)) - (SESSION_START_HOUR * 60 + SESSION_START_MINUTE)
     
     if minutes_since_start <= 0:
         # Before 4 AM or at exactly 4 AM — minimal bars
@@ -121,12 +139,45 @@ async def get_session_vwap(
         if not candles or len(candles) < 5:
             return None
         
+        # CRITICAL: Filter for today's session bars only (4 AM+).
+        # The data source can return yesterday's closing bars (e.g., 15:00-16:00)
+        # regardless of limit, which contaminate VWAP with stale data.
+        # Get current sim hour for smart filtering
+        current_hour = _get_current_hour()
+        
+        today_candles = []
+        for c in candles:
+            bar_time = getattr(c, 'time', '') or ''
+            if not bar_time:
+                # No timestamp — include to avoid dropping data
+                today_candles.append(c)
+                continue
+            try:
+                hour = int(bar_time.split(':')[0])
+                if current_hour is not None:
+                    if current_hour < 10:  # Premarket
+                        if SESSION_START_HOUR <= hour < 10:
+                            today_candles.append(c)
+                    else:  # Regular hours
+                        if SESSION_START_HOUR <= hour <= current_hour:
+                            today_candles.append(c)
+                else:
+                    # No clock info — include 4AM+ bars
+                    if SESSION_START_HOUR <= hour < 20:
+                        today_candles.append(c)
+            except (ValueError, IndexError):
+                today_candles.append(c)
+        
+        if len(today_candles) < 3:
+            logger.debug(f"[Warrior VWAP] {symbol}: Only {len(today_candles)} session bars after filtering (from {len(candles)} total)")
+            return None
+        
         from nexus2.domain.indicators import get_technical_service
         tech = get_technical_service()
         
         candle_dicts = [
             {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
-            for c in candles
+            for c in today_candles
         ]
         
         snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
