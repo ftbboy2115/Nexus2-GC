@@ -978,13 +978,20 @@ async def detect_vwap_break_pattern(
     if not engine._get_intraday_bars:
         return None
     
-    # Get current VWAP
-    vwap = None
+    # Use shared session VWAP utility (same calculation as entry guard)
+    from nexus2.domain.automation.warrior_vwap_utils import get_session_vwap, get_session_bar_limit
+    
+    vwap = await get_session_vwap(engine, symbol, float(current_price))
+    if not vwap:
+        return None
+    
+    # Fetch candles for volume/falling knife checks (using session-accurate limit)
     candles = None
     snapshot = None
     
     try:
-        candles = await engine._get_intraday_bars(symbol, "1min", limit=1000)
+        bar_limit = get_session_bar_limit()
+        candles = await engine._get_intraday_bars(symbol, "1min", limit=bar_limit)
         if candles and len(candles) >= 5:
             from nexus2.domain.indicators import get_technical_service
             tech = get_technical_service()
@@ -993,10 +1000,8 @@ async def detect_vwap_break_pattern(
                 for c in candles
             ]
             snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
-            if snapshot.vwap:
-                vwap = Decimal(str(snapshot.vwap))
     except Exception as e:
-        logger.debug(f"[Warrior Entry] {symbol}: VWAP fetch failed: {e}")
+        logger.debug(f"[Warrior Entry] {symbol}: Candle fetch for VWAP break checks failed: {e}")
         return None
     
     if not vwap:
