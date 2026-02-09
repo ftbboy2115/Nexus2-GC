@@ -17,27 +17,34 @@ print("\n--- CHECK 1: PENDING_EXIT records in warrior_trades.db ---")
 db_path = os.path.join(DATA_DIR, "warrior_trades.db")
 if os.path.exists(db_path):
     conn = sqlite3.connect(db_path)
-    cursor = conn.execute(
-        "SELECT id, symbol, status FROM warrior_trades WHERE status LIKE '%PENDING%' OR status LIKE '%pending%'"
-    )
-    rows = cursor.fetchall()
-    if rows:
-        for r in rows:
-            print(f"  FOUND: id={r[0]}, symbol={r[1]}, status={r[2]}")
-    else:
-        print("  No PENDING_EXIT records found (theory 1 DISPROVEN)")
+    # First discover tables
+    tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    table_names = [t[0] for t in tables]
+    print(f"  Tables found: {table_names}")
     
-    # Also check if VERO has ANY records
-    cursor2 = conn.execute(
-        "SELECT id, symbol, status FROM warrior_trades WHERE symbol='VERO'"
-    )
-    vero_rows = cursor2.fetchall()
-    if vero_rows:
-        print(f"  VERO records in DB: {len(vero_rows)}")
-        for r in vero_rows:
-            print(f"    id={r[0]}, status={r[2]}")
-    else:
-        print("  No VERO records in warrior_trades.db")
+    for tbl in table_names:
+        # Check columns
+        cols = conn.execute(f"PRAGMA table_info({tbl})").fetchall()
+        col_names = [c[1] for c in cols]
+        
+        if 'status' in col_names and 'symbol' in col_names:
+            print(f"  Checking table '{tbl}' for PENDING_EXIT...")
+            cursor = conn.execute(
+                f"SELECT * FROM {tbl} WHERE status LIKE '%PENDING%' OR status LIKE '%pending%'"
+            )
+            rows = cursor.fetchall()
+            if rows:
+                for r in rows:
+                    print(f"    FOUND: {r}")
+            else:
+                print(f"    No PENDING_EXIT records (theory 1 DISPROVEN for {tbl})")
+            
+            # Also check VERO records
+            cursor2 = conn.execute(f"SELECT * FROM {tbl} WHERE symbol='VERO'")
+            vero_rows = cursor2.fetchall()
+            print(f"    VERO records: {len(vero_rows)}")
+            for r in vero_rows:
+                print(f"      {r}")
     conn.close()
 else:
     print(f"  DB not found at {db_path}")
