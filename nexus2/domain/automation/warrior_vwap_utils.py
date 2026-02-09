@@ -146,11 +146,14 @@ async def get_session_vwap(
         current_hour = _get_current_hour()
         
         today_candles = []
+        excluded_count = 0
+        no_time_count = 0
         for c in candles:
             bar_time = getattr(c, 'time', '') or ''
             if not bar_time:
                 # No timestamp — include to avoid dropping data
                 today_candles.append(c)
+                no_time_count += 1
                 continue
             try:
                 hour = int(bar_time.split(':')[0])
@@ -158,18 +161,40 @@ async def get_session_vwap(
                     if current_hour < 10:  # Premarket
                         if SESSION_START_HOUR <= hour < 10:
                             today_candles.append(c)
+                        else:
+                            excluded_count += 1
                     else:  # Regular hours
                         if SESSION_START_HOUR <= hour <= current_hour:
                             today_candles.append(c)
+                        else:
+                            excluded_count += 1
                 else:
                     # No clock info — include 4AM+ bars
                     if SESSION_START_HOUR <= hour < 20:
                         today_candles.append(c)
+                    else:
+                        excluded_count += 1
             except (ValueError, IndexError):
                 today_candles.append(c)
         
+        # DIAGNOSTIC: Log filtering results (temporary)
+        if len(today_candles) != len(candles):
+            logger.info(
+                f"[Warrior VWAP] {symbol}: Filtered {len(candles)} bars → "
+                f"{len(today_candles)} session bars (excluded={excluded_count}, "
+                f"no_time={no_time_count}, current_hour={current_hour}, bar_limit={bar_limit})"
+            )
+        else:
+            # Log first time we see all bars pass (to detect if filtering is a no-op)
+            sample_times = [getattr(c, 'time', '?') for c in candles[:3]]
+            logger.info(
+                f"[Warrior VWAP] {symbol}: All {len(candles)} bars passed filter "
+                f"(current_hour={current_hour}, bar_limit={bar_limit}, "
+                f"first_times={sample_times})"
+            )
+        
         if len(today_candles) < 3:
-            logger.debug(f"[Warrior VWAP] {symbol}: Only {len(today_candles)} session bars after filtering (from {len(candles)} total)")
+            logger.info(f"[Warrior VWAP] {symbol}: Only {len(today_candles)} session bars after filtering (from {len(candles)} total)")
             return None
         
         from nexus2.domain.indicators import get_technical_service
