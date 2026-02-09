@@ -330,8 +330,10 @@ async def validate_technicals(
     try:
         candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
         if not candles or len(candles) < 10:
-            # Not enough data - proceed with caution
-            return True, None
+            # FAIL-CLOSED: Cannot verify VWAP/EMA with insufficient data
+            reason = f"FAIL-CLOSED - Only {len(candles) if candles else 0} candles available (need 10+). Cannot validate technicals."
+            logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+            return False, reason
         
         from nexus2.domain.indicators import get_technical_service
         tech = get_technical_service()

@@ -970,6 +970,24 @@ async def detect_vwap_break_pattern(
     """
     symbol = watched.candidate.symbol
     
+    # EARLY PREMARKET GUARD: No VWAP breaks before 6 AM ET
+    # Precedent: detect_dip_for_level_pattern has the same guard (line 319)
+    # VWAP from <6 min of data is noise, not a tradeable signal
+    from datetime import datetime
+    import pytz
+    et = pytz.timezone("US/Eastern")
+    now_et = datetime.now(et)
+    try:
+        from nexus2.adapters.simulation import get_simulation_clock
+        sim_clock = get_simulation_clock()
+        if sim_clock and sim_clock.current_time:
+            now_et = sim_clock.current_time
+    except Exception:
+        pass
+    
+    if now_et.hour < 6:
+        return None
+    
     # PATTERN COMPETITION: Only check if setup_type matches
     should_check_vwap_break = setup_type is None or setup_type in ("vwap_break", "vwap_reclaim")
     if not (engine.config.vwap_break_enabled and not watched.entry_triggered and should_check_vwap_break):
