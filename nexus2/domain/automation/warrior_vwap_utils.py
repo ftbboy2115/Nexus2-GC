@@ -39,8 +39,26 @@ SESSION_START_HOUR = 4
 SESSION_START_MINUTE = 0
 
 
-def _get_current_hour() -> Optional[int]:
-    """Get current hour in ET from sim clock or real time."""
+def _get_current_hour(engine=None) -> Optional[int]:
+    """Get current hour in ET from sim clock or real time.
+    
+    Priority: engine.monitor._sim_clock > global singleton > real time.
+    """
+    # Priority 1: Engine's sim clock (Mock Market uses this)
+    if engine is not None:
+        try:
+            if hasattr(engine, 'monitor') and engine.monitor:
+                if hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+                    sim_time = engine.monitor._sim_clock.current_time
+                    if sim_time:
+                        from nexus2.utils.time_utils import EASTERN
+                        if sim_time.tzinfo:
+                            sim_time = sim_time.astimezone(EASTERN)
+                        return sim_time.hour
+        except Exception:
+            pass
+    
+    # Priority 2: Global sim clock singleton
     try:
         from nexus2.adapters.simulation.sim_clock import get_simulation_clock
         clock = get_simulation_clock()
@@ -50,6 +68,7 @@ def _get_current_hour() -> Optional[int]:
     except Exception:
         pass
     
+    # Priority 3: Real Eastern Time
     try:
         from nexus2.utils.time_utils import now_et
         return now_et().hour
@@ -57,8 +76,26 @@ def _get_current_hour() -> Optional[int]:
         return None
 
 
-def _get_current_time() -> tuple[Optional[int], Optional[int]]:
-    """Get current (hour, minute) in ET from sim clock or real time."""
+def _get_current_time(engine=None) -> tuple[Optional[int], Optional[int]]:
+    """Get current (hour, minute) in ET from sim clock or real time.
+    
+    Priority: engine.monitor._sim_clock > global singleton > real time.
+    """
+    # Priority 1: Engine's sim clock (Mock Market uses this)
+    if engine is not None:
+        try:
+            if hasattr(engine, 'monitor') and engine.monitor:
+                if hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+                    sim_time = engine.monitor._sim_clock.current_time
+                    if sim_time:
+                        from nexus2.utils.time_utils import EASTERN
+                        if sim_time.tzinfo:
+                            sim_time = sim_time.astimezone(EASTERN)
+                        return sim_time.hour, sim_time.minute
+        except Exception:
+            pass
+    
+    # Priority 2: Global sim clock singleton
     try:
         from nexus2.adapters.simulation.sim_clock import get_simulation_clock
         clock = get_simulation_clock()
@@ -69,6 +106,7 @@ def _get_current_time() -> tuple[Optional[int], Optional[int]]:
     except Exception:
         pass
     
+    # Priority 3: Real Eastern Time
     try:
         from nexus2.utils.time_utils import now_et
         et_now = now_et()
@@ -77,7 +115,7 @@ def _get_current_time() -> tuple[Optional[int], Optional[int]]:
         return None, None
 
 
-def get_session_bar_limit() -> int:
+def get_session_bar_limit(engine=None) -> int:
     """
     Calculate the exact number of 1-minute bars from 4 AM ET to now.
     
@@ -87,7 +125,7 @@ def get_session_bar_limit() -> int:
     Returns:
         Number of 1-minute bars to request (minimum 30, maximum 1000)
     """
-    current_hour, current_minute = _get_current_time()
+    current_hour, current_minute = _get_current_time(engine)
     
     if current_hour is None:
         return 500
@@ -133,7 +171,7 @@ async def get_session_vwap(
         return None
     
     try:
-        bar_limit = get_session_bar_limit()
+        bar_limit = get_session_bar_limit(engine)
         candles = await engine._get_intraday_bars(symbol, "1min", limit=bar_limit)
         
         if not candles or len(candles) < 5:
@@ -143,7 +181,7 @@ async def get_session_vwap(
         # The data source can return yesterday's closing bars (e.g., 15:00-16:00)
         # regardless of limit, which contaminate VWAP with stale data.
         # Get current sim hour for smart filtering
-        current_hour = _get_current_hour()
+        current_hour = _get_current_hour(engine)
         
         today_candles = []
         excluded_count = 0

@@ -990,7 +990,7 @@ async def detect_vwap_break_pattern(
     snapshot = None
     
     try:
-        bar_limit = get_session_bar_limit()
+        bar_limit = get_session_bar_limit(engine)
         candles = await engine._get_intraday_bars(symbol, "1min", limit=bar_limit)
         if candles and len(candles) >= 5:
             from nexus2.domain.indicators import get_technical_service
