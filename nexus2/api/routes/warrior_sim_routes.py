@@ -1349,6 +1349,19 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
             step_minutes = bar_count + 30
             await step_clock(minutes=step_minutes, headless=True)
             
+            # Step 2.5: Force-close any open positions at EOD (last bar's close price)
+            # step_clock doesn't trigger the scheduler's run_simulation_eod,
+            # so positions may remain open after replay completes.
+            broker = get_warrior_sim_broker()
+            if broker:
+                eod_positions = broker.get_positions()
+                for pos in eod_positions:
+                    pos_symbol = pos.get("symbol")
+                    pos_qty = pos.get("qty", 0)
+                    if pos_qty > 0:
+                        broker.sell_position(pos_symbol, pos_qty)
+                        print(f"[Batch Runner] EOD close: {pos_symbol} x{pos_qty}")
+            
             # Step 3: Collect P&L from MockBroker
             broker = get_warrior_sim_broker()
             if broker is None:

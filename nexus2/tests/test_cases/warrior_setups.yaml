@@ -385,11 +385,14 @@ test_cases:
     symbol: LCFY
     setup_type: pmh
     outcome: winner
+    ross_traded: true
     synthetic: false
-    status: REAL_TRADE
-    description: "Ross Cameron +$10,000 - Headline at 8am"
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$10,456.94 - Headline at 8am"
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_lcfy_20260116.json"
+    ross_pnl: 10456.94  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
     premarket_data:
       gap_percent: 70.9
       premarket_high: 7.42
@@ -399,7 +402,7 @@ test_cases:
     expected:
       entry_near: 7.50
       stop_near: 7.00
-    notes: "Ross Cameron transcript Jan 16 - 4 Base Hit Winners"
+    notes: "Ross Cameron transcript Jan 16 - 4 Base Hit Winners. Per-trade: LCFY +$10,456.94, GWAV +$3,974.68, VERO +$3,484.88, TNMG +$2,102.25"
 
   - id: ross_pavm_20260121
     symbol: PAVM
@@ -430,7 +433,8 @@ test_cases:
     outcome: missed
     ross_traded: false
     synthetic: false
-    status: MISSED_OPPORTUNITY
+    status: POLYGON_DATA
+    data_source: polygon
     description: "BATL Jan 26 - Natural gas price surge, 243% gap. Ross missed (wasn't at PC)"
     trade_date: "2026-01-26"
     intraday_file: "intraday/ross_batl_20260126.json"
@@ -451,10 +455,12 @@ test_cases:
     outcome: winner
     ross_traded: true
     synthetic: false
-    status: REAL_TRADE
+    status: POLYGON_DATA
+    data_source: polygon
     description: "Ross Cameron +$85,000 - Prediction Markets Blue Sky Breakout"
     trade_date: "2026-01-14"
     intraday_file: "intraday/ross_rolr_20260114.json"
+    ross_pnl: 85000.00  # Per-trade P&L - ROLR was only trade, used ALL buying power ($140k)
     premarket_data:
       gap_percent: 120.0
       premarket_high: 15.00
@@ -464,7 +470,7 @@ test_cases:
     expected:
       entry_near: 15.00
       stop_near: 14.00
-    notes: "Prediction Markets theme trade, Blue Sky breakout pattern"
+    notes: "Prediction Markets theme trade, Blue Sky breakout pattern. Entry $5.17, squeeze to $21. Account $140k→$225k."
 
   - id: ross_bnkk_20260115
     symbol: BNKK
@@ -496,10 +502,12 @@ test_cases:
     outcome: winner
     ross_traded: true
     synthetic: false
-    status: REAL_TRADE
-    description: "Ross Cameron - Chinese Stock Dip-Reclaim"
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$2,102.25 - Chinese Stock Dip-Reclaim"
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_tnmg_20260116.json"
+    ross_pnl: 2102.25  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
     premarket_data:
       gap_percent: 50.0
       premarket_high: 5.00
@@ -509,7 +517,7 @@ test_cases:
     expected:
       entry_near: 5.00
       stop_near: 4.50
-    notes: "Chinese stock dip-reclaim pattern"
+    notes: "Chinese stock dip-reclaim pattern. Cost basis $3.90."
 
   - id: ross_gwav_20260116
     symbol: GWAV
@@ -517,10 +525,12 @@ test_cases:
     outcome: winner
     ross_traded: true
     synthetic: false
-    status: REAL_TRADE
-    description: "Ross Cameron - Pure Momentum Scalp (No News)"
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$3,974.68 - Pure Momentum Scalp (No News)"
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_gwav_20260116.json"
+    ross_pnl: 3974.68  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
     premarket_data:
       gap_percent: 40.0
       premarket_high: 3.00
@@ -530,7 +540,7 @@ test_cases:
     expected:
       entry_near: 3.00
       stop_near: 2.75
-    notes: "Pure momentum scalp - no specific catalyst, just volume and price action"
+    notes: "Pure momentum scalp - no specific catalyst, just volume and price action. Cost basis $7.82."
 
   - id: ross_vero_20260116
     symbol: VERO
@@ -538,10 +548,12 @@ test_cases:
     outcome: winner
     ross_traded: true
     synthetic: false
-    status: REAL_TRADE
-    description: "Ross Cameron - Overnight Gapper (375% move in AH, traded AM continuation)"
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$3,484.88 - Overnight Gapper (375% move in AH, traded AM continuation)"
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_vero_20260116.json"
+    ross_pnl: 3484.88  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
     premarket_data:
       gap_percent: 375.0
       premarket_high: 3.50
@@ -551,7 +563,7 @@ test_cases:
     expected:
       entry_near: 3.00
       stop_near: 2.50
-    notes: "Made massive move after-hours (375%), Ross traded the next morning continuation. High-extension requires Base Hit mode."
+    notes: "Made massive move after-hours (375%), Ross traded the next morning continuation. High-extension requires Base Hit mode. Cost basis $5.92."
 
   # --------------------------------------------------------------------------
   # NEW: POLYGON-SOURCED TEST CASES (Jan 2026)
@@ -564,11 +576,11 @@ test_cases:
     ross_traded: true
     synthetic: false
     status: POLYGON_DATA
-    description: "Ross Cameron - RS + Breaking News 8:45 AM (+$33k)"
+    description: "Ross Cameron - RS + Breaking News 8:45 AM (+$31.6k)"
     trade_date: "2026-01-28"
     intraday_file: "intraday/ross_gri_20260128.json"
     data_source: polygon
-    ross_pnl: 33499.98
+    ross_pnl: 31599.98  # Per-trade P&L for GRI. Day total was $33,499.98 minus SXTP +$1,900
     ross_entry_time: "08:45"  # Breaking news at 8:45 AM, Ross entered ~$5.97
     ross_chart_timeframe: "10s"  # Ross used 10-second chart for micro-timing
     premarket_data:
@@ -580,7 +592,7 @@ test_cases:
     expected:
       entry_near: 5.97  # Entry for break of $6 whole number
       stop_near: 5.70
-    notes: "NEWS at 8:45 AM. Ross entry $5.97 for $6 break using 10s chart timing. Move from ~$5 to $8.60 in 15 min. Bot 1m bars miss micro-timing - entered pullback at $4.15 vs Ross $5.97. HC Wainwright shelf."
+    notes: "NEWS at 8:45 AM. Ross entry $5.97 for $6 break using 10s chart timing. Day total $33,499.98 included SXTP +$1,900. HC Wainwright shelf."
 
   - id: ross_lrhc_20260130
     symbol: LRHC
@@ -613,11 +625,11 @@ test_cases:
     ross_traded: true
     synthetic: false
     status: POLYGON_DATA
-    description: "Ross Cameron +$59,752 - Breaking News, Full Buying Power"
+    description: "Ross Cameron +$55,252 - Breaking News, Full Buying Power"
     trade_date: "2026-01-27"
     intraday_file: "intraday/ross_hind_20260127.json"
     data_source: polygon
-    ross_pnl: 59752.51
+    ross_pnl: 55252.51  # Per-trade P&L for HIND. Day total was $59,752.51 minus BCTX +$4,500
     ross_entry_time: "08:00"  # Breaking news hit, Ross jumped in
     premarket_data:
       gap_percent: 8.7
@@ -628,7 +640,7 @@ test_cases:
     expected:
       entry_near: 5.00  # First entry near $5 for breakout
       stop_near: 4.75
-    notes: "Ross used ALL buying power (~$370k). Added every 50 cents: $5→$5.50→$6→$6.50→$7→$7.40. Double top at $7.43. Shelf registration caused selling."
+    notes: "Ross used ALL buying power (~$370k). Day total $59,752.51 included BCTX +$4,500. Added every 50 cents: $5→$5.50→$6→$6.50→$7→$7.40."
 
   - id: ross_dcx_20260129
     symbol: DCX
@@ -759,7 +771,7 @@ test_cases:
     trade_date: "2026-02-06"
     intraday_file: "intraday/ross_flye_20260206.json"
     data_source: polygon
-    ross_pnl: 5500.00  # Total day P/L, ~$4,800 from FLYE
+    ross_pnl: 4800.00  # Per-trade P&L on FLYE (day total was $5,500)
     ross_entry_time: "~08:50"  # Re-alerted at 8:50, entry as candle pulled away
     premarket_data:
       gap_percent: 37.6
@@ -804,9 +816,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   3 (WLSR, WWNR, test_pmh_breakout)
-# REAL_TRADE:                  4 (LCFY, TNMG, GWAV, VERO)
-# MISSED_OPPORTUNITY:          1 (BATL)
-# POLYGON_DATA:               16 (PAVM, ROLR, BNKK, GRI, LRHC, HIND, DCX, NPT, BNAI, RNAZ, RVSN, FLYE, RDIB + BATL x2 counted once)
+# POLYGON_DATA:               22 (PAVM, ROLR, BNKK, GRI, LRHC, HIND, DCX, NPT, BNAI, RNAZ, RVSN, FLYE, RDIB, LCFY, TNMG, GWAV, VERO, BATL_0126, BATL_0127 counted once)
 # ==========================================================================
 
 
