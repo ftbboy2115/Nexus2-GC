@@ -1026,22 +1026,21 @@ async def enter_position(
         engine.stats.entries_triggered -= 1  # Undo the increment
         return
     
-    # MAX STOP DISTANCE CIRCUIT BREAKER
-    # Ross uses tight stops (1-3%). If consolidation low produces an absurdly wide stop
-    # (e.g., 30% on RDIB), block the trade entirely — don't enter with a bad stop.
-    # "Better to not trade than trade blind."
-    max_stop_distance_pct = Decimal("0.15")  # 15% max (volatile gappers have 5-10% ranges; RDIB was 30%)
+    # MAX STOP DISTANCE WARNING
+    # Ross uses tight stops (1-3%). If consolidation low produces an absurdly wide stop,
+    # log a warning for visibility. Hard-blocking was too aggressive — volatile gappers
+    # naturally have wide 5-bar consolidation lows during sparse premarket periods.
+    # TODO: Improve calculate_stop_price to use entry bar low instead of 5-bar consolidation low
+    max_stop_distance_pct = Decimal("0.15")  # 15% threshold for warning
     stop_distance = abs(entry_price - mental_stop)
     stop_distance_pct = stop_distance / entry_price if entry_price > 0 else Decimal("1")
     
     if stop_distance_pct > max_stop_distance_pct:
         logger.warning(
-            f"[Warrior Entry] {symbol}: TRADE BLOCKED - stop too wide "
-            f"(${mental_stop:.2f} is {stop_distance_pct:.1%} from entry ${entry_price:.2f}, "
-            f"max {max_stop_distance_pct:.0%}). Consolidation low may span too much time."
+            f"[Warrior Entry] {symbol}: WIDE STOP WARNING - "
+            f"${mental_stop:.2f} is {stop_distance_pct:.1%} from entry ${entry_price:.2f} "
+            f"(>{max_stop_distance_pct:.0%}). Consolidation low may span too much time."
         )
-        watched.entry_triggered = True  # Don't retry — the setup is bad
-        return
     
     # Calculate position size based on risk per trade and stop distance
     shares = calculate_position_size(
