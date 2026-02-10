@@ -908,7 +908,15 @@ async def load_historical_test_case(case_id: str):
             get_prices_batch=sim_get_prices_batch,
             execute_exit=sim_execute_exit,
             update_stop=sim_update_stop,
+            get_intraday_candles=sim_get_intraday_bars,
+            get_quote_with_spread=sim_get_price,  # Spread = price in sim (no real spreads)
         )
+        # Directly clear callbacks that should be DISABLED in sim
+        # set_callbacks() ignores None values (by design, to preserve live callbacks)
+        # so we must clear these explicitly to prevent Alpaca API calls during replay
+        engine.monitor._get_broker_positions = None
+        engine.monitor._submit_scale_order = None
+        engine.monitor._get_order_status = None
         
         # Wire _get_intraday_bars to use historical bar loader at simulated time
         # Without this, entry stop calculation uses real (stale) bars instead of simulated-time bars
@@ -1321,20 +1329,168 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
     
     results = []
     
-    for case in cases:
-        case_id = case.get("id")
-        symbol = case.get("symbol")
-        ross_pnl = case.get("ross_pnl", 0) or 0
-        
-        print(f"\n[Batch Runner] === Running: {case_id} ({symbol}) ===")
-        case_start = time.time()
-        
-        try:
-            # Step 1: Load test case (resets broker, wires callbacks, sets clock)
-            load_result = await load_historical_test_case(case_id)
-            bar_count = load_result.get("bar_count", 0)
+    # Save live monitor state and callbacks before batch
+    # After batch, we restore everything so live trading isn't broken
+    from nexus2.api.routes.warrior_routes import get_engine
+    engine = get_engine()
+    was_monitor_running = False
+    saved_callbacks = {}
+    
+    if engine and engine.monitor:
+        was_monitor_running = engine.monitor._running
+        # Save all monitor callbacks so we can restore after batch
+        saved_callbacks = {
+            '_get_price': engine.monitor._get_price,
+            '_get_prices_batch': engine.monitor._get_prices_batch,
+            '_get_intraday_candles': engine.monitor._get_intraday_candles,
+            '_get_quote_with_spread': engine.monitor._get_quote_with_spread,
+            '_execute_exit': engine.monitor._execute_exit,
+            '_update_stop': engine.monitor._update_stop,
+            '_get_broker_positions': engine.monitor._get_broker_positions,
+            '_submit_scale_order': engine.monitor._submit_scale_order,
+            '_get_order_status': engine.monitor._get_order_status,
+        }
+        if was_monitor_running:
+            await engine.monitor.stop()
+            print("[Batch Runner] Paused live monitor for batch testing")
+    
+    try:
+        for case in cases:
+            case_id = case.get("id")
+            symbol = case.get("symbol")
+            ross_pnl = case.get("ross_pnl", 0) or 0
             
-            if bar_count == 0:
+            print(f"\n[Batch Runner] === Running: {case_id} ({symbol}) ===")
+            case_start = time.time()
+            
+            try:
+                # Step 1: Load test case (resets broker, wires callbacks, sets clock)
+                load_result = await load_historical_test_case(case_id)
+                bar_count = load_result.get("bar_count", 0)
+                
+                if bar_count == 0:
+                    results.append({
+                        "case_id": case_id,
+                        "symbol": symbol,
+                        "date": case.get("trade_date"),
+                        "bar_count": 0,
+                        "trades": [],
+                        "total_pnl": 0,
+                        "ross_pnl": ross_pnl,
+                        "delta": -ross_pnl,
+                        "error": "No bars loaded",
+                    })
+                    continue
+                
+                # Step 2: Step through all bars + 30 min EOD buffer (headless)
+                step_minutes = bar_count + 30
+                await step_clock(minutes=step_minutes, headless=True)
+                
+                # Step 2.5: Force-close any open positions at EOD (last bar's close price)
+                # step_clock doesn't trigger the scheduler's run_simulation_eod,
+                # so positions may remain open after replay completes.
+                broker = get_warrior_sim_broker()
+                if broker:
+                    eod_positions = broker.get_positions()
+                    for pos in eod_positions:
+                        pos_symbol = pos.get("symbol")
+                        pos_qty = pos.get("qty", 0)
+                        if pos_qty > 0:
+                            broker.sell_position(pos_symbol, pos_qty)
+                            print(f"[Batch Runner] EOD close: {pos_symbol} x{pos_qty}")
+                
+                # Step 3: Collect P&L from MockBroker
+                broker = get_warrior_sim_broker()
+                if broker is None:
+                    results.append({
+                        "case_id": case_id,
+                        "symbol": symbol,
+                        "date": case.get("trade_date"),
+                        "bar_count": bar_count,
+                        "trades": [],
+                        "total_pnl": 0,
+                        "ross_pnl": ross_pnl,
+                        "delta": -ross_pnl,
+                        "error": "MockBroker not available after replay",
+                    })
+                    continue
+                
+                # Extract trade details from broker orders
+                orders = broker.get_orders()
+                trades = []
+                
+                # Match buy/sell order pairs to build trade records
+                buy_orders = [o for o in orders if o["side"] == "buy" and o["status"] == "filled"]
+                sell_orders = [o for o in orders if o["side"] == "sell" and o["status"] == "filled"]
+                
+                for buy in buy_orders:
+                    # Find matching sell(s) for this buy
+                    matching_sells = [s for s in sell_orders if s["symbol"] == buy["symbol"]]
+                    
+                    if matching_sells:
+                        # Use first matching sell for this entry
+                        sell = matching_sells[0]
+                        sell_orders.remove(sell)  # Don't reuse
+                        
+                        entry_price = buy.get("avg_fill_price", 0)
+                        exit_price = sell.get("avg_fill_price", 0)
+                        shares = buy.get("filled_qty", 0)
+                        pnl = (exit_price - entry_price) * shares
+                        
+                        trades.append({
+                            "entry_price": round(entry_price, 2) if entry_price else 0,
+                            "exit_price": round(exit_price, 2) if exit_price else 0,
+                            "shares": shares,
+                            "pnl": round(pnl, 2),
+                            "entry_trigger": buy.get("entry_trigger"),
+                            "exit_mode": buy.get("exit_mode"),
+                            "entry_time": buy.get("sim_time"),
+                            "exit_time": sell.get("sim_time"),
+                        })
+                    else:
+                        # Buy with no matching sell — still open position
+                        entry_price = buy.get("avg_fill_price", 0)
+                        shares = buy.get("filled_qty", 0)
+                        trades.append({
+                            "entry_price": round(entry_price, 2) if entry_price else 0,
+                            "exit_price": None,
+                            "shares": shares,
+                            "pnl": 0,
+                            "entry_trigger": buy.get("entry_trigger"),
+                            "exit_mode": buy.get("exit_mode"),
+                            "entry_time": buy.get("sim_time"),
+                            "exit_time": None,
+                            "note": "position_still_open",
+                        })
+                
+                # Get account-level P&L
+                account = broker.get_account()
+                realized_pnl = round(account.get("realized_pnl", 0), 2)
+                unrealized_pnl = round(account.get("unrealized_pnl", 0), 2)
+                total_pnl = round(realized_pnl + unrealized_pnl, 2)
+                
+                case_time = round(time.time() - case_start, 2)
+                
+                results.append({
+                    "case_id": case_id,
+                    "symbol": symbol,
+                    "date": case.get("trade_date"),
+                    "bar_count": bar_count,
+                    "trades": trades,
+                    "realized_pnl": realized_pnl,
+                    "unrealized_pnl": unrealized_pnl,
+                    "total_pnl": total_pnl,
+                    "ross_pnl": ross_pnl,
+                    "delta": round(total_pnl - ross_pnl, 2),
+                    "max_capital_deployed": round(account.get("max_capital_deployed", 0), 2),
+                    "max_shares_held": account.get("max_shares_held", 0),
+                    "runtime_seconds": case_time,
+                })
+                
+                print(f"[Batch Runner] {case_id}: P&L=${total_pnl:+.2f} (Ross: ${ross_pnl:+.2f}, Δ=${total_pnl - ross_pnl:+.2f}) [{case_time}s]")
+                
+            except Exception as e:
+                print(f"[Batch Runner] ERROR on {case_id}: {e}")
                 results.append({
                     "case_id": case_id,
                     "symbol": symbol,
@@ -1344,130 +1500,19 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                     "total_pnl": 0,
                     "ross_pnl": ross_pnl,
                     "delta": -ross_pnl,
-                    "error": "No bars loaded",
+                    "error": str(e),
                 })
-                continue
+    
+    finally:
+        # Restore live monitor callbacks and restart if it was running
+        if engine and engine.monitor and saved_callbacks:
+            for attr, callback in saved_callbacks.items():
+                setattr(engine.monitor, attr, callback)
+            print("[Batch Runner] Restored live monitor callbacks")
             
-            # Step 2: Step through all bars + 30 min EOD buffer (headless)
-            step_minutes = bar_count + 30
-            await step_clock(minutes=step_minutes, headless=True)
-            
-            # Step 2.5: Force-close any open positions at EOD (last bar's close price)
-            # step_clock doesn't trigger the scheduler's run_simulation_eod,
-            # so positions may remain open after replay completes.
-            broker = get_warrior_sim_broker()
-            if broker:
-                eod_positions = broker.get_positions()
-                for pos in eod_positions:
-                    pos_symbol = pos.get("symbol")
-                    pos_qty = pos.get("qty", 0)
-                    if pos_qty > 0:
-                        broker.sell_position(pos_symbol, pos_qty)
-                        print(f"[Batch Runner] EOD close: {pos_symbol} x{pos_qty}")
-            
-            # Step 3: Collect P&L from MockBroker
-            broker = get_warrior_sim_broker()
-            if broker is None:
-                results.append({
-                    "case_id": case_id,
-                    "symbol": symbol,
-                    "date": case.get("trade_date"),
-                    "bar_count": bar_count,
-                    "trades": [],
-                    "total_pnl": 0,
-                    "ross_pnl": ross_pnl,
-                    "delta": -ross_pnl,
-                    "error": "MockBroker not available after replay",
-                })
-                continue
-            
-            # Extract trade details from broker orders
-            orders = broker.get_orders()
-            trades = []
-            
-            # Match buy/sell order pairs to build trade records
-            buy_orders = [o for o in orders if o["side"] == "buy" and o["status"] == "filled"]
-            sell_orders = [o for o in orders if o["side"] == "sell" and o["status"] == "filled"]
-            
-            for buy in buy_orders:
-                # Find matching sell(s) for this buy
-                matching_sells = [s for s in sell_orders if s["symbol"] == buy["symbol"]]
-                
-                if matching_sells:
-                    # Use first matching sell for this entry
-                    sell = matching_sells[0]
-                    sell_orders.remove(sell)  # Don't reuse
-                    
-                    entry_price = buy.get("avg_fill_price", 0)
-                    exit_price = sell.get("avg_fill_price", 0)
-                    shares = buy.get("filled_qty", 0)
-                    pnl = (exit_price - entry_price) * shares
-                    
-                    trades.append({
-                        "entry_price": round(entry_price, 2) if entry_price else 0,
-                        "exit_price": round(exit_price, 2) if exit_price else 0,
-                        "shares": shares,
-                        "pnl": round(pnl, 2),
-                        "entry_trigger": buy.get("entry_trigger"),
-                        "exit_mode": buy.get("exit_mode"),
-                        "entry_time": buy.get("sim_time"),
-                        "exit_time": sell.get("sim_time"),
-                    })
-                else:
-                    # Buy with no matching sell — still open position
-                    entry_price = buy.get("avg_fill_price", 0)
-                    shares = buy.get("filled_qty", 0)
-                    trades.append({
-                        "entry_price": round(entry_price, 2) if entry_price else 0,
-                        "exit_price": None,
-                        "shares": shares,
-                        "pnl": 0,
-                        "entry_trigger": buy.get("entry_trigger"),
-                        "exit_mode": buy.get("exit_mode"),
-                        "entry_time": buy.get("sim_time"),
-                        "exit_time": None,
-                        "note": "position_still_open",
-                    })
-            
-            # Get account-level P&L
-            account = broker.get_account()
-            realized_pnl = round(account.get("realized_pnl", 0), 2)
-            unrealized_pnl = round(account.get("unrealized_pnl", 0), 2)
-            total_pnl = round(realized_pnl + unrealized_pnl, 2)
-            
-            case_time = round(time.time() - case_start, 2)
-            
-            results.append({
-                "case_id": case_id,
-                "symbol": symbol,
-                "date": case.get("trade_date"),
-                "bar_count": bar_count,
-                "trades": trades,
-                "realized_pnl": realized_pnl,
-                "unrealized_pnl": unrealized_pnl,
-                "total_pnl": total_pnl,
-                "ross_pnl": ross_pnl,
-                "delta": round(total_pnl - ross_pnl, 2),
-                "max_capital_deployed": round(account.get("max_capital_deployed", 0), 2),
-                "max_shares_held": account.get("max_shares_held", 0),
-                "runtime_seconds": case_time,
-            })
-            
-            print(f"[Batch Runner] {case_id}: P&L=${total_pnl:+.2f} (Ross: ${ross_pnl:+.2f}, Δ=${total_pnl - ross_pnl:+.2f}) [{case_time}s]")
-            
-        except Exception as e:
-            print(f"[Batch Runner] ERROR on {case_id}: {e}")
-            results.append({
-                "case_id": case_id,
-                "symbol": symbol,
-                "date": case.get("trade_date"),
-                "bar_count": 0,
-                "trades": [],
-                "total_pnl": 0,
-                "ross_pnl": ross_pnl,
-                "delta": -ross_pnl,
-                "error": str(e),
-            })
+            if was_monitor_running:
+                await engine.monitor.start()
+                print("[Batch Runner] Resumed live monitor after batch testing")
     
     # Build summary
     total_runtime = round(time.time() - start_time, 2)
