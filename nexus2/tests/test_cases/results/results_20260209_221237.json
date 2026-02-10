@@ -1,0 +1,1172 @@
+{
+  "results": [
+    {
+      "case_id": "ross_lcfy_20260116",
+      "symbol": "LCFY",
+      "date": "2026-01-16",
+      "bar_count": 652,
+      "trades": [
+        {
+          "entry_price": 5.92,
+          "exit_price": 6.15,
+          "shares": 85,
+          "pnl": 19.55,
+          "entry_trigger": "dip_for_level",
+          "exit_mode": "base_hit",
+          "entry_time": "09:31",
+          "exit_time": "09:39"
+        },
+        {
+          "entry_price": 5.92,
+          "exit_price": 4.38,
+          "shares": 42,
+          "pnl": -64.68,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:31",
+          "exit_time": "15:32"
+        },
+        {
+          "entry_price": 4.96,
+          "exit_price": null,
+          "shares": 555,
+          "pnl": 0,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "14:59",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 4.96,
+          "exit_price": null,
+          "shares": 277,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "14:59",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": -453.35,
+      "unrealized_pnl": 0,
+      "total_pnl": -453.35,
+      "ross_pnl": 10456.94,
+      "delta": -10910.29,
+      "max_capital_deployed": 4126.72,
+      "max_shares_held": 832,
+      "runtime_seconds": 20.88
+    },
+    {
+      "case_id": "ross_pavm_20260121",
+      "symbol": "PAVM",
+      "date": "2026-01-21",
+      "bar_count": 683,
+      "trades": [
+        {
+          "entry_price": 21.41,
+          "exit_price": 22.56,
+          "shares": 16,
+          "pnl": 18.32,
+          "entry_trigger": "pmh_break",
+          "exit_mode": "base_hit",
+          "entry_time": "09:35",
+          "exit_time": "09:36"
+        },
+        {
+          "entry_price": 21.41,
+          "exit_price": 22.89,
+          "shares": 8,
+          "pnl": 11.8,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:35",
+          "exit_time": "09:49"
+        },
+        {
+          "entry_price": 22.7,
+          "exit_price": 21.45,
+          "shares": 15,
+          "pnl": -18.75,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "09:46",
+          "exit_time": "10:28"
+        },
+        {
+          "entry_price": 22.7,
+          "exit_price": 24.21,
+          "shares": 7,
+          "pnl": 10.57,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:46",
+          "exit_time": "10:55"
+        },
+        {
+          "entry_price": 20.83,
+          "exit_price": null,
+          "shares": 66,
+          "pnl": 0,
+          "entry_trigger": "pmh_break",
+          "exit_mode": "base_hit",
+          "entry_time": "10:21",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 20.83,
+          "exit_price": null,
+          "shares": 33,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "10:21",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.45,
+          "exit_price": null,
+          "shares": 57,
+          "pnl": 0,
+          "entry_trigger": "pmh_break",
+          "exit_mode": "base_hit",
+          "entry_time": "10:28",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.71,
+          "exit_price": null,
+          "shares": 74,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:38",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.71,
+          "exit_price": null,
+          "shares": 37,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "10:38",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.72,
+          "exit_price": null,
+          "shares": 74,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:54",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 554.49,
+      "unrealized_pnl": 0,
+      "total_pnl": 554.49,
+      "ross_pnl": 43950.0,
+      "delta": -43395.51,
+      "max_capital_deployed": 4017.4,
+      "max_shares_held": 185,
+      "runtime_seconds": 16.69
+    },
+    {
+      "case_id": "ross_batl_20260126",
+      "symbol": "BATL",
+      "date": "2026-01-26",
+      "bar_count": 960,
+      "trades": [
+        {
+          "entry_price": 2.71,
+          "exit_price": 2.93,
+          "shares": 203,
+          "pnl": 44.66,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "04:09",
+          "exit_time": "04:10"
+        },
+        {
+          "entry_price": 2.71,
+          "exit_price": 3.77,
+          "shares": 101,
+          "pnl": 107.06,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "04:09",
+          "exit_time": "04:48"
+        },
+        {
+          "entry_price": 3.55,
+          "exit_price": 4.32,
+          "shares": 120,
+          "pnl": 92.4,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "04:45",
+          "exit_time": "06:38"
+        },
+        {
+          "entry_price": 3.55,
+          "exit_price": 6.01,
+          "shares": 60,
+          "pnl": 147.58,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "04:45",
+          "exit_time": "08:42"
+        },
+        {
+          "entry_price": 4.05,
+          "exit_price": 3.1,
+          "shares": 208,
+          "pnl": -197.6,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "05:26",
+          "exit_time": "19:30"
+        },
+        {
+          "entry_price": 4.05,
+          "exit_price": null,
+          "shares": 104,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "05:26",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 4.2,
+          "exit_price": null,
+          "shares": 250,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "05:31",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 5.67,
+          "exit_price": null,
+          "shares": 64,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:28",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 5.67,
+          "exit_price": null,
+          "shares": 32,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:28",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 5.74,
+          "exit_price": null,
+          "shares": 63,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:37",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 6.28,
+          "exit_price": null,
+          "shares": 56,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:52",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 6.28,
+          "exit_price": null,
+          "shares": 28,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:52",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 6.54,
+          "exit_price": null,
+          "shares": 52,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "09:29",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": -175.79,
+      "unrealized_pnl": 0,
+      "total_pnl": -175.79,
+      "ross_pnl": 0,
+      "delta": -175.79,
+      "max_capital_deployed": 2313.6,
+      "max_shares_held": 562,
+      "runtime_seconds": 38.46
+    },
+    {
+      "case_id": "ross_rolr_20260114",
+      "symbol": "ROLR",
+      "date": "2026-01-14",
+      "bar_count": 653,
+      "trades": [
+        {
+          "entry_price": 3.83,
+          "exit_price": 5.32,
+          "shares": 367,
+          "pnl": 546.83,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:09",
+          "exit_time": "08:18"
+        },
+        {
+          "entry_price": 3.83,
+          "exit_price": 17.63,
+          "shares": 183,
+          "pnl": 2525.4,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:09",
+          "exit_time": "11:27"
+        },
+        {
+          "entry_price": 3.89,
+          "exit_price": 22.37,
+          "shares": 337,
+          "pnl": 6227.63,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:15",
+          "exit_time": "12:36"
+        },
+        {
+          "entry_price": 17.77,
+          "exit_price": 24.43,
+          "shares": 17,
+          "pnl": 113.22,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "08:33",
+          "exit_time": "13:20"
+        },
+        {
+          "entry_price": 17.77,
+          "exit_price": 31.04,
+          "shares": 8,
+          "pnl": 106.16,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:33",
+          "exit_time": "13:35"
+        },
+        {
+          "entry_price": 16.07,
+          "exit_price": null,
+          "shares": 66,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:47",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.83,
+          "exit_price": null,
+          "shares": 34,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "12:34",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 21.83,
+          "exit_price": null,
+          "shares": 17,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "12:34",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 23.9,
+          "exit_price": null,
+          "shares": 41,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "13:19",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 23.9,
+          "exit_price": null,
+          "shares": 20,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "13:19",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 29.18,
+          "exit_price": null,
+          "shares": 28,
+          "pnl": 0,
+          "entry_trigger": "micro_pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "13:34",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 29.18,
+          "exit_price": null,
+          "shares": 14,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "13:34",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 1538.73,
+      "unrealized_pnl": 0,
+      "total_pnl": 1538.73,
+      "ross_pnl": 85000.0,
+      "delta": -83461.27,
+      "max_capital_deployed": 3417.53,
+      "max_shares_held": 887,
+      "runtime_seconds": 23.55
+    },
+    {
+      "case_id": "ross_bnkk_20260115",
+      "symbol": "BNKK",
+      "date": "2026-01-15",
+      "bar_count": 680,
+      "trades": [
+        {
+          "entry_price": 4.92,
+          "exit_price": 5.14,
+          "shares": 115,
+          "pnl": 24.72,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "08:15",
+          "exit_time": "08:17"
+        },
+        {
+          "entry_price": 4.92,
+          "exit_price": 4.67,
+          "shares": 57,
+          "pnl": -14.42,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:15",
+          "exit_time": "10:34"
+        },
+        {
+          "entry_price": 4.46,
+          "exit_price": null,
+          "shares": 450,
+          "pnl": 0,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "10:31",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 4.46,
+          "exit_price": null,
+          "shares": 225,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "10:31",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 176.7,
+      "unrealized_pnl": 0,
+      "total_pnl": 176.7,
+      "ross_pnl": 15000.0,
+      "delta": -14823.3,
+      "max_capital_deployed": 3013.88,
+      "max_shares_held": 675,
+      "runtime_seconds": 23.83
+    },
+    {
+      "case_id": "ross_tnmg_20260116",
+      "symbol": "TNMG",
+      "date": "2026-01-16",
+      "bar_count": 695,
+      "trades": [
+        {
+          "entry_price": 3.43,
+          "exit_price": 3.26,
+          "shares": 206,
+          "pnl": -35.02,
+          "entry_trigger": "dip_for_level",
+          "exit_mode": "home_run",
+          "entry_time": "06:57",
+          "exit_time": "18:25"
+        },
+        {
+          "entry_price": 3.43,
+          "exit_price": null,
+          "shares": 103,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "06:57",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": -52.53,
+      "unrealized_pnl": 0,
+      "total_pnl": -52.53,
+      "ross_pnl": 2102.25,
+      "delta": -2154.78,
+      "max_capital_deployed": 1059.87,
+      "max_shares_held": 309,
+      "runtime_seconds": 19.69
+    },
+    {
+      "case_id": "ross_gwav_20260116",
+      "symbol": "GWAV",
+      "date": "2026-01-16",
+      "bar_count": 540,
+      "trades": [
+        {
+          "entry_price": 5.47,
+          "exit_price": 7.34,
+          "shares": 337,
+          "pnl": 630.19,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "home_run",
+          "entry_time": "07:00",
+          "exit_time": "07:10"
+        },
+        {
+          "entry_price": 5.47,
+          "exit_price": 6.1,
+          "shares": 168,
+          "pnl": 105.84,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "07:00",
+          "exit_time": "07:14"
+        }
+      ],
+      "realized_pnl": 630.63,
+      "unrealized_pnl": 0,
+      "total_pnl": 630.63,
+      "ross_pnl": 3974.68,
+      "delta": -3344.05,
+      "max_capital_deployed": 2762.35,
+      "max_shares_held": 505,
+      "runtime_seconds": 129.18
+    },
+    {
+      "case_id": "ross_vero_20260116",
+      "symbol": "VERO",
+      "date": "2026-01-16",
+      "bar_count": 960,
+      "trades": [
+        {
+          "entry_price": 3.41,
+          "exit_price": 3.7,
+          "shares": 438,
+          "pnl": 127.02,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "05:31",
+          "exit_time": "05:34"
+        },
+        {
+          "entry_price": 3.41,
+          "exit_price": 7.51,
+          "shares": 219,
+          "pnl": 897.88,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "05:31",
+          "exit_time": "10:07"
+        },
+        {
+          "entry_price": 7.26,
+          "exit_price": 7.73,
+          "shares": 130,
+          "pnl": 60.97,
+          "entry_trigger": "pmh_break",
+          "exit_mode": "base_hit",
+          "entry_time": "09:38",
+          "exit_time": "10:36"
+        },
+        {
+          "entry_price": 7.26,
+          "exit_price": 10.14,
+          "shares": 65,
+          "pnl": 187.14,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:38",
+          "exit_time": "11:00"
+        },
+        {
+          "entry_price": 7.12,
+          "exit_price": 8.29,
+          "shares": 141,
+          "pnl": 164.96,
+          "entry_trigger": "pmh_break",
+          "exit_mode": "base_hit",
+          "entry_time": "09:39",
+          "exit_time": "15:40"
+        },
+        {
+          "entry_price": 7.48,
+          "exit_price": 5.91,
+          "shares": 131,
+          "pnl": -205.67,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:17",
+          "exit_time": "19:57"
+        },
+        {
+          "entry_price": 7.48,
+          "exit_price": null,
+          "shares": 65,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "10:17",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 7.47,
+          "exit_price": null,
+          "shares": 245,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:32",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 9.39,
+          "exit_price": null,
+          "shares": 88,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "10:58",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 9.39,
+          "exit_price": null,
+          "shares": 44,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "10:58",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 11.99,
+          "exit_price": null,
+          "shares": 50,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "11:19",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 11.99,
+          "exit_price": null,
+          "shares": 25,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "11:19",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 11.91,
+          "exit_price": null,
+          "shares": 51,
+          "pnl": 0,
+          "entry_trigger": "pullback",
+          "exit_mode": "base_hit",
+          "entry_time": "11:21",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 5.91,
+          "exit_price": null,
+          "shares": 846,
+          "pnl": 0,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "19:57",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 43.04,
+      "unrealized_pnl": 0,
+      "total_pnl": 43.04,
+      "ross_pnl": 3484.88,
+      "delta": -3441.84,
+      "max_capital_deployed": 4999.86,
+      "max_shares_held": 846,
+      "runtime_seconds": 215.42
+    },
+    {
+      "case_id": "ross_gri_20260128",
+      "symbol": "GRI",
+      "date": "2026-01-28",
+      "bar_count": 563,
+      "trades": [
+        {
+          "entry_price": 5.91,
+          "exit_price": 6.68,
+          "shares": 174,
+          "pnl": 134.28,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "08:45",
+          "exit_time": "08:45"
+        },
+        {
+          "entry_price": 5.91,
+          "exit_price": null,
+          "shares": 87,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:45",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 201.41,
+      "unrealized_pnl": 0,
+      "total_pnl": 201.41,
+      "ross_pnl": 31599.98,
+      "delta": -31398.57,
+      "max_capital_deployed": 1542.51,
+      "max_shares_held": 261,
+      "runtime_seconds": 90.5
+    },
+    {
+      "case_id": "ross_lrhc_20260130",
+      "symbol": "LRHC",
+      "date": "2026-01-30",
+      "bar_count": 903,
+      "trades": [],
+      "realized_pnl": 0.0,
+      "unrealized_pnl": 0,
+      "total_pnl": 0.0,
+      "ross_pnl": 31076.62,
+      "delta": -31076.62,
+      "max_capital_deployed": 0.0,
+      "max_shares_held": 0,
+      "runtime_seconds": 25.34
+    },
+    {
+      "case_id": "ross_hind_20260127",
+      "symbol": "HIND",
+      "date": "2026-01-27",
+      "bar_count": 612,
+      "trades": [
+        {
+          "entry_price": 3.18,
+          "exit_price": 3.37,
+          "shares": 752,
+          "pnl": 141.23,
+          "entry_trigger": "dip_for_level",
+          "exit_mode": "base_hit",
+          "entry_time": "13:03",
+          "exit_time": "13:33"
+        },
+        {
+          "entry_price": 3.18,
+          "exit_price": null,
+          "shares": 376,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "13:03",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 211.84,
+      "unrealized_pnl": 0,
+      "total_pnl": 211.84,
+      "ross_pnl": 55252.51,
+      "delta": -55040.67,
+      "max_capital_deployed": 3589.52,
+      "max_shares_held": 1128,
+      "runtime_seconds": 21.95
+    },
+    {
+      "case_id": "ross_dcx_20260129",
+      "symbol": "DCX",
+      "date": "2026-01-29",
+      "bar_count": 668,
+      "trades": [
+        {
+          "entry_price": 4.41,
+          "exit_price": 4.59,
+          "shares": 438,
+          "pnl": 78.84,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "09:37",
+          "exit_time": "13:07"
+        },
+        {
+          "entry_price": 4.41,
+          "exit_price": 4.62,
+          "shares": 219,
+          "pnl": 45.99,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:37",
+          "exit_time": "13:32"
+        },
+        {
+          "entry_price": 4.41,
+          "exit_price": 3.69,
+          "shares": 1014,
+          "pnl": -726.43,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "13:24",
+          "exit_time": "18:06"
+        },
+        {
+          "entry_price": 4.41,
+          "exit_price": null,
+          "shares": 507,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "13:24",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 3.91,
+          "exit_price": null,
+          "shares": 352,
+          "pnl": 0,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "18:02",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 3.91,
+          "exit_price": null,
+          "shares": 176,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "18:02",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 326.99,
+      "unrealized_pnl": 0,
+      "total_pnl": 326.99,
+      "ross_pnl": 6268.28,
+      "delta": -5941.29,
+      "max_capital_deployed": 6702.13,
+      "max_shares_held": 1521,
+      "runtime_seconds": 22.99
+    },
+    {
+      "case_id": "ross_npt_20260203",
+      "symbol": "NPT",
+      "date": "2026-02-03",
+      "bar_count": 656,
+      "trades": [
+        {
+          "entry_price": 7.72,
+          "exit_price": 21.02,
+          "shares": 117,
+          "pnl": 1556.1,
+          "entry_trigger": "dip_for_level",
+          "exit_mode": "home_run",
+          "entry_time": "07:47",
+          "exit_time": "08:05"
+        },
+        {
+          "entry_price": 7.72,
+          "exit_price": 14.26,
+          "shares": 58,
+          "pnl": 379.32,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "07:47",
+          "exit_time": "08:08"
+        }
+      ],
+      "realized_pnl": 1732.62,
+      "unrealized_pnl": 0,
+      "total_pnl": 1732.62,
+      "ross_pnl": 81000.0,
+      "delta": -79267.38,
+      "max_capital_deployed": 1351.0,
+      "max_shares_held": 175,
+      "runtime_seconds": 15.88
+    },
+    {
+      "case_id": "ross_bnai_20260205",
+      "symbol": "BNAI",
+      "date": "2026-02-05",
+      "bar_count": 778,
+      "trades": [
+        {
+          "entry_price": 24.46,
+          "exit_price": 25.91,
+          "shares": 31,
+          "pnl": 44.95,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "06:14",
+          "exit_time": "06:15"
+        },
+        {
+          "entry_price": 24.46,
+          "exit_price": 32.31,
+          "shares": 15,
+          "pnl": 117.75,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "06:14",
+          "exit_time": "08:03"
+        },
+        {
+          "entry_price": 31.96,
+          "exit_price": 29.78,
+          "shares": 57,
+          "pnl": -124.12,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "08:00",
+          "exit_time": "09:58"
+        },
+        {
+          "entry_price": 31.96,
+          "exit_price": null,
+          "shares": 28,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:00",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 28.96,
+          "exit_price": null,
+          "shares": 72,
+          "pnl": 0,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "09:50",
+          "exit_time": null,
+          "note": "position_still_open"
+        },
+        {
+          "entry_price": 28.96,
+          "exit_price": null,
+          "shares": 36,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "09:50",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 185.26,
+      "unrealized_pnl": 0,
+      "total_pnl": 185.26,
+      "ross_pnl": -7900.0,
+      "delta": 8085.26,
+      "max_capital_deployed": 3127.68,
+      "max_shares_held": 108,
+      "runtime_seconds": 22.45
+    },
+    {
+      "case_id": "ross_rnaz_20260205",
+      "symbol": "RNAZ",
+      "date": "2026-02-05",
+      "bar_count": 529,
+      "trades": [
+        {
+          "entry_price": 10.44,
+          "exit_price": 10.75,
+          "shares": 203,
+          "pnl": 62.93,
+          "entry_trigger": "whole_half_anticipatory",
+          "exit_mode": "base_hit",
+          "entry_time": "12:11",
+          "exit_time": "12:12"
+        },
+        {
+          "entry_price": 10.44,
+          "exit_price": null,
+          "shares": 101,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "12:11",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 94.24,
+      "unrealized_pnl": 0,
+      "total_pnl": 94.24,
+      "ross_pnl": 1700.0,
+      "delta": -1605.76,
+      "max_capital_deployed": 3173.76,
+      "max_shares_held": 304,
+      "runtime_seconds": 16.48
+    },
+    {
+      "case_id": "ross_rvsn_20260205",
+      "symbol": "RVSN",
+      "date": "2026-02-05",
+      "bar_count": 243,
+      "trades": [],
+      "realized_pnl": 0.0,
+      "unrealized_pnl": 0,
+      "total_pnl": 0.0,
+      "ross_pnl": -3000.0,
+      "delta": 3000.0,
+      "max_capital_deployed": 0.0,
+      "max_shares_held": 0,
+      "runtime_seconds": 9.01
+    },
+    {
+      "case_id": "ross_flye_20260206",
+      "symbol": "FLYE",
+      "date": "2026-02-06",
+      "bar_count": 466,
+      "trades": [],
+      "realized_pnl": 0.0,
+      "unrealized_pnl": 0,
+      "total_pnl": 0.0,
+      "ross_pnl": 4800.0,
+      "delta": -4800.0,
+      "max_capital_deployed": 0.0,
+      "max_shares_held": 0,
+      "runtime_seconds": 12.9
+    },
+    {
+      "case_id": "ross_rdib_20260206",
+      "symbol": "RDIB",
+      "date": "2026-02-06",
+      "bar_count": 348,
+      "trades": [
+        {
+          "entry_price": 18.83,
+          "exit_price": 19.22,
+          "shares": 47,
+          "pnl": 18.64,
+          "entry_trigger": "vwap_break",
+          "exit_mode": "base_hit",
+          "entry_time": "08:27",
+          "exit_time": "08:28"
+        },
+        {
+          "entry_price": 18.83,
+          "exit_price": null,
+          "shares": 23,
+          "pnl": 0,
+          "entry_trigger": null,
+          "exit_mode": null,
+          "entry_time": "08:27",
+          "exit_time": null,
+          "note": "position_still_open"
+        }
+      ],
+      "realized_pnl": 27.76,
+      "unrealized_pnl": 0,
+      "total_pnl": 27.76,
+      "ross_pnl": 700.0,
+      "delta": -672.24,
+      "max_capital_deployed": 1317.83,
+      "max_shares_held": 70,
+      "runtime_seconds": 15.5
+    }
+  ],
+  "summary": {
+    "total_pnl": 5042.04,
+    "total_ross_pnl": 365466.14,
+    "delta": -360424.1,
+    "cases_run": 18,
+    "cases_profitable": 12,
+    "cases_with_errors": 0,
+    "runtime_seconds": 740.81
+  }
+}

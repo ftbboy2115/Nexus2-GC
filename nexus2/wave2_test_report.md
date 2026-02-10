@@ -1,97 +1,36 @@
-# Wave 2 Test Report
+# Wave 2 Test Report: Phases 3-4
 
-**Date:** 2026-02-08  
-**Author:** Testing Specialist (Antigravity)  
-**Scope:** Automated tests for Wave 1 changes
-
----
-
-## Summary
-
-| Test Area | File | Tests | Result |
-|-----------|------|-------|--------|
-| ET→UTC Date Filters | `tests/api/test_data_routes.py` | 7 | ✅ 7 passed |
-| Mock Market Notes | `tests/api/test_warrior_notes.py` | 9 | ✅ 9 passed |
-| Scanner Caching | `tests/test_scanner_cache.py` | 6 | ✅ 6 passed |
-| **Total** | | **22** | **✅ 22 passed** |
+**Date:** 2026-02-10
+**Tester:** Testing Specialist (Claude)
+**Scope:** Tests T7-T13 for SimContext, step_clock_ctx, warrior_db isolation
+**Audit Ref:** `wave2_audit_report.md` (all 10 claims PASS)
 
 ---
 
-## Test Area 1: ET→UTC Date Filter Conversion
+## New Tests
 
-**Class:** `TestDateFilterETConversion` (added to existing `test_data_routes.py`)
+| # | Test | Result |
+|---|------|:------:|
+| T7 | SimContext isolated components | ✅ PASS |
+| T8 | SimContext clock isolation | ✅ PASS |
+| T9 | step_clock_ctx advances clock | ✅ PASS |
+| T10 | WAL mode enabled | ✅ PASS |
+| T11 | batch_run_id column exists | ✅ PASS |
+| T12 | log_warrior_entry accepts batch_run_id | ✅ PASS |
+| T13 | purge_batch_trades exists | ✅ PASS |
 
-| Test | Status |
-|------|--------|
-| `test_warrior_trades_date_filter_accepts_dates` | ✅ PASS |
-| `test_nac_trades_date_filter_accepts_dates` | ✅ PASS |
-| `test_quote_audits_date_filter_accepts_dates` | ✅ PASS |
-| `test_warrior_trades_invalid_date_raises_error` | ✅ PASS |
-| `test_warrior_trades_single_date_filter` | ✅ PASS |
-| `test_nac_trades_single_date_filter` | ✅ PASS |
-| `test_quote_audits_single_date_filter` | ✅ PASS |
+## Wave 1 Tests (Regression)
 
----
+| # | Test | Result |
+|---|------|:------:|
+| T1-T6 | All Wave 1 tests | ✅ PASS |
 
-## Test Area 2: Mock Market Notes Endpoints
+## Issues Found During Testing
 
-**File:** `tests/api/test_warrior_notes.py` (new)
+| # | Issue | Severity | Resolution |
+|---|-------|----------|------------|
+| 1 | `sim_context.py` L13: wrong import path (`domain.automation` → `domain.scanner`) | **Blocker** | Fixed by Clay before test run |
 
-| Test | Status |
-|------|--------|
-| `test_get_notes_returns_200` | ✅ PASS |
-| `test_get_notes_missing_case_returns_empty` | ✅ PASS |
-| `test_put_notes_saves_and_retrieves` | ✅ PASS |
-| `test_put_notes_overwrites_existing` | ✅ PASS |
-| `test_global_notepad_roundtrip` | ✅ PASS |
-| `test_put_test_case_notes_rejects_invalid_field` | ✅ PASS |
-| `test_put_test_case_notes_rejects_missing_case` | ✅ PASS |
-| `test_put_test_case_notes_accepts_notes_field` | ✅ PASS |
-| `test_put_test_case_notes_accepts_description_field` | ✅ PASS |
+## Verdict
 
----
-
-## Test Area 3: Scanner Caching
-
-**File:** `tests/test_scanner_cache.py` (new)
-
-| Test | Status |
-|------|--------|
-| `test_cached_returns_fresh_value` | ✅ PASS |
-| `test_cached_returns_cached_on_second_call` | ✅ PASS |
-| `test_cached_expires_after_ttl` | ✅ PASS |
-| `test_cached_different_keys_independent` | ✅ PASS |
-| `test_cached_stores_none_values` | ✅ PASS |
-| `test_cache_starts_empty` | ✅ PASS |
-
----
-
-## Bug Found
-
-### Invalid Date Parameter Handling
-
-- **Location:** `nexus2/api/routes/data_routes.py` (lines ~910-920)
-- **Severity:** Low
-- **Expected:** Invalid `date_from`/`date_to` values (e.g., `not-a-date`) should return 400 or be ignored
-- **Actual:** Unhandled `ValueError` from `strptime` causes 500 Internal Server Error
-- **Strategy:** Warrior / all Data Explorer endpoints
-- **Evidence:** `test_warrior_trades_invalid_date_raises_error` captures `ValueError`
-- **Recommendation:** Wrap `strptime` calls in try/except, return 400 or skip the filter
-
----
-
-## Run Commands
-
-```powershell
-# Scanner cache tests
-python -m pytest nexus2/tests/test_scanner_cache.py -v --timeout=30
-
-# Mock Market notes tests
-python -m pytest nexus2/tests/api/test_warrior_notes.py -v --timeout=30
-
-# Date filter tests
-python -m pytest nexus2/tests/api/test_data_routes.py::TestDateFilterETConversion -v --timeout=30
-
-# All Wave 2 tests
-python -m pytest nexus2/tests/api/test_data_routes.py::TestDateFilterETConversion nexus2/tests/api/test_warrior_notes.py nexus2/tests/test_scanner_cache.py -v --timeout=30
-```
+**ALL 13 PASS** (2.92s). Wave 2 complete, ready for Wave 3.
