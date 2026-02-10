@@ -357,42 +357,48 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # SANITY CHECK: Validate quote against last candle close
             # Catches phantom inflated quotes (e.g., BATL $5.14 vs actual $4.80)
             # that cause bad limit prices and immediate losses
-            # SKIP in historical replay with 10s bars: sub-minute prices are accurate,
-            # comparing to 1-min close causes false positives
-            skip_phantom_check = False
-            try:
-                from nexus2.adapters.simulation.historical_bar_loader import get_historical_bar_loader
-                loader = get_historical_bar_loader()
-                if loader.has_10s_bars(symbol):
-                    skip_phantom_check = True  # Using high-fidelity 10s historical data
-            except Exception:
-                pass
-            
-            if engine._get_intraday_bars and not skip_phantom_check:
+            # SKIP entirely in simulation mode: prices come from historical bar data,
+            # phantom quotes are impossible, and this check hits global singletons
+            is_sim = getattr(engine.config, 'sim_only', False)
+            if not is_sim:
+                skip_phantom_check = False
                 try:
-                    sanity_candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
-                    if sanity_candles and len(sanity_candles) >= 1:
-                        last_close = Decimal(str(sanity_candles[-1].close))
-                        if last_close > 0:
-                            deviation_pct = abs((current_price - last_close) / last_close * 100)
-                            if deviation_pct > 5:
-                                logger.warning(
-                                    f"[Warrior Entry] {symbol}: PHANTOM QUOTE DETECTED! "
-                                    f"Quote ${current_price:.2f} vs candle close ${last_close:.2f} "
-                                    f"({deviation_pct:.1f}% deviation) - using candle close"
-                                )
-                                current_price = last_close
-                except Exception as e:
-                    logger.debug(f"[Warrior Entry] {symbol}: Candle sanity check failed: {e}")
+                    from nexus2.adapters.simulation.historical_bar_loader import get_historical_bar_loader
+                    loader = get_historical_bar_loader()
+                    if loader.has_10s_bars(symbol):
+                        skip_phantom_check = True  # Using high-fidelity 10s historical data
+                except Exception:
+                    pass
+                
+                if engine._get_intraday_bars and not skip_phantom_check:
+                    try:
+                        sanity_candles = await engine._get_intraday_bars(symbol, "1min", limit=2)
+                        if sanity_candles and len(sanity_candles) >= 1:
+                            last_close = Decimal(str(sanity_candles[-1].close))
+                            if last_close > 0:
+                                deviation_pct = abs((current_price - last_close) / last_close * 100)
+                                if deviation_pct > 5:
+                                    logger.warning(
+                                        f"[Warrior Entry] {symbol}: PHANTOM QUOTE DETECTED! "
+                                        f"Quote ${current_price:.2f} vs candle close ${last_close:.2f} "
+                                        f"({deviation_pct:.1f}% deviation) - using candle close"
+                                    )
+                                    current_price = last_close
+                    except Exception as e:
+                        logger.debug(f"[Warrior Entry] {symbol}: Candle sanity check failed: {e}")
             
             # Track intraday high for pullback detection
             if watched.recent_high is None or current_price > watched.recent_high:
                 watched.recent_high = current_price
             
             # UPDATE VWAP/EMA TRACKING for dynamic_score (TOP_PICK_ONLY uses this)
-            # Calculate once per cycle, reuse for entry guard later
-            # REFACTORED: Extracted to warrior_entry_helpers.py
-            await update_candidate_technicals(engine, watched, current_price)
+            # Throttled to 60s intervals: with 10s stepping, technicals recompute 6x/min.
+            # MACD/EMA/VWAP don't meaningfully change in 10 seconds.
+            import time as _time
+            _last = getattr(watched, '_last_tech_update_ts', 0)
+            if _time.time() - _last >= 60:
+                await update_candidate_technicals(engine, watched, current_price)
+                watched._last_tech_update_ts = _time.time()
             
             # EXTENDED STOCK DETECTION: Use micro-pullback for stocks already up >100%
             # Ross methodology: Don't wait for PMH break on highly extended stocks

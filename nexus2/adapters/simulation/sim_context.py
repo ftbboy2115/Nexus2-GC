@@ -429,15 +429,129 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
     # Can't call engine.start() because it spawns background tasks we don't want
     ctx.engine.state = WarriorEngineState.RUNNING
 
+    # Attach per-context clock to engine for concurrent safety (Phase 7 Task 3)
+    # warrior_entry_helpers.update_candidate_technicals uses getattr(engine, '_sim_clock')
+    ctx.engine._sim_clock = ctx.clock
+
     log.info(f"[{case_id}] Loaded {len(data.bars)} bars for {symbol}, engine=RUNNING, all callbacks wired")
     return len(data.bars)
 
 
+
+def _run_case_sync(case_tuple: tuple) -> dict:
+    """
+    Run a single test case in a separate process.
+    Must be a top-level function (picklable for ProcessPoolExecutor).
+    Receives (case_dict, yaml_data_dict) as a tuple.
+    """
+    import asyncio
+    case, yaml_data = case_tuple
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_run_single_case_async(case, yaml_data))
+    finally:
+        loop.close()
+
+
+async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
+    """Async wrapper that creates SimContext and runs one case in an isolated process."""
+    import time
+    case_id = case.get("id", "unknown")
+    symbol = case.get("symbol", "")
+    ross_pnl = case.get("ross_pnl", 0) or 0
+    start = time.time()
+
+    try:
+        # Create isolated context (fresh process = no shared state)
+        ctx = SimContext.create(case_id)
+
+        # Set ContextVars for this task
+        from nexus2.adapters.simulation.sim_clock import set_simulation_clock_ctx
+        from nexus2.domain.automation.trade_event_service import set_sim_mode_ctx
+        set_simulation_clock_ctx(ctx.clock)
+        set_sim_mode_ctx(True)
+
+        # Load test case into context
+        bar_count = load_case_into_context(ctx, case, yaml_data)
+
+        if bar_count == 0:
+            return {
+                "case_id": case_id, "symbol": symbol,
+                "date": case.get("trade_date"),
+                "bar_count": 0, "trades": [], "total_pnl": 0,
+                "ross_pnl": ross_pnl, "delta": -ross_pnl,
+                "error": "No bars loaded",
+            }
+
+        # Step through all bars + 30 min EOD buffer
+        await step_clock_ctx(ctx, bar_count + 30)
+
+        # EOD close: force-close any open positions
+        eod_positions = ctx.broker.get_positions()
+        for pos in eod_positions:
+            pos_symbol = pos.get("symbol")
+            pos_qty = pos.get("qty", 0)
+            if pos_qty > 0:
+                eod_price = ctx.broker._current_prices.get(
+                    pos_symbol, pos.get("avg_price", 0)
+                )
+                ctx.broker.sell_position(pos_symbol, pos_qty)
+
+                # Log EOD exit to warrior_db
+                try:
+                    from nexus2.db.warrior_db import (
+                        get_warrior_trade_by_symbol, log_warrior_exit
+                    )
+                    trade = get_warrior_trade_by_symbol(pos_symbol)
+                    if trade:
+                        log_warrior_exit(
+                            trade_id=trade["id"],
+                            exit_price=float(eod_price),
+                            exit_reason="eod_close",
+                            quantity_exited=pos_qty,
+                        )
+                except Exception as e:
+                    log.warning(f"[{case_id}] warrior_db EOD exit failed: {e}")
+
+        # Collect results
+        account = ctx.broker.get_account()
+        realized = round(account.get("realized_pnl", 0), 2)
+        unrealized = round(account.get("unrealized_pnl", 0), 2)
+        total_pnl = round(realized + unrealized, 2)
+        case_time = round(time.time() - start, 2)
+
+        return {
+            "case_id": case_id, "symbol": symbol,
+            "date": case.get("trade_date"),
+            "bar_count": bar_count,
+            "trades": [],
+            "realized_pnl": realized,
+            "unrealized_pnl": unrealized,
+            "total_pnl": total_pnl,
+            "ross_pnl": ross_pnl,
+            "delta": round(total_pnl - ross_pnl, 2),
+            "runtime_seconds": case_time,
+        }
+    except Exception as e:
+        log.error(f"[{case_id}] Failed: {e}")
+        return {
+            "case_id": case_id, "symbol": symbol,
+            "date": case.get("trade_date"),
+            "bar_count": 0, "trades": [], "total_pnl": 0,
+            "ross_pnl": ross_pnl, "delta": -ross_pnl,
+            "error": str(e),
+            "runtime_seconds": round(time.time() - start, 2),
+        }
+
+
 async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
     """
-    Run all test cases concurrently using asyncio.gather().
+    Run all test cases in parallel using ProcessPoolExecutor.
 
-    Each case gets its own SimContext with fully isolated state.
+    Each case runs in a separate process for true CPU parallelism,
+    bypassing the GIL. Each process creates its own event loop and
+    SimContext with fully isolated state.
 
     Args:
         cases: List of test case dicts from YAML
@@ -447,101 +561,18 @@ async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
         List of result dicts, one per case
     """
     import asyncio
-    import time
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor
 
-    async def run_single_case(case: dict) -> dict:
-        case_id = case.get("id")
-        symbol = case.get("symbol")
-        ross_pnl = case.get("ross_pnl", 0) or 0
+    loop = asyncio.get_event_loop()
+    max_workers = min(len(cases), multiprocessing.cpu_count(), 8)
 
-        case_start = time.time()
-
-        try:
-            # Create isolated context
-            ctx = SimContext.create(case_id)
-
-            # Set ContextVars for this task
-            from nexus2.adapters.simulation.sim_clock import set_simulation_clock_ctx
-            from nexus2.domain.automation.trade_event_service import set_sim_mode_ctx
-            set_simulation_clock_ctx(ctx.clock)
-            set_sim_mode_ctx(True)
-
-            # Load test case into context
-            bar_count = load_case_into_context(ctx, case, yaml_data)
-
-            if bar_count == 0:
-                return {
-                    "case_id": case_id, "symbol": symbol,
-                    "date": case.get("trade_date"),
-                    "bar_count": 0, "trades": [], "total_pnl": 0,
-                    "ross_pnl": ross_pnl, "delta": -ross_pnl,
-                    "error": "No bars loaded",
-                }
-
-            # Step through all bars + 30 min EOD buffer
-            await step_clock_ctx(ctx, bar_count + 30)
-
-            # EOD close: force-close any open positions
-            eod_positions = ctx.broker.get_positions()
-            for pos in eod_positions:
-                pos_symbol = pos.get("symbol")
-                pos_qty = pos.get("qty", 0)
-                if pos_qty > 0:
-                    eod_price = ctx.broker._current_prices.get(
-                        pos_symbol, pos.get("avg_price", 0)
-                    )
-                    ctx.broker.sell_position(pos_symbol, pos_qty)
-
-                    # Log EOD exit to warrior_db
-                    try:
-                        from nexus2.db.warrior_db import (
-                            get_warrior_trade_by_symbol, log_warrior_exit
-                        )
-                        trade = get_warrior_trade_by_symbol(pos_symbol)
-                        if trade:
-                            log_warrior_exit(
-                                trade_id=trade["id"],
-                                exit_price=float(eod_price),
-                                exit_reason="eod_close",
-                                quantity_exited=pos_qty,
-                            )
-                    except Exception as e:
-                        log.warning(f"[{case_id}] warrior_db EOD exit failed: {e}")
-
-            # Collect results
-            account = ctx.broker.get_account()
-            realized = round(account.get("realized_pnl", 0), 2)
-            unrealized = round(account.get("unrealized_pnl", 0), 2)
-            total_pnl = round(realized + unrealized, 2)
-            case_time = round(time.time() - case_start, 2)
-
-            return {
-                "case_id": case_id, "symbol": symbol,
-                "date": case.get("trade_date"),
-                "bar_count": bar_count,
-                "trades": [],
-                "realized_pnl": realized,
-                "unrealized_pnl": unrealized,
-                "total_pnl": total_pnl,
-                "ross_pnl": ross_pnl,
-                "delta": round(total_pnl - ross_pnl, 2),
-                "runtime_seconds": case_time,
-            }
-
-        except Exception as e:
-            log.error(f"[{case_id}] Failed: {e}")
-            return {
-                "case_id": case_id, "symbol": symbol,
-                "date": case.get("trade_date"),
-                "bar_count": 0, "trades": [], "total_pnl": 0,
-                "ross_pnl": ross_pnl, "delta": -ross_pnl,
-                "error": str(e),
-            }
-
-    results = await asyncio.gather(
-        *[run_single_case(c) for c in cases],
-        return_exceptions=True,
-    )
+    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        futures = [
+            loop.run_in_executor(pool, _run_case_sync, (case, yaml_data))
+            for case in cases
+        ]
+        results = await asyncio.gather(*futures, return_exceptions=True)
 
     # Convert exceptions to error dicts
     final = []

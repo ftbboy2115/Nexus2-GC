@@ -292,9 +292,12 @@ async def update_candidate_technicals(
         # Get current simulation time to determine session phase
         current_hour = None
         try:
-            from nexus2.adapters.simulation.sim_clock import get_sim_clock
-            clock = get_sim_clock()
-            if clock.is_active():
+            # Use engine's per-context clock (concurrent sim), fall back to global (live)
+            clock = getattr(engine, '_sim_clock', None)
+            if clock is None:
+                from nexus2.adapters.simulation.sim_clock import get_sim_clock
+                clock = get_sim_clock()
+            if clock and clock.is_active():
                 time_str = clock.get_time_string()  # "HH:MM"
                 current_hour = int(time_str.split(':')[0])
         except Exception:
