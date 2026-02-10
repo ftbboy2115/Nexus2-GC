@@ -808,6 +808,83 @@ test_cases:
     notes: "Light volume VWAP reclaim. Ross took small position after prior big move (similar to KELB/TCGL pattern from previous day). Quick $700, 'nothing crazy'. Transcript: 2026-02-06_transcript_Z5D8nhEtzOo.md"
 
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 9, 2026)
+  # Transcript: 2026-02-09_transcript_gOi55ufRFDc.md
+  # Day total: +$4,700 (gave back half of gains)
+  # --------------------------------------------------------------------------
+
+  - id: ross_mnts_20260209
+    symbol: MNTS
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$9,000 - NASA Partnership, Dip Buy to $9"
+    trade_date: "2026-02-09"
+    intraday_file: "intraday/ross_mnts_20260209.json"
+    ross_pnl: 9000.00  # Per-trade P&L on MNTS (day total was +$4,700)
+    ross_entry_time: "08:00"  # Hit scanner at 8am, entry on dip ~$8
+    premarket_data:
+      gap_percent: 20.6
+      premarket_high: 9.35
+      previous_close: 6.49
+      float_shares: 5000000
+      catalyst: "partnership"  # NASA partnership announcement
+    expected:
+      entry_near: 8.00  # Bought dip for curl back through $8
+      stop_near: 7.50
+    notes: "MNTS hit scanner at $8.18 after 8am with NASA partnership news. Ross bought dip, rode to $9. Multiple trades: dip buy, retest of $9, couldn't break higher. $9 was resistance, got heavy sellers. Transcript: 2026-02-09_transcript_gOi55ufRFDc.md"
+
+  - id: ross_sxtc_20260209
+    symbol: SXTC
+    setup_type: momentum_scalp
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$5,000 - No News Chinese Stock, Reverse Split Bounce Fail"
+    trade_date: "2026-02-09"
+    intraday_file: "intraday/ross_sxtc_20260209.json"
+    ross_pnl: -5000.00  # Combined: -$1,500 (trade 1) + -$3,500 (trade 2)
+    premarket_data:
+      gap_percent: -5.7
+      premarket_high: 4.71
+      previous_close: 3.28
+      float_shares: 5000000
+      catalyst: "momentum"  # No news, Chinese stock, recent reverse split
+    expected:
+      entry_near: 4.50  # Break of $4.50 attempt
+      stop_near: 4.10
+    notes: "B-quality setup (4/5 pillars - no news). Chinese stock with recent reverse split. Fast rate of change $3.20→$4.20. Trade 1: entry $4.50, flushed to $4.10 → -$1,500. Trade 2: dip buy at $4, sold off hard → -$3,500. Ross called it a lesson in overtrading. Transcript: 2026-02-09_transcript_gOi55ufRFDc.md"
+
+  - id: ross_uoka_20260209
+    symbol: UOKA
+    setup_type: halt_dip
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$858 - Continuation from Friday, Halt Dip Buy"
+    trade_date: "2026-02-09"
+    intraday_file: "intraday/ross_uoka_20260209.json"
+    ross_pnl: 858.00
+    premarket_data:
+      gap_percent: 34.4
+      premarket_high: 2.74
+      previous_close: 1.31
+      float_shares: 5000000
+      catalyst: "momentum"  # Continuation from Friday
+    expected:
+      entry_near: 4.00  # Dip buy under $4 after halts
+      stop_near: 3.50
+    notes: "Continuation from Friday. Premarket $2.74, ripped into double halt at open to $4+. Ross bought dip under $4 for break over $4, couldn't get higher. Data lag/level 2 froze, sold blind for +$858. 'Not a great return relative to risk.' Transcript: 2026-02-09_transcript_gOi55ufRFDc.md"
+
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -816,7 +893,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   3 (WLSR, WWNR, test_pmh_breakout)
-# POLYGON_DATA:               22 (PAVM, ROLR, BNKK, GRI, LRHC, HIND, DCX, NPT, BNAI, RNAZ, RVSN, FLYE, RDIB, LCFY, TNMG, GWAV, VERO, BATL_0126, BATL_0127 counted once)
+# POLYGON_DATA:               25 (+ MNTS, SXTC, UOKA from 2026-02-09)
 # ==========================================================================
 
 

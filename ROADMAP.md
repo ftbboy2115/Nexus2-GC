@@ -152,6 +152,12 @@ Last updated: 2026-02-03 (Pattern Competition validated)
   - Load real intraday data from JSON test case files
   - Playback controls: step, play, pause, speed (1x/2x/5x/10x)
   - Price updates tied to SimulationClock
+- [ ] **Concurrent Batch Runner** — Run test cases in parallel for ~15x speedup
+  - **Problem:** Sequential execution = ~31s/case × N cases = 12+ min per batch
+  - **Refactor:** Replace global singletons with instance-based `SimContext` (MockBroker, Engine, Clock, BarLoader per case)
+  - **Execution:** `asyncio.gather()` across all cases → limited by longest single case (~35s total)
+  - **Hard parts:** WarriorEngine/Monitor coupled to `get_engine()` singleton, warrior_db needs `batch_run_id` tagging
+  - **Estimated effort:** 3-5 days
 - [ ] **Low-Float Intraday Bars Gap** — Alpaca/FMP return no bars for illiquid stocks in pre-market (Jan 26)
   - **Observed:** LRHC, CISS (810%+ gap, 65x+ RVOL) passed scanner but entry logic stuck on "not enough candles"
   - **Root Cause:** Both Alpaca and FMP return `null`/empty for intraday bars on ultra-low-float stocks

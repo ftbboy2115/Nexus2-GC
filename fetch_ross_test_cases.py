@@ -8,43 +8,12 @@ import os
 import sys
 import json
 from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Check for required packages
-try:
-    from alpaca.data.historical import StockHistoricalDataClient
-    from alpaca.data.requests import StockBarsRequest
-    from alpaca.data.timeframe import TimeFrame
-except ImportError:
-    print("Installing alpaca-py...")
-    os.system("pip install alpaca-py")
-    from alpaca.data.historical import StockHistoricalDataClient
-    from alpaca.data.requests import StockBarsRequest
-    from alpaca.data.timeframe import TimeFrame
-
 import pytz
-
-# Use nexus2 config for credentials
-from nexus2 import config as app_config
-
-# 
-# API_KEY = app_config.ALPACA_KEY
-# API_SECRET = app_config.ALPACA_SECRET
-
-# if not API_KEY or not API_SECRET:
-#     print(f"Error: Missing Alpaca credentials")
-#     print(f"  ALPACA_KEY: {'SET' if API_KEY else 'MISSING'}")
-#     print(f"  ALPACA_SECRET: {'SET' if API_SECRET else 'MISSING'}")
-#     exit(1)
-
-# print(f"Using Alpaca key: {API_KEY[:8]}...")
-
-# Initialize client
-# client = StockHistoricalDataClient(API_KEY, API_SECRET)
 
 ET = pytz.timezone("US/Eastern")
 
