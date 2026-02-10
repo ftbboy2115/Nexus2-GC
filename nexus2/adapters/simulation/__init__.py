@@ -29,7 +29,9 @@ from nexus2.adapters.simulation.historical_bar_loader import (
     get_historical_bar_loader,
     reset_historical_bar_loader,
 )
-from nexus2.adapters.simulation.sim_context import SimContext, step_clock_ctx
+from nexus2.adapters.simulation.sim_context import (
+    SimContext, step_clock_ctx, load_case_into_context, run_batch_concurrent
+)
 
 __all__ = [
     "SimulationClock",
@@ -49,5 +51,7 @@ __all__ = [
     "reset_historical_bar_loader",
     "SimContext",
     "step_clock_ctx",
+    "load_case_into_context",
+    "run_batch_concurrent",
 ]
 

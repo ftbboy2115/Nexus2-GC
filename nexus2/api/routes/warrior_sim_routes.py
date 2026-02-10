@@ -1562,6 +1562,57 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
     }
 
 
+@sim_router.post("/sim/run_batch_concurrent")
+async def run_batch_concurrent_endpoint(request: BatchTestRequest = BatchTestRequest()):
+    """
+    Run test cases CONCURRENTLY using isolated SimContexts.
+
+    Same interface as /sim/run_batch but uses asyncio.gather() for ~15x speedup.
+    Each case gets its own WarriorEngine, MockBroker, SimulationClock, and BarLoader.
+    """
+    start_time = time.time()
+
+    # Load cases from YAML (same logic as run_batch_tests L1310-1327)
+    base_path = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "test_cases")
+    yaml_path = os.path.join(base_path, "warrior_setups.yaml")
+
+    if not os.path.exists(yaml_path):
+        raise HTTPException(status_code=404, detail="warrior_setups.yaml not found")
+
+    with open(yaml_path, "r") as f:
+        yaml_data = yaml.safe_load(f)
+
+    all_cases = yaml_data.get("test_cases", [])
+    cases = [c for c in all_cases if c.get("status") == "POLYGON_DATA"]
+
+    if request.case_ids:
+        cases = [c for c in cases if c.get("id") in request.case_ids]
+
+    if not cases:
+        return {"results": [], "summary": {"total_pnl": 0, "cases_run": 0}, "error": "No cases"}
+
+    # Run concurrently
+    from nexus2.adapters.simulation.sim_context import run_batch_concurrent
+    results = await run_batch_concurrent(cases, yaml_data)
+
+    # Build summary (same format as run_batch_tests)
+    total_runtime = round(time.time() - start_time, 2)
+    total_pnl = sum(r.get("total_pnl", 0) for r in results)
+    total_ross_pnl = sum(r.get("ross_pnl", 0) for r in results)
+
+    return {
+        "results": results,
+        "summary": {
+            "total_pnl": round(total_pnl, 2),
+            "total_ross_pnl": round(total_ross_pnl, 2),
+            "delta": round(total_pnl - total_ross_pnl, 2),
+            "cases_run": len(results),
+            "cases_profitable": sum(1 for r in results if r.get("total_pnl", 0) > 0),
+            "cases_with_errors": sum(1 for r in results if "error" in r),
+            "runtime_seconds": total_runtime,
+        },
+    }
+
 
 @sim_router.get("/sim/orders")
 async def get_sim_orders():
