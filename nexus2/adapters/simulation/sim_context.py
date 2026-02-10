@@ -10,7 +10,7 @@ from nexus2.adapters.simulation.sim_clock import SimulationClock
 from nexus2.adapters.simulation.mock_broker import MockBroker
 from nexus2.adapters.simulation.historical_bar_loader import HistoricalBarLoader
 from nexus2.domain.automation.warrior_engine import WarriorEngine, WarriorEngineConfig
-from nexus2.domain.automation.warrior_scanner_service import WarriorScannerService
+from nexus2.domain.scanner.warrior_scanner_service import WarriorScannerService
 from nexus2.domain.automation.warrior_monitor import WarriorMonitor
 
 
