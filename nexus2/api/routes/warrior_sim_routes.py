@@ -286,6 +286,17 @@ async def enable_warrior_sim(request: WarriorSimEnableRequest = WarriorSimEnable
                 exit_reason=exit_reason.lower(),
                 pnl=signal.pnl_estimate if hasattr(signal, 'pnl_estimate') else None,
             )
+            # Log exit to warrior_db (completes the trade record)
+            try:
+                from nexus2.db.warrior_db import log_warrior_exit
+                log_warrior_exit(
+                    trade_id=signal.position_id,
+                    exit_price=float(signal.exit_price),
+                    exit_reason=exit_reason.lower(),
+                    quantity_exited=shares_to_sell,
+                )
+            except Exception as e:
+                print(f"[Sim] warrior_db exit log failed: {e}")
         return success
     
     async def sim_update_stop(position_id: str, new_stop_price):
@@ -1364,6 +1375,13 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
             print(f"\n[Batch Runner] === Running: {case_id} ({symbol}) ===")
             case_start = time.time()
             
+            # Purge sim trades from warrior_db to prevent bleed-over between cases
+            try:
+                from nexus2.db.warrior_db import purge_sim_trades
+                purge_sim_trades(confirm=True)
+            except Exception as e:
+                print(f"[Batch Runner] Failed to purge sim trades: {e}")
+            
             try:
                 # Step 1: Load test case (resets broker, wires callbacks, sets clock)
                 load_result = await load_historical_test_case(case_id)
@@ -1397,8 +1415,31 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                         pos_symbol = pos.get("symbol")
                         pos_qty = pos.get("qty", 0)
                         if pos_qty > 0:
+                            # Get exit price from broker's current price (same as sell_position uses)
+                            try:
+                                eod_exit_price = broker._current_prices.get(pos_symbol, pos.get("avg_price", 0))
+                            except Exception:
+                                eod_exit_price = pos.get("avg_price", 0)
+                            
                             broker.sell_position(pos_symbol, pos_qty)
-                            print(f"[Batch Runner] EOD close: {pos_symbol} x{pos_qty}")
+                            
+                            # Log to warrior_db
+                            try:
+                                from nexus2.db.warrior_db import get_warrior_trade_by_symbol, log_warrior_exit
+                                trade = get_warrior_trade_by_symbol(pos_symbol)
+                                if trade:
+                                    log_warrior_exit(
+                                        trade_id=trade["id"],
+                                        exit_price=float(eod_exit_price),
+                                        exit_reason="eod_close",
+                                        quantity_exited=pos_qty,
+                                    )
+                                else:
+                                    print(f"[Batch Runner] No warrior_db trade found for EOD close: {pos_symbol}")
+                            except Exception as e:
+                                print(f"[Batch Runner] warrior_db EOD exit log failed for {pos_symbol}: {e}")
+                            
+                            print(f"[Batch Runner] EOD close: {pos_symbol} x{pos_qty} @ ${eod_exit_price:.2f}")
                 
                 # Step 3: Collect P&L from MockBroker
                 broker = get_warrior_sim_broker()
@@ -1416,52 +1457,33 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                     })
                     continue
                 
-                # Extract trade details from broker orders
-                orders = broker.get_orders()
+                # Query completed trades from warrior_db (populated by Layer 1 fixes)
+                from nexus2.db.warrior_db import get_all_warrior_trades
+                warrior_result = get_all_warrior_trades(limit=100, status_filter="closed")
+                warrior_trades = warrior_result.get("trades", []) if isinstance(warrior_result, dict) else []
+                # Also include partial trades
+                warrior_partial = get_all_warrior_trades(limit=100, status_filter="partial")
+                partial_trades = warrior_partial.get("trades", []) if isinstance(warrior_partial, dict) else []
+                warrior_trades.extend(partial_trades)
+                
                 trades = []
-                
-                # Match buy/sell order pairs to build trade records
-                buy_orders = [o for o in orders if o["side"] == "buy" and o["status"] == "filled"]
-                sell_orders = [o for o in orders if o["side"] == "sell" and o["status"] == "filled"]
-                
-                for buy in buy_orders:
-                    # Find matching sell(s) for this buy
-                    matching_sells = [s for s in sell_orders if s["symbol"] == buy["symbol"]]
-                    
-                    if matching_sells:
-                        # Use first matching sell for this entry
-                        sell = matching_sells[0]
-                        sell_orders.remove(sell)  # Don't reuse
-                        
-                        entry_price = buy.get("avg_fill_price", 0)
-                        exit_price = sell.get("avg_fill_price", 0)
-                        shares = buy.get("filled_qty", 0)
-                        pnl = (exit_price - entry_price) * shares
+                for wt in warrior_trades:
+                    if wt.get("is_sim"):
+                        entry_price = float(wt.get("entry_price", 0))
+                        exit_price = float(wt.get("exit_price", 0)) if wt.get("exit_price") else None
+                        qty = wt.get("quantity", 0)
+                        pnl = float(wt.get("realized_pnl", 0))
                         
                         trades.append({
-                            "entry_price": round(entry_price, 2) if entry_price else 0,
-                            "exit_price": round(exit_price, 2) if exit_price else 0,
-                            "shares": shares,
+                            "entry_price": round(entry_price, 2),
+                            "exit_price": round(exit_price, 2) if exit_price else None,
+                            "shares": qty,
                             "pnl": round(pnl, 2),
-                            "entry_trigger": buy.get("entry_trigger"),
-                            "exit_mode": buy.get("exit_mode"),
-                            "entry_time": buy.get("sim_time"),
-                            "exit_time": sell.get("sim_time"),
-                        })
-                    else:
-                        # Buy with no matching sell — still open position
-                        entry_price = buy.get("avg_fill_price", 0)
-                        shares = buy.get("filled_qty", 0)
-                        trades.append({
-                            "entry_price": round(entry_price, 2) if entry_price else 0,
-                            "exit_price": None,
-                            "shares": shares,
-                            "pnl": 0,
-                            "entry_trigger": buy.get("entry_trigger"),
-                            "exit_mode": buy.get("exit_mode"),
-                            "entry_time": buy.get("sim_time"),
-                            "exit_time": None,
-                            "note": "position_still_open",
+                            "entry_trigger": wt.get("trigger_type"),
+                            "exit_mode": wt.get("exit_mode"),
+                            "exit_reason": wt.get("exit_reason"),
+                            "entry_time": wt.get("entry_time"),
+                            "exit_time": wt.get("exit_time"),
                         })
                 
                 # Get account-level P&L

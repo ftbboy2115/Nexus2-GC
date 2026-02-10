@@ -725,6 +725,50 @@ def get_warrior_trades_by_status(status: str) -> list:
         return [t.to_dict() for t in trades]
 
 
+def purge_sim_trades(confirm: bool = False, force: bool = False):
+    """
+    Delete all simulation trades from warrior_db.
+    
+    Called before each batch test case to prevent data bleed-over
+    between test cases.
+    
+    Args:
+        confirm: Must be True to execute. Prevents accidental calls.
+        force: If True, skip sim-mode check (for admin/cleanup use).
+               If False, requires MockBroker to be active.
+    
+    Returns:
+        Number of trades deleted, or 0 if blocked by safety checks
+    """
+    import logging
+    log = logging.getLogger(__name__)
+    
+    if not confirm:
+        log.warning(
+            "[Warrior DB] purge_sim_trades() called without confirm=True — BLOCKED"
+        )
+        return 0
+    
+    # SAFETY: Require sim mode unless force override
+    if not force:
+        try:
+            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+            if get_warrior_sim_broker() is None:
+                log.warning(
+                    "[Warrior DB] purge_sim_trades() BLOCKED — no MockBroker active. "
+                    "Pass force=True to override."
+                )
+                return 0
+        except ImportError:
+            return 0
+    
+    with get_warrior_session() as db:
+        count = db.query(WarriorTradeModel).filter_by(is_sim=True).delete()
+        db.commit()
+        log.warning(f"[Warrior DB] Purged {count} sim trades")
+        return count
+
+
 def close_orphaned_trades(active_symbols: set, exit_prices: dict = None):
     """
     Close trades in DB that are marked 'open' but not in the active broker positions.
