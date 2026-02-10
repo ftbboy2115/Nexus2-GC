@@ -903,23 +903,9 @@ async def load_historical_test_case(case_id: str):
                 print(f"[Historical Replay] Updated stop: {symbol} -> ${new_stop_price:.2f}")
             return success
         
-        engine.monitor.set_callbacks(
-            get_price=sim_get_price,
-            get_prices_batch=sim_get_prices_batch,
-            execute_exit=sim_execute_exit,
-            update_stop=sim_update_stop,
-            get_intraday_candles=sim_get_intraday_bars,
-            get_quote_with_spread=sim_get_price,  # Spread = price in sim (no real spreads)
-        )
-        # Directly clear callbacks that should be DISABLED in sim
-        # set_callbacks() ignores None values (by design, to preserve live callbacks)
-        # so we must clear these explicitly to prevent Alpaca API calls during replay
-        engine.monitor._get_broker_positions = None
-        engine.monitor._submit_scale_order = None
-        engine.monitor._get_order_status = None
-        
         # Wire _get_intraday_bars to use historical bar loader at simulated time
         # Without this, entry stop calculation uses real (stale) bars instead of simulated-time bars
+        # NOTE: Must be defined BEFORE set_callbacks() to avoid UnboundLocalError
         async def sim_get_intraday_bars(symbol: str, timeframe: str = "1min", limit: int = 50):
             """Return historical bars up to current simulated time.
             
@@ -959,6 +945,21 @@ async def load_historical_test_case(case_id: str):
             if bars and len(bars) > limit + 100:
                 bars = bars[-(limit + 50):]  # Keep extra buffer for indicator warmup
             return bars
+        
+        engine.monitor.set_callbacks(
+            get_price=sim_get_price,
+            get_prices_batch=sim_get_prices_batch,
+            execute_exit=sim_execute_exit,
+            update_stop=sim_update_stop,
+            get_intraday_candles=sim_get_intraday_bars,
+            get_quote_with_spread=sim_get_price,  # Spread = price in sim (no real spreads)
+        )
+        # Directly clear callbacks that should be DISABLED in sim
+        # set_callbacks() ignores None values (by design, to preserve live callbacks)
+        # so we must clear these explicitly to prevent Alpaca API calls during replay
+        engine.monitor._get_broker_positions = None
+        engine.monitor._submit_scale_order = None
+        engine.monitor._get_order_status = None
         
         engine._get_intraday_bars = sim_get_intraday_bars
 
