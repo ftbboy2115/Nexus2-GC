@@ -5,6 +5,7 @@ Controls simulated time for backtesting and simulation modes.
 Supports time acceleration for running multi-day simulations quickly.
 """
 
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 from typing import Optional
 import pytz
@@ -301,16 +302,27 @@ class SimulationClock:
         }
 
 
-# Global simulation clock (singleton for easy access)
+# ContextVar for per-task clock (concurrent batch mode)
+_sim_clock_ctx: ContextVar[Optional[SimulationClock]] = ContextVar('sim_clock', default=None)
+
+# Global simulation clock (singleton for interactive/live mode)
 _simulation_clock: Optional[SimulationClock] = None
 
 
 def get_simulation_clock() -> SimulationClock:
-    """Get or create global simulation clock."""
+    """Get simulation clock — checks ContextVar first, falls back to global singleton."""
+    ctx_clock = _sim_clock_ctx.get()
+    if ctx_clock is not None:
+        return ctx_clock
     global _simulation_clock
     if _simulation_clock is None:
         _simulation_clock = SimulationClock()
     return _simulation_clock
+
+
+def set_simulation_clock_ctx(clock: SimulationClock) -> None:
+    """Set per-task clock for concurrent batch mode."""
+    _sim_clock_ctx.set(clock)
 
 
 def reset_simulation_clock(start_time: Optional[datetime] = None, speed: float = 1.0) -> SimulationClock:
@@ -318,3 +330,4 @@ def reset_simulation_clock(start_time: Optional[datetime] = None, speed: float =
     global _simulation_clock
     _simulation_clock = SimulationClock(start_time=start_time, speed=speed)
     return _simulation_clock
+

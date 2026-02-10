@@ -11,7 +11,8 @@ Provides mock trading environment for backtesting and simulation:
 from nexus2.adapters.simulation.sim_clock import (
     SimulationClock, 
     get_simulation_clock, 
-    reset_simulation_clock
+    reset_simulation_clock,
+    set_simulation_clock_ctx,
 )
 from nexus2.adapters.simulation.mock_broker import MockBroker, MockBracketOrderResult
 from nexus2.adapters.simulation.mock_market_data import (
@@ -32,6 +33,7 @@ __all__ = [
     "SimulationClock",
     "get_simulation_clock",
     "reset_simulation_clock",
+    "set_simulation_clock_ctx",
     "MockBroker",
     "MockBracketOrderResult",
     "MockMarketData",

@@ -100,12 +100,13 @@ class MockBroker:
     Implements same interface as AlpacaBroker for seamless swapping.
     """
     
-    def __init__(self, initial_cash: float = 100_000.0):
+    def __init__(self, initial_cash: float = 100_000.0, clock: Optional['SimulationClock'] = None):
         """
         Initialize mock broker.
         
         Args:
             initial_cash: Starting cash balance
+            clock: Optional injected clock for concurrent batch mode
         """
         self._initial_cash = initial_cash
         self._cash = initial_cash
@@ -113,6 +114,7 @@ class MockBroker:
         self._positions: Dict[str, MockPosition] = {}
         self._current_prices: Dict[str, float] = {}
         self._realized_pnl: float = 0.0
+        self._clock = clock  # Injected clock for concurrent batch mode
         # Track peak capital usage metrics
         self._max_capital_deployed: float = 0.0  # Peak capital in positions
         self._max_shares_held: int = 0  # Peak total shares across all positions
@@ -438,9 +440,12 @@ class MockBroker:
         # Create SELL order record for GUI visibility
         # Get sim_time from simulation clock for GUI display
         try:
-            from nexus2.adapters.simulation import get_simulation_clock
-            sim_clock = get_simulation_clock()
-            sim_time = sim_clock.get_time_string() if sim_clock and sim_clock.current_time else None
+            if self._clock:
+                sim_time = self._clock.get_time_string()
+            else:
+                from nexus2.adapters.simulation import get_simulation_clock
+                sim_clock = get_simulation_clock()
+                sim_time = sim_clock.get_time_string() if sim_clock and sim_clock.current_time else None
         except ImportError:
             sim_time = None
         

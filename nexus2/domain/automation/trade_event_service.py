@@ -7,6 +7,7 @@ Supports both NAC (KK swing) and Warrior (day trading) strategies.
 
 import json
 import logging
+from contextvars import ContextVar
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -17,6 +18,24 @@ from nexus2.utils.time_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
+
+
+# ContextVar for sim mode detection (concurrent batch mode)
+_is_sim_mode: ContextVar[bool] = ContextVar('is_sim_mode', default=False)
+
+
+def set_sim_mode_ctx(value: bool) -> None:
+    """Set sim mode for current async task context."""
+    _is_sim_mode.set(value)
+
+
+def is_sim_mode() -> bool:
+    """Check if current context is in simulation mode."""
+    if _is_sim_mode.get():
+        return True
+    # Fallback to legacy global check
+    from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
+    return get_warrior_sim_broker() is not None
 
 
 class TradeEventService:
@@ -92,8 +111,7 @@ class TradeEventService:
         """
         try:
             # Skip external API calls during simulation mode (they block with time.sleep)
-            from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
-            if get_warrior_sim_broker() is not None:
+            if is_sim_mode():
                 return {"market_context": "skipped_sim_mode", "market_snapshot_time": now_utc().isoformat()}
             
             # Skip when FMP is rate limited to prevent blocking async event loop
@@ -226,8 +244,7 @@ class TradeEventService:
         Failures return empty dict (non-blocking).
         """
         # Skip during simulation to prevent blocking API calls
-        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
-        if get_warrior_sim_broker() is not None:
+        if is_sim_mode():
             return {}
         
         try:
@@ -494,8 +511,7 @@ class TradeEventService:
                                symbol_above_vwap, symbol_ema9, symbol_above_ema9, etc.
         """
         # Check if this is a Mock Market (simulation) trade
-        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
-        is_mock_market = get_warrior_sim_broker() is not None
+        is_mock_market = is_sim_mode()
         
         metadata = {
             "entry_price": str(entry_price),
@@ -774,7 +790,7 @@ class TradeEventService:
             metadata={
                 "add_price": str(add_price),
                 "shares_added": shares_added,
-                "is_mock_market": get_warrior_sim_broker() is not None,
+                "is_mock_market": is_sim_mode(),
             },
         )
     
@@ -800,8 +816,7 @@ class TradeEventService:
         event_type = event_type_map.get(exit_reason, self.WARRIOR_FULL_EXIT)
         
         # Check if this is a Mock Market (simulation) trade
-        from nexus2.api.routes.warrior_sim_routes import get_warrior_sim_broker
-        is_mock_market = get_warrior_sim_broker() is not None
+        is_mock_market = is_sim_mode()
         
         metadata = {
             "exit_price": str(exit_price),
