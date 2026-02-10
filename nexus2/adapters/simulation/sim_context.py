@@ -444,6 +444,19 @@ def _run_case_sync(case_tuple: tuple) -> dict:
     Must be a top-level function (picklable for ProcessPoolExecutor).
     Receives (case_dict, yaml_data_dict) as a tuple.
     """
+    # === PER-PROCESS IN-MEMORY DB (Phase 8) ===
+    # Replace shared warrior.db with ephemeral in-memory SQLite.
+    # Solves all 9 contamination vectors (F1-F7, A1a, A1b).
+    # Each process gets clean state; DB is destroyed on process exit.
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    import nexus2.db.warrior_db as wdb
+
+    mem_engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
+    wdb.warrior_engine = mem_engine
+    wdb.WarriorSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=mem_engine)
+    wdb.WarriorBase.metadata.create_all(bind=mem_engine)
+
     import asyncio
     case, yaml_data = case_tuple
     loop = asyncio.new_event_loop()
@@ -567,7 +580,7 @@ async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
     loop = asyncio.get_event_loop()
     max_workers = min(len(cases), multiprocessing.cpu_count(), 8)
 
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+    with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futures = [
             loop.run_in_executor(pool, _run_case_sync, (case, yaml_data))
             for case in cases
