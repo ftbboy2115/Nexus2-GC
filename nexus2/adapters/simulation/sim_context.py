@@ -11,6 +11,7 @@ from nexus2.adapters.simulation.sim_clock import SimulationClock
 from nexus2.adapters.simulation.mock_broker import MockBroker
 from nexus2.adapters.simulation.historical_bar_loader import HistoricalBarLoader
 from nexus2.domain.automation.warrior_engine import WarriorEngine, WarriorEngineConfig
+from nexus2.domain.automation.warrior_engine_types import WarriorEngineState
 from nexus2.domain.scanner.warrior_scanner_service import WarriorScannerService
 from nexus2.domain.automation.warrior_monitor import WarriorMonitor
 
@@ -424,7 +425,11 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
     # -- Callback 14: monitor._submit_scale_order (L1049) --
     ctx.engine.monitor._submit_scale_order = sim_submit_order_historical
 
-    log.info(f"[{case_id}] Loaded {len(data.bars)} bars for {symbol}, all callbacks wired")
+    # Set engine to RUNNING so step_clock_ctx triggers entry checks
+    # Can't call engine.start() because it spawns background tasks we don't want
+    ctx.engine.state = WarriorEngineState.RUNNING
+
+    log.info(f"[{case_id}] Loaded {len(data.bars)} bars for {symbol}, engine=RUNNING, all callbacks wired")
     return len(data.bars)
 
 
