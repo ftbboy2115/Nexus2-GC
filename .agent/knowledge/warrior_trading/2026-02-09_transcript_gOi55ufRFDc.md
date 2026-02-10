@@ -1,54 +1,90 @@
 # I Gave Back 1/2 My Gains...
 
-**Date:** 2026-02-09  
+**Date:** 2026-02-09 (Monday)  
 **Video:** [I Gave Back 1/2 My Gains...](https://www.youtube.com/watch?v=gOi55ufRFDc)  
-**Stock:** [TICKER]  
-**Result:** [P/L]
+**Stocks:** MNTS, SXTC, UOKA  
+**Result:** +$4,700 (was up ~$10K, gave back half)
 
 ---
 
 ## Trade Summary
 
-| Metric | Value |
-|--------|-------|
-| Entry | $ |
-| Peak | $ |
-| Catalyst | |
-| Setup Type | |
-| Exchange | |
-| Alert Time | |
+| Metric | MNTS | SXTC | UOKA |
+|--------|------|------|------|
+| Entry | ~$8.00 (dip buy) | ~$4.50 (break) | ~$4.00 (dip after halt) |
+| Peak | $9.00 | $4.70 | ~$4.00 |
+| P&L | +$9,000 | -$5,000 | +$858 |
+| Catalyst | NASA partnership | No news (Chinese, RS) | Continuation from Friday |
+| Setup Type | PMH / dip buy | Momentum scalp | Halt dip buy |
+| Alert Time | ~8:00 AM | During session | Pre-open (scanner) |
 
 ---
 
 ## Setup Criteria (Why He Took It)
 
-1. 
-2. 
-3. 
+### MNTS (Winner)
+1. Hit scanner at $8.18 after 8:00 AM with fresh news (NASA partnership)
+2. Clean dip-and-curl pattern back through $8
+3. Strong initial move from open — fast rate of change
+
+### SXTC (Loser)
+1. Fast rate of change ($3.20 → $4.20) — "what I look for"
+2. B-quality setup: 4 out of 5 pillars (missing news)
+3. Daily chart showed recent reverse split — potential bounce play
+
+### UOKA (Winner)
+1. Already on scanner from Friday — continuation play
+2. Ripped through two halts at open to $4+
+3. Dip buy under $4 after halts resolved
 
 ---
 
 ## Entry Pattern
 
+### MNTS
 ```
-[Describe the entry sequence]
+Scanner hit at $8.18 → dip to ~$8 → bought dip → curl back through $8
+→ rode to $9 → sold → re-bought dip → retest of $9 → couldn't break
+→ heavy sellers on ask → dropped to $8.40 → done
+```
+
+### SXTC
+```
+Scanner hit $3.80-$4.00 → watched climb to $4.40 → bought break of $4.50
+→ hit $4.70 → flushed to $4.10 → exited -$1,500
+→ re-entered at $4.00 dip → sold off hard → exited -$3,500
+```
+
+### UOKA
+```
+Premarket $2.74 → halted up at open → second halt up → pushed to $4+
+→ bought dip under $4 → data lag/Level 2 froze → sold blind → +$858
 ```
 
 ---
 
 ## Scaling Pattern (Adds & Exits)
 
-| Action | Price | Trigger |
-|--------|-------|---------|
-| Entry | $ | |
-| | | |
+| Action | Symbol | Price | Trigger |
+|--------|--------|-------|---------|
+| Entry | MNTS | ~$8.00 | Dip buy, curl through $8 |
+| Exit | MNTS | ~$9.00 | Took profit at resistance |
+| Re-entry | MNTS | dip | Retest of $9 |
+| Exit | MNTS | ~$8.80 | Couldn't break $9, heavy sellers |
+| Entry | SXTC | ~$4.50 | Break attempt |
+| Exit | SXTC | ~$4.10 | Flush, -$1,500 |
+| Re-entry | SXTC | ~$4.00 | Dip buy |
+| Exit | SXTC | <$4.00 | Sold off hard, -$3,500 |
+| Entry | UOKA | ~$4.00 | Post-halt dip buy |
+| Exit | UOKA | ~$4.00 | Sold blind (data lag), +$858 |
 
 ---
 
 ## Exit Criteria
 
-- 
-- 
+- MNTS: Heavy sellers appeared on ask at $9, stock dropped to $8.40 — over
+- SXTC: Both trades reversed immediately — no follow-through
+- UOKA: Data lag forced blind exit — couldn't see quotes
 
 ---
 
@@ -56,23 +92,33 @@
 
 | Stock | Reason |
 |-------|--------|
-| | |
+| UOKA (initially) | "Too cheap, I don't usually trade these" |
+| SXTC (self-critique) | "Chinese stock with no news" — only 4/5 pillars |
+| BRLS | "71M shares volume but chart isn't interesting" — not worth trading |
 
 ---
 
 ## Key Patterns Extracted
 
 ### Entry Rules
-1. 
+1. Dip-and-curl back through key level (MNTS through $8)
+2. Fast rate of change is a trigger even without news (SXTC)
+3. Post-halt dip buys are valid if stock halted up multiple times (UOKA)
 
 ### Add Rules
-1. 
+1. Re-entry on retest of highs (MNTS retest of $9)
+2. Dip buy after initial flush only if setup still valid
 
 ### Exit Rules
-1. 
+1. Heavy sellers on ask = trade is over (MNTS at $9)
+2. If it flushes immediately after entry, cut it (SXTC)
+3. Data lag = sell immediately, don't wait (UOKA)
 
 ### Avoid Rules
-1. 
+1. "No trade days are better than red days" — patience mandate
+2. B-quality setups (missing 1 pillar) should be sized down
+3. Don't average into losers (SXTC trade 2 was a mistake)
+4. "In the trenches" = be conservative, don't size up without a cushion
 
 ---
 
