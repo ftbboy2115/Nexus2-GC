@@ -6,6 +6,7 @@ Provides mock trading environment for backtesting and simulation:
 - MockBroker: Simulated order execution
 - MockMarketData: Historical data replay
 - HistoricalBarLoader: Load intraday bars from JSON test cases
+- SimContext: Isolated simulation environment for concurrent batch runs
 """
 
 from nexus2.adapters.simulation.sim_clock import (
@@ -28,6 +29,7 @@ from nexus2.adapters.simulation.historical_bar_loader import (
     get_historical_bar_loader,
     reset_historical_bar_loader,
 )
+from nexus2.adapters.simulation.sim_context import SimContext, step_clock_ctx
 
 __all__ = [
     "SimulationClock",
@@ -45,5 +47,7 @@ __all__ = [
     "IntradayData",
     "get_historical_bar_loader",
     "reset_historical_bar_loader",
+    "SimContext",
+    "step_clock_ctx",
 ]
 

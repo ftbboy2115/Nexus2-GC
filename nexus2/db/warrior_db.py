@@ -8,7 +8,7 @@ Keeps Warrior trades isolated from KK-style Nexus data.
 import os
 from pathlib import Path
 from datetime import datetime
-from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean, Text
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean, Text, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
@@ -28,6 +28,15 @@ warrior_engine = create_engine(
     connect_args={"check_same_thread": False},
     echo=False,
 )
+
+
+@event.listens_for(warrior_engine, "connect")
+def set_sqlite_wal(dbapi_conn, connection_record):
+    """Enable WAL mode for concurrent batch writes."""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
+
 
 # Session factory
 WarriorSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=warrior_engine)
@@ -88,6 +97,9 @@ class WarriorTradeModel(WarriorBase):
     # SIM vs LIVE tracking
     is_sim = Column(Boolean, default=False)  # True if trade was made in simulation mode
     
+    # Batch run tracking (concurrent batch runner)
+    batch_run_id = Column(String(36), nullable=True, index=True)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -121,6 +133,7 @@ class WarriorTradeModel(WarriorBase):
             "quote_source": self.quote_source,
             "exit_mode": self.exit_mode,
             "is_sim": self.is_sim,
+            "batch_run_id": self.batch_run_id,
             "created_at": format_iso_utc(self.created_at),
             "updated_at": format_iso_utc(self.updated_at),
         }
@@ -232,6 +245,12 @@ def init_warrior_db():
             conn.commit()
         except Exception:
             pass  # Column already exists
+        # Batch run ID column
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN batch_run_id TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -259,6 +278,8 @@ def log_warrior_entry(
     exit_mode: str = None,  # "base_hit" or "home_run"
     # SIM vs LIVE tracking
     is_sim: bool = False,
+    # Batch run tracking (concurrent batch runner)
+    batch_run_id: str = None,
 ):
     """Log a new Warrior trade entry with quote tracking."""
     # Default high_since_entry to entry_price if not provided
@@ -285,6 +306,7 @@ def log_warrior_entry(
             quote_source=quote_source,
             exit_mode=exit_mode,
             is_sim=is_sim,
+            batch_run_id=batch_run_id,
         )
         db.add(trade)
         db.commit()
@@ -766,6 +788,31 @@ def purge_sim_trades(confirm: bool = False, force: bool = False):
         count = db.query(WarriorTradeModel).filter_by(is_sim=True).delete()
         db.commit()
         log.warning(f"[Warrior DB] Purged {count} sim trades")
+        return count
+
+
+def purge_batch_trades(batch_run_id: str) -> int:
+    """
+    Delete all trades for a specific batch run.
+    
+    Used by the concurrent batch runner to clean up after each test case
+    without affecting other concurrent cases.
+    
+    Args:
+        batch_run_id: UUID of the batch run to purge
+        
+    Returns:
+        Number of trades deleted
+    """
+    import logging
+    log = logging.getLogger(__name__)
+    
+    with get_warrior_session() as db:
+        count = db.query(WarriorTradeModel).filter_by(
+            batch_run_id=batch_run_id
+        ).delete()
+        db.commit()
+        log.info(f"[Warrior DB] Purged {count} trades for batch {batch_run_id[:8]}")
         return count
 
 
