@@ -131,3 +131,19 @@ Prioritized list with:
 - **DO analyze cross-file relationships** (not just per-file metrics)
 - **DO document specific line numbers**
 - **DO identify extraction opportunities**
+
+---
+
+## Scope Boundary: Audit vs. Trace
+
+> [!WARNING]
+> Code auditing is for **structural problems** (architecture, duplication, coupling, contracts).
+> If the bug is about **runtime behavior** (state divergence, timing, "code looks correct but behaves wrong"), auditing alone may not find it.
+
+**Escalation rule:** If your audit produces multiple competing hypotheses without definitive proof, recommend the coordinator switch to **trace logging** (see `.agent/knowledge/debugging_methodology.md`).
+
+**Signs you should escalate:**
+- The code *looks* correct but produces wrong results
+- The bug involves singleton vs. instance identity at runtime
+- Two code paths should be equivalent but aren't
+- You've identified plausible causes but can't prove which one is active

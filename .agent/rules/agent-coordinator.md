@@ -158,6 +158,21 @@ This wasted significant agent effort debugging a non-existent route, including t
 
 ---
 
+## Debugging Methodology: Audit vs. Trace
+
+> [!IMPORTANT]
+> **Read `.agent/knowledge/debugging_methodology.md` before assigning debugging tasks.**
+> Code auditing and trace logging serve different purposes. Using the wrong approach wastes agent effort.
+
+| Problem Type | Approach | Example |
+|-------------|----------|---------|
+| **Structural** (wrong abstraction, missing boundary) | Code Audit | Dead code, layer violation, contract mismatch |
+| **Runtime** (divergent behavior, state bugs) | Trace Logging | Two runners producing different P&L |
+
+**Escalation Rule:** If two audit rounds produce competing hypotheses without definitive proof, **switch to trace logging**. Auditing narrows the search space; tracing provides empirical evidence.
+
+---
+
 ## 🚨 MANDATORY VALIDATION PROTOCOL 🚨
 
 > [!CAUTION]
