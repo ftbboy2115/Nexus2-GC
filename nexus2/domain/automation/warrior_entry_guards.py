@@ -74,11 +74,15 @@ async def check_entry_guards(
                     f"dynamic={watched.dynamic_score}) "
                     f"top pick is {top_pick.candidate.symbol} (dynamic={top_pick.dynamic_score})"
                 )
+                from nexus2.utils.trace_logger import trace
+                trace("GUARD_BLOCK", sym=symbol, guard="top_x", reason=reason[:80])
                 return False, reason
     
     # MIN SCORE CHECK
     candidate_score = getattr(watched.candidate, 'quality_score', 0) or 0
     if candidate_score < engine.config.min_entry_score:
+        from nexus2.utils.trace_logger import trace
+        trace("GUARD_BLOCK", sym=symbol, guard="min_score", score=candidate_score, min_req=engine.config.min_entry_score)
         return False, f"Score {candidate_score} < min {engine.config.min_entry_score}"
     
     # BLACKLIST CHECK
@@ -94,11 +98,15 @@ async def check_entry_guards(
     # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
     macd_result = await _check_macd_gate(engine, watched, current_price)
     if not macd_result[0]:
+        from nexus2.utils.trace_logger import trace
+        trace("GUARD_BLOCK", sym=symbol, guard="macd", reason=macd_result[1][:80])
         return macd_result
     
     # POSITION CHECKS (existing position, max scales, profit check)
     position_result = await _check_position_guards(engine, watched, current_price, trigger_type)
     if not position_result[0]:
+        from nexus2.utils.trace_logger import trace
+        trace("GUARD_BLOCK", sym=symbol, guard="position", reason=position_result[1][:80])
         return position_result
     
     # PENDING ENTRY CHECK
@@ -121,6 +129,8 @@ async def check_entry_guards(
             minutes_since_exit = (current_sim_time - exit_sim_time).total_seconds() / 60
             cooldown_minutes = engine.monitor._reentry_cooldown_minutes
             if minutes_since_exit < cooldown_minutes:
+                from nexus2.utils.trace_logger import trace
+                trace("GUARD_BLOCK", sym=symbol, guard="sim_cooldown", mins=round(minutes_since_exit, 1), cd=cooldown_minutes)
                 return False, f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
     
     # SPREAD FILTER
