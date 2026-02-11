@@ -53,7 +53,7 @@ class WarriorScannerSettingsRequest(BaseModel):
 
 class WarriorMonitorSettingsRequest(BaseModel):
     """Request to update monitor settings."""
-    mental_stop_cents: Optional[float] = Field(None, description="Mental stop in cents (default 15)")
+    mental_stop_cents: Optional[float] = Field(None, description="Mental stop in cents (default 50)")
     profit_target_r: Optional[float] = Field(None, description="Profit target R multiple (default 2.0)")
     profit_target_cents: Optional[float] = Field(None, description="Fixed cents target (0 = use R-based)")
     partial_exit_fraction: Optional[float] = Field(None, description="Partial exit % (default 0.5)")

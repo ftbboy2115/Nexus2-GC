@@ -43,6 +43,16 @@ class SimContext:
         monitor._recently_exited = {}
         monitor._recently_exited_sim_time = {}
         
+        # Load saved monitor settings so concurrent runner uses same config as sequential
+        # Without this, concurrent gets dataclass defaults while sequential gets saved settings
+        try:
+            from nexus2.db.warrior_monitor_settings import load_monitor_settings, apply_monitor_settings
+            saved_settings = load_monitor_settings()
+            if saved_settings:
+                apply_monitor_settings(monitor.settings, saved_settings)
+        except Exception as e:
+            print(f"[SimContext] Failed to load saved monitor settings, using defaults: {e}")
+        
         # Engine + Scanner per context (R3 fix)
         engine = WarriorEngine(
             config=WarriorEngineConfig(sim_only=True),
