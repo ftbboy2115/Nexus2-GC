@@ -56,6 +56,9 @@ async def check_entry_guards(
         (False, reason) if blocked
     """
     symbol = watched.candidate.symbol
+    from nexus2.domain.automation.trade_event_service import trade_event_service as tml
+    _trigger = trigger_type.value
+    _price = float(current_price)
     
     # TOP X PICKS - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
     if engine.config.top_x_picks > 0:
@@ -74,43 +77,43 @@ async def check_entry_guards(
                     f"dynamic={watched.dynamic_score}) "
                     f"top pick is {top_pick.candidate.symbol} (dynamic={top_pick.dynamic_score})"
                 )
-                from nexus2.utils.trace_logger import trace
-                trace("GUARD_BLOCK", sym=symbol, guard="top_x", reason=reason[:80])
+                tml.log_warrior_guard_block(symbol, "top_x", reason, _trigger, _price)
                 return False, reason
     
     # MIN SCORE CHECK
     candidate_score = getattr(watched.candidate, 'quality_score', 0) or 0
     if candidate_score < engine.config.min_entry_score:
-        from nexus2.utils.trace_logger import trace
-        trace("GUARD_BLOCK", sym=symbol, guard="min_score", score=candidate_score, min_req=engine.config.min_entry_score)
+        tml.log_warrior_guard_block(symbol, "min_score", f"Score {candidate_score} < min {engine.config.min_entry_score}", _trigger, _price)
         return False, f"Score {candidate_score} < min {engine.config.min_entry_score}"
     
     # BLACKLIST CHECK
     if symbol in engine.config.static_blacklist or symbol in engine._blacklist:
+        tml.log_warrior_guard_block(symbol, "blacklist", "Blacklisted", _trigger, _price)
         return False, "Blacklisted"
     
     # PER-SYMBOL FAIL LIMIT
     symbol_fails = engine._symbol_fails.get(symbol, 0)
     if symbol_fails >= engine._max_fails_per_symbol:
-        return False, f"Max fails hit - {symbol_fails} stops today (max={engine._max_fails_per_symbol})"
+        reason = f"Max fails hit - {symbol_fails} stops today (max={engine._max_fails_per_symbol})"
+        tml.log_warrior_guard_block(symbol, "fail_limit", reason, _trigger, _price)
+        return False, reason
     
     # MACD GATE - Block ALL entries when MACD is negative
     # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
     macd_result = await _check_macd_gate(engine, watched, current_price)
     if not macd_result[0]:
-        from nexus2.utils.trace_logger import trace
-        trace("GUARD_BLOCK", sym=symbol, guard="macd", reason=macd_result[1][:80])
+        tml.log_warrior_guard_block(symbol, "macd", macd_result[1], _trigger, _price)
         return macd_result
     
     # POSITION CHECKS (existing position, max scales, profit check)
     position_result = await _check_position_guards(engine, watched, current_price, trigger_type)
     if not position_result[0]:
-        from nexus2.utils.trace_logger import trace
-        trace("GUARD_BLOCK", sym=symbol, guard="position", reason=position_result[1][:80])
+        tml.log_warrior_guard_block(symbol, "position", position_result[1], _trigger, _price)
         return position_result
     
     # PENDING ENTRY CHECK
     if symbol in engine._pending_entries:
+        tml.log_warrior_guard_block(symbol, "pending_entry", "Pending buy order exists", _trigger, _price)
         return False, "Pending buy order exists"
     
     # RE-ENTRY COOLDOWN (LIVE mode)
@@ -129,9 +132,9 @@ async def check_entry_guards(
             minutes_since_exit = (current_sim_time - exit_sim_time).total_seconds() / 60
             cooldown_minutes = engine.monitor._reentry_cooldown_minutes
             if minutes_since_exit < cooldown_minutes:
-                from nexus2.utils.trace_logger import trace
-                trace("GUARD_BLOCK", sym=symbol, guard="sim_cooldown", mins=round(minutes_since_exit, 1), cd=cooldown_minutes)
-                return False, f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
+                reason = f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
+                tml.log_warrior_guard_block(symbol, "sim_cooldown", reason, _trigger, _price)
+                return False, reason
     
     # SPREAD FILTER
     # Note: _check_spread_filter returns (bool, str, Optional[Decimal])
@@ -140,10 +143,9 @@ async def check_entry_guards(
     if current_ask is not None:
         watched._spread_check_ask = current_ask  # Store for enter_position to use
     if not spread_ok:
+        tml.log_warrior_guard_block(symbol, "spread", spread_reason, _trigger, _price)
         return False, spread_reason
     
-    from nexus2.utils.trace_logger import trace
-    trace("GUARD_PASS", sym=symbol, trigger=trigger_type.value, price=str(current_price))
     return True, ""
 
 
@@ -218,8 +220,9 @@ async def _check_position_guards(
     symbol = watched.candidate.symbol
     
     # FIRST: Check MONITOR positions for max_scale enforcement
-    from nexus2.domain.automation.warrior_monitor import get_warrior_monitor
-    monitor = get_warrior_monitor()
+    # NOTE: Must use engine.monitor, NOT get_warrior_monitor() singleton,
+    # because the concurrent runner uses a per-case engine with its own monitor.
+    monitor = engine.monitor
     for pos in monitor.get_positions():
         if pos.symbol == symbol:
             max_scales = monitor.settings.max_scale_count

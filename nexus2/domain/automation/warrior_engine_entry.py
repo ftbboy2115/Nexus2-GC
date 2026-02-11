@@ -413,9 +413,6 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 )
                 # REFACTORED: Use extracted pattern function, then call enter_position
                 micro_trigger = await _check_micro_pullback_pattern(engine, watched, current_price)
-                from nexus2.utils.trace_logger import trace
-                trace("MICRO_CHECK", sym=symbol, price=str(current_price), fired=bool(micro_trigger),
-                      swing=str(watched.swing_high), ready=watched.micro_pullback_ready)
                 if micro_trigger:
                     await enter_position(engine, watched, current_price, micro_trigger)
                 continue  # Skip PMH break logic for extended stocks

@@ -75,6 +75,7 @@ class TradeEventService:
     WARRIOR_EXIT_FAILED = "EXIT_FAILED"  # Exit callback error (diagnostic)
     WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received (entry)
     WARRIOR_EXIT_FILL_CONFIRMED = "EXIT_FILL_CONFIRMED"  # Broker exit fill received
+    WARRIOR_GUARD_BLOCK = "GUARD_BLOCK"  # Entry blocked by guard (position, macd, cooldown, etc.)
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -919,6 +920,30 @@ class TradeEventService:
             new_value=error_type,
             reason=f"Exit callback failed: {error_message}",
             metadata=metadata,
+        )
+    
+    def log_warrior_guard_block(
+        self,
+        symbol: str,
+        guard_name: str,
+        reason: str,
+        trigger_type: str = "unknown",
+        price: float = None,
+    ) -> None:
+        """
+        Log when an entry guard blocks a trade attempt.
+        
+        This is TML file-only (no DB write) to avoid noise in the events table.
+        Guard blocks happen frequently and are primarily for forensic review.
+        """
+        price_str = f"${price:.2f}" if price else "N/A"
+        details = f"guard={guard_name} | trigger={trigger_type} | price={price_str} | {reason}"
+        
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_GUARD_BLOCK,
+            details=details,
         )
     
     # ==================== Query Methods ====================

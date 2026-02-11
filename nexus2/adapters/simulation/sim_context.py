@@ -80,7 +80,6 @@ async def step_clock_ctx(ctx: SimContext, minutes: int):
     Always headless — no chart data generation.
     """
     from nexus2.domain.automation.warrior_engine_entry import check_entry_triggers
-    from nexus2.utils.trace_logger import trace
     import logging
     log = logging.getLogger(__name__)
     
@@ -114,7 +113,6 @@ async def step_clock_ctx(ctx: SimContext, minutes: int):
             
             if price:
                 ctx.broker.set_price(symbol, price)
-                trace("PRICE", t=time_str, sym=symbol, p=round(price, 4))
         
         # Check engine state
         engine_state_str = (
@@ -494,10 +492,8 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         # Set ContextVars for this task
         from nexus2.adapters.simulation.sim_clock import set_simulation_clock_ctx
         from nexus2.domain.automation.trade_event_service import set_sim_mode_ctx
-        from nexus2.utils.trace_logger import set_trace_tag
         set_simulation_clock_ctx(ctx.clock)
         set_sim_mode_ctx(True)
-        set_trace_tag("conc")
 
         # Load test case into context
         bar_count = load_case_into_context(ctx, case, yaml_data)
