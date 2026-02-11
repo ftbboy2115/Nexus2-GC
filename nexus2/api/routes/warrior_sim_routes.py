@@ -1388,7 +1388,6 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
             # PHASE 9 DIAGNOSTIC: Dump all mutable state BEFORE load to find leakage
             # ========================================================================
             if engine:
-                from nexus2.domain.automation.warrior_engine_types import WarriorMonitorSettings
                 print(f"[DIAG PRE-LOAD {case_id}] engine.state={engine.state}")
                 print(f"[DIAG PRE-LOAD {case_id}] engine._watchlist keys={list(engine._watchlist.keys())}")
                 print(f"[DIAG PRE-LOAD {case_id}] engine._blacklist={engine._blacklist}")
