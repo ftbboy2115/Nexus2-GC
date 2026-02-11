@@ -449,6 +449,28 @@ test_cases:
       stop_near: null
     notes: "Battalion Oil - natural gas surge. PMH $6.80 was the high of day (hit at 04:50 AM), stock opened at $5.44 and faded all day. No viable PMH breakout entry."
 
+  - id: ross_batl_20260127
+    symbol: BATL
+    setup_type: pmh
+    outcome: loser
+    ross_traded: false
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "BATL Jan 27 - Day 2 continuation after 243% gap. Open $3.72, HOD $4.82"
+    trade_date: "2026-01-27"
+    intraday_file: "intraday/ross_batl_20260127.json"
+    premarket_data:
+      gap_percent: 88.0  # ~$3.72 open vs ~$1.98 original close (2 days prior)
+      premarket_high: 4.10  # From first bar: high $4.10
+      previous_close: 1.98  # Original pre-gap close
+      float_shares: 5000000
+      catalyst: "natural_gas_prices"
+    expected:
+      entry_near: null
+      stop_near: null
+    notes: "Battalion Oil Day 2 - continuation after Jan 26 243% gap. Opens $3.72 (down from Jan 26 HOD $6.80). HOD $4.82, LOD $2.21. 903 bars."
+
   - id: ross_rolr_20260114
     symbol: ROLR
     setup_type: pmh
