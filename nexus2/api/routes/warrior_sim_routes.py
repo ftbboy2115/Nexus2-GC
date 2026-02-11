@@ -817,11 +817,17 @@ async def load_historical_test_case(case_id: str):
     engine = get_engine()
     added_to_watchlist = False
     if engine:
+        # Ensure sim_only mode for historical replay — prevents phantom quote check
+        # from comparing current-bar price vs prior-bar close (which falsely triggers
+        # >5% deviation and replaces entry prices with stale candle closes)
+        engine.config.sim_only = True
+        
         # FRESH START: Clear all watchlist entries and pending entries when loading new test case
         # This prevents old symbols (e.g., PAVM) from trading when loading a new case (e.g., LCFY)
         engine._watchlist.clear()
         engine._pending_entries.clear()
         engine._symbol_fails.clear()  # Reset max failures counter for fresh replay
+
         
         # MONITOR STATE RESET (Phase 9 fix: confirmed root cause of sequential/concurrent P&L divergence)
         # Without these clears, positions from case N bleed into case N+1's monitor,

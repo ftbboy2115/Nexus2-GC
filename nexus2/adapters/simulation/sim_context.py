@@ -34,7 +34,7 @@ class SimContext:
         clock = SimulationClock()
         
         # MockBroker with injected clock (Wave 1 Phase 1B)
-        broker = MockBroker(initial_cash=25_000, clock=clock)
+        broker = MockBroker(initial_cash=100_000, clock=clock)
         
         # Monitor with clean state (R2 fix)
         monitor = WarriorMonitor()
