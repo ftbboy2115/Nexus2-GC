@@ -966,6 +966,7 @@ async def enter_position(
         trigger_type: Type of entry trigger (ORB, PMH_BREAK, etc.)
     """
     symbol = watched.candidate.symbol
+    print(f"[ENTRY-TRACE] enter_position called: {symbol} trigger={trigger_type.value} price=${entry_price:.2f} sim_only={getattr(engine.config, 'sim_only', '?')}")
     
     # =========================================================================
     # ENTRY GUARDS (via extracted module)
@@ -973,6 +974,7 @@ async def enter_position(
     can_enter, block_reason = await check_entry_guards(
         engine, watched, entry_price, trigger_type
     )
+    print(f"[ENTRY-TRACE] guards result: {symbol} can_enter={can_enter} reason={block_reason}")
     
     if not can_enter:
         if block_reason == "scale_into_existing":
