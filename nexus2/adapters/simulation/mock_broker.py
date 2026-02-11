@@ -4,6 +4,7 @@ Mock Broker
 Simulates broker order execution for backtesting.
 Same interface as AlpacaBroker for seamless integration.
 """
+from nexus2.utils.trace_logger import trace
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -301,6 +302,7 @@ class MockBroker:
         # Check buying power
         order_value = fill_price * quantity
         if order_value > self._cash:
+            trace("REJECT", sym=symbol, qty=quantity, price=fill_price, cash=round(self._cash, 2), needed=round(order_value, 2))
             return BrokerOrder(
                 client_order_id=client_order_id,
                 broker_order_id=entry_order_id,
@@ -352,6 +354,7 @@ class MockBroker:
         
         # Update cash
         self._cash -= fill_price * quantity
+        trace("FILL", sym=symbol, qty=quantity, price=fill_price, cash=round(self._cash, 2))
         
         # Create/update position
         if symbol in self._positions:
@@ -436,6 +439,7 @@ class MockBroker:
         pnl = (current_price - pos.avg_entry_price) * sell_qty
         self._realized_pnl += pnl
         self._cash += current_price * sell_qty
+        trace("SELL", sym=symbol, qty=sell_qty, price=current_price, pnl=round(pnl, 2), rpnl=round(self._realized_pnl, 2))
         
         # Create SELL order record for GUI visibility
         # Get sim_time from simulation clock for GUI display

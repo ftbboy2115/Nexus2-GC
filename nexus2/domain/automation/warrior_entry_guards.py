@@ -132,6 +132,8 @@ async def check_entry_guards(
     if not spread_ok:
         return False, spread_reason
     
+    from nexus2.utils.trace_logger import trace
+    trace("GUARD_PASS", sym=symbol, trigger=trigger_type.value, price=str(current_price))
     return True, ""
 
 

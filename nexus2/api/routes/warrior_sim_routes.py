@@ -1124,6 +1124,7 @@ async def step_clock(minutes: int = 1, headless: bool = False):
     loader = get_historical_bar_loader()
     broker = get_warrior_sim_broker()
     engine = get_engine()
+    from nexus2.utils.trace_logger import trace
     
     # Determine step granularity based on 10s bar availability
     # If ANY loaded symbol has 10s bars, use 10s stepping for precision
@@ -1164,6 +1165,7 @@ async def step_clock(minutes: int = 1, headless: bool = False):
             if price and broker:
                 broker.set_price(symbol, price)
                 prices[symbol] = price
+                trace("PRICE", t=time_str, sym=symbol, p=round(price, 4))
         
         # Check engine state - handle both enum and string values
         engine_state_str = engine.state.value if hasattr(engine.state, 'value') else str(engine.state) if engine else None
@@ -1418,6 +1420,10 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                     print(f"[DIAG PRE-LOAD {case_id}] broker.positions={broker.get_positions()}")
                     print(f"[DIAG PRE-LOAD {case_id}] broker.initial_cash={broker._initial_cash}")
             # ========================================================================
+            
+            # Enable trace logging for sequential runner
+            from nexus2.utils.trace_logger import set_trace_tag
+            set_trace_tag("seq")
             
             # Purge sim trades from warrior_db to prevent bleed-over between cases
             try:

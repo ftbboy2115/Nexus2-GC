@@ -10,6 +10,22 @@ Your domain: Strategy discovery, backtesting infrastructure, multi-agent orchest
 
 ---
 
+## 🚨 Windows Environment (CRITICAL)
+
+> [!CAUTION]
+> This project runs on **Windows with PowerShell**. Linux commands will FAIL.
+
+| ❌ Do NOT Use | ✅ Use Instead |
+|--------------|---------------|
+| `grep` | `Select-String -Path "file" -Pattern "pattern"` |
+| `grep -rn` | `Select-String -Path "dir\*" -Pattern "pattern" -Recurse` |
+| `cat` | `Get-Content` |
+| `curl` | `Invoke-RestMethod` or `Invoke-WebRequest` |
+| `&&` (chaining) | `;` or separate commands |
+| `rm` | `Remove-Item` |
+
+---
+
 ## Boundaries
 
 ✅ **Your Scope**

@@ -9,6 +9,23 @@ When coordinating multiple specialist agents in parallel, follow this pattern.
 
 ---
 
+## 🚨 Windows Environment (CRITICAL)
+
+> [!CAUTION]
+> This project runs on **Windows with PowerShell**. Linux commands will FAIL.
+> All handoff documents and verification commands MUST use PowerShell syntax.
+
+| ❌ Do NOT Use | ✅ Use Instead |
+|--------------|---------------|
+| `grep` | `Select-String -Path "file" -Pattern "pattern"` |
+| `grep -rn` | `Select-String -Path "dir\*" -Pattern "pattern" -Recurse` |
+| `cat` | `Get-Content` |
+| `curl` | `Invoke-RestMethod` or `Invoke-WebRequest` |
+| `&&` (chaining) | `;` or separate commands |
+| `rm` | `Remove-Item` |
+
+---
+
 ## Available Specialists
 
 | Agent | Rule File | Domain |

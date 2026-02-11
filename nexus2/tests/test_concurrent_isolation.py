@@ -330,3 +330,98 @@ def test_concurrent_endpoint_registered():
     routes = [r.path for r in sim_router.routes]
     assert "/sim/run_batch_concurrent" in routes
 
+
+# ═════════════════════════════════════════════════════════════════════════
+# PHASE 9: Monitor State Bleed-Over Fix
+# ═════════════════════════════════════════════════════════════════════════
+
+
+# ── T17: Monitor._positions NOT shared between SimContext cases ─────────
+
+def test_simcontext_monitor_positions_isolated():
+    """Each SimContext should have independent monitor._positions (no bleed)."""
+    from nexus2.adapters.simulation.sim_context import SimContext
+    from nexus2.domain.automation.warrior_types import WarriorPosition
+    from decimal import Decimal
+
+    ctx1 = SimContext.create("case_1")
+    ctx2 = SimContext.create("case_2")
+
+    # Simulate a position in ctx1's monitor
+    ctx1.monitor._positions["pos_123"] = WarriorPosition(
+        position_id="pos_123",
+        symbol="AAPL",
+        entry_price=Decimal("150.0"),
+        shares=100,
+        entry_time=datetime(2026, 1, 15, 10, 0, tzinfo=ET),
+        mental_stop=Decimal("149.50"),
+    )
+
+    # ctx2's monitor should have NO positions  
+    assert len(ctx2.monitor._positions) == 0, (
+        f"Case 2 monitor should have 0 positions, got {len(ctx2.monitor._positions)}. "
+        "This means positions are bleeding between contexts!"
+    )
+    assert len(ctx1.monitor._positions) == 1, "Case 1 should still have its position"
+
+
+# ── T18: Monitor._recently_exited isolated between SimContext cases ─────
+
+def test_simcontext_monitor_recently_exited_isolated():
+    """Each SimContext should have independent _recently_exited (no cooldown bleed)."""
+    from nexus2.adapters.simulation.sim_context import SimContext
+
+    ctx1 = SimContext.create("case_1")
+    ctx2 = SimContext.create("case_2")
+
+    # Simulate an exit cooldown in ctx1
+    from datetime import datetime
+    ctx1.monitor._recently_exited["TSLA"] = datetime(2026, 1, 15, 10, 0)
+
+    # ctx2 should NOT have TSLA in recently_exited
+    assert "TSLA" not in ctx2.monitor._recently_exited, (
+        "Case 2 monitor should not have TSLA in _recently_exited. "
+        "Exit cooldowns are bleeding between contexts!"
+    )
+    assert ctx2.monitor._recently_exited == {}, (
+        f"Case 2 _recently_exited should be empty, got {ctx2.monitor._recently_exited}"
+    )
+
+
+# ── T19: Sequential engine monitor fields are independently clearable ───
+
+def test_monitor_positions_clearable():
+    """Verify monitor._positions.clear() works as expected for sequential cleanup."""
+    from nexus2.domain.automation.warrior_monitor import WarriorMonitor
+    from nexus2.domain.automation.warrior_types import WarriorPosition
+    from decimal import Decimal
+
+    monitor = WarriorMonitor()
+    monitor.sim_mode = True
+
+    # Add position
+    monitor._positions["pos_1"] = WarriorPosition(
+        position_id="pos_1",
+        symbol="GOOG",
+        entry_price=Decimal("100.0"),
+        shares=50,
+        entry_time=datetime(2026, 1, 15, 10, 0, tzinfo=ET),
+        mental_stop=Decimal("99.50"),
+    )
+    # Add exit cooldowns
+    monitor._recently_exited["GOOG"] = datetime(2026, 1, 15, 10, 0)
+    monitor._recently_exited_sim_time["GOOG"] = datetime(2026, 1, 15, 10, 0)
+
+    assert len(monitor._positions) == 1
+    assert len(monitor._recently_exited) == 1
+    assert len(monitor._recently_exited_sim_time) == 1
+
+    # Clear all (this is what load_historical_test_case should do between cases)
+    monitor._positions.clear()
+    monitor._recently_exited.clear()
+    monitor._recently_exited_sim_time.clear()
+
+    assert len(monitor._positions) == 0, "Positions should be empty after clear"
+    assert len(monitor._recently_exited) == 0, "recently_exited should be empty after clear"
+    assert len(monitor._recently_exited_sim_time) == 0, "recently_exited_sim_time should be empty after clear"
+
