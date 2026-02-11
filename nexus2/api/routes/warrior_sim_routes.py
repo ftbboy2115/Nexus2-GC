@@ -822,7 +822,15 @@ async def load_historical_test_case(case_id: str):
         engine._watchlist.clear()
         engine._pending_entries.clear()
         engine._symbol_fails.clear()  # Reset max failures counter for fresh replay
-        print(f"[Historical Replay] Cleared watchlist, pending entries, and fail counters for fresh start")
+        
+        # MONITOR STATE RESET (Phase 9 fix: confirmed root cause of sequential/concurrent P&L divergence)
+        # Without these clears, positions from case N bleed into case N+1's monitor,
+        # and re-entry cooldowns from case N block entries in case N+1 (e.g., FLYE, RVSN producing $0).
+        # The concurrent runner avoids this by creating a fresh WarriorMonitor() per case.
+        engine.monitor._positions.clear()  # Remove stale position objects from previous case
+        engine.monitor._recently_exited.clear()  # Remove wall-clock exit cooldowns from previous case
+        
+        print(f"[Historical Replay] Cleared watchlist, pending entries, fail counters, monitor positions, and exit cooldowns for fresh start")
         
         # Reset the watched candidate (fresh state)
         watched.entry_triggered = False
@@ -838,7 +846,8 @@ async def load_historical_test_case(case_id: str):
         # =========================================================================
         engine.monitor.sim_mode = True
         engine.monitor._sim_clock = clock  # For sim-time re-entry cooldown (fixes BATL over-trading)
-        engine.monitor._recently_exited_sim_time.clear()  # Reset on new test case
+        engine.monitor._recently_exited_sim_time.clear()  # Reset sim-time cooldowns on new test case
+        engine.monitor.realized_pnl_today = Decimal("0")  # Reset daily P&L tracking per case
         
         async def sim_get_price(symbol: str):
             sim_broker = get_warrior_sim_broker()
@@ -1375,6 +1384,42 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
             print(f"\n[Batch Runner] === Running: {case_id} ({symbol}) ===")
             case_start = time.time()
             
+            # ========================================================================
+            # PHASE 9 DIAGNOSTIC: Dump all mutable state BEFORE load to find leakage
+            # ========================================================================
+            if engine:
+                from nexus2.domain.automation.warrior_engine_types import WarriorMonitorSettings
+                print(f"[DIAG PRE-LOAD {case_id}] engine.state={engine.state}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine._watchlist keys={list(engine._watchlist.keys())}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine._blacklist={engine._blacklist}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine._pending_entries={dict(engine._pending_entries)}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine._symbol_fails={dict(engine._symbol_fails)}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine.stats.entries_triggered={engine.stats.entries_triggered}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine.stats.daily_pnl={engine.stats.daily_pnl}")
+                print(f"[DIAG PRE-LOAD {case_id}] engine.stats._seen_candidates={engine.stats._seen_candidates}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor._positions keys={list(engine.monitor._positions.keys())}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor._recently_exited={dict(engine.monitor._recently_exited)}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor._recently_exited_sim_time={dict(engine.monitor._recently_exited_sim_time)}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.realized_pnl_today={engine.monitor.realized_pnl_today}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.checks_run={engine.monitor.checks_run}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.exits_triggered={engine.monitor.exits_triggered}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.settings.mental_stop_cents={engine.monitor.settings.mental_stop_cents}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.settings.session_exit_mode={engine.monitor.settings.session_exit_mode}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.settings.base_hit_profit_cents={engine.monitor.settings.base_hit_profit_cents}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.settings.profit_target_r={engine.monitor.settings.profit_target_r}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.settings.enable_scaling={engine.monitor.settings.enable_scaling}")
+                print(f"[DIAG PRE-LOAD {case_id}] monitor.sim_mode={engine.monitor.sim_mode}")
+                # Check if _pending_entries_file loaded anything from disk
+                print(f"[DIAG PRE-LOAD {case_id}] engine._pending_entries_file={engine._pending_entries_file}")
+                # Broker state
+                broker = get_warrior_sim_broker()
+                if broker:
+                    acct = broker.get_account()
+                    print(f"[DIAG PRE-LOAD {case_id}] broker.realized_pnl={acct.get('realized_pnl', 'N/A')}")
+                    print(f"[DIAG PRE-LOAD {case_id}] broker.positions={broker.get_positions()}")
+                    print(f"[DIAG PRE-LOAD {case_id}] broker.initial_cash={broker._initial_cash}")
+            # ========================================================================
+            
             # Purge sim trades from warrior_db to prevent bleed-over between cases
             try:
                 from nexus2.db.warrior_db import purge_sim_trades
@@ -1386,6 +1431,21 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                 # Step 1: Load test case (resets broker, wires callbacks, sets clock)
                 load_result = await load_historical_test_case(case_id)
                 bar_count = load_result.get("bar_count", 0)
+                
+                # POST-LOAD DIAGNOSTIC
+                if engine:
+                    print(f"[DIAG POST-LOAD {case_id}] engine.state={engine.state}")
+                    print(f"[DIAG POST-LOAD {case_id}] engine._watchlist keys={list(engine._watchlist.keys())}")
+                    print(f"[DIAG POST-LOAD {case_id}] engine._pending_entries={dict(engine._pending_entries)}")
+                    print(f"[DIAG POST-LOAD {case_id}] engine.stats.entries_triggered={engine.stats.entries_triggered}")
+                    print(f"[DIAG POST-LOAD {case_id}] engine.stats.daily_pnl={engine.stats.daily_pnl}")
+                    print(f"[DIAG POST-LOAD {case_id}] monitor._positions keys={list(engine.monitor._positions.keys())}")
+                    print(f"[DIAG POST-LOAD {case_id}] monitor.realized_pnl_today={engine.monitor.realized_pnl_today}")
+                    broker_diag = get_warrior_sim_broker()
+                    if broker_diag:
+                        acct_diag = broker_diag.get_account()
+                        print(f"[DIAG POST-LOAD {case_id}] broker.realized_pnl={acct_diag.get('realized_pnl', 'N/A')}")
+                        print(f"[DIAG POST-LOAD {case_id}] broker.initial_cash={broker_diag._initial_cash}")
                 
                 if bar_count == 0:
                     results.append({
