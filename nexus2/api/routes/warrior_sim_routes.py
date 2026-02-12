@@ -6,6 +6,7 @@ Includes test case loading for historical scenario replay.
 """
 
 import os
+import logging
 import time
 import threading
 import yaml
@@ -22,6 +23,7 @@ from pydantic import BaseModel, Field
 # =============================================================================
 
 sim_router = APIRouter()  # No separate tag - inherits from parent 'warrior' router
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -859,6 +861,11 @@ async def load_historical_test_case(case_id: str):
             sim_broker = get_warrior_sim_broker()
             if sim_broker:
                 price = sim_broker.get_price(symbol)
+                logger.warning(
+                    f"[TRACE-VELO] sim_get_price: symbol={symbol}, "
+                    f"clock_time={clock.get_time_string()}, "
+                    f"price={price}"
+                )
                 if price is not None:
                     return price
             return None
@@ -1191,6 +1198,10 @@ async def step_clock(minutes: int = 1, headless: bool = False):
         # Trigger entry check if engine is running
         if engine and engine_state_str in ("running", "premarket"):
             try:
+                logger.warning(
+                    f"[TRACE-VELO] step_clock tick: sim_time={clock.get_time_string()}, "
+                    f"step={step_idx}, broker_price={broker.get_price('VELO') if broker else 'N/A'}"
+                )
                 await check_entry_triggers(engine)
             except Exception as e:
                 if not headless:

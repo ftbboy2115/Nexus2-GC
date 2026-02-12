@@ -523,6 +523,11 @@ class WarriorMonitor:
                         await asyncio.sleep(60)  # Check again in 1 minute
                         continue
                 
+                logger.warning(
+                    f"[TRACE-VELO] _monitor_loop firing: sim_mode={self.sim_mode}, "
+                    f"sim_clock={getattr(self, '_sim_clock', None) and self._sim_clock.get_time_string()}, "
+                    f"positions={list(self._positions.keys())}"
+                )
                 await self._check_all_positions()
                 await asyncio.sleep(self.settings.check_interval_seconds)
             except asyncio.CancelledError:
