@@ -626,44 +626,109 @@ async def _check_base_hit_target(
     r_multiple: float,
 ) -> Optional[WarriorExitSignal]:
     """
-    Base Hit Mode: Quick fixed-cents profit target.
+    Base Hit Mode: Candle-low trailing stop.
     
-    Ross Cameron in cold markets / first trade: Take 10-20¢ profit, full exit.
-    No partials, no trailing - just lock in the base hit and move on.
+    Ross Cameron: Trail with the low of the prior 1-minute candle.
+    Activation: After price reaches +N¢ from entry, start trailing.
+    Exit: When price drops below the trailing candle-low stop.
+    Fallback: If no bars available, use flat +18¢ target.
     """
     s = monitor.settings
-    profit_cents = s.base_hit_profit_cents
     
-    target_price = position.entry_price + profit_cents / 100
+    # Calculate profit
+    profit = current_price - position.entry_price
+    profit_cents = profit * 100
     
-    # DEBUG: Log base hit check for troubleshooting (INFO level for testing)
+    # ---- CANDLE TRAIL LOGIC ----
+    if s.base_hit_candle_trail_enabled and monitor._get_intraday_candles:
+        activation_cents = s.base_hit_trail_activation_cents
+        
+        # Step 1: Check if trail should activate
+        if position.candle_trail_stop is None and profit_cents >= activation_cents:
+            # Fetch last 3 candles (need at least 2 completed + current)
+            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
+            if candles and len(candles) >= 2:
+                # Use the low of the LAST COMPLETED candle (not current)
+                prev_candle_low = Decimal(str(candles[-2].low))
+                # Only activate if trail stop would be above entry (protective)
+                if prev_candle_low > position.entry_price:
+                    position.candle_trail_stop = prev_candle_low
+                    logger.info(
+                        f"[Warrior] {position.symbol}: CANDLE TRAIL ACTIVATED at ${prev_candle_low:.2f} "
+                        f"(profit +{float(profit_cents):.0f}¢, entry=${position.entry_price:.2f})"
+                    )
+                else:
+                    # Trail would be below entry — not protective enough yet
+                    logger.debug(
+                        f"[Warrior] {position.symbol}: Candle trail NOT activated "
+                        f"(candle low ${prev_candle_low:.2f} <= entry ${position.entry_price:.2f})"
+                    )
+        
+        # Step 2: If trail was ALREADY active (not just activated above), update it (only moves UP)
+        elif position.candle_trail_stop is not None:
+            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
+            if candles and len(candles) >= 2:
+                prev_candle_low = Decimal(str(candles[-2].low))
+                if prev_candle_low > position.candle_trail_stop:
+                    old_trail = position.candle_trail_stop
+                    position.candle_trail_stop = prev_candle_low
+                    logger.info(
+                        f"[Warrior] {position.symbol}: Candle trail RAISED "
+                        f"${old_trail:.2f} → ${prev_candle_low:.2f}"
+                    )
+            
+            # Step 3: Check if trail stop hit
+            if current_price <= position.candle_trail_stop:
+                pnl = (current_price - position.entry_price) * position.shares
+                logger.info(
+                    f"[Warrior] {position.symbol}: CANDLE TRAIL STOP HIT at ${current_price:.2f} "
+                    f"(trail=${position.candle_trail_stop:.2f}) → Full exit, P&L=${float(pnl):.2f}"
+                )
+                return WarriorExitSignal(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    reason=WarriorExitReason.PROFIT_TARGET,
+                    exit_price=current_price,
+                    shares_to_exit=position.shares,
+                    pnl_estimate=pnl,
+                    r_multiple=r_multiple,
+                    trigger_description=f"Candle trail stop hit (trail=${position.candle_trail_stop:.2f})",
+                )
+            
+            # Trail active but not hit — log and continue monitoring
+            logger.debug(
+                f"[Warrior] {position.symbol}: Candle trail active - "
+                f"price=${current_price:.2f}, trail=${position.candle_trail_stop:.2f}, "
+                f"cushion={float(current_price - position.candle_trail_stop):.2f}"
+            )
+            return None  # Don't check flat target when trail is active
+    
+    # ---- FALLBACK: Flat +18¢ target (when trail disabled or no bars) ----
+    target_price = position.entry_price + s.base_hit_profit_cents / 100
+    
     logger.info(
-        f"[Warrior] {position.symbol}: BASE HIT check - "
+        f"[Warrior] {position.symbol}: BASE HIT check (flat fallback) - "
         f"current=${current_price:.2f}, target=${target_price:.2f}, "
-        f"entry=${position.entry_price:.2f}, +{profit_cents}¢"
+        f"entry=${position.entry_price:.2f}, +{s.base_hit_profit_cents}¢"
     )
     
     if current_price < target_price:
         return None
     
-    # FULL EXIT at fixed cents target
     pnl = (current_price - position.entry_price) * position.shares
-    
     logger.info(
-        f"[Warrior] {position.symbol}: BASE HIT target hit at ${current_price:.2f} "
-        f"(+{profit_cents}¢ target) -> Full exit"
+        f"[Warrior] {position.symbol}: BASE HIT flat target hit at ${current_price:.2f} "
+        f"(+{s.base_hit_profit_cents}¢ target) -> Full exit"
     )
-
-    
     return WarriorExitSignal(
         position_id=position.position_id,
         symbol=position.symbol,
         reason=WarriorExitReason.PROFIT_TARGET,
         exit_price=current_price,
-        shares_to_exit=position.shares,  # Full exit
+        shares_to_exit=position.shares,
         pnl_estimate=pnl,
         r_multiple=r_multiple,
-        trigger_description=f"Base hit +{profit_cents}¢ target hit",
+        trigger_description=f"Base hit +{s.base_hit_profit_cents}¢ flat target hit (candle trail unavailable)",
     )
 
 

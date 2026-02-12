@@ -117,6 +117,10 @@ class WarriorMonitorSettings:
     base_hit_profit_cents: Decimal = Decimal("18")  # Take profit at +18¢ (Ross's typical)
     base_hit_stop_cents: Decimal = Decimal("15")  # Mental stop at -15¢
     
+    # Base Hit Candle Trail (Phase A — Ross Cameron candle-low trailing)
+    base_hit_candle_trail_enabled: bool = True  # Enable candle-low trailing for base_hit
+    base_hit_trail_activation_cents: Decimal = Decimal("10")  # Start trailing after +10¢
+    
     # Home Run Mode Settings  
     home_run_partial_at_r: float = 2.0  # Take 50% partial at 2:1 R
     home_run_trail_after_r: float = 1.5  # Start trailing stop after 1.5R
@@ -161,6 +165,9 @@ class WarriorPosition:
     last_candle_low: Decimal = Decimal("0")
     last_candle_high: Decimal = Decimal("0")
     candles_since_entry: int = 0
+    
+    # Candle-low trailing stop (Phase A — None = not yet activated)
+    candle_trail_stop: Optional[Decimal] = None
     
     # Exit Mode Override (per-position, overrides session mode)
     # None = inherit session_exit_mode, "base_hit" or "home_run" = override
