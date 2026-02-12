@@ -221,6 +221,7 @@ class WarriorEngine:
         
         # Reset entry_triggered to allow re-entry
         watched.entry_triggered = False
+        _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] REENTRY_PROFIT {symbol} entry_triggered=False\\n"); _tf.close()
         watched.position_opened = False
         
         # Store exit metadata for re-entry guards

@@ -1050,6 +1050,7 @@ async def enter_position(
             f"This indicates a data problem that needs investigation."
         )
         watched.entry_triggered = False  # Reset so we can retry
+        _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] STOP_CALC_FAIL {symbol} entry_triggered=False (mental_stop=None)\n"); _tf.close()
         engine.stats.entries_triggered -= 1  # Undo the increment
         return
     
