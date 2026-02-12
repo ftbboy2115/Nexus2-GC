@@ -28,6 +28,10 @@ from nexus2.utils.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
+# Suppress discord.gateway heartbeat warnings — they embed full tracebacks
+# containing strftime '%Y-%m-%d' patterns which crash Python's %-based log formatter
+logging.getLogger("discord.gateway").setLevel(logging.ERROR)
+
 # Reaction emoji mappings
 REACTIONS = {
     "✅": ("approve", "FMP"),

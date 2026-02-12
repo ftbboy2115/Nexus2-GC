@@ -147,6 +147,9 @@ def format_iso_utc(dt: Optional[datetime]) -> Optional[str]:
     """
     if dt is None:
         return None
+    # Guard against non-datetime values (e.g., strings from bad DB data)
+    if not isinstance(dt, datetime):
+        return str(dt)
     # Convert to UTC if timezone-aware
     if dt.tzinfo is not None:
         dt = dt.astimezone(UTC)
