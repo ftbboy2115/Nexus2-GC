@@ -316,6 +316,68 @@ async def _check_spread_exit(
     return None
 
 
+async def _check_time_stop(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+    r_multiple: float,
+) -> Optional[WarriorExitSignal]:
+    """
+    Time Stop: Exit if position shows no momentum after N seconds.
+    
+    Ross Cameron: "If it's not working, get out." Don't sit in a trade
+    that isn't moving. After 120s, if price hasn't held 50% of the
+    breakout range above entry, signal exit via limit order.
+    
+    Settings (warrior_types.py):
+    - enable_time_stop: bool = True
+    - time_stop_seconds: int = 120
+    - breakout_hold_threshold: float = 0.5
+    """
+    s = monitor.settings
+    
+    if not s.enable_time_stop:
+        return None
+    
+    # Calculate time since entry
+    entry_time = position.entry_time
+    if entry_time.tzinfo is None:
+        from datetime import timezone
+        entry_time = entry_time.replace(tzinfo=timezone.utc)
+    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    
+    if seconds_since_entry < s.time_stop_seconds:
+        return None  # Not yet at time limit
+    
+    # Check if price has shown sufficient momentum
+    # "Sufficient" = price is at least breakout_hold_threshold of risk above entry
+    # e.g., if risk is 20¢ and threshold is 0.5, need to be at least +10¢
+    momentum_threshold = position.entry_price + (position.risk_per_share * Decimal(str(s.breakout_hold_threshold)))
+    
+    if current_price >= momentum_threshold:
+        return None  # Stock is working — let it run
+    
+    # No momentum — exit
+    pnl = (current_price - position.entry_price) * position.shares
+    
+    logger.warning(
+        f"[Warrior] {position.symbol}: TIME STOP after {seconds_since_entry:.0f}s - "
+        f"price ${current_price:.2f} < momentum threshold ${momentum_threshold:.2f} "
+        f"({s.breakout_hold_threshold*100:.0f}% of risk ${position.risk_per_share:.2f})"
+    )
+    
+    return WarriorExitSignal(
+        position_id=position.position_id,
+        symbol=position.symbol,
+        reason=WarriorExitReason.TIME_STOP,
+        exit_price=current_price,
+        shares_to_exit=position.shares,
+        pnl_estimate=pnl,
+        r_multiple=r_multiple,
+        trigger_description=f"Time stop after {seconds_since_entry:.0f}s (no momentum)",
+    )
+
+
 def _check_stop_hit(
     position: WarriorPosition,
     current_price: Decimal,
@@ -895,6 +957,11 @@ async def evaluate_position(
     if signal:
         return signal
     
+    # CHECK 0.7: Time Stop (no momentum)
+    signal = await _check_time_stop(monitor, position, current_price, r_multiple)
+    if signal:
+        return signal
+    
     # CHECK 1: Stop Hit
     signal = _check_stop_hit(position, current_price, r_multiple)
     if signal:
@@ -992,6 +1059,8 @@ async def handle_exit(
                 WarriorExitReason.TIME_STOP: "time_stop",
                 WarriorExitReason.AFTER_HOURS_EXIT: "after_hours_exit",
                 WarriorExitReason.BREAKOUT_FAILURE: "breakout_failure",
+                WarriorExitReason.SPREAD_EXIT: "spread_exit",
+                WarriorExitReason.PROFIT_TARGET: "profit_target",
             }
             
             if signal.reason == WarriorExitReason.PARTIAL_EXIT:

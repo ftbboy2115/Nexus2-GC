@@ -398,8 +398,17 @@ class WarriorMonitor:
             self._clear_pending_exit(symbol, to_closed=True)
             logger.info(f"[Warrior] {symbol}: Cleared stale pending_exit for new position")
         
-        # Mental stop: Entry - N cents (FALLBACK only - used when no candle data)
-        mental_stop = entry_price - s.mental_stop_cents / 100
+        # Mental stop: Use base_hit_stop_cents for base_hit mode, mental_stop_cents otherwise
+        # Base hit = tight 15¢ stop (tight scalp), Home run = wide 50¢ stop (give room)
+        exit_mode = exit_mode_override or s.session_exit_mode
+        if exit_mode == "base_hit":
+            mental_stop = entry_price - s.base_hit_stop_cents / 100
+            logger.debug(
+                f"[Warrior] {symbol}: Base hit stop = ${mental_stop:.2f} "
+                f"(-{s.base_hit_stop_cents}¢ from entry)"
+            )
+        else:
+            mental_stop = entry_price - s.mental_stop_cents / 100
         
         # Technical stop: Support/ORB low - buffer (Ross's actual method: low of entry candle)
         technical_stop = None
