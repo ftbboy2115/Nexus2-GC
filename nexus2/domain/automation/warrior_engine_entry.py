@@ -513,6 +513,8 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             
             # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
             if current_price < watched.pmh:
+                if watched.entry_triggered:
+                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[PMH-TRACE] {symbol} price=${current_price:.2f} < PMH=${watched.pmh:.2f} entry_triggered=True last_below_pmh={watched.last_below_pmh}\n"); _tf.close()
                 if watched.entry_triggered and not watched.last_below_pmh:
                     logger.info(
                         f"[Warrior Entry] {symbol}: Price below PMH "
@@ -536,12 +538,15 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 
             else:
                 # Price is above PMH
+                if watched.entry_triggered:
+                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[PMH-TRACE] {symbol} price=${current_price:.2f} >= PMH=${watched.pmh:.2f} entry_triggered=True last_below_pmh={watched.last_below_pmh}\n"); _tf.close()
                 
                 # Check if this is a fresh breakout after pullback
                 if watched.entry_triggered and watched.last_below_pmh:
                     watched.last_below_pmh = False
                     watched.entry_triggered = False  # Reset to allow new entry attempt
                     watched.entry_attempt_count += 1
+                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] {symbol} ENTRY_TRIGGERED RESET! price=${current_price:.2f} >= PMH=${watched.pmh:.2f} attempt=#{watched.entry_attempt_count}\n"); _tf.close()
                     logger.info(
                         f"[Warrior Entry] {symbol}: Fresh breakout after pullback "
                         f"(re-entry attempt #{watched.entry_attempt_count})"
