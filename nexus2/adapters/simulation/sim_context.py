@@ -368,6 +368,7 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
         update_stop=sim_update_stop,
         get_intraday_candles=sim_get_intraday_bars,
         get_quote_with_spread=sim_get_price,  # Callback 6: same as get_price in sim
+        on_profit_exit=ctx.engine._handle_profit_exit,  # Enable re-entry after profitable exits
     )
 
     # -- Callbacks cleared (L971-973) --
