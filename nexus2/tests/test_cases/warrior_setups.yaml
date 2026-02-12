@@ -356,26 +356,6 @@ test_cases:
       win_pct: 6.0
     notes: "Tests partial at 2R, stop to breakeven"
 
-  - id: test_pmh_breakout
-    symbol: TEST
-    setup_type: pmh
-    outcome: winner
-    synthetic: true
-    status: SYNTHETIC
-    description: "Historical replay test - PMH breakout with 16 1-min bars"
-    trade_date: "2026-01-23"
-    intraday_file: "intraday/test_pmh_breakout.json"
-    premarket_data:
-      gap_percent: 25.0
-      premarket_high: 10.50
-      previous_close: 8.40
-      float_shares: 5000000
-      catalyst: "earnings"
-    expected:
-      entry_near: 10.50
-      stop_near: 10.15
-    notes: "Sample test case for historical replay feature"
-
   # ========================================================================
   # ROSS CAMERON REAL TRADES (January 2026)
   # ========================================================================
@@ -907,6 +887,114 @@ test_cases:
     notes: "Continuation from Friday. Premarket $2.74, ripped into double halt at open to $4+. Ross bought dip under $4 for break over $4, couldn't get higher. Data lag/level 2 froze, sold blind for +$858. 'Not a great return relative to risk.' Transcript: 2026-02-09_transcript_gOi55ufRFDc.md"
 
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 10, 2026)
+  # Transcript: 2026-02-10_transcript_5Xbf_JuO-mE.md
+  # Day total: -$12,657 (MAX LOSS RED DAY - 0% accuracy)
+  # --------------------------------------------------------------------------
+
+  - id: ross_evmn_20260210
+    symbol: EVMN
+    setup_type: blue_sky
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$10,000 - Blue Sky Biotech, Slippage on Exit"
+    trade_date: "2026-02-10"
+    intraday_file: "intraday/ross_evmn_20260210.json"
+    ross_pnl: -10000.00  # Approx - slippage on 5000 share exit, 75 cents total slippage
+    ross_entry_time: "~09:00"  # Later in the morning, after missing first moves
+    premarket_data:
+      gap_percent: 71.6
+      premarket_high: 38.00
+      previous_close: 22.14  # Estimated from gap calc
+      float_shares: 5000000
+      catalyst: "fda"  # Phase 2a clinical trial result for eczema drug
+    expected:
+      entry_near: 36.00  # Bought at top of candle looking for extension through new high
+      stop_near: 35.00
+    notes: "DEVIATION from rules: higher priced ($36), easy to borrow. Blue sky setup (ATH $24.30), biotech sector. Entered at $36, got hidden seller. Exit slippage: 75 cents across 5 fills (200→300→2000→1200→1200 shares). MACD was negative but Ross thought it would cross. Transcript: 2026-02-10_transcript_5Xbf_JuO-mE.md"
+
+  - id: ross_velo_20260210
+    symbol: VELO
+    setup_type: pmh
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$2,000 - Recent IPO, Grasping at Straws"
+    trade_date: "2026-02-10"
+    intraday_file: "intraday/ross_velo_20260210.json"
+    ross_pnl: -2000.00  # Approx: took $300 profit on partial, lost on rest
+    premarket_data:
+      gap_percent: 13.3
+      premarket_high: 16.89
+      previous_close: 14.90  # Estimated from gap calc
+      float_shares: 5000000
+      catalyst: "news"  # US company, somewhat recent IPO
+    expected:
+      entry_near: 16.00  # Bought break of $16, added at $16.50
+      stop_near: 15.50
+    notes: "DEVIATION from rules: only up 17%, grasping at straws after EVMN loss. Entered break of $16, added at $16.50. Took $300 profit on partial, held 4000 shares when it dropped. Added on dip looking for first candle new high — failed. Ross said this should have been a no-trade day. Transcript: 2026-02-10_transcript_5Xbf_JuO-mE.md"
+
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 11, 2026)
+  # Transcript: 2026-02-11_transcript_HYK2eKkViJs.md
+  # Day total: +$6,242 (recovered half of yesterday's loss)
+  # --------------------------------------------------------------------------
+
+  - id: ross_bnrg_20260211
+    symbol: BNRG
+    setup_type: vwap_reclaim
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$271 - VWAP Reclaim, Break-Even Trade"
+    trade_date: "2026-02-11"
+    intraday_file: "intraday/ross_bnrg_20260211.json"
+    ross_pnl: 271.74
+    ross_entry_time: "07:00"  # Right at 7am for VWAP break
+    premarket_data:
+      gap_percent: -7.0  # Was below VWAP at entry
+      premarket_high: 4.56
+      previous_close: 4.90  # Estimated from gap calc
+      float_shares: 800000  # Sub-1 million share float
+      catalyst: "news"  # Israeli company, renewable energy
+    expected:
+      entry_near: 4.00  # VWAP reclaim entry
+      stop_near: 3.75
+    notes: "Sub-1M float, recent reverse split, Israeli company. Below VWAP at 6:45 — Ross thought if it reclaims VWAP and breaks $4, could go back to $4.50. Entered at 7am for VWAP break, didn't work, got right back out for +$271. Essentially a break-even trade. Transcript: 2026-02-11_transcript_HYK2eKkViJs.md"
+
+  - id: ross_prfx_20260211
+    symbol: PRFX
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$5,970 - Low Float Squeeze, Spoofing Discussion"
+    trade_date: "2026-02-11"
+    intraday_file: "intraday/ross_prfx_20260211.json"
+    ross_pnl: 5970.90
+    ross_entry_time: "~09:00"  # Hit scanner at $3.22, Ross entered during squeeze
+    premarket_data:
+      gap_percent: 23.9
+      premarket_high: 7.93
+      previous_close: 2.60  # Estimated from gap calc
+      float_shares: 800000  # Sub-1 million share float
+      catalyst: "news"  # Israeli company, familiar ticker, recent reverse split
+    expected:
+      entry_near: 4.15  # First entries at $4.15-$4.50
+      stop_near: 3.80
+    notes: "Sub-1M float, Israeli company, recent RS, room to 200 MA. Hit scanner at $3.22. Ross entered at $4.15-$4.50, added at $5.70, $6.50, $7.82. 100% move ($4→$8) in ~20 seconds. Couldn't fill profit orders at top, rolled over hard. Ross discussed MEMX order spoofing (18-22K share sell orders being placed/cancelled algorithmically). Cold market = no follow-through. Transcript: 2026-02-11_transcript_HYK2eKkViJs.md"
+
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -914,8 +1002,8 @@ test_cases:
 # BAD_DATA (ticker collision): 3 (ALMS, ELAB, LHAI)
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
-# SYNTHETIC:                   3 (WLSR, WWNR, test_pmh_breakout)
-# POLYGON_DATA:               25 (+ MNTS, SXTC, UOKA from 2026-02-09)
+# SYNTHETIC:                   2 (WLSR, WWNR)
+# POLYGON_DATA:               29 (+ EVMN, VELO from 2026-02-10, BNRG, PRFX from 2026-02-11)
 # ==========================================================================
 
 
