@@ -513,8 +513,6 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             
             # ROSS RE-ENTRY LOGIC: Track when price drops below PMH
             if current_price < watched.pmh:
-                if watched.entry_triggered:
-                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[PMH-TRACE] {symbol} price=${current_price:.2f} < PMH=${watched.pmh:.2f} entry_triggered=True last_below_pmh={watched.last_below_pmh}\n"); _tf.close()
                 if watched.entry_triggered and not watched.last_below_pmh:
                     logger.info(
                         f"[Warrior Entry] {symbol}: Price below PMH "
@@ -538,15 +536,12 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 
             else:
                 # Price is above PMH
-                if watched.entry_triggered:
-                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[PMH-TRACE] {symbol} price=${current_price:.2f} >= PMH=${watched.pmh:.2f} entry_triggered=True last_below_pmh={watched.last_below_pmh}\n"); _tf.close()
                 
                 # Check if this is a fresh breakout after pullback
                 if watched.entry_triggered and watched.last_below_pmh:
                     watched.last_below_pmh = False
                     watched.entry_triggered = False  # Reset to allow new entry attempt
                     watched.entry_attempt_count += 1
-                    _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] {symbol} ENTRY_TRIGGERED RESET! price=${current_price:.2f} >= PMH=${watched.pmh:.2f} attempt=#{watched.entry_attempt_count}\n"); _tf.close()
                     logger.info(
                         f"[Warrior Entry] {symbol}: Fresh breakout after pullback "
                         f"(re-entry attempt #{watched.entry_attempt_count})"
@@ -971,7 +966,6 @@ async def enter_position(
         trigger_type: Type of entry trigger (ORB, PMH_BREAK, etc.)
     """
     symbol = watched.candidate.symbol
-    import os; _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[ENTRY-TRACE] enter_position: {symbol} trigger={trigger_type.value} price=${entry_price:.2f} sim_only={getattr(engine.config, 'sim_only', '?')}\n"); _tf.close()
     
     # =========================================================================
     # ENTRY GUARDS (via extracted module)
@@ -979,7 +973,6 @@ async def enter_position(
     can_enter, block_reason = await check_entry_guards(
         engine, watched, entry_price, trigger_type
     )
-    import os; _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[ENTRY-TRACE] guards: {symbol} can_enter={can_enter} reason={block_reason}\n"); _tf.close()
     
     if not can_enter:
         if block_reason == "scale_into_existing":
@@ -1050,7 +1043,6 @@ async def enter_position(
             f"This indicates a data problem that needs investigation."
         )
         watched.entry_triggered = False  # Reset so we can retry
-        _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] STOP_CALC_FAIL {symbol} entry_triggered=False (mental_stop=None)\n"); _tf.close()
         engine.stats.entries_triggered -= 1  # Undo the increment
         return
     

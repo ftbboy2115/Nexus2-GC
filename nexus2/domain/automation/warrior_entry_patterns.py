@@ -854,7 +854,6 @@ async def detect_pullback_pattern(
     
     if should_enter:
         watched.entry_triggered = False  # Reset to allow re-entry
-        _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[RESET-TRACE] PULLBACK {symbol} entry_triggered=False\\n"); _tf.close()
         watched.entry_attempt_count += 1
         logger.info(
             f"[Warrior Entry] {symbol}: PULLBACK pattern "

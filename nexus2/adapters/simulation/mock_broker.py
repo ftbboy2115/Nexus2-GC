@@ -302,7 +302,6 @@ class MockBroker:
         # Check buying power
         order_value = fill_price * quantity
         if order_value > self._cash:
-            import os; _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[BROKER-TRACE] REJECT {symbol} x{quantity} @ ${fill_price:.2f} (need ${order_value:.2f}, have ${self._cash:.2f})\n"); _tf.close()
             return BrokerOrder(
                 client_order_id=client_order_id,
                 broker_order_id=entry_order_id,
@@ -354,7 +353,6 @@ class MockBroker:
         
         # Update cash
         self._cash -= fill_price * quantity
-        import os; _tf = open('/tmp/entry_trace.log', 'a'); _tf.write(f"[BROKER-TRACE] FILL {symbol} x{quantity} @ ${fill_price:.2f} trigger={entry_trigger} cash=${self._cash:.2f}\n"); _tf.close()
         
         # Create/update position
         if symbol in self._positions:
