@@ -81,7 +81,7 @@ class WarriorMonitorSettings:
     
     # Time Stop (no momentum)
     enable_time_stop: bool = True
-    time_stop_seconds: int = 120  # 2 minutes without momentum
+    time_stop_seconds: int = 600  # 10 minutes without momentum
     breakout_hold_threshold: float = 0.5  # Must hold 50% of breakout
     
     # After-Hours Exit (prevent overnight holds)

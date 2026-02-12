@@ -323,47 +323,41 @@ async def _check_time_stop(
     r_multiple: float,
 ) -> Optional[WarriorExitSignal]:
     """
-    Time Stop: Exit if position shows no momentum after N bars.
+    Time Stop: Exit if position is still red after N bars.
     
-    Ross Cameron: "If it's not working, get out." Don't sit in a trade
-    that isn't moving. After 2+ completed 1-minute candles, if price
-    hasn't held 50% of risk above entry, signal exit via limit order.
+    Ross Cameron: "If it's not working, get out." After 10 bars (10min),
+    if stock is still below entry price, it's dead — exit to avoid
+    bleeding to a wide stop (LCFY -$483, VERO -$642, BATL -$434).
     
     Uses candles_since_entry (bar count) instead of wall-clock time
     because batch simulation replays bars faster than real time.
     
-    Settings (warrior_types.py):
+    Settings:
     - enable_time_stop: bool = True
-    - time_stop_seconds: int = 120 (converted to bars: 120/60 = 2 bars)
-    - breakout_hold_threshold: float = 0.5
+    - time_stop_seconds: int (converted to bars: seconds // 60)
     """
     s = monitor.settings
     
     if not s.enable_time_stop:
         return None
     
-    # Convert time_stop_seconds to minimum bar count (1 bar = 60s)
+    # 10 bars minimum (10 minutes) — gives trade time to develop
     min_bars = max(1, s.time_stop_seconds // 60)
     
     if position.candles_since_entry < min_bars:
         return None  # Not enough bars elapsed
     
-    # Check if stock has EVER shown sufficient momentum (using MFE, not current price)
-    # "Sufficient" = high_since_entry reached at least breakout_hold_threshold of risk above entry
-    # Using MFE prevents time-stopping stocks that spiked then pulled back (ROLR, NPT)
-    # Only catches stocks that NEVER moved meaningfully (LCFY 10¢ MFE, VERO 9¢ MFE)
-    momentum_threshold = position.entry_price + (position.risk_per_share * Decimal(str(s.breakout_hold_threshold)))
+    # Simple check: is the stock above entry price?
+    # Not risk-relative (wide stops make that threshold unreachable)
+    if current_price >= position.entry_price:
+        return None  # Stock is green — let it run
     
-    if position.high_since_entry >= momentum_threshold:
-        return None  # Stock showed momentum at some point — let it run
-    
-    # Never showed momentum — exit
+    # Stock is red after N bars — exit to avoid bleeding to the stop
     pnl = (current_price - position.entry_price) * position.shares
     
     logger.warning(
         f"[Warrior] {position.symbol}: TIME STOP after {position.candles_since_entry} bars - "
-        f"MFE ${position.high_since_entry:.2f} never reached threshold ${momentum_threshold:.2f} "
-        f"({s.breakout_hold_threshold*100:.0f}% of risk ${position.risk_per_share:.2f})"
+        f"price ${current_price:.2f} still below entry ${position.entry_price:.2f}"
     )
     
     return WarriorExitSignal(
@@ -374,7 +368,7 @@ async def _check_time_stop(
         shares_to_exit=position.shares,
         pnl_estimate=pnl,
         r_multiple=r_multiple,
-        trigger_description=f"Time stop after {position.candles_since_entry} bars (no momentum)",
+        trigger_description=f"Time stop after {position.candles_since_entry} bars (below entry)",
     )
 
 
