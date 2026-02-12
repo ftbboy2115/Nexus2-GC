@@ -360,6 +360,19 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
             bars = bars[-(limit + 50):]
         return bars
 
+    # -- Callback 6: sim_get_quote_with_spread (returns dict, not float) --
+    async def sim_get_quote_with_spread(symbol: str, _broker=ctx.broker):
+        """Return quote dict with price/bid/ask for sim mode.
+
+        Downstream code (spread exit, entry guards) calls .get('bid') etc. on this,
+        so we MUST return a dict — not a raw float like sim_get_price does.
+        In sim there is no real spread, so bid == ask == price.
+        """
+        price = _broker.get_price(symbol)
+        if price is None:
+            return None
+        return {"price": price, "bid": price, "ask": price}
+
     # -- set_callbacks (L960-967): wires callbacks 1,2,3,4,5 + callback 6 --
     ctx.engine.monitor.set_callbacks(
         get_price=sim_get_price,
@@ -367,7 +380,7 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
         execute_exit=sim_execute_exit,
         update_stop=sim_update_stop,
         get_intraday_candles=sim_get_intraday_bars,
-        get_quote_with_spread=sim_get_price,  # Callback 6: same as get_price in sim
+        get_quote_with_spread=sim_get_quote_with_spread,  # Callback 6: returns dict (Phase 11 C3 fix)
         on_profit_exit=ctx.engine._handle_profit_exit,  # Enable re-entry after profitable exits
     )
 

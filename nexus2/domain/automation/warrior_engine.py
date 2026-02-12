@@ -185,6 +185,8 @@ class WarriorEngine:
     
     def _save_pending_entries(self):
         """Save pending entries to disk."""
+        if self._pending_entries_file is None:
+            return  # Sim mode — no disk persistence (Phase 11 C1 fix)
         try:
             import json
             data = {symbol: dt.isoformat() for symbol, dt in self._pending_entries.items()}
@@ -232,6 +234,14 @@ class WarriorEngine:
         logger.info(
             f"[Warrior Engine] {symbol}: Re-entry ENABLED after profit exit @ ${exit_price:.2f} "
             f"(attempt #{watched.entry_attempt_count})"
+        )
+        
+        # TML event for re-entry observability (Phase 11 C4 fix)
+        from nexus2.domain.automation.trade_event_service import trade_event_service
+        trade_event_service.log_warrior_reentry_enabled(
+            symbol=symbol,
+            exit_price=exit_price,
+            attempt_count=watched.entry_attempt_count,
         )
     
     # =========================================================================

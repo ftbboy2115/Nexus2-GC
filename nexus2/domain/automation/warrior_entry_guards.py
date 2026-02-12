@@ -300,12 +300,16 @@ async def _check_spread_filter(
                         f"(max={engine.config.max_entry_spread_percent}%)"
                     )
             elif bid <= 0 or ask <= 0:
+                # FAIL-CLOSED (Phase 11 A1 fix): block entry on invalid bid/ask
                 logger.warning(
                     f"[Warrior Entry] {symbol}: No valid bid/ask data "
-                    f"(bid=${bid}, ask=${ask}) - proceeding with caution"
+                    f"(bid=${bid}, ask=${ask}) - BLOCKING entry (fail-closed)"
                 )
+                return False, f"Invalid bid/ask data (bid=${bid}, ask=${ask})", None
     except Exception as e:
-        logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - proceeding")
+        # FAIL-CLOSED (Phase 11 A1 fix): block entry on spread check failure
+        logger.warning(f"[Warrior Entry] {symbol}: Spread check failed: {e} - BLOCKING entry (fail-closed)")
+        return False, f"Spread check error: {e}", None
     
     return True, "", current_ask
 

@@ -131,6 +131,8 @@ class WarriorMonitor:
     
     def _save_recently_exited(self):
         """Save recently exited symbols to disk."""
+        if self._recently_exited_file is None:
+            return  # Sim mode — no disk persistence (Phase 11 C2 fix)
         try:
             import json
             # Convert datetime to ISO strings

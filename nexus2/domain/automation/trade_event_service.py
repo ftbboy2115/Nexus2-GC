@@ -76,6 +76,7 @@ class TradeEventService:
     WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received (entry)
     WARRIOR_EXIT_FILL_CONFIRMED = "EXIT_FILL_CONFIRMED"  # Broker exit fill received
     WARRIOR_GUARD_BLOCK = "GUARD_BLOCK"  # Entry blocked by guard (position, macd, cooldown, etc.)
+    WARRIOR_REENTRY_ENABLED = "REENTRY_ENABLED"  # Re-entry enabled after profit exit (Phase 11 C4)
     
     def __init__(self):
         # TML (Trade Management Log) file paths for forensics
@@ -944,6 +945,24 @@ class TradeEventService:
             symbol=symbol,
             event_type=self.WARRIOR_GUARD_BLOCK,
             details=details,
+        )
+    
+    def log_warrior_reentry_enabled(
+        self,
+        symbol: str,
+        exit_price: float,
+        attempt_count: int,
+    ) -> None:
+        """Log Warrior re-entry enabled after profit exit (TML-only, no DB).
+        
+        This is a lightweight observability event — file log only to avoid
+        noise in the events table. Primarily for forensic review of re-entry decisions.
+        """
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_REENTRY_ENABLED,
+            details=f"Re-entry ENABLED after profit exit @ ${exit_price:.2f} (attempt #{attempt_count})",
         )
     
     # ==================== Query Methods ====================

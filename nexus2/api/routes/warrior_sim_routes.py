@@ -972,13 +972,27 @@ async def load_historical_test_case(case_id: str):
                 bars = bars[-(limit + 50):]  # Keep extra buffer for indicator warmup
             return bars
         
+        # Quote with spread wrapper: returns dict (not float) for downstream .get() calls
+        async def sim_get_quote_with_spread(symbol: str):
+            """Return quote dict with price/bid/ask for sim mode.
+            
+            Downstream code (spread exit, entry guards) calls .get('bid') etc.,
+            so we MUST return a dict — not a raw float. (Phase 11 C3 fix)
+            """
+            sim_broker = get_warrior_sim_broker()
+            if sim_broker:
+                price = sim_broker.get_price(symbol)
+                if price is not None:
+                    return {"price": price, "bid": price, "ask": price}
+            return None
+
         engine.monitor.set_callbacks(
             get_price=sim_get_price,
             get_prices_batch=sim_get_prices_batch,
             execute_exit=sim_execute_exit,
             update_stop=sim_update_stop,
             get_intraday_candles=sim_get_intraday_bars,
-            get_quote_with_spread=sim_get_price,  # Spread = price in sim (no real spreads)
+            get_quote_with_spread=sim_get_quote_with_spread,  # Returns dict (Phase 11 C3 fix)
         )
         # Directly clear callbacks that should be DISABLED in sim
         # set_callbacks() ignores None values (by design, to preserve live callbacks)

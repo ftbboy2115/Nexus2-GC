@@ -1001,7 +1001,6 @@ async def handle_exit(
         if order_success:
             # Track as recently exited (wall clock for live, sim clock for Mock Market)
             monitor._recently_exited[signal.symbol] = now_utc()
-            monitor._save_recently_exited()
             
             # SIM MODE: Also track exit in simulation time (for proper cooldown)
             if monitor.sim_mode and hasattr(monitor, '_sim_clock') and monitor._sim_clock:
@@ -1034,7 +1033,10 @@ async def handle_exit(
             if signal.reason in stop_reasons and monitor._record_symbol_fail:
                 monitor._record_symbol_fail(signal.symbol)
             
+            # Remove position BEFORE persisting recently_exited (Phase 11 A3 fix)
+            # If save fails, at least the position is already cleaned up
             monitor.remove_position(signal.position_id)
+            monitor._save_recently_exited()
             logger.info(f"[Warrior] {signal.symbol}: Removed from monitor (exit successful)")
         else:
             # Order failed - keep position in monitor for retry on next tick
