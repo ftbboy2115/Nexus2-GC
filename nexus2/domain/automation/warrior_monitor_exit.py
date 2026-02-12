@@ -348,20 +348,21 @@ async def _check_time_stop(
     if position.candles_since_entry < min_bars:
         return None  # Not enough bars elapsed
     
-    # Check if price has shown sufficient momentum
-    # "Sufficient" = price is at least breakout_hold_threshold of risk above entry
-    # e.g., if risk is 20¢ and threshold is 0.5, need to be at least +10¢
+    # Check if stock has EVER shown sufficient momentum (using MFE, not current price)
+    # "Sufficient" = high_since_entry reached at least breakout_hold_threshold of risk above entry
+    # Using MFE prevents time-stopping stocks that spiked then pulled back (ROLR, NPT)
+    # Only catches stocks that NEVER moved meaningfully (LCFY 10¢ MFE, VERO 9¢ MFE)
     momentum_threshold = position.entry_price + (position.risk_per_share * Decimal(str(s.breakout_hold_threshold)))
     
-    if current_price >= momentum_threshold:
-        return None  # Stock is working — let it run
+    if position.high_since_entry >= momentum_threshold:
+        return None  # Stock showed momentum at some point — let it run
     
-    # No momentum — exit
+    # Never showed momentum — exit
     pnl = (current_price - position.entry_price) * position.shares
     
     logger.warning(
         f"[Warrior] {position.symbol}: TIME STOP after {position.candles_since_entry} bars - "
-        f"price ${current_price:.2f} < momentum threshold ${momentum_threshold:.2f} "
+        f"MFE ${position.high_since_entry:.2f} never reached threshold ${momentum_threshold:.2f} "
         f"({s.breakout_hold_threshold*100:.0f}% of risk ${position.risk_per_share:.2f})"
     )
     
