@@ -323,15 +323,18 @@ async def _check_time_stop(
     r_multiple: float,
 ) -> Optional[WarriorExitSignal]:
     """
-    Time Stop: Exit if position shows no momentum after N seconds.
+    Time Stop: Exit if position shows no momentum after N bars.
     
     Ross Cameron: "If it's not working, get out." Don't sit in a trade
-    that isn't moving. After 120s, if price hasn't held 50% of the
-    breakout range above entry, signal exit via limit order.
+    that isn't moving. After 2+ completed 1-minute candles, if price
+    hasn't held 50% of risk above entry, signal exit via limit order.
+    
+    Uses candles_since_entry (bar count) instead of wall-clock time
+    because batch simulation replays bars faster than real time.
     
     Settings (warrior_types.py):
     - enable_time_stop: bool = True
-    - time_stop_seconds: int = 120
+    - time_stop_seconds: int = 120 (converted to bars: 120/60 = 2 bars)
     - breakout_hold_threshold: float = 0.5
     """
     s = monitor.settings
@@ -339,15 +342,11 @@ async def _check_time_stop(
     if not s.enable_time_stop:
         return None
     
-    # Calculate time since entry
-    entry_time = position.entry_time
-    if entry_time.tzinfo is None:
-        from datetime import timezone
-        entry_time = entry_time.replace(tzinfo=timezone.utc)
-    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    # Convert time_stop_seconds to minimum bar count (1 bar = 60s)
+    min_bars = max(1, s.time_stop_seconds // 60)
     
-    if seconds_since_entry < s.time_stop_seconds:
-        return None  # Not yet at time limit
+    if position.candles_since_entry < min_bars:
+        return None  # Not enough bars elapsed
     
     # Check if price has shown sufficient momentum
     # "Sufficient" = price is at least breakout_hold_threshold of risk above entry
@@ -361,7 +360,7 @@ async def _check_time_stop(
     pnl = (current_price - position.entry_price) * position.shares
     
     logger.warning(
-        f"[Warrior] {position.symbol}: TIME STOP after {seconds_since_entry:.0f}s - "
+        f"[Warrior] {position.symbol}: TIME STOP after {position.candles_since_entry} bars - "
         f"price ${current_price:.2f} < momentum threshold ${momentum_threshold:.2f} "
         f"({s.breakout_hold_threshold*100:.0f}% of risk ${position.risk_per_share:.2f})"
     )
@@ -374,7 +373,7 @@ async def _check_time_stop(
         shares_to_exit=position.shares,
         pnl_estimate=pnl,
         r_multiple=r_multiple,
-        trigger_description=f"Time stop after {seconds_since_entry:.0f}s (no momentum)",
+        trigger_description=f"Time stop after {position.candles_since_entry} bars (no momentum)",
     )
 
 
@@ -939,6 +938,9 @@ async def evaluate_position(
     # Update low since entry (MAE tracking)
     if current_price < position.low_since_entry:
         position.low_since_entry = current_price
+    
+    # Track bar count (each evaluate_position call = 1 bar in replay)
+    position.candles_since_entry += 1
     
     # Calculate current R
     if position.risk_per_share > 0:

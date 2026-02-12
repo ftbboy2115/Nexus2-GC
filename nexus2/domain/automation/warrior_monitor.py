@@ -415,10 +415,18 @@ class WarriorMonitor:
         if support_level and s.use_technical_stop:
             technical_stop = support_level - s.technical_stop_buffer_cents / 100
         
-        # Current stop: Use CANDLE LOW (technical) as PRIMARY, mental only as FALLBACK
-        # Ross's rule: "Max loss per trade = Low of entry candle"
-        # NOT "tighter of two" - that causes too many stop-outs
-        if technical_stop and s.use_candle_low_stop:
+        # Current stop selection based on exit mode
+        if exit_mode == "base_hit" and technical_stop and s.use_candle_low_stop:
+            # Base hit: Use TIGHTER (higher) of candle low vs 15¢ stop
+            # Prevents wide stops like VERO ($5 stop on a scalp)
+            current_stop = max(technical_stop, mental_stop)
+            if current_stop == mental_stop and technical_stop != mental_stop:
+                logger.info(
+                    f"[Warrior] {symbol}: Base hit stop CAPPED at ${mental_stop:.2f} "
+                    f"(candle low ${technical_stop:.2f} too wide, using -{s.base_hit_stop_cents}¢)"
+                )
+        elif technical_stop and s.use_candle_low_stop:
+            # Home run: Use candle low (give room for bigger moves)
             current_stop = technical_stop  # Ross's actual method
         else:
             current_stop = mental_stop  # Fallback when no candle data
