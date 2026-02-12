@@ -80,7 +80,7 @@ class WarriorMonitorSettings:
     topping_tail_threshold: float = 0.6  # Wick > 60% of candle range
     
     # Time Stop (no momentum)
-    enable_time_stop: bool = True
+    enable_time_stop: bool = False  # Disabled: kills winners (NPT -$1740). Ross accepts losses.
     time_stop_seconds: int = 600  # 10 minutes without momentum
     breakout_hold_threshold: float = 0.5  # Must hold 50% of breakout
     
