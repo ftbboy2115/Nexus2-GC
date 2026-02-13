@@ -1657,8 +1657,9 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
         yappi.stop()
         stats = yappi.get_func_stats()
         print(f"\n[Batch Runner] === YAPPI PROFILE (top 30 by total CPU time) ===")
+        import sys
         stats.sort('ttot', 'desc')
-        stats.print_all(columns={0: ('name', 80), 1: ('ncall', 8), 2: ('tsub', 8), 3: ('ttot', 8)}, out=None)
+        stats.print_all(columns={0: ('name', 80), 1: ('ncall', 8), 2: ('tsub', 8), 3: ('ttot', 8)}, out=sys.stdout)
         # Also write to file for easier reading
         profile_path = os.path.join(os.path.dirname(__file__), '..', '..', 'reports', 'batch_yappi_profile.txt')
         os.makedirs(os.path.dirname(profile_path), exist_ok=True)
