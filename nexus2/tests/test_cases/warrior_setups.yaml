@@ -995,6 +995,61 @@ test_cases:
     notes: "Sub-1M float, Israeli company, recent RS, room to 200 MA. Hit scanner at $3.22. Ross entered at $4.15-$4.50, added at $5.70, $6.50, $7.82. 100% move ($4→$8) in ~20 seconds. Couldn't fill profit orders at top, rolled over hard. Ross discussed MEMX order spoofing (18-22K share sell orders being placed/cancelled algorithmically). Cold market = no follow-through. Transcript: 2026-02-11_transcript_HYK2eKkViJs.md"
 
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 12, 2026)
+  # Transcript: 2026-02-12_transcript_5yS8i0-aMvI.md
+  # Day total: +$4,426 (PMI +$9,959 minus ~$5,500 loss on unnamed halted stock)
+  # --------------------------------------------------------------------------
+
+  - id: ross_pmi_20260212
+    symbol: PMI
+    setup_type: micro_pullback
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$9,959 - Surprise Short Squeeze, Micro Pullback Entry"
+    trade_date: "2026-02-12"
+    intraday_file: "intraday/ross_pmi_20260212.json"
+    ross_pnl: 9959.30
+    ross_entry_time: "~09:24"  # Micro pullback entry after scanner alerts at $1.79→$2→$2.09→$2.23
+    premarket_data:
+      gap_percent: 41.1
+      premarket_high: 3.29
+      previous_close: 1.63
+      float_shares: 25000000  # Ross noted "slightly higher float, 25 million shares"
+      catalyst: "momentum"  # No specific catalyst mentioned, short squeeze dynamics
+    expected:
+      entry_near: 2.50  # Ross entered at "the half dollar" on micro pullback
+      stop_near: 2.35  # Below micro pullback low
+    notes: "Cold market day. Ross took one losing trade on ONCO (-$5,500) before PMI. Scanner alerts: $1.79→$2→$2.09→$2.23→$2.35. Entry at $2.50 on micro pullback, added for break of $3. Squeezed to $3.07. Higher float (~25M) worked because shorts were more confident on it. Day total +$4,426. Transcript: 2026-02-12_transcript_5yS8i0-aMvI.md"
+
+  - id: ross_onco_20260212
+    symbol: ONCO
+    setup_type: halt_dip
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$5,500 - Halted Stock Dip Buy, Instant Rejection"
+    trade_date: "2026-02-12"
+    intraday_file: "intraday/ross_onco_20260212.json"
+    ross_pnl: -5500.00
+    ross_entry_time: "~08:30"  # Stock was halted on news, resumed at 8:30
+    premarket_data:
+      gap_percent: null  # Need to verify from bar data
+      premarket_high: null  # Need to verify from bar data
+      previous_close: null  # Need to verify from bar data
+      float_shares: 5000000
+      catalyst: "news"  # Halted on news
+    expected:
+      entry_near: 2.40  # Ross bought dip at ~$2.40 on halt resumption
+      stop_near: 2.10  # Stopped out at break of $2.10
+    notes: "Ross's first trade of the day. ONCO was halted on news, showed $2.50 resumption imbalance, then $2.70. Resumed, Ross bought dip at $2.40 looking for squeeze to $3. Instantly rejected, stopped out at break of $2.10. Went much lower without him. Only trade between 7am-9am. Transcript: 2026-02-12_transcript_5yS8i0-aMvI.md"
+
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1003,7 +1058,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               29 (+ EVMN, VELO from 2026-02-10, BNRG, PRFX from 2026-02-11)
+# POLYGON_DATA:               31 (+ PMI, ONCO from 2026-02-12)
 # ==========================================================================
 
 

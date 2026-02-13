@@ -99,13 +99,13 @@ class WarriorScanSettings:
     ideal_float: int = 20_000_000  # 20M shares ideal
     
     # ETB + High Float Disqualifier (Ross Cameron methodology)
-    # "Easy to borrow + 35M float = choppy, fake-outs, shorts will flush it"
-    etb_high_float_threshold: int = 10_000_000  # Reject ETB stocks with float > 10M
+    # "Easy to borrow + high float = choppy, fake-outs, shorts will flush it"
+    etb_high_float_threshold: int = 35_000_000  # Reject ETB stocks with float > 35M
     
     # Pure High Float Disqualifier (does NOT rely on broker ETB data)
-    # Ross Cameron prefers sub-20M float; anything >30M is choppy/institutionally-held
+    # Ross Cameron prefers sub-20M float; anything >100M is choppy/institutionally-held
     # This triggers REGARDLESS of borrow status since Alpaca ETB data is unreliable
-    high_float_threshold: int = 30_000_000  # Hard reject if float > 30M
+    high_float_threshold: int = 100_000_000  # Hard reject if float > 100M
     
     # Pillar 2: Relative Volume
     min_rvol: Decimal = Decimal("2.0")  # 2x minimum
@@ -117,7 +117,7 @@ class WarriorScanSettings:
     
     # Pillar 4: Price Range
     min_price: Decimal = Decimal("1.50")
-    max_price: Decimal = Decimal("20.0")  # Editable in settings
+    max_price: Decimal = Decimal("40.0")  # Editable in settings
     
     # Pillar 5: Gap %
     min_gap: Decimal = Decimal("4.0")  # 4% minimum
@@ -542,7 +542,7 @@ class WarriorScannerService:
                     timestamp=now_utc(),  # IMPORTANT: Use now_utc() not datetime.now()
                     symbol=symbol,
                     result="PASS" if passed else "FAIL",
-                    gap_pct=float(ctx.change_percent) if ctx and ctx.change_percent else None,
+                    gap_pct=float(ctx.gap_pct) if ctx and ctx.gap_pct else None,
                     rvol=float(ctx.rvol) if ctx and ctx.rvol else None,
                     score=candidate.quality_score if candidate else None,
                     float_shares=ctx.float_shares if ctx else None,
@@ -1546,6 +1546,7 @@ class WarriorScannerService:
                 values={"price": float(ctx.price), "min": float(s.min_price), "max": float(s.max_price)},
             )
             self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="price_out_of_range")
+            scan_logger.info(f"REJECT {ctx.symbol} | price_out_of_range | price=${ctx.price} range=[${s.min_price}-${s.max_price}]")
             return "price_out_of_range"
         return None
     
@@ -1575,34 +1576,13 @@ class WarriorScannerService:
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}%")
             self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="gap_too_low")
+            scan_logger.info(f"REJECT {ctx.symbol} | gap_too_low | gap={ctx.gap_pct:.1f}% min={s.min_gap}%")
             return "gap_too_low"
         
         ctx.is_ideal_gap = ctx.gap_pct >= s.ideal_gap
         return None
     
-    def _check_dollar_volume(
-        self, ctx: EvaluationContext, tracker
-    ) -> Optional[str]:
-        """
-        Dollar volume check (min $500K).
-        
-        Returns rejection reason string if failed, None if passed.
-        """
-        s = ctx.settings
-        ctx.dollar_vol = ctx.last_price * ctx.session_volume
-        
-        if ctx.dollar_vol < s.min_dollar_volume:
-            tracker.record(
-                symbol=ctx.symbol,
-                scanner="warrior",
-                reason=RejectionReason.DOLLAR_VOL_LOW,
-                values={"dollar_vol": round(float(ctx.dollar_vol)), "min": float(s.min_dollar_volume)},
-            )
-            if ctx.verbose:
-                print(f"{ctx.symbol}: Rejected - Dollar volume ${ctx.dollar_vol:,.0f} < ${s.min_dollar_volume:,.0f}")
-            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="dollar_vol_low")
-            return "dollar_vol_low"
-        return None
+    # _check_dollar_volume removed — dead code per scanner audit (2026-02-13)
     
     def _check_200_ema(
         self, ctx: EvaluationContext, tracker
