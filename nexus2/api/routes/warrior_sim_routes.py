@@ -1341,7 +1341,21 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
     This replaces 30+ minutes of manual testing with a single API call.
     """
     import json
+    import time as _time
     
+    # --- YAPPI ASYNC PROFILER (temporary) ---
+    try:
+        import yappi
+        yappi.clear_stats()
+        yappi.set_clock_type('cpu')
+        yappi.start()
+        _yappi_enabled = True
+        print('[Batch Runner] yappi CPU profiler STARTED')
+    except ImportError:
+        _yappi_enabled = False
+        print('[Batch Runner] yappi not installed, skipping profiling')
+    
+    cpu_start = _time.process_time()
     start_time = time.time()
     
     # Load all test cases from YAML
@@ -1631,9 +1645,28 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
     cases_profitable = sum(1 for r in results if r.get("total_pnl", 0) > 0)
     cases_with_errors = sum(1 for r in results if "error" in r)
     
+    cpu_elapsed = _time.process_time() - cpu_start
+    
     print(f"\n[Batch Runner] === COMPLETE ===")
     print(f"[Batch Runner] {len(results)} cases, {cases_profitable} profitable, P&L=${total_pnl:+.2f} (Ross: ${total_ross_pnl:+.2f})")
     print(f"[Batch Runner] Runtime: {total_runtime}s")
+    print(f"[Batch Runner] CPU time: {cpu_elapsed:.1f}s | Wall time: {total_runtime}s | I/O wait: {total_runtime - cpu_elapsed:.1f}s")
+    
+    # --- YAPPI RESULTS (temporary) ---
+    if _yappi_enabled:
+        yappi.stop()
+        stats = yappi.get_func_stats()
+        print(f"\n[Batch Runner] === YAPPI PROFILE (top 30 by total CPU time) ===")
+        stats.sort('ttot', 'desc')
+        stats.print_all(columns={0: ('name', 80), 1: ('ncall', 8), 2: ('tsub', 8), 3: ('ttot', 8)}, out=None)
+        # Also write to file for easier reading
+        profile_path = os.path.join(os.path.dirname(__file__), '..', '..', 'reports', 'batch_yappi_profile.txt')
+        os.makedirs(os.path.dirname(profile_path), exist_ok=True)
+        stats.save(profile_path, type='pstat')
+        # Print top 30 manually for log visibility
+        for i, stat in enumerate(stats[:30]):
+            print(f"  {i+1:2d}. {stat.ttot:.3f}s total | {stat.tsub:.3f}s self | {stat.ncall}x | {stat.name}")
+        print(f"[Batch Runner] === END PROFILE ===")
     
     return {
         "results": results,
