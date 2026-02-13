@@ -312,7 +312,7 @@ class HistoricalBarLoader:
         yaml_meta = self._load_yaml_metadata(case_id)
         
         try:
-            with open(json_path, "r") as f:
+            with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
             # Merge setup_type from YAML into JSON data before parsing
@@ -336,7 +336,7 @@ class HistoricalBarLoader:
                 bars_10s_path = self._test_cases_dir / "intraday" / f"{symbol}_{date_str}_10s.json"
                 if bars_10s_path.exists():
                     try:
-                        with open(bars_10s_path, "r") as f:
+                        with open(bars_10s_path, "r", encoding="utf-8") as f:
                             data_10s = json.load(f)
                         data["bars_10s"] = data_10s.get("bars", [])
                         logger.info(f"[HistoricalBarLoader] Loaded {len(data['bars_10s'])} 10s bars from {bars_10s_path.name}")
@@ -367,7 +367,7 @@ class HistoricalBarLoader:
             return None
         
         try:
-            with open(yaml_path, "r") as f:
+            with open(yaml_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             
             for tc in data.get("test_cases", []):
