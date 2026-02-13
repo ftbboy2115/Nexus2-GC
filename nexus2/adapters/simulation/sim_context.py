@@ -521,8 +521,8 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
                 "error": "No bars loaded",
             }
 
-        # Step through all bars + 30 min EOD buffer
-        await step_clock_ctx(ctx, bar_count + 30)
+        # Step through full day: 04:00→20:00, matches sequential runner
+        await step_clock_ctx(ctx, 960)
 
         # EOD close: force-close any open positions
         eod_positions = ctx.broker.get_positions()
