@@ -59,7 +59,23 @@ class TechnicalService:
     - VWAP (Volume Weighted Average Price)
     - EMA (9 and 20 period)
     - MACD (12/26/9)
+    
+    Caches snapshots by (symbol, candle_count) to avoid redundant recalculations
+    when clock steps faster than new bars arrive (e.g., 10s steps with 1-min bars).
     """
+    
+    def __init__(self):
+        # Cache: (symbol, candle_count) -> TechnicalSnapshot
+        self._snapshot_cache: Dict[tuple, TechnicalSnapshot] = {}
+    
+    def clear_cache(self, symbol: Optional[str] = None):
+        """Clear cached snapshots. Call when loading a new test case."""
+        if symbol:
+            keys_to_remove = [k for k in self._snapshot_cache if k[0] == symbol]
+            for k in keys_to_remove:
+                del self._snapshot_cache[k]
+        else:
+            self._snapshot_cache.clear()
     
     def get_snapshot(
         self,
@@ -69,6 +85,10 @@ class TechnicalService:
     ) -> TechnicalSnapshot:
         """
         Get all technical indicators for a symbol from candle data.
+        
+        Uses caching: if the same symbol with the same number of candles is
+        requested, returns the cached snapshot with updated current_price.
+        MACD/EMA/VWAP only change when a new bar is added.
         
         Args:
             symbol: Stock symbol
@@ -80,8 +100,19 @@ class TechnicalService:
         """
         if not candles or len(candles) < 5:
             logger.warning(f"[Technical] {symbol}: INSUFFICIENT DATA - only {len(candles) if candles else 0} candles (need 5+ for indicators)")
-            # Return snapshot with explicit flag so callers know data was insufficient
             return TechnicalSnapshot(symbol=symbol, current_price=current_price, data_insufficient=True)
+        
+        # Cache key: same symbol + same candle count + same first bar = same indicators
+        # The first-bar fingerprint distinguishes "all candles (incl. continuity)"
+        # from "today-only candles" which may have different starting points
+        first_bar = candles[0]
+        first_close = first_bar.get('close', first_bar.get('c', 0))
+        cache_key = (symbol, len(candles), first_close)
+        cached = self._snapshot_cache.get(cache_key)
+        if cached is not None:
+            # Return cached snapshot with updated current_price
+            cached.current_price = current_price
+            return cached
         
         try:
             # Convert to DataFrame
@@ -167,7 +198,7 @@ class TechnicalService:
             except Exception as e:
                 logger.debug(f"[Technical] {symbol}: MACD calc failed: {e}")
             
-            return TechnicalSnapshot(
+            snapshot = TechnicalSnapshot(
                 symbol=symbol,
                 vwap=vwap,
                 ema_9=ema_9,
@@ -178,6 +209,10 @@ class TechnicalService:
                 macd_crossover=crossover,
                 current_price=current_price,
             )
+            
+            # Cache the result for future calls with same candle count
+            self._snapshot_cache[cache_key] = snapshot
+            return snapshot
             
         except Exception as e:
             logger.error(f"[Technical] {symbol}: Snapshot failed: {e}")
