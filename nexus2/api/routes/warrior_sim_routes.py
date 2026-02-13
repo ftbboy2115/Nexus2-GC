@@ -857,15 +857,16 @@ async def load_historical_test_case(case_id: str):
         engine.monitor._recently_exited_sim_time.clear()  # Reset sim-time cooldowns on new test case
         engine.monitor.realized_pnl_today = Decimal("0")  # Reset daily P&L tracking per case
         
+        # Stop monitor background loop during replay — step_clock drives
+        # _check_all_positions explicitly. Without this, the monitor loop
+        # fires on wall-clock (2s), causing dual entries and race conditions.
+        if engine.monitor._running:
+            await engine.monitor.stop()
+        
         async def sim_get_price(symbol: str):
             sim_broker = get_warrior_sim_broker()
             if sim_broker:
                 price = sim_broker.get_price(symbol)
-                logger.warning(
-                    f"[TRACE-VELO] sim_get_price: symbol={symbol}, "
-                    f"clock_time={clock.get_time_string()}, "
-                    f"price={price}"
-                )
                 if price is not None:
                     return price
             return None
@@ -1198,10 +1199,6 @@ async def step_clock(minutes: int = 1, headless: bool = False):
         # Trigger entry check if engine is running
         if engine and engine_state_str in ("running", "premarket"):
             try:
-                logger.warning(
-                    f"[TRACE-VELO] step_clock tick: sim_time={clock.get_time_string()}, "
-                    f"step={step_idx}, broker_price={broker.get_price('VELO') if broker else 'N/A'}"
-                )
                 await check_entry_triggers(engine)
             except Exception as e:
                 if not headless:
@@ -1492,7 +1489,7 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                     continue
                 
                 # Step 2: Step through all bars + 30 min EOD buffer (headless)
-                step_minutes = bar_count + 30
+                step_minutes = 960  # Full day: 04:00→20:00, matches GUI step range
                 await step_clock(minutes=step_minutes, headless=True)
                 
                 # Step 2.5: Force-close any open positions at EOD (last bar's close price)

@@ -77,15 +77,9 @@ async def _get_price_with_fallbacks(
         return None
     
     price = await monitor._get_price(position.symbol)
-    logger.warning(
-        f"[TRACE-VELO] _get_price_with_fallbacks: symbol={position.symbol}, "
-        f"primary_price={price}, sim_mode={monitor.sim_mode}, "
-        f"sim_clock={getattr(monitor, '_sim_clock', None) and monitor._sim_clock.get_time_string()}"
-    )
     
     # If Alpaca fails, try Schwab as first fallback (real-time bid/ask)
     if price is None or price == 0:
-        logger.warning(f"[TRACE-VELO] Schwab fallback TRIGGERED for {position.symbol}")
         logger.info(f"[Warrior] {position.symbol}: Alpaca quote failed, trying Schwab fallback...")
         try:
             from nexus2.adapters.market_data.schwab_adapter import get_schwab_adapter
@@ -102,7 +96,6 @@ async def _get_price_with_fallbacks(
     
     # If still no price, try FMP as final fallback
     if price is None or price == 0:
-        logger.warning(f"[TRACE-VELO] FMP fallback TRIGGERED for {position.symbol}")
         logger.info(f"[Warrior] {position.symbol}: Trying FMP fallback...")
         try:
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
@@ -116,7 +109,6 @@ async def _get_price_with_fallbacks(
     
     # FINAL FALLBACK: Alpaca position current_price
     if price is None or price == 0:
-        logger.warning(f"[TRACE-VELO] Alpaca position fallback TRIGGERED for {position.symbol}")
         logger.info(f"[Warrior] {position.symbol}: Trying Alpaca position fallback...")
         try:
             if monitor._get_broker_positions:
@@ -917,10 +909,6 @@ async def evaluate_position(
     logger.info(
         f"[Warrior] {position.symbol}: evaluate_position called, "
         f"prefetched_price={prefetched_price}, entry=${position.entry_price}"
-    )
-    logger.warning(
-        f"[TRACE-VELO] evaluate_position: symbol={position.symbol}, "
-        f"entry_price={position.entry_price}, current_stop={position.current_stop}"
     )
     
     # Get current price
