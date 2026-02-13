@@ -1049,6 +1049,29 @@ test_cases:
       stop_near: 2.10  # Stopped out at break of $2.10
     notes: "Ross's first trade of the day. ONCO was halted on news, showed $2.50 resumption imbalance, then $2.70. Resumed, Ross bought dip at $2.40 looking for squeeze to $3. Instantly rejected, stopped out at break of $2.10. Went much lower without him. Only trade between 7am-9am. Transcript: 2026-02-12_transcript_5yS8i0-aMvI.md"
 
+  - id: ross_mlec_20260213
+    symbol: MLEC
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$43,000 - Breaking News Headline HOD Breakout"
+    trade_date: "2026-02-13"
+    intraday_file: "intraday/ross_mlec_20260213.json"
+    data_source: polygon
+    ross_pnl: 43000.00
+    ross_entry_time: "~08:11"  # Breakout of HOD ~$7.90, 3-minute move to $11
+    premarket_data:
+      gap_percent: 94.6
+      premarket_high: 12.97
+      previous_close: 3.62  # Estimated from gap calc
+      float_shares: 5000000
+      catalyst: "news"  # Breaking news headline, Luxembourg company, reverse split history
+    expected:
+      entry_near: 7.90  # Ross entered ~$7.86-$7.97 on HOD breakout
+      stop_near: 7.50
+    notes: "Cold market day, Friday the 13th. Ross didn't open broker initially, just charts. MLEC hit scanner 8am with news flame. Restricted on ThinkorSwim (Luxembourg). Entry on break of HOD ~$7.90, immediate rip to $9. Added micro pullback, squeezed to $11. Sold ~$10.09-$10.14 on red candle. Missed second move to $12.50 and third to $13. $43K in 3 minutes. Disqualified: MGRT (dead cat bounce, HK co), MTVA (too cheap). Transcript: 2026-02-13_transcript_AfxuHHa_sFY.md"
 
 # ==========================================================================
 # SUMMARY
@@ -1058,7 +1081,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               31 (+ PMI, ONCO from 2026-02-12)
+# POLYGON_DATA:               32 (+ MLEC from 2026-02-13)
 # ==========================================================================
 
 
