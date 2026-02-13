@@ -30,12 +30,20 @@ class IntradayBar:
     low: float
     close: float
     volume: int
+    _cached_time_obj: object = field(default=None, init=False, repr=False)
+    
+    def __post_init__(self):
+        """Pre-parse time string once at construction."""
+        parts = self.time.split(":")
+        if len(parts) == 3:
+            self._cached_time_obj = time(int(parts[0]), int(parts[1]), int(parts[2]))
+        else:
+            self._cached_time_obj = time(int(parts[0]), int(parts[1]))
     
     @property
     def time_obj(self) -> time:
-        """Parse time string to time object."""
-        parts = self.time.split(":")
-        return time(int(parts[0]), int(parts[1]))
+        """Return cached parsed time object."""
+        return self._cached_time_obj
     
     def to_dict(self) -> Dict:
         return {
@@ -221,8 +229,7 @@ class IntradayData:
         
         last_price = None
         for bar in self.bars_10s:
-            bar_time = self._parse_time_with_seconds(bar.time)
-            if bar_time <= target:
+            if bar.time_obj <= target:
                 last_price = bar.close
             else:
                 break
@@ -243,8 +250,7 @@ class IntradayData:
         
         result = []
         for bar in self.bars_10s:
-            bar_time = self._parse_time_with_seconds(bar.time)
-            if bar_time <= target:
+            if bar.time_obj <= target:
                 result.append(bar)
             else:
                 break
