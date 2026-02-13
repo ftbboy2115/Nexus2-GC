@@ -17,8 +17,8 @@ tmux send-keys -t nexus:0 'source .venv/bin/activate && ./run_api.sh' Enter
 # Wait for backend to initialize
 sleep 8
 
-# Create frontend window and start it
+# Create frontend window, build, then start
 tmux new-window -t nexus -n frontend -c ~/Nexus2/nexus2/frontend
-tmux send-keys -t nexus:frontend 'npm start' Enter
+tmux send-keys -t nexus:frontend 'npm run build && npm start' Enter
 
 echo "[$(date)] Nexus 2 started: backend (run_api.sh) + frontend in tmux session 'nexus'"
