@@ -12,7 +12,7 @@ tmux kill-session -t nexus 2>/dev/null
 tmux new-session -d -s nexus -c ~/Nexus2
 
 # Start backend with auto-restart wrapper
-tmux send-keys -t nexus:0 'source .venv/bin/activate && ./run_api.sh' Enter
+tmux send-keys -t nexus:0 '. .venv/bin/activate && ./run_api.sh' Enter
 
 # Wait for backend to initialize
 sleep 8
