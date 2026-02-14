@@ -43,6 +43,7 @@ class EntryTriggerType(Enum):
     ABCD = "abcd"  # ABCD Pattern breakout (Ross: DCX Jan 29 2026 cold-day strategy)
     CUP_HANDLE = "cup_handle"  # Cup & Handle VWAP Break (Ross: LRHC Jan 30 2026)
     WHOLE_HALF_ANTICIPATORY = "whole_half_anticipatory"  # Buy $5.97 for break of $6 (Ross: GRI Jan 28 2026)
+    HOD_BREAK = "hod_break"  # HOD consolidation break (Ross: MLEC "break of high-of-day")
 
 
 # =============================================================================
@@ -133,6 +134,9 @@ class WarriorEngineConfig:
     # Whole/Half Dollar Anticipatory (Ross Cameron: GRI Jan 28 2026)
     # "Best entry for me $5.97 for the break of six" - buy ahead of psychological level
     whole_half_anticipatory_enabled: bool = True  # Enable anticipatory entries at whole/half dollars
+    
+    # HOD Consolidation Break (Ross: "Break of high-of-day" — MLEC $43K trade)
+    hod_break_enabled: bool = True  # Enable HOD consolidation break pattern detection
 
 
 @dataclass

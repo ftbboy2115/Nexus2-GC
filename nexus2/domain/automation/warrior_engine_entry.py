@@ -49,6 +49,7 @@ from nexus2.domain.automation.warrior_entry_patterns import (
     detect_vwap_break_pattern,
     detect_inverted_hs_pattern,
     detect_cup_handle_pattern,
+    detect_hod_consolidation_break,
 )
 
 # Helper functions (Phase 3 extraction)
@@ -533,6 +534,12 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 # DIP-FOR-LEVEL PATTERN (below PMH)
                 dip_trigger = await detect_dip_for_level(engine, watched, current_price, setup_type)
                 add_candidate(dip_trigger, confidence=0.70)
+                
+                # HOD CONSOLIDATION BREAK (below PMH — Ross's "break of high-of-day")
+                hod_break_trigger = await detect_hod_consolidation_break(
+                    engine, watched, current_price, setup_type
+                )
+                add_candidate(hod_break_trigger, confidence=0.85)
                 
             else:
                 # Price is above PMH

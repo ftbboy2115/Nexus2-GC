@@ -1252,3 +1252,161 @@ async def detect_cup_handle_pattern(
     except Exception as e:
         logger.debug(f"[Warrior Entry] {symbol}: Cup & Handle check failed: {e}")
         return None
+
+
+async def detect_hod_consolidation_break(
+    engine: "WarriorEngine",
+    watched: "WatchedCandidate",
+    current_price: Decimal,
+    setup_type: Optional[str] = None,
+) -> Optional[EntryTriggerType]:
+    """
+    Detect HOD Consolidation Break pattern — Ross Cameron's "Break of high-of-day".
+
+    MLEC evidence (ross_mlec_20260213):
+    - Bars 08:03–08:10: price consolidates $7.00–$7.90 after spike to $8.49
+    - Bar 08:11: breakout — open $7.62, high $9.07, volume 554K vs ~225K avg
+    - Ross entered ~$7.86–$7.97 on this HOD break
+
+    Pattern:
+    1. Find highest high across recent candles (HOD level)
+    2. Identify consolidation: last 5 candles have highs within tight range below HOD
+    3. Trigger: current_price > consolidation high AND volume expansion
+    4. Gates: MACD >= 0, price above VWAP
+
+    Args:
+        engine: WarriorEngine instance
+        watched: WatchedCandidate being evaluated
+        current_price: Current stock price
+        setup_type: Optional setup type filter from test case
+
+    Returns:
+        EntryTriggerType.HOD_BREAK if pattern triggers, None otherwise
+    """
+    symbol = watched.candidate.symbol
+
+    # Config guard
+    if not (engine.config.hod_break_enabled and not watched.entry_triggered):
+        return None
+
+    # PATTERN COMPETITION: Fire when setup_type is pmh or hod_break (or unset)
+    # This pattern is specifically designed for PMH cases where price hasn't reached PMH
+    should_check = setup_type is None or setup_type in ("pmh", "hod_break")
+    if not should_check:
+        return None
+
+    if not engine._get_intraday_bars:
+        return None
+
+    try:
+        candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+        if not candles or len(candles) < 10:
+            return None
+
+        # ---------------------------------------------------------------
+        # Step 1: Find HOD level (highest high across all candles)
+        # ---------------------------------------------------------------
+        hod_level = max(Decimal(str(c.high)) for c in candles)
+
+        # HOD must be above current price (we're looking for break FROM BELOW)
+        # If current_price > hod_level, we're already at HOD — not a consolidation break
+        # Use a small buffer: current_price must be within the consolidation zone
+        if current_price >= hod_level:
+            return None
+
+        # ---------------------------------------------------------------
+        # Step 2: Identify consolidation in recent candles
+        # ---------------------------------------------------------------
+        # Look at the last 5 candles for tight consolidation below HOD
+        consol_candles = candles[-5:]
+        consol_highs = [Decimal(str(c.high)) for c in consol_candles]
+        consol_lows = [Decimal(str(c.low)) for c in consol_candles]
+
+        consol_high = max(consol_highs)
+        consol_low = min(consol_lows)
+
+        # Tightness check: consolidation range must be <= 3% of consol_high
+        if consol_high > 0:
+            consol_range_pct = float((consol_high - consol_low) / consol_high * 100)
+        else:
+            return None
+
+        if consol_range_pct > 3.0:
+            logger.debug(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"consolidation too wide ({consol_range_pct:.1f}% > 3.0%)"
+            )
+            return None
+
+        # Consolidation must be BELOW HOD (at least 1% below)
+        if consol_high >= hod_level:
+            return None  # Not consolidating below HOD
+
+        gap_to_hod_pct = float((hod_level - consol_high) / hod_level * 100)
+        if gap_to_hod_pct < 1.0:
+            return None  # Too close to HOD — not a meaningful consolidation
+
+        # ---------------------------------------------------------------
+        # Step 3: Trigger — price breaks above consolidation high
+        # ---------------------------------------------------------------
+        if current_price <= consol_high:
+            return None  # Not breaking out yet
+
+        # ---------------------------------------------------------------
+        # Step 4: Volume confirmation (matching cup_handle: >= 80% of 10-bar avg)
+        # ---------------------------------------------------------------
+        current_bar_vol = candles[-1].volume if hasattr(candles[-1], 'volume') else 0
+        avg_vol = sum(c.volume for c in candles[-10:]) / 10 if len(candles) >= 10 else 0
+        vol_confirmed = current_bar_vol >= avg_vol * 0.8
+
+        if not vol_confirmed:
+            logger.debug(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"volume not confirmed ({current_bar_vol:,} < 80% of avg {avg_vol:,.0f})"
+            )
+            return None
+
+        # ---------------------------------------------------------------
+        # Step 5: Technical gates — MACD >= 0 and above VWAP
+        # ---------------------------------------------------------------
+        from nexus2.domain.indicators import get_technical_service
+        tech = get_technical_service()
+        candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in candles
+        ]
+        snapshot = tech.get_snapshot(symbol, candle_dicts, float(current_price))
+
+        # MACD gate
+        macd_val = snapshot.macd_line if snapshot.macd_line else 0
+        if macd_val < 0:
+            logger.debug(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"MACD negative ({macd_val:.4f})"
+            )
+            return None
+
+        # VWAP gate
+        if snapshot.vwap:
+            vwap = Decimal(str(snapshot.vwap))
+            if current_price < vwap:
+                logger.debug(
+                    f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                    f"below VWAP (${current_price:.2f} < ${vwap:.2f})"
+                )
+                return None
+
+        # ---------------------------------------------------------------
+        # All checks passed — HOD consolidation break detected
+        # ---------------------------------------------------------------
+        logger.info(
+            f"[Warrior Entry] {symbol}: HOD CONSOLIDATION BREAK at ${current_price:.2f} "
+            f"(HOD=${hod_level:.2f}, consol_high=${consol_high:.2f}, "
+            f"range={consol_range_pct:.1f}%, gap_to_hod={gap_to_hod_pct:.1f}%, "
+            f"vol={current_bar_vol:,}, MACD={macd_val:.4f})"
+        )
+        return EntryTriggerType.HOD_BREAK
+
+    except Exception as e:
+        logger.debug(f"[Warrior Entry] {symbol}: HOD consolidation break check failed: {e}")
+        return None
