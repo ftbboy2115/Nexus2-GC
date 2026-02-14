@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-02-03 (Pattern Competition validated)
+Last updated: 2026-02-14 (HOD Consolidation Break + batch runner bug found)
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -140,6 +140,9 @@ Last updated: 2026-02-03 (Pattern Competition validated)
 - [ ] **NAC State Drift Bug** — CMG quantity mismatch (Jan 23)
   - Error: `BLOCKED: Attempted to sell 12 shares but only hold 6`
   - Root cause TBD: partial fill not recorded, manual trade, or scaling DB update fail
+- [ ] **Batch Runner API `trades` field misleading** — Returns open positions at end of sim, not trade history (Feb 14)
+  - Cases show 0 trades but have P&L (e.g., GWAV: $630 P&L, 505 max_shares, 0 "trades")
+  - Fix: Add `total_trades_executed` counter to batch response, or return full trade log
 
 ---
 
@@ -158,6 +161,7 @@ Last updated: 2026-02-03 (Pattern Competition validated)
   - **Execution:** `asyncio.gather()` across all cases → limited by longest single case (~35s total)
   - **Hard parts:** WarriorEngine/Monitor coupled to `get_engine()` singleton, warrior_db needs `batch_run_id` tagging
   - **Estimated effort:** 3-5 days
+  - 🐛 **KNOWN BUG (Feb 14):** Local ProcessPoolExecutor produces 0.40× P&L scaling. VPS sequential = $3,946, Local concurrent = $1,570. Same code/commit. **Use VPS for all batch testing until fixed.**
 - [ ] **Low-Float Intraday Bars Gap** — Alpaca/FMP return no bars for illiquid stocks in pre-market (Jan 26)
   - **Observed:** LRHC, CISS (810%+ gap, 65x+ RVOL) passed scanner but entry logic stuck on "not enough candles"
   - **Root Cause:** Both Alpaca and FMP return `null`/empty for intraday bars on ultra-low-float stocks
@@ -399,6 +403,7 @@ Last updated: 2026-02-03 (Pattern Competition validated)
 - ✅ ABCD (`ABCD`)
 - ✅ Cup & Handle (`CUP_HANDLE`)
 - ✅ ORB (`ORB`)
+- ✅ HOD Consolidation Break (`HOD_BREAK`) — (Feb 14) Ross's "break of high-of-day" below PMH
 
 ---
 

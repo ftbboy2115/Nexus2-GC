@@ -57,6 +57,7 @@ Run separate agents in the Agent Manager, each focused on a domain:
 | **Frontend Specialist** | `agent-frontend-specialist.md` | `frontend/src/` | Defer API changes to Backend |
 | **Backend Specialist** | `agent-backend-specialist.md` | `nexus2/api/`, `nexus2/domain/` | Owns core logic |
 | **Mock Market Specialist** | `agent-mock-market-specialist.md` | `adapters/simulation/` | Stay in SIM sandbox |
+| **Backend Planner** | `agent-backend-planner.md` | Code research, tech specs | READ ONLY, plan not implement |
 | **Coordinator** | `agent-coordinator.md` | Knowledge, workflows | Root Cause Fidelity |
 | **Code Auditor** | `agent-code-auditor.md` | All code (P0 priority) | READ ONLY, no fixes |
 | **Audit Validator** | `handoff_audit_validator_template.md` | Audit reports | Verify claims only |

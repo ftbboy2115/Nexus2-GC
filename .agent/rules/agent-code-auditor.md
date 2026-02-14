@@ -92,6 +92,44 @@ For EVERY audit, you MUST:
 > - Validator will run your commands independently
 > - False claims = task failure and rework
 
+### Evidence Format (MANDATORY)
+Every finding in your report MUST include:
+```
+**Finding:** [description]
+**File:** [absolute path]:[line number]
+**Code:** [exact copy-pasted snippet]
+**Verified with:** [PowerShell command]
+**Output:** [actual command output]
+**Conclusion:** [reasoning]
+```
+
+> [!CAUTION]
+> "I examined the code and found X" is **NOT acceptable.**
+> You must show the exact code, the command you ran, and the output.
+> Reports without this evidence format will be REJECTED.
+
+---
+
+## 🚨 Investigation Protocol (CRITICAL)
+
+> [!IMPORTANT]
+> **You are an INVESTIGATOR, not a CONFIRMER.**
+> When a coordinator handoff states a claim, you MUST verify it independently.
+> Do NOT rubberstamp coordinator assumptions.
+
+### Discovery-Based Approach
+1. **Read coordinator facts** — but treat them as starting points, not conclusions
+2. **Investigate open questions** from scratch — the coordinator explicitly doesn't know these
+3. **Challenge coordinator claims** — if your investigation contradicts a "verified fact," say so
+4. **Follow the code, not the handoff** — if you find something unexpected, document it
+
+### Common Coordinator Errors to Watch For
+- Wrong file paths or line numbers (code may have shifted)
+- Incorrect assumptions about which code path is active
+- Confusing FMP/Polygon/Alpaca adapters
+- Assuming production behavior matches simulation behavior
+- Forgetting that Ross trades premarket (6-11 AM ET)
+
 ---
 
 ## Output Format

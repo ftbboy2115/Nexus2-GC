@@ -115,9 +115,20 @@ If you need frontend updates, write to `frontend_requests.md`:
 
 ---
 
+## 🚨 Artifact Protection (CRITICAL)
+
+> [!CAUTION]
+> **NEVER create generic `implementation_plan.md` or `walkthrough.md`.**
+> Use feature-specific names per `.agent/rules/artifact-protection.md`:
+> - ✅ `plan_hod_break_impl.md`
+> - ✅ `walkthrough_pattern_competition.md`
+> - ❌ `implementation_plan.md` (gets overwritten across conversations)
+
+---
+
 ## Before You Start
 
-1. Read `implementation_plan.md` for context
+1. Read the implementation plan or handoff document referenced in your task
 2. Identify which strategy/bot is involved
 3. **Read the relevant strategy file** from `.agent/strategies/`
 4. Implement according to documented rules

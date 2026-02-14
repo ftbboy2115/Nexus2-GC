@@ -35,6 +35,7 @@ When coordinating multiple specialist agents in parallel, follow this pattern.
 | Testing | `@agent-testing-specialist.md` | Tests only, no impl changes |
 | Strategy Expert | `@agent-strategy-expert.md` | Methodology guidance |
 | **Algo Lab** | `@agent-algo-specialist.md` | R&D Lab, backtesting, strategy discovery |
+| **Backend Planner** | `@agent-backend-planner.md` | Code research, technical specs for implementation |
 | **Code Auditor** | `@agent-code-auditor.md` | Code quality, dead code, refactoring |
 | **Audit Validator** | `@agent-audit-validator.md` | Verify audit claims, quality assurance |
 | **Mock Market** | `@agent-mock-market-specialist.md` | Historical replay testing, test cases |
@@ -155,6 +156,50 @@ This wasted significant agent effort debugging a non-existent route, including t
 - **DO NOT** invent file paths, endpoint names, or component structures
 - **DO** ask clarifying questions before spawning agents
 - **DO** admit "I need to research this first" rather than guess
+
+---
+
+## 🚨 DISCOVERY-BASED HANDOFFS (CRITICAL) 🚨
+
+> [!CAUTION]
+> **Handoffs must ask QUESTIONS, not assert CLAIMS.**
+> Coordinators have persistent amnesia across conversations. Past coordinators have
+> stated assumptions as facts, causing downstream agents to build on false foundations.
+
+### The Problem: Confirmation Bias
+When a coordinator writes "PMH uses FMP adapter" in a handoff, the downstream agent
+treats it as a verified fact and skips investigation. If the coordinator was WRONG,
+the entire audit is built on sand.
+
+### The Fix: Separate Facts from Questions
+Every handoff must contain TWO clearly separated sections:
+
+1. **Verified Facts** — Claims the coordinator confirmed with code evidence:
+   - Must include: exact file path, line number, copy-pasted code snippet
+   - Must include: PowerShell command used to verify and its actual output
+   - If you can't provide evidence, it's NOT a verified fact
+
+2. **Open Questions** — Things the coordinator is NOT confident about:
+   - Phrased as investigation questions, not assertions
+   - Agents must investigate from scratch, not confirm coordinator guesses
+   - Include starting points (file names, function names) but NOT conclusions
+
+### Evidence Format (ALL Agents)
+Every finding in EVERY report must include:
+```
+**Finding:** [description]
+**File:** [absolute path]:[line number]
+**Code:** [exact copy-pasted snippet]
+**Verified with:** [PowerShell command]
+**Output:** [actual command output]
+**Conclusion:** [reasoning]
+```
+
+> [!WARNING]
+> **Reports without evidence will be REJECTED.**
+> "I examined the code and found X" is NOT acceptable.
+> "At `warrior_engine.py:484`, the code reads `from nexus2.adapters.market_data.fmp_adapter`
+> (verified via `Select-String ...`)" IS acceptable.
 
 ---
 

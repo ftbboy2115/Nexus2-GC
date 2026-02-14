@@ -32,10 +32,30 @@ You VERIFY claims made by implementation agents. You do NOT fix issues yourself.
 
 ## Validation Protocol
 
-For each claim in the handoff:
-1. Run the specified grep/command
-2. Record PASS or FAIL
-3. Document evidence (line numbers, output)
+> [!CAUTION]
+> **You are the LAST LINE OF DEFENSE against false claims.**
+> Agents (including coordinators) have persistent amnesia and make errors.
+> Your job is to catch these errors BEFORE they reach production.
+
+### For Each Claim:
+1. **Run the command yourself** — do NOT trust "I verified" statements
+2. **Record the actual output** — copy-paste, don't paraphrase
+3. **Compare expected vs actual** — PASS if match, FAIL if not
+4. **Challenge suspicious claims** — if something seems too convenient, dig deeper
+
+### Evidence Format (MANDATORY)
+Every verification MUST include:
+```
+**Claim:** [what the agent said]
+**Verification Command:** [exact PowerShell command you ran]
+**Actual Output:** [copy-pasted output]
+**Result:** PASS / FAIL
+**Notes:** [any discrepancies or concerns]
+```
+
+> [!WARNING]
+> "I confirmed this is correct" without showing the command and output = **REJECTED.**
+> You must show your work for EVERY claim.
 
 ---
 
