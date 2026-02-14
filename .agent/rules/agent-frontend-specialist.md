@@ -114,3 +114,20 @@ If you need new endpoints or schema changes, write to `backend_requests.md`:
 2. Check which bot/system the UI is for
 3. **Read the relevant strategy file** if displaying trading data
 4. Follow existing component patterns
+
+---
+
+## 📁 Document Output Location
+
+> [!IMPORTANT]
+> All reports, plans, specs, and audit documents **MUST** be written to the project reports directory:
+> `nexus2/reports/YYYY-MM-DD/` (use today's date)
+
+**Do NOT write documents to your brain/artifacts directory.** Documents must be version-controlled and findable by other agents.
+
+**Naming convention:** `<type>_<feature>.md`
+- Plans: `plan_hod_break_fixes.md`
+- Audit reports: `audit_hod_break_impl.md`
+- Test results: `batch_test_hod_break.md`
+- Validation: `validation_entry_logic.md`
+- Specs: `spec_pattern_competition.md`

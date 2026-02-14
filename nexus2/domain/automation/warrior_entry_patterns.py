@@ -1304,9 +1304,12 @@ async def detect_hod_consolidation_break(
             return None
 
         # ---------------------------------------------------------------
-        # Step 1: Find HOD level (highest high across all candles)
+        # Step 1: Find HOD level from PRIOR candles only (exclude current bar)
+        # The current bar may BE the breakout — including it creates a paradox
+        # where consol_high >= hod_level always blocks breakout bars.
         # ---------------------------------------------------------------
-        hod_level = max(Decimal(str(c.high)) for c in candles)
+        prior_candles = candles[:-1]
+        hod_level = max(Decimal(str(c.high)) for c in prior_candles)
 
         # HOD must be above current price (we're looking for break FROM BELOW)
         # If current_price > hod_level, we're already at HOD — not a consolidation break
@@ -1317,29 +1320,42 @@ async def detect_hod_consolidation_break(
         # ---------------------------------------------------------------
         # Step 2: Identify consolidation in recent candles
         # ---------------------------------------------------------------
-        # Look at the last 5 candles for tight consolidation below HOD
-        consol_candles = candles[-5:]
+        # Use 5 candles BEFORE the current bar for consolidation detection
+        consol_candles = candles[-6:-1]
         consol_highs = [Decimal(str(c.high)) for c in consol_candles]
         consol_lows = [Decimal(str(c.low)) for c in consol_candles]
 
         consol_high = max(consol_highs)
         consol_low = min(consol_lows)
 
-        # Tightness check: consolidation range must be <= 3% of consol_high
-        if consol_high > 0:
-            consol_range_pct = float((consol_high - consol_low) / consol_high * 100)
-        else:
+        # Tightness check: dynamic ATR-based threshold
+        # Compute ATR of consolidation candles, allow range up to 2x ATR
+        consol_ranges = [
+            float(Decimal(str(c.high)) - Decimal(str(c.low)))
+            for c in consol_candles
+        ]
+        consol_atr = sum(consol_ranges) / len(consol_ranges) if consol_ranges else 0
+        consol_range = float(consol_high - consol_low)
+        max_allowed_range = consol_atr * 2.0
+
+        if consol_atr <= 0:
             return None
 
-        if consol_range_pct > 3.0:
-            logger.debug(
+        if consol_range > max_allowed_range:
+            logger.info(
                 f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
-                f"consolidation too wide ({consol_range_pct:.1f}% > 3.0%)"
+                f"consolidation too wide (range=${consol_range:.2f} > "
+                f"2×ATR=${max_allowed_range:.2f}, ATR=${consol_atr:.2f})"
             )
             return None
 
         # Consolidation must be BELOW HOD (at least 1% below)
         if consol_high >= hod_level:
+            logger.info(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"consolidation not below HOD (consol_high=${consol_high:.2f} "
+                f">= HOD=${hod_level:.2f})"
+            )
             return None  # Not consolidating below HOD
 
         gap_to_hod_pct = float((hod_level - consol_high) / hod_level * 100)
@@ -1402,11 +1418,11 @@ async def detect_hod_consolidation_break(
         logger.info(
             f"[Warrior Entry] {symbol}: HOD CONSOLIDATION BREAK at ${current_price:.2f} "
             f"(HOD=${hod_level:.2f}, consol_high=${consol_high:.2f}, "
-            f"range={consol_range_pct:.1f}%, gap_to_hod={gap_to_hod_pct:.1f}%, "
+            f"range=${consol_range:.2f}, ATR=${consol_atr:.2f}, gap_to_hod={gap_to_hod_pct:.1f}%, "
             f"vol={current_bar_vol:,}, MACD={macd_val:.4f})"
         )
         return EntryTriggerType.HOD_BREAK
 
     except Exception as e:
-        logger.debug(f"[Warrior Entry] {symbol}: HOD consolidation break check failed: {e}")
+        logger.warning(f"[Warrior Entry] {symbol}: HOD consolidation break check failed: {e}")
         return None
