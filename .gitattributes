@@ -1,0 +1,2 @@
+# Force LF line endings for shell scripts (prevents chmod issues on Linux after Windows commits)
+*.sh text eol=lf
