@@ -76,6 +76,7 @@ class WarriorMonitorSettings:
     enable_candle_under_candle: bool = True
     candle_exit_grace_seconds: int = 60  # Wait 60s after entry before this exit can trigger
     candle_exit_volume_multiplier: float = 1.5  # Require >1.5x avg volume OR 5m red confirmation
+    candle_exit_only_when_red: bool = True  # Skip CUC exit when position is profitable (green)
     enable_topping_tail: bool = True
     topping_tail_threshold: float = 0.6  # Wick > 60% of candle range
     
@@ -119,7 +120,8 @@ class WarriorMonitorSettings:
     
     # Base Hit Candle Trail (Phase A — Ross Cameron candle-low trailing)
     base_hit_candle_trail_enabled: bool = True  # Enable candle-low trailing for base_hit
-    base_hit_trail_activation_cents: Decimal = Decimal("10")  # Start trailing after +10¢
+    base_hit_trail_activation_cents: Decimal = Decimal("15")  # Start trailing after +15¢ (was 10¢)
+    candle_trail_lookback_bars: int = 2  # Trail = lowest low of last N completed candles
     
     # Home Run Mode Settings  
     home_run_partial_at_r: float = 2.0  # Take 50% partial at 2:1 R
