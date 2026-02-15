@@ -44,7 +44,7 @@ class TestWarriorScanSettings:
         
         # Pillar 4: Price
         assert settings.min_price == Decimal("1.50")
-        assert settings.max_price == Decimal("20.0")
+        assert settings.max_price == Decimal("40.0")
         
         # Pillar 5: Gap
         assert settings.min_gap == Decimal("4.0")

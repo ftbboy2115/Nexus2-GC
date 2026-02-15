@@ -997,9 +997,8 @@ async def enter_position(
         else:
             logger.info(f"[Warrior Entry] {symbol}: {block_reason}")
             # Only permanently block for non-recoverable rejections.
-            # Temporary guards (MACD, VWAP, spread, cooldown) should allow
-            # patterns to retry on the next tick when conditions improve.
-            # Ref: investigation_gwav_regression.md Option B
+            # Temporary guards (MACD, VWAP, spread, cooldown) allow retry.
+            # Note: Neither Option A nor B affects GWAV — root cause is elsewhere.
             permanent_blocks = {"Blacklisted", "Max fails hit"}
             if any(pb in block_reason for pb in permanent_blocks):
                 watched.entry_triggered = True

@@ -94,6 +94,12 @@ Last updated: 2026-02-14 (HOD Consolidation Break + batch runner bug found)
 
 ## 📋 Audit Items
 
+- [ ] **GWAV P&L Regression** — Dropped from +$630 → +$216 after HOD_BREAK commit (Feb 14)
+  - Original investigation (`reports/2026-02-14/investigation_gwav_regression.md`) misdiagnosed root cause
+  - `entry_triggered` on guard rejection is NOT the cause — tested both Option A and B, no change
+  - **Next step:** Check GWAV TML (Trade Management Log) DB entries to see entry/exit events, timestamps, and exit reasons before adding trace logging
+  - Option B selective blocking kept as a good change regardless (blocks Blacklisted/Max fails only)
+
 - [x] **ADR showing 0.0% — FIXED** — Root cause: `unified.py:75` had `>= 50` threshold
   - **Fix (Jan 7):** Changed to dynamic `>= min(10, limit//2)` - commit `14eb988`
   - FMP was returning valid 25-bar data but unified adapter incorrectly fell back to Alpaca (1 bar)

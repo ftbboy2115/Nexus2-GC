@@ -404,8 +404,9 @@ class WarriorEngine:
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                import traceback
                 self.stats.last_error = str(e)
-                logger.error(f"[Warrior Scan] Error: {e}")
+                logger.error(f"[Warrior Scan] Error: {e}\n{traceback.format_exc()}")
                 await asyncio.sleep(30)
     
     def interrupt_scan_sleep(self):
@@ -421,7 +422,14 @@ class WarriorEngine:
         
         logger.info("[Warrior Scan] Running scan...")
         
-        result = await asyncio.to_thread(self.scanner.scan, self.config.debug_catalyst)
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(self.scanner.scan, self.config.debug_catalyst),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            logger.error("[Warrior Scan] TIMEOUT - scan exceeded 120s, skipping cycle")
+            return
         
         # Count only NEW candidates (not seen before this session)
         for candidate in result.candidates:

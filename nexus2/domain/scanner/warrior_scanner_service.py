@@ -434,6 +434,7 @@ class EvaluationContext:
     avg_volume: int = 0
     session_high: Decimal = Decimal("0")
     session_low: Decimal = Decimal("0")
+    session_open: Optional[Decimal] = None
     last_price: Decimal = Decimal("0")
     yesterday_close: Optional[Decimal] = None
     
@@ -454,6 +455,8 @@ class EvaluationContext:
     
     # Gap data
     gap_pct: Decimal = Decimal("0")
+    opening_gap_pct: Optional[float] = None  # Gap at open (open vs prev close)
+    live_gap_pct: Optional[float] = None     # Gap now (live price vs prev close)
     is_ideal_gap: bool = False
     
     # Chinese stock data
@@ -706,7 +709,7 @@ class WarriorScannerService:
             filtered_movers = [
                 g for g in filtered_movers
                 if g["symbol"] not in CHINESE_STOCK_PATTERNS
-                and not self._is_likely_chinese(g["name"])
+                and not self._is_likely_chinese(g.get("name", ""))
             ]
         
         filtered_count = len(filtered_movers)
@@ -843,6 +846,7 @@ class WarriorScannerService:
         ctx.avg_volume = snapshot["avg_daily_volume"]
         ctx.session_high = Decimal(str(snapshot["session_high"]))
         ctx.session_low = Decimal(str(snapshot["session_low"]))
+        ctx.session_open = Decimal(str(snapshot["session_open"])) if snapshot.get("session_open") else None
         ctx.last_price = Decimal(str(snapshot["last_price"]))
         ctx.yesterday_close = Decimal(str(snapshot["yesterday_close"])) if snapshot.get("yesterday_close") else None
         
@@ -1555,16 +1559,33 @@ class WarriorScannerService:
     ) -> Optional[str]:
         """
         Pillar 5: Gap % check (>4%, ideal 5-10%).
-        Recalculates gap from yesterday_close vs current price.
+        
+        Dual-gate (Option C): Pass if EITHER opening gap OR live gap >= min_gap.
+        - Opening gap = session_open vs yesterday_close (the actual gap at open)
+        - Live gap = last_price vs yesterday_close (current gap, may have faded)
+        
+        This prevents valid gappers from being rejected just because 
+        their live price faded after the gap-up.
         
         Returns rejection reason string if failed, None if passed.
         """
         s = ctx.settings
         
-        if ctx.yesterday_close and ctx.yesterday_close > 0:
-            ctx.gap_pct = ((ctx.last_price - ctx.yesterday_close) / ctx.yesterday_close) * 100
+        # Calculate opening gap (open price vs yesterday close)
+        if ctx.session_open and ctx.yesterday_close and ctx.yesterday_close > 0:
+            ctx.opening_gap_pct = float(((ctx.session_open - ctx.yesterday_close) / ctx.yesterday_close) * 100)
         else:
-            ctx.gap_pct = ctx.change_percent
+            ctx.opening_gap_pct = float(ctx.change_percent)
+        
+        # Calculate live gap (current price vs yesterday close)
+        if ctx.yesterday_close and ctx.yesterday_close > 0:
+            ctx.live_gap_pct = float(((ctx.last_price - ctx.yesterday_close) / ctx.yesterday_close) * 100)
+        else:
+            ctx.live_gap_pct = float(ctx.change_percent)
+        
+        # Use the HIGHER of opening gap or live gap for the pillar check (Option C dual-gate)
+        # This ensures a stock that gapped 30% but faded to 3% still passes on opening gap
+        ctx.gap_pct = Decimal(str(max(ctx.opening_gap_pct, ctx.live_gap_pct)))
         
         if ctx.gap_pct < s.min_gap:
             tracker.record(
@@ -1574,12 +1595,24 @@ class WarriorScannerService:
                 values={"gap": round(float(ctx.gap_pct), 1), "min": float(s.min_gap)},
             )
             if ctx.verbose:
-                print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}%")
+                print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}% (open={ctx.opening_gap_pct:.1f}%, live={ctx.live_gap_pct:.1f}%)")
             self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="gap_too_low")
-            scan_logger.info(f"REJECT {ctx.symbol} | gap_too_low | gap={ctx.gap_pct:.1f}% min={s.min_gap}%")
+            scan_logger.info(
+                f"REJECT {ctx.symbol} | gap_too_low | "
+                f"opening_gap={ctx.opening_gap_pct:.1f}% live_gap={ctx.live_gap_pct:.1f}% min={s.min_gap}%"
+            )
             return "gap_too_low"
         
         ctx.is_ideal_gap = ctx.gap_pct >= s.ideal_gap
+        
+        # Log when dual-gate saved a stock from rejection
+        if ctx.live_gap_pct < float(s.min_gap) <= ctx.opening_gap_pct:
+            scan_logger.info(
+                f"DUAL-GATE SAVE | {ctx.symbol} | "
+                f"Live gap {ctx.live_gap_pct:.1f}% would have been rejected, "
+                f"but opening gap {ctx.opening_gap_pct:.1f}% passes"
+            )
+        
         return None
     
     # _check_dollar_volume removed — dead code per scanner audit (2026-02-13)
