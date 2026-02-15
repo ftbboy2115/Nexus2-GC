@@ -61,6 +61,18 @@ class SimContext:
         )
         engine._pending_entries_file = None  # Disable disk persistence
         
+        # Load saved engine settings so concurrent runner uses same config as sequential
+        # Without this, concurrent gets defaults (risk=$125, max_shares=1) while
+        # sequential gets saved settings (risk=$250, max_shares=3000) → P&L divergence
+        try:
+            from nexus2.db.warrior_settings import load_warrior_settings, apply_settings_to_config
+            saved_engine_settings = load_warrior_settings()
+            if saved_engine_settings:
+                apply_settings_to_config(engine.config, saved_engine_settings)
+                engine.config.sim_only = True  # Force sim_only regardless of saved settings
+        except Exception as e:
+            print(f"[SimContext] Failed to load saved engine settings, using defaults: {e}")
+        
         return cls(
             broker=broker,
             clock=clock,
