@@ -996,10 +996,7 @@ async def enter_position(
             return
         else:
             logger.info(f"[Warrior Entry] {symbol}: {block_reason}")
-            # NOTE: Do NOT set entry_triggered=True here. Guard rejections are often
-            # temporary (MACD negative, below VWAP, cooldown). Setting entry_triggered=True
-            # permanently blocks ALL patterns for the rest of the session, preventing
-            # later patterns (like HOD_BREAK) from ever firing even when conditions improve.
+            watched.entry_triggered = True
             return
 
     # Note: All guard checks (MIN_SCORE, BLACKLIST, FAIL_LIMIT, MACD GATE, 

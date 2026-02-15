@@ -1285,15 +1285,12 @@ async def detect_hod_consolidation_break(
     """
     symbol = watched.candidate.symbol
 
-    # TEMPORARY TRACE LOGGING - remove after diagnosis
-    _hod_call_count = getattr(watched, '_hod_trace_count', 0) + 1
-    watched._hod_trace_count = _hod_call_count
-    _hod_trace = (_hod_call_count <= 3 or _hod_call_count % 100 == 0)  # First 3 + every 100th
-
-    # Config guard
-    if not (engine.config.hod_break_enabled and not watched.entry_triggered):
-        if _hod_trace:
-            print(f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED by config guard (enabled={engine.config.hod_break_enabled}, entry_triggered={watched.entry_triggered})")
+    # Config guard — NOTE: HOD_BREAK intentionally does NOT check entry_triggered.
+    # Unlike other patterns, HOD_BREAK fires later in the session after consolidation.
+    # If an earlier pattern (dip_for_level, whole_half) tried and was guard-rejected,
+    # entry_triggered=True would block HOD_BREAK forever. Since HOD_BREAK is a
+    # fundamentally different pattern, it should evaluate independently.
+    if not engine.config.hod_break_enabled:
         return None
 
     # PATTERN COMPETITION: Fire when setup_type is pmh or hod_break (or unset)
@@ -1308,8 +1305,6 @@ async def detect_hod_consolidation_break(
     try:
         candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
         if not candles or len(candles) < 10:
-            if _hod_trace:
-                print(f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED not enough candles ({len(candles) if candles else 0})")
             return None
 
         # ---------------------------------------------------------------
@@ -1320,13 +1315,9 @@ async def detect_hod_consolidation_break(
         prior_candles = candles[:-1]
         hod_level = max(Decimal(str(c.high)) for c in prior_candles)
 
-        # HOD must be above current price (we're looking for break FROM BELOW)
-        # DISABLED: With 1-min bar granularity, the breakout bar's close naturally
-        # exceeds prior HOD — this gate blocks the exact scenario we're trying to detect.
-        # The consolidation-below-HOD check at Step 2 (line ~1352) already validates
-        # the setup. Commented out for testing — remove after confirmation.
-        # if current_price >= hod_level:
-        #     return None
+        # NOTE: We do NOT check current_price >= hod_level here.
+        # With 1-min bar granularity, the breakout bar's close naturally exceeds
+        # prior HOD. The consolidation-below-HOD check at Step 2 validates the setup.
 
         # ---------------------------------------------------------------
         # Step 2: Identify consolidation in recent candles
@@ -1350,8 +1341,6 @@ async def detect_hod_consolidation_break(
         max_allowed_range = consol_atr * 2.0
 
         if consol_atr <= 0:
-            if _hod_trace:
-                print(f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED consol_atr=0")
             return None
 
         if consol_range > max_allowed_range:
@@ -1373,16 +1362,12 @@ async def detect_hod_consolidation_break(
 
         gap_to_hod_pct = float((hod_level - consol_high) / hod_level * 100)
         if gap_to_hod_pct < 1.0:
-            if _hod_trace:
-                print(f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED gap_to_hod={gap_to_hod_pct:.2f}% < 1% (consol_high={consol_high}, hod={hod_level})")
             return None  # Too close to HOD — not a meaningful consolidation
 
         # ---------------------------------------------------------------
         # Step 3: Trigger — price breaks above consolidation high
         # ---------------------------------------------------------------
         if current_price <= consol_high:
-            if _hod_trace:
-                print(f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED price ${current_price:.2f} <= consol_high ${consol_high:.2f} (not breaking out)")
             return None  # Not breaking out yet
 
         # ---------------------------------------------------------------
@@ -1393,9 +1378,9 @@ async def detect_hod_consolidation_break(
         vol_confirmed = current_bar_vol >= avg_vol * 0.8
 
         if not vol_confirmed:
-            print(
-                f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED volume "
-                f"({current_bar_vol:,} < 80% of avg {avg_vol:,.0f})"
+            logger.debug(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"volume not confirmed ({current_bar_vol:,} < 80% of avg {avg_vol:,.0f})"
             )
             return None
 
@@ -1413,8 +1398,9 @@ async def detect_hod_consolidation_break(
         # MACD gate
         macd_val = snapshot.macd_line if snapshot.macd_line else 0
         if macd_val < 0:
-            print(
-                f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED MACD negative ({macd_val:.4f})"
+            logger.debug(
+                f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                f"MACD negative ({macd_val:.4f})"
             )
             return None
 
@@ -1422,9 +1408,9 @@ async def detect_hod_consolidation_break(
         if snapshot.vwap:
             vwap = Decimal(str(snapshot.vwap))
             if current_price < vwap:
-                print(
-                    f"[HOD_TRACE] {symbol} #{_hod_call_count}: BLOCKED below VWAP "
-                    f"(${current_price:.2f} < ${vwap:.2f})"
+                logger.debug(
+                    f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
+                    f"below VWAP (${current_price:.2f} < ${vwap:.2f})"
                 )
                 return None
 
