@@ -667,23 +667,25 @@ class WarriorScannerService:
                 unified_quote = self.market_data.get_quote(symbol)
                 if unified_quote and unified_quote.price > 0:
                     live_price = float(unified_quote.price)
-                    # Get previousClose from FMP quote (reliable)
-                    fmp_data = self.market_data.fmp._get(f"quote/{symbol}")
-                    if fmp_data and len(fmp_data) > 0:
-                        prev_close = float(fmp_data[0].get("previousClose", 0))
-                        if prev_close > 0:
-                            # Recalculate gap
-                            old_gap = float(mover["change_percent"])
-                            new_gap = ((live_price - prev_close) / prev_close) * 100
-                            if abs(new_gap - old_gap) > 10:  # Log significant differences
-                                scan_logger.info(
-                                    f"GAP RECALC | {symbol}: {old_gap:.1f}% -> {new_gap:.1f}% "
-                                    f"(live=${live_price:.2f}, prev=${prev_close:.2f})"
-                                )
-                            mover["change_percent"] = Decimal(str(new_gap))
-                            mover["price"] = Decimal(str(live_price))
+                    # Get previousClose from Polygon snapshot (was FMP)
+                    snap = self.market_data.polygon.get_session_snapshot(symbol)
+                    if not snap:
+                        scan_logger.warning(f"GAP RECALC | {symbol}: Polygon snapshot returned None — skipping recalc")
+                        continue
+                    prev_close = snap["prev_close"]
+                    if prev_close > 0:
+                        # Recalculate gap
+                        old_gap = float(mover["change_percent"])
+                        new_gap = ((live_price - prev_close) / prev_close) * 100
+                        if abs(new_gap - old_gap) > 10:  # Log significant differences
+                            scan_logger.info(
+                                f"GAP RECALC | {symbol}: {old_gap:.1f}% -> {new_gap:.1f}% "
+                                f"(live=${live_price:.2f}, prev=${prev_close:.2f})"
+                            )
+                        mover["change_percent"] = Decimal(str(new_gap))
+                        mover["price"] = Decimal(str(live_price))
             except Exception as e:
-                scan_logger.debug(f"GAP RECALC | {symbol}: Error - {e}")
+                scan_logger.warning(f"GAP RECALC | {symbol}: Error - {e}")
         
         # Pre-filter by price and gap (Pillars 4 & 5)
         filtered_movers = [
@@ -1092,7 +1094,7 @@ class WarriorScannerService:
         - Has made 20%+ moves in the past 90 days
         """
         try:
-            bars = self.market_data.fmp.get_daily_bars(symbol, limit=90)
+            bars = self.market_data.polygon.get_daily_bars(symbol, limit=90)
             if not bars or len(bars) < 20:
                 return False
             

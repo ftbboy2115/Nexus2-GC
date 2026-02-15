@@ -469,9 +469,10 @@ class UnifiedMarketData:
         rvol_lookback: int = 50,
     ) -> Optional[Dict]:
         """
-        Build EP session snapshot using FMP data only.
+        Build EP session snapshot using Polygon (primary) or FMP (fallback).
         
-        Uses FMP quote for today's session data (no Alpaca dependency).
+        Uses Polygon snapshot for session OHLV and prev_close (single API call).
+        Uses daily bars for avg volume and yesterday close (needed for RVOL).
         
         Returns:
             {
@@ -484,19 +485,60 @@ class UnifiedMarketData:
                 "session_volume": int,
             }
         """
-        # Get FMP quote for today's session data
-        quote = self.fmp.get_quote(symbol)
-        if not quote:
+        # --- Session data: Try Polygon snapshot first (1 API call) ---
+        session_open = None
+        session_high = None
+        session_low = None
+        session_volume = 0
+        last_price = None
+        polygon_prev_close = None
+        
+        try:
+            snap = self.polygon.get_session_snapshot(symbol)
+            if snap:
+                session_open = Decimal(str(snap["session_open"])) if snap["session_open"] else None
+                session_high = Decimal(str(snap["session_high"])) if snap["session_high"] else None
+                session_low = Decimal(str(snap["session_low"])) if snap["session_low"] else None
+                session_volume = snap["session_volume"]
+                last_price = Decimal(str(snap["last_price"])) if snap["last_price"] else None
+                polygon_prev_close = Decimal(str(snap["prev_close"])) if snap["prev_close"] else None
+            else:
+                logger.warning(f"[Unified] Polygon snapshot returned None for {symbol} — falling back to FMP")
+        except Exception as e:
+            logger.warning(f"[Unified] Polygon snapshot FAILED for {symbol}: {e} — falling back to FMP")
+        
+        # --- Fallback to FMP if Polygon didn't provide session data ---
+        if not session_open or not last_price:
+            try:
+                quote_data = self.fmp._get(f"quote/{symbol}")
+                if quote_data and len(quote_data) > 0:
+                    q = quote_data[0]
+                    session_open = session_open or Decimal(str(q.get("open", 0)))
+                    session_high = session_high or Decimal(str(q.get("dayHigh", 0)))
+                    session_low = session_low or Decimal(str(q.get("dayLow", 0)))
+                    session_volume = session_volume or int(q.get("volume", 0))
+                    if not last_price:
+                        last_price = Decimal(str(q.get("price", 0)))
+            except Exception as e:
+                logger.debug(f"[Unified] FMP quote fallback failed for {symbol}: {e}")
+        
+        # --- Get Alpaca real-time price (highest priority for last_price) ---
+        try:
+            alpaca_quote = self.alpaca.get_quote(symbol)
+            if alpaca_quote and alpaca_quote.price > 0:
+                last_price = alpaca_quote.price
+        except Exception:
+            pass
+        
+        if not session_open or not last_price or session_open <= 0 or last_price <= 0:
             return None
         
-        # Get daily history for yesterday close and avg volume
+        # --- Daily bars for yesterday close and avg volume (RVOL calc) ---
         daily = self.get_daily_bars(symbol, limit=rvol_lookback + 5)
         if not daily or len(daily) < 2:
             return None
         
         # Determine yesterday's close
-        # During pre-market/before market open, daily[-1] is yesterday's actual close
-        # During market hours, daily[-1] is today's partial bar, so use daily[-2]
         from datetime import date
         last_bar_date = daily[-1].timestamp.date()
         today = date.today()
@@ -504,45 +546,23 @@ class UnifiedMarketData:
         if last_bar_date < today:
             # Pre-market: most recent bar IS yesterday
             yesterday_close = daily[-1].close
-            hist_bars = daily[:-1]  # Exclude yesterday from volume calc
+            hist_bars = daily[:-1]
         else:
-            # During market hours: most recent is today, so use day before
+            # During market hours: most recent is today
             yesterday_close = daily[-2].close
-            hist_bars = daily[:-2]  # Exclude today and yesterday
-        if len(hist_bars) < 10:  # Need at least 10 days for meaningful average
+            hist_bars = daily[:-2]
+        
+        # Use Polygon prev_close if daily bars didn't produce a value
+        if not yesterday_close and polygon_prev_close:
+            yesterday_close = polygon_prev_close
+        
+        if len(hist_bars) < 10:
             return None
         
         hist_volumes = [b.volume for b in hist_bars[-rvol_lookback:]] if len(hist_bars) >= rvol_lookback else [b.volume for b in hist_bars]
         avg_daily_volume = sum(hist_volumes) // len(hist_volumes) if hist_volumes else 0
         
         if avg_daily_volume <= 0:
-            return None
-        
-        # Get current price from Alpaca (real-time, works pre-market)
-        alpaca_quote = self.alpaca.get_quote(symbol)
-        if alpaca_quote and alpaca_quote.price > 0:
-            last_price = alpaca_quote.price
-        else:
-            last_price = None
-        
-        # Get session data from FMP quote (may be stale during pre-market)
-        # FMP quote includes: open, dayHigh, dayLow, volume
-        quote_data = self.fmp._get(f"quote/{symbol}")
-        if not quote_data or len(quote_data) == 0:
-            return None
-        
-        q = quote_data[0]
-        session_open = Decimal(str(q.get("open", 0)))
-        session_high = Decimal(str(q.get("dayHigh", 0)))
-        session_low = Decimal(str(q.get("dayLow", 0)))
-        session_volume = int(q.get("volume", 0))
-        
-        # Use Alpaca price if available, otherwise FMP (may be stale)
-        if not last_price:
-            last_price = Decimal(str(q.get("price", 0)))
-        
-        # Validate we have real data
-        if session_open <= 0 or last_price <= 0:
             return None
         
         return {

@@ -127,6 +127,37 @@ class PolygonAdapter:
             timestamp=datetime.now(timezone.utc),
         )
     
+    def get_session_snapshot(self, symbol: str) -> Optional[dict]:
+        """
+        Get session snapshot data from Polygon (single API call).
+        
+        Returns raw session OHLV, previous close, and last price — everything
+        needed by build_session_snapshot() without any FMP calls.
+        """
+        data = self._get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol}")
+        if not data or data.get("status") != "OK":
+            return None
+        
+        ticker = data.get("ticker", {})
+        day = ticker.get("day", {})
+        prev_day = ticker.get("prevDay", {})
+        last_trade = ticker.get("lastTrade", {})
+        
+        price = last_trade.get("p") or day.get("c") or 0
+        prev_close = prev_day.get("c", 0) or 0
+        
+        if not price or not prev_close:
+            return None
+        
+        return {
+            "session_open": float(day.get("o", 0) or 0),
+            "session_high": float(day.get("h", 0) or 0),
+            "session_low": float(day.get("l", 0) or 0),
+            "session_volume": int(day.get("v", 0) or 0),
+            "prev_close": float(prev_close),
+            "last_price": float(price),
+        }
+    
     def get_last_trade(self, symbol: str) -> Optional[Quote]:
         """
         Get last trade price only (faster endpoint).
