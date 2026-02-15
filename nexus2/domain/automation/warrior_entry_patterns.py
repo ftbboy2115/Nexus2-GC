@@ -1312,10 +1312,12 @@ async def detect_hod_consolidation_break(
         hod_level = max(Decimal(str(c.high)) for c in prior_candles)
 
         # HOD must be above current price (we're looking for break FROM BELOW)
-        # If current_price > hod_level, we're already at HOD — not a consolidation break
-        # Use a small buffer: current_price must be within the consolidation zone
-        if current_price >= hod_level:
-            return None
+        # DISABLED: With 1-min bar granularity, the breakout bar's close naturally
+        # exceeds prior HOD — this gate blocks the exact scenario we're trying to detect.
+        # The consolidation-below-HOD check at Step 2 (line ~1352) already validates
+        # the setup. Commented out for testing — remove after confirmation.
+        # if current_price >= hod_level:
+        #     return None
 
         # ---------------------------------------------------------------
         # Step 2: Identify consolidation in recent candles
