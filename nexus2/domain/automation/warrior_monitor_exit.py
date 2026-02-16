@@ -569,6 +569,15 @@ async def _check_topping_tail(
     if not s.enable_topping_tail or not monitor._get_intraday_candles:
         return None
     
+    # Fix 4b: Skip topping tail for home_run positions — Ross tolerates reversal patterns during big moves
+    if getattr(s, 'enable_improved_home_run_trail', False) and getattr(s, 'home_run_skip_topping_tail', True):
+        exit_mode = get_effective_exit_mode(monitor, position)
+        if exit_mode == "home_run":
+            logger.debug(
+                f"[Warrior] {position.symbol}: Topping tail skipped (home_run mode, Fix 4b)"
+            )
+            return None
+    
     # GRACE PERIOD: Skip topping tail check for first 2 minutes after entry
     # This prevents premature exits during premarket when position is still establishing
     entry_time = position.entry_time
@@ -683,6 +692,44 @@ async def _check_profit_target(
 # =============================================================================
 
 
+def _compute_structural_target(
+    entry_price: Decimal,
+    increment: float = 0.50,
+    min_distance_cents: int = 10,
+) -> Decimal:
+    """
+    Compute the next structural price level above entry_price.
+    
+    Ross Cameron exits at structural levels: $5.00, $5.50, $6.00, etc.
+    If the nearest level is too close (< min_distance_cents), skip to the next one.
+    
+    Args:
+        entry_price: Position entry price
+        increment: Level spacing (0.50 = whole + half dollars, 1.00 = whole only)
+        min_distance_cents: Minimum distance in cents to the target level
+    
+    Returns:
+        The next valid structural price level above entry_price.
+    """
+    import math
+    inc = Decimal(str(increment))
+    min_dist = Decimal(str(min_distance_cents)) / 100  # Convert cents to dollars
+    
+    # Compute the next level above entry_price
+    # Example: entry $4.65, inc $0.50 → ceil(4.65 / 0.50) * 0.50 = ceil(9.3) * 0.50 = 10 * 0.50 = $5.00
+    next_level = Decimal(str(math.ceil(float(entry_price) / increment) * increment))
+    
+    # If entry is exactly on a level (e.g., $5.00), next_level == entry, so move up
+    if next_level <= entry_price:
+        next_level += inc
+    
+    # If too close, skip to the next level
+    if (next_level - entry_price) < min_dist:
+        next_level += inc
+    
+    return next_level
+
+
 async def _check_base_hit_target(
     monitor: "WarriorMonitor",
     position: WarriorPosition,
@@ -705,7 +752,13 @@ async def _check_base_hit_target(
     
     # ---- CANDLE TRAIL LOGIC ----
     if s.base_hit_candle_trail_enabled and monitor._get_intraday_candles:
-        activation_cents = s.base_hit_trail_activation_cents
+        # Price-proportional trail activation: max(fixed_floor, pct% of entry price in cents)
+        pct = getattr(s, 'trail_activation_pct', 3.0)
+        if pct > 0:
+            proportional_cents = Decimal(str(float(position.entry_price) * pct))
+            activation_cents = max(s.base_hit_trail_activation_cents, proportional_cents)
+        else:
+            activation_cents = s.base_hit_trail_activation_cents
         
         # Step 1: Check if trail should activate
         if position.candle_trail_stop is None and profit_cents >= activation_cents:
@@ -747,21 +800,104 @@ async def _check_base_hit_target(
             
             # Step 3: Check if trail stop hit
             if current_price <= position.candle_trail_stop:
-                pnl = (current_price - position.entry_price) * position.shares
-                logger.info(
-                    f"[Warrior] {position.symbol}: CANDLE TRAIL STOP HIT at ${current_price:.2f} "
-                    f"(trail=${position.candle_trail_stop:.2f}) → Full exit, P&L=${float(pnl):.2f}"
-                )
-                return WarriorExitSignal(
-                    position_id=position.position_id,
-                    symbol=position.symbol,
-                    reason=WarriorExitReason.PROFIT_TARGET,
-                    exit_price=current_price,
-                    shares_to_exit=position.shares,
-                    pnl_estimate=pnl,
-                    r_multiple=r_multiple,
-                    trigger_description=f"Candle trail stop hit (trail=${position.candle_trail_stop:.2f})",
-                )
+                # Partial-Then-Ride: sell 50%, switch remainder to home_run trailing
+                if s.enable_partial_then_ride and not position.partial_taken:
+                    from nexus2.domain.automation.trade_event_service import trade_event_service
+                    
+                    shares_to_exit = int(position.shares * s.partial_exit_fraction)
+                    if shares_to_exit < 1:
+                        return None
+                    
+                    pnl = (current_price - position.entry_price) * shares_to_exit
+                    
+                    logger.info(
+                        f"[Warrior] {position.symbol}: CANDLE TRAIL STOP HIT at ${current_price:.2f} "
+                        f"(trail=${position.candle_trail_stop:.2f}) → PARTIAL exit ({shares_to_exit} shares), "
+                        f"switching remainder to home_run mode"
+                    )
+                    
+                    # Mark partial and decrement shares
+                    position.partial_taken = True
+                    position.shares -= shares_to_exit
+                    
+                    # Switch to home_run mode for remainder
+                    position.exit_mode_override = "home_run"
+                    
+                    # Fix 4a: Use trail_level stop instead of breakeven when enabled
+                    if getattr(s, 'enable_improved_home_run_trail', False):
+                        stop_mode = getattr(s, 'home_run_stop_after_partial', 'trail_level')
+                        if stop_mode == "trail_level":
+                            # Save the candle trail stop BEFORE clearing it
+                            trail_stop_value = position.candle_trail_stop
+                            position.candle_trail_stop = None  # Clear stale trail
+                            if trail_stop_value is not None:
+                                position.current_stop = trail_stop_value
+                                if monitor._update_stop:
+                                    await monitor._update_stop(position.position_id, trail_stop_value)
+                                logger.info(f"[Warrior] {position.symbol}: Stop set to trail_level ${trail_stop_value:.2f}, mode → home_run (Fix 4a)")
+                            else:
+                                # Fallback: if no trail value available, use breakeven
+                                position.current_stop = position.entry_price
+                                if monitor._update_stop:
+                                    await monitor._update_stop(position.position_id, position.entry_price)
+                                logger.info(f"[Warrior] {position.symbol}: No trail_level available, stop → breakeven, mode → home_run (Fix 4a fallback)")
+                        elif stop_mode == "none":
+                            position.candle_trail_stop = None  # Clear stale trail
+                            logger.info(f"[Warrior] {position.symbol}: Stop unchanged (mode='none'), mode → home_run (Fix 4a)")
+                        else:
+                            # stop_mode == "breakeven" or unknown → original behavior
+                            position.candle_trail_stop = None
+                            position.current_stop = position.entry_price
+                            if monitor._update_stop:
+                                await monitor._update_stop(position.position_id, position.entry_price)
+                            trade_event_service.log_warrior_breakeven(
+                                position_id=position.position_id,
+                                symbol=position.symbol,
+                                entry_price=position.entry_price,
+                            )
+                            logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
+                    else:
+                        # Fix 4 disabled — original behavior
+                        position.candle_trail_stop = None  # Clear stale trail
+                        position.current_stop = position.entry_price
+                        if monitor._update_stop:
+                            await monitor._update_stop(position.position_id, position.entry_price)
+                        trade_event_service.log_warrior_breakeven(
+                            position_id=position.position_id,
+                            symbol=position.symbol,
+                            entry_price=position.entry_price,
+                        )
+                        logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
+                    
+                    monitor.partials_triggered += 1
+                    
+                    return WarriorExitSignal(
+                        position_id=position.position_id,
+                        symbol=position.symbol,
+                        reason=WarriorExitReason.PARTIAL_EXIT,
+                        exit_price=current_price,
+                        shares_to_exit=shares_to_exit,
+                        pnl_estimate=pnl,
+                        r_multiple=r_multiple,
+                        trigger_description=f"Candle trail stop hit → partial exit, remainder to home_run",
+                    )
+                else:
+                    # Full exit (feature disabled or partial already taken)
+                    pnl = (current_price - position.entry_price) * position.shares
+                    logger.info(
+                        f"[Warrior] {position.symbol}: CANDLE TRAIL STOP HIT at ${current_price:.2f} "
+                        f"(trail=${position.candle_trail_stop:.2f}) → Full exit, P&L=${float(pnl):.2f}"
+                    )
+                    return WarriorExitSignal(
+                        position_id=position.position_id,
+                        symbol=position.symbol,
+                        reason=WarriorExitReason.PROFIT_TARGET,
+                        exit_price=current_price,
+                        shares_to_exit=position.shares,
+                        pnl_estimate=pnl,
+                        r_multiple=r_multiple,
+                        trigger_description=f"Candle trail stop hit (trail=${position.candle_trail_stop:.2f})",
+                    )
             
             # Trail active but not hit — log and continue monitoring
             logger.debug(
@@ -771,33 +907,144 @@ async def _check_base_hit_target(
             )
             return None  # Don't check flat target when trail is active
     
-    # ---- FALLBACK: Flat +18¢ target (when trail disabled or no bars) ----
-    target_price = position.entry_price + s.base_hit_profit_cents / 100
+    # ---- FALLBACK: Flat target (when trail disabled or no bars) ----
+    if getattr(s, 'enable_structural_levels', False):
+        # Fix 3: Structural profit levels — target next whole/half dollar
+        target_price = _compute_structural_target(
+            entry_price=position.entry_price,
+            increment=getattr(s, 'structural_level_increment', 0.50),
+            min_distance_cents=getattr(s, 'structural_level_min_distance_cents', 10),
+        )
+        effective_profit_cents = (target_price - position.entry_price) * 100
+        logger.info(
+            f"[Warrior] {position.symbol}: BASE HIT check (structural level) - "
+            f"current=${current_price:.2f}, target=${target_price:.2f}, "
+            f"entry=${position.entry_price:.2f}, +{float(effective_profit_cents):.0f}¢ "
+            f"(next ${getattr(s, 'structural_level_increment', 0.50)} level)"
+        )
+    else:
+        # Original flat fallback: price-proportional or fixed cents
+        profit_pct = getattr(s, 'base_hit_profit_pct', 3.5)
+        if profit_pct > 0:
+            proportional_profit_cents = Decimal(str(float(position.entry_price) * profit_pct))
+            effective_profit_cents = max(s.base_hit_profit_cents, proportional_profit_cents)
+        else:
+            effective_profit_cents = s.base_hit_profit_cents
+        target_price = position.entry_price + effective_profit_cents / 100
+        
+        logger.info(
+            f"[Warrior] {position.symbol}: BASE HIT check (flat fallback) - "
+            f"current=${current_price:.2f}, target=${target_price:.2f}, "
+            f"entry=${position.entry_price:.2f}, +{float(effective_profit_cents):.0f}¢"
+        )
     
-    logger.info(
-        f"[Warrior] {position.symbol}: BASE HIT check (flat fallback) - "
-        f"current=${current_price:.2f}, target=${target_price:.2f}, "
-        f"entry=${position.entry_price:.2f}, +{s.base_hit_profit_cents}¢"
-    )
+    # Build target description for trigger strings
+    if getattr(s, 'enable_structural_levels', False):
+        target_desc = f"${target_price:.2f} structural level"
+    else:
+        target_desc = f"+{s.base_hit_profit_cents}¢ flat target"
     
     if current_price < target_price:
         return None
     
-    pnl = (current_price - position.entry_price) * position.shares
-    logger.info(
-        f"[Warrior] {position.symbol}: BASE HIT flat target hit at ${current_price:.2f} "
-        f"(+{s.base_hit_profit_cents}¢ target) -> Full exit"
-    )
-    return WarriorExitSignal(
-        position_id=position.position_id,
-        symbol=position.symbol,
-        reason=WarriorExitReason.PROFIT_TARGET,
-        exit_price=current_price,
-        shares_to_exit=position.shares,
-        pnl_estimate=pnl,
-        r_multiple=r_multiple,
-        trigger_description=f"Base hit +{s.base_hit_profit_cents}¢ flat target hit (candle trail unavailable)",
-    )
+    # Partial-Then-Ride: sell 50%, switch remainder to home_run trailing
+    if s.enable_partial_then_ride and not position.partial_taken:
+        from nexus2.domain.automation.trade_event_service import trade_event_service
+        
+        shares_to_exit = int(position.shares * s.partial_exit_fraction)
+        if shares_to_exit < 1:
+            return None
+        
+        pnl = (current_price - position.entry_price) * shares_to_exit
+        
+        logger.info(
+            f"[Warrior] {position.symbol}: BASE HIT fallback hit at ${current_price:.2f} "
+            f"({target_desc}) → PARTIAL exit ({shares_to_exit} shares), "
+            f"switching remainder to home_run mode"
+        )
+        
+        # Mark partial and decrement shares
+        position.partial_taken = True
+        position.shares -= shares_to_exit
+        
+        # Switch to home_run mode for remainder
+        position.exit_mode_override = "home_run"
+        
+        # Fix 4a: Use trail_level stop instead of breakeven when enabled
+        if getattr(s, 'enable_improved_home_run_trail', False):
+            stop_mode = getattr(s, 'home_run_stop_after_partial', 'trail_level')
+            if stop_mode == "trail_level":
+                # Save the candle trail stop BEFORE clearing it
+                trail_stop_value = position.candle_trail_stop
+                position.candle_trail_stop = None  # Clear stale trail
+                if trail_stop_value is not None:
+                    position.current_stop = trail_stop_value
+                    if monitor._update_stop:
+                        await monitor._update_stop(position.position_id, trail_stop_value)
+                    logger.info(f"[Warrior] {position.symbol}: Stop set to trail_level ${trail_stop_value:.2f}, mode → home_run (Fix 4a)")
+                else:
+                    # Fallback: if no trail value available, use breakeven
+                    position.current_stop = position.entry_price
+                    if monitor._update_stop:
+                        await monitor._update_stop(position.position_id, position.entry_price)
+                    logger.info(f"[Warrior] {position.symbol}: No trail_level available, stop → breakeven, mode → home_run (Fix 4a fallback)")
+            elif stop_mode == "none":
+                position.candle_trail_stop = None  # Clear stale trail
+                logger.info(f"[Warrior] {position.symbol}: Stop unchanged (mode='none'), mode → home_run (Fix 4a)")
+            else:
+                # stop_mode == "breakeven" or unknown → original behavior
+                position.candle_trail_stop = None
+                position.current_stop = position.entry_price
+                if monitor._update_stop:
+                    await monitor._update_stop(position.position_id, position.entry_price)
+                trade_event_service.log_warrior_breakeven(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    entry_price=position.entry_price,
+                )
+                logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
+        else:
+            # Fix 4 disabled — original behavior
+            position.candle_trail_stop = None  # Clear stale trail
+            position.current_stop = position.entry_price
+            if monitor._update_stop:
+                await monitor._update_stop(position.position_id, position.entry_price)
+            trade_event_service.log_warrior_breakeven(
+                position_id=position.position_id,
+                symbol=position.symbol,
+                entry_price=position.entry_price,
+            )
+            logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
+        
+        monitor.partials_triggered += 1
+        
+        return WarriorExitSignal(
+            position_id=position.position_id,
+            symbol=position.symbol,
+            reason=WarriorExitReason.PARTIAL_EXIT,
+            exit_price=current_price,
+            shares_to_exit=shares_to_exit,
+            pnl_estimate=pnl,
+            r_multiple=r_multiple,
+            trigger_description=f"Base hit {target_desc} → partial exit, remainder to home_run",
+        )
+    else:
+        # Full exit (feature disabled or partial already taken)
+        pnl = (current_price - position.entry_price) * position.shares
+        logger.info(
+            f"[Warrior] {position.symbol}: BASE HIT fallback hit at ${current_price:.2f} "
+            f"({target_desc}) -> Full exit"
+        )
+        return WarriorExitSignal(
+            position_id=position.position_id,
+            symbol=position.symbol,
+            reason=WarriorExitReason.PROFIT_TARGET,
+            exit_price=current_price,
+            shares_to_exit=position.shares,
+            pnl_estimate=pnl,
+            r_multiple=r_multiple,
+            trigger_description=f"Base hit {target_desc} hit (candle trail unavailable)",
+        )
 
 
 async def _check_home_run_exit(
@@ -820,17 +1067,48 @@ async def _check_home_run_exit(
     
     # 1. Check trailing stop (if above threshold)
     if r_multiple >= s.home_run_trail_after_r:
-        trail_stop = position.high_since_entry * (1 - Decimal(str(s.home_run_trail_percent)))
-        
-        # Only trail UP, never down
-        if trail_stop > position.current_stop and trail_stop > position.entry_price:
-            old_stop = position.current_stop
-            position.current_stop = trail_stop
-            logger.info(
-                f"[Warrior] {position.symbol}: HOME RUN trailing stop updated "
-                f"${old_stop:.2f} -> ${trail_stop:.2f} "
-                f"(20% below high ${position.high_since_entry:.2f})"
-            )
+        # Fix 4c: Candle-low trail for home_run mode (Ross-aligned)
+        if getattr(s, 'enable_improved_home_run_trail', False) and getattr(s, 'home_run_candle_trail_enabled', True):
+            # Use candle-low trailing stop instead of percentage trail
+            lookback = getattr(s, 'home_run_candle_trail_lookback', 5)
+            if monitor._get_intraday_candles:
+                candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=lookback + 2)
+                if candles and len(candles) >= lookback + 1:
+                    # Use the lowest low of the last N completed candles (not current)
+                    completed = candles[-(lookback + 1):-1]
+                    candle_trail = min(Decimal(str(c.low)) for c in completed)
+                    
+                    # Only trail UP, never down; and must be above entry
+                    if candle_trail > position.current_stop and candle_trail > position.entry_price:
+                        old_stop = position.current_stop
+                        position.current_stop = candle_trail
+                        logger.info(
+                            f"[Warrior] {position.symbol}: HOME RUN candle trail updated "
+                            f"${old_stop:.2f} -> ${candle_trail:.2f} "
+                            f"({lookback}-bar low, high=${position.high_since_entry:.2f}, Fix 4c)"
+                        )
+                else:
+                    logger.debug(
+                        f"[Warrior] {position.symbol}: HOME RUN candle trail - not enough candles "
+                        f"({len(candles) if candles else 0} < {lookback + 1}), skipping trail update"
+                    )
+            else:
+                logger.debug(
+                    f"[Warrior] {position.symbol}: HOME RUN candle trail - no candle fetcher available"
+                )
+        else:
+            # Original percentage-based trailing stop (Fix 4 disabled or candle trail off)
+            trail_stop = position.high_since_entry * (1 - Decimal(str(s.home_run_trail_percent)))
+            
+            # Only trail UP, never down
+            if trail_stop > position.current_stop and trail_stop > position.entry_price:
+                old_stop = position.current_stop
+                position.current_stop = trail_stop
+                logger.info(
+                    f"[Warrior] {position.symbol}: HOME RUN trailing stop updated "
+                    f"${old_stop:.2f} -> ${trail_stop:.2f} "
+                    f"(20% below high ${position.high_since_entry:.2f})"
+                )
         
         # Check if price hit trailing stop
         if current_price <= position.current_stop:
@@ -1150,6 +1428,17 @@ async def handle_exit(
                 sim_time = monitor._sim_clock.current_time
                 monitor._recently_exited_sim_time[signal.symbol] = sim_time
                 logger.debug(f"[Warrior] {signal.symbol}: Exit recorded at sim time {sim_time}")
+            
+            # RE-ENTRY GATE: Notify engine of exit P&L (for blocking re-entry after loss)
+            # Fires for ALL exit reasons, not just profit
+            if monitor._on_exit_pnl:
+                try:
+                    monitor._on_exit_pnl(
+                        symbol=signal.symbol,
+                        pnl=float(actual_pnl),
+                    )
+                except Exception as e:
+                    logger.warning(f"[Warrior] {signal.symbol}: on_exit_pnl callback failed: {e}")
             
             # RE-ENTRY: Notify engine of profit exit (allow re-entry on next volume wave)
             # Only for base_hit/profit exits, not stops

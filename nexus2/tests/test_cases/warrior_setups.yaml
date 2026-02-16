@@ -1039,9 +1039,9 @@ test_cases:
     ross_pnl: -5500.00
     ross_entry_time: "~08:30"  # Stock was halted on news, resumed at 8:30
     premarket_data:
-      gap_percent: null  # Need to verify from bar data
-      premarket_high: null  # Need to verify from bar data
-      previous_close: null  # Need to verify from bar data
+      gap_percent: -35.6
+      premarket_high: 2.76
+      previous_close: 1.94
       float_shares: 5000000
       catalyst: "news"  # Halted on news
     expected:

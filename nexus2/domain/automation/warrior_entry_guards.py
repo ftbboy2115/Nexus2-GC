@@ -136,6 +136,23 @@ async def check_entry_guards(
                 tml.log_warrior_guard_block(symbol, "sim_cooldown", reason, _trigger, _price)
                 return False, reason
     
+    # RE-ENTRY QUALITY GATE: Block re-entry after loss (Ross: no revenge trading)
+    # Dual strategy: in-memory field (works in concurrent sim) + DB fallback (server restart)
+    if watched.entry_attempt_count > 0 and engine.monitor.settings.block_reentry_after_loss:
+        # Primary: in-memory field (set by _handle_exit_pnl callback)
+        last_pnl = watched.last_trade_pnl
+        # Fallback: DB query (handles server restart where in-memory state is lost)
+        if last_pnl is None:
+            try:
+                from nexus2.db.warrior_db import get_last_trade_pnl
+                last_pnl = get_last_trade_pnl(symbol)
+            except Exception:
+                pass  # DB unavailable (e.g., in-memory sim DB) — degrade gracefully
+        if last_pnl is not None and last_pnl < 0:
+            reason = f"Re-entry BLOCKED after loss (P&L=${last_pnl:.2f}) - no revenge trading"
+            tml.log_warrior_guard_block(symbol, "reentry_loss", reason, _trigger, _price)
+            return False, reason
+    
     # SPREAD FILTER
     # Note: _check_spread_filter returns (bool, str, Optional[Decimal])
     # We extract current_ask and store on watched for limit price calculation

@@ -394,6 +394,7 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
         get_intraday_candles=sim_get_intraday_bars,
         get_quote_with_spread=sim_get_quote_with_spread,  # Callback 6: returns dict (Phase 11 C3 fix)
         on_profit_exit=ctx.engine._handle_profit_exit,  # Enable re-entry after profitable exits
+        on_exit_pnl=ctx.engine._handle_exit_pnl,  # Track P&L for re-entry quality gate
     )
 
     # -- Callbacks cleared (L971-973) --

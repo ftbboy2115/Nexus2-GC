@@ -747,6 +747,49 @@ def get_warrior_trades_by_status(status: str) -> list:
         return [t.to_dict() for t in trades]
 
 
+def get_last_trade_pnl(symbol: str) -> float | None:
+    """
+    Get P&L of the last closed trade for this symbol (today's session).
+    
+    Used by the re-entry quality gate to block re-entries after a loss.
+    Filters by today's date to avoid stale data from prior sessions.
+    
+    Args:
+        symbol: Stock symbol to look up
+        
+    Returns:
+        Realized P&L as float, or None if no closed trade found today
+    """
+    from datetime import date
+    
+    try:
+        with get_warrior_session() as db:
+            # Get today's date at midnight for filtering
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            
+            trade = db.query(WarriorTradeModel).filter(
+                WarriorTradeModel.symbol == symbol,
+                WarriorTradeModel.status == PositionStatus.CLOSED.value,
+                WarriorTradeModel.exit_time >= today_start,
+            ).order_by(WarriorTradeModel.exit_time.desc()).first()
+            
+            if trade and trade.realized_pnl:
+                try:
+                    return float(trade.realized_pnl)
+                except (ValueError, TypeError):
+                    return None
+            return None
+    except Exception as e:
+        # DB not initialized or other error — gate degrades to "allow entry" (status quo)
+        # This is NOT fail-closed because the gate is a restriction, not a safety check.
+        # Degrading = same behavior as before this gate existed.
+        import logging
+        logging.getLogger(__name__).warning(
+            f"[Warrior DB] get_last_trade_pnl({symbol}) failed: {e} — re-entry gate skipped"
+        )
+        return None
+
+
 def purge_sim_trades(confirm: bool = False, force: bool = False):
     """
     Delete all simulation trades from warrior_db.

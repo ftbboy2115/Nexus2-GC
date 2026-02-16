@@ -148,6 +148,7 @@ class WarriorEngine:
             get_intraday_candles=get_intraday_bars,
             record_symbol_fail=self.record_symbol_fail,
             on_profit_exit=self._handle_profit_exit,
+            on_exit_pnl=self._handle_exit_pnl,
         )
     
     def _load_pending_entries(self):
@@ -202,6 +203,22 @@ class WarriorEngine:
             del self._pending_entries[symbol]
             self._save_pending_entries()
             logger.info(f"[Warrior Engine] Cleared pending entry for {symbol}")
+    
+    def _handle_exit_pnl(self, symbol: str, pnl: float):
+        """
+        Handle exit P&L callback - track last trade P&L for re-entry gate.
+        
+        Called on EVERY exit (profit and loss), unlike _handle_profit_exit
+        which only fires for profit exits.
+        
+        Sets watched.last_trade_pnl so the re-entry quality gate can block
+        re-entries after a loss without querying warrior_db.
+        """
+        watched = self._watchlist.get(symbol)
+        if not watched:
+            return
+        watched.last_trade_pnl = pnl
+        logger.info(f"[Warrior Engine] {symbol}: Exit P&L tracked: ${pnl:+.2f}")
     
     def _handle_profit_exit(self, symbol: str, exit_price: float, exit_time: datetime):
         """

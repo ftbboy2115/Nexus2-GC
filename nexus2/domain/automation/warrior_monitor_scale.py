@@ -73,7 +73,8 @@ async def check_scale_opportunity(
         return None
     
     # SAFETY: Skip scaling if we recently attempted (60-second cooldown to prevent spam)
-    if position.last_scale_attempt:
+    # Fix 5A: Skip wall-clock cooldown in sim mode (all bars process in ~1s, cooldown blocks everything)
+    if position.last_scale_attempt and not (s.enable_improved_scaling and monitor.sim_mode):
         cooldown_seconds = 60
         elapsed = (now_et() - position.last_scale_attempt).total_seconds()
         if elapsed < cooldown_seconds:
@@ -82,7 +83,8 @@ async def check_scale_opportunity(
     
     # SAFETY: Skip scaling if position was recently recovered from broker sync
     # This prevents wash trade errors when orphan cleanup and scale race during restart
-    if position.recovered_at:
+    # Fix 5A: Skip recovery grace in sim mode (no broker sync race in sim)
+    if position.recovered_at and not (s.enable_improved_scaling and monitor.sim_mode):
         recovery_grace_seconds = 10  # Align with Ross's 10-second chart
         elapsed = (now_et() - position.recovered_at).total_seconds()
         if elapsed < recovery_grace_seconds:
@@ -93,9 +95,42 @@ async def check_scale_opportunity(
     if current_price < support:
         return None
     
+    # === TRACE LOGGING: Full state snapshot before pullback zone check ===
+    exit_mode = getattr(position, 'exit_mode_override', None)
+    partial = getattr(position, 'partial_taken', False)
+    logger.info(
+        f"[Warrior Scale TRACE] {symbol}: CHECKPOINT — "
+        f"price=${current_price}, entry=${position.entry_price}, support=${support}, "
+        f"shares={position.shares}, original_shares={getattr(position, 'original_shares', '?')}, "
+        f"scale_count={position.scale_count}, partial_taken={partial}, "
+        f"exit_mode_override={exit_mode}, "
+        f"high_since_entry=${getattr(position, 'high_since_entry', '?')}, "
+        f"current_stop=${position.current_stop}, "
+        f"candle_trail_stop={getattr(position, 'candle_trail_stop', None)}"
+    )
+    
     # Check if this is a pullback opportunity
-    # Price should be between support and entry (or above if allow_scale_below_entry is False)
-    is_pullback_zone = current_price <= position.entry_price or s.allow_scale_below_entry
+    # Fix 5B: Proper pullback zone logic (Ross scales on pullbacks to support,
+    # not at any price). Price must have pulled back toward support.
+    if s.enable_improved_scaling:
+        # Pullback zone = within 50% of entry-to-support range, measured from entry down.
+        # E.g., entry=$3.22, support=$2.72 (50¢ range) → scale zone = $2.97 and below
+        # (pulled back at least 25¢ from entry, but still above support)
+        support_distance = position.entry_price - support
+        if support_distance > 0:
+            pullback_threshold = position.entry_price - (support_distance * Decimal("0.5"))
+            is_pullback_zone = current_price <= pullback_threshold and current_price > support
+        else:
+            is_pullback_zone = False
+        logger.info(
+            f"[Warrior Scale TRACE] {symbol}: PULLBACK CHECK — "
+            f"support_distance=${support_distance:.4f}, "
+            f"pullback_threshold=${pullback_threshold if support_distance > 0 else 'N/A'}, "
+            f"is_pullback_zone={is_pullback_zone}"
+        )
+    else:
+        # Original (broken) logic: always True when allow_scale_below_entry=True
+        is_pullback_zone = current_price <= position.entry_price or s.allow_scale_below_entry
     
     if not is_pullback_zone:
         return None
@@ -241,6 +276,8 @@ async def execute_scale_in(
             return False
         
         # Update position state
+        old_shares = position.shares
+        old_entry = position.entry_price
         position.scale_count += 1
         position.shares += add_shares
         new_total_shares = position.shares
@@ -269,6 +306,18 @@ async def execute_scale_in(
                 f"[Warrior Scale] {symbol}: Stop moved to breakeven ${position.entry_price} "
                 f"(was ${old_stop})"
             )
+        
+        # === TRACE LOGGING: Full post-scale state ===
+        logger.info(
+            f"[Warrior Scale TRACE] {symbol}: SCALE EXECUTED — "
+            f"scale #{position.scale_count}, "
+            f"shares {old_shares} → {position.shares} (+{add_shares}), "
+            f"entry_price was ${old_entry:.2f} (may change via consolidate), "
+            f"current_stop=${position.current_stop}, "
+            f"partial_taken={getattr(position, 'partial_taken', '?')}, "
+            f"exit_mode_override={getattr(position, 'exit_mode_override', None)}, "
+            f"scale_price=${price:.2f}, limit=${limit_price}"
+        )
         
         logger.info(
             f"[Warrior Scale] {symbol}: Scale #{position.scale_count} complete - "

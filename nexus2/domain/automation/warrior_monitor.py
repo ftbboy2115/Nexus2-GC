@@ -71,6 +71,7 @@ class WarriorMonitor:
         self._submit_scale_order: Optional[Callable] = None  # Scaling order callback
         self._get_order_status: Optional[Callable] = None  # For exit order confirmation
         self._on_profit_exit: Optional[Callable] = None  # Re-entry: reset watched symbol after profit
+        self._on_exit_pnl: Optional[Callable] = None  # Re-entry gate: track P&L of every exit
 
         
         # Sync tracking
@@ -215,6 +216,7 @@ class WarriorMonitor:
         submit_scale_order: Callable = None,
         get_order_status: Callable = None,
         on_profit_exit: Callable = None,
+        on_exit_pnl: Callable = None,
     ):
         """Set callbacks for price data and execution.
         
@@ -243,6 +245,8 @@ class WarriorMonitor:
             self._get_order_status = get_order_status
         if on_profit_exit is not None:
             self._on_profit_exit = on_profit_exit
+        if on_exit_pnl is not None:
+            self._on_exit_pnl = on_exit_pnl
     
     # =========================================================================
     # POSITION MANAGEMENT

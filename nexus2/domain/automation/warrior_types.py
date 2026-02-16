@@ -97,6 +97,13 @@ class WarriorMonitorSettings:
     spread_grace_period_seconds: int = 60  # Wait 60s after entry before checking spread
     
     # Scaling In (Ross Cameron Methodology)
+    # ⚠️ ACCIDENTAL BEHAVIOR (Feb 16, 2026): With enable_improved_scaling=False,
+    # the pullback zone check always evaluates to True (line 133 of warrior_monitor_scale.py:
+    # is_pullback_zone = current_price <= entry OR allow_scale_below_entry). Combined with
+    # last_scale_attempt=None on first check (cooldown guard skipped), this produces a single
+    # scale on the first eligible bar for EVERY case → 1.5x position size → +$3,681 (+38% P&L).
+    # This is NOT intentional but IS profitable. Keeping until proper Ross scaling is built.
+    # See: reports/2026-02-16/research_ross_add_methodology.md for redesign plan.
     enable_scaling: bool = True  # Ross adds on strength - enabled by default
     max_scale_count: int = 2  # Starter position + 1-2 adds
     scale_size_pct: int = 50  # Add 50% of original size
@@ -106,6 +113,7 @@ class WarriorMonitorSettings:
     
     # Re-Entry After Profit Exit
     max_reentry_count: int = 3  # Max re-entries per symbol (3 = 4 total entries; A/B tested: +$133 vs unrestricted)
+    block_reentry_after_loss: bool = True  # Fix 6: Block re-entry if last exit was a loss (no revenge trading)
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
@@ -120,11 +128,20 @@ class WarriorMonitorSettings:
     
     # Base Hit Mode Settings
     base_hit_profit_cents: Decimal = Decimal("18")  # Take profit at +18¢ (Ross's typical)
+    base_hit_profit_pct: float = 0.0  # Fix 2: REJECTED — net negative alone and combined with Fix 1
     base_hit_stop_cents: Decimal = Decimal("15")  # Mental stop at -15¢
+    
+    # Structural Profit Levels (Fix 3: A/B testable)
+    # When enabled, replaces flat +18¢ fallback with next structural price level
+    # Ross Cameron exits at whole/half dollar levels ($5, $5.50, $6, etc.)
+    enable_structural_levels: bool = False  # Fix 3: REJECTED — neutral P&L, fewer winners
+    structural_level_increment: float = 0.50  # $0.50 = whole + half dollars
+    structural_level_min_distance_cents: int = 10  # Skip levels closer than 10¢
     
     # Base Hit Candle Trail (Phase A — Ross Cameron candle-low trailing)
     base_hit_candle_trail_enabled: bool = True  # Enable candle-low trailing for base_hit
     base_hit_trail_activation_cents: Decimal = Decimal("15")  # Start trailing after +15¢ (was 10¢)
+    trail_activation_pct: float = 0.0  # Fix 2: REJECTED — net negative alone and combined with Fix 1
     candle_trail_lookback_bars: int = 2  # Trail = lowest low of last N completed candles (was 1)
     
     # Home Run Mode Settings  
@@ -132,6 +149,24 @@ class WarriorMonitorSettings:
     home_run_trail_after_r: float = 1.5  # Start trailing stop after 1.5R
     home_run_trail_percent: float = 0.20  # Trail 20% below high_since_entry
     home_run_move_to_be: bool = True  # Move stop to breakeven after partial
+    
+    # Partial-Then-Ride (Fix 1: A/B testable)
+    # When True: base_hit exits sell 50% and switch remainder to home_run trailing
+    # When False: base_hit exits sell 100% (current behavior)
+    enable_partial_then_ride: bool = True  # Fix 1: Combined test with Fix 2.
+    
+    # Home Run Trail Improvement (Fix 4: REJECTED — all sub-fixes neutral or harmful)
+    enable_improved_home_run_trail: bool = False  # Fix 4: REJECTED
+    home_run_stop_after_partial: str = "trail_level"  # 4a: neutral (trail_level ≈ breakeven)
+    home_run_skip_topping_tail: bool = True  # 4b: neutral (topping tail never fires on these cases)
+    home_run_candle_trail_enabled: bool = False  # 4c: REJECTED — -16% regression, trail too tight
+    home_run_candle_trail_lookback: int = 5  # N-bar low (wider than base_hit's 2)
+    
+    # Scaling Fix (Fix 5: sim-aware cooldown + pullback zone)
+    # When True: skip wall-clock cooldown in sim, strict pullback zone → barely better than no scaling
+    # When False: accidental 1-scale-per-case behavior → +38% P&L (see comment above)
+    # True baseline comparison: enable_scaling=False → $9,617 (true un-scaled)
+    enable_improved_scaling: bool = False  # Fix 5: KEEP OFF — redesigning scaling per Ross methodology
 
 
 @dataclass

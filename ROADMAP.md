@@ -1,6 +1,6 @@
 # Nexus 2 Roadmap
 
-Last updated: 2026-02-14 (HOD Consolidation Break + batch runner bug found)
+Last updated: 2026-02-16 (Scaling investigation complete, Ross add methodology researched)
 
 > **Note:** This roadmap syncs with the Knowledge Item at `~/.gemini/antigravity/knowledge/nexus2_core_systems/`. AI should keep both in sync when making updates.
 
@@ -298,13 +298,22 @@ Last updated: 2026-02-14 (HOD Consolidation Break + batch runner bug found)
   - [x] Persist stop updates to DB when monitor moves stop
   - [x] Event replay for full state recovery after restart
   - [x] `/trade-events/position/{id}` and `/trade-events/symbol/{symbol}` endpoints
-- [x] **Scaling In** — Add to winners on first pullback (Ross Cameron methodology) (Jan 13)
+- [x] **Scaling In v1** — Add to winners on first pullback (Jan 13) — ⚠️ ACCIDENTAL BEHAVIOR
   - [x] Detection logic and settings (v1)
   - [x] Order execution and PSM integration (v2)
   - [x] Callback wiring for sim/broker (v3)
   - [x] API endpoints: GET/PUT /monitor/settings
   - [x] GUI toggle (clickable Scale badge) + persistence
   - [ ] Improve toggle UX: proper checkbox/switch instead of clickable ❌/✅ badge
+  - ⚠️ **Discovery (Feb 16):** Broken pullback zone logic accidentally scales every case once → 1.5x position → +$3,681 (+38%). Keeping as-is until Scaling v2 redesign. See `reports/2026-02-16/research_ross_add_methodology.md`
+- [ ] **Scaling v2: Ross Cameron Add Methodology** — Proper level-break scaling (Phased)
+  - Research COMPLETE: `reports/2026-02-16/research_ross_add_methodology.md`
+  - **Phase 1:** Starter → Full on first structural level break ($X.00/$X.50)
+  - **Phase 2:** Take Profit → Add Back cycle at structural levels (core Ross pattern)
+  - **Phase 3:** Market temperature (IWM/IBIT tracking), cushion-aware sizing, Level 2 data
+  - Give-back tolerance: configurable, default 25% from peak daily P&L
+  - MACD gate required for all adds
+  - Baselines: $9,617 (un-scaled) vs $13,298 (accidental 1-scale)
 - [x] **Cancel Orders Endpoint** — `DELETE /warrior/orders/{symbol}` for manual cancellation (Jan 13)
 - [x] **Prevent Duplicate Entries** — Track `_pending_entries` to block re-entry while buy order pending (Jan 13)
 - [x] **Fix Startup Callback Wiring** — `object of type 'decimal.Decimal' has no len()` blocks auto-start (Jan 13)

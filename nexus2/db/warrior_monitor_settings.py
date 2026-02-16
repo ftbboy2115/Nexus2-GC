@@ -91,6 +91,36 @@ def apply_monitor_settings(monitor_settings_obj, settings: dict) -> None:
         monitor_settings_obj.allow_scale_below_entry = settings["allow_scale_below_entry"]
     if "move_stop_to_breakeven_after_scale" in settings:
         monitor_settings_obj.move_stop_to_breakeven_after_scale = settings["move_stop_to_breakeven_after_scale"]
+    if "enable_partial_then_ride" in settings:
+        monitor_settings_obj.enable_partial_then_ride = settings["enable_partial_then_ride"]
+    if "trail_activation_pct" in settings:
+        monitor_settings_obj.trail_activation_pct = settings["trail_activation_pct"]
+    if "base_hit_profit_pct" in settings:
+        monitor_settings_obj.base_hit_profit_pct = settings["base_hit_profit_pct"]
+    # Fix 3: Structural profit levels
+    if "enable_structural_levels" in settings:
+        monitor_settings_obj.enable_structural_levels = settings["enable_structural_levels"]
+    if "structural_level_increment" in settings:
+        monitor_settings_obj.structural_level_increment = settings["structural_level_increment"]
+    if "structural_level_min_distance_cents" in settings:
+        monitor_settings_obj.structural_level_min_distance_cents = settings["structural_level_min_distance_cents"]
+    # Fix 4: Improved home run trail
+    if "enable_improved_home_run_trail" in settings:
+        monitor_settings_obj.enable_improved_home_run_trail = settings["enable_improved_home_run_trail"]
+    if "home_run_stop_after_partial" in settings:
+        monitor_settings_obj.home_run_stop_after_partial = settings["home_run_stop_after_partial"]
+    if "home_run_skip_topping_tail" in settings:
+        monitor_settings_obj.home_run_skip_topping_tail = settings["home_run_skip_topping_tail"]
+    if "home_run_candle_trail_enabled" in settings:
+        monitor_settings_obj.home_run_candle_trail_enabled = settings["home_run_candle_trail_enabled"]
+    if "home_run_candle_trail_lookback" in settings:
+        monitor_settings_obj.home_run_candle_trail_lookback = settings["home_run_candle_trail_lookback"]
+    # Fix 5: Improved scaling
+    if "enable_improved_scaling" in settings:
+        monitor_settings_obj.enable_improved_scaling = settings["enable_improved_scaling"]
+    # Fix 6: Re-entry quality gate
+    if "block_reentry_after_loss" in settings:
+        monitor_settings_obj.block_reentry_after_loss = settings["block_reentry_after_loss"]
     
     print(f"[Warrior Monitor Settings] Applied: enable_scaling={monitor_settings_obj.enable_scaling}")
 
@@ -115,4 +145,21 @@ def get_monitor_settings_dict(monitor_settings_obj) -> dict:
         "min_rvol_for_scale": monitor_settings_obj.min_rvol_for_scale,
         "allow_scale_below_entry": monitor_settings_obj.allow_scale_below_entry,
         "move_stop_to_breakeven_after_scale": monitor_settings_obj.move_stop_to_breakeven_after_scale,
+        "enable_partial_then_ride": monitor_settings_obj.enable_partial_then_ride,
+        "trail_activation_pct": monitor_settings_obj.trail_activation_pct,
+        "base_hit_profit_pct": monitor_settings_obj.base_hit_profit_pct,
+        # Fix 3: Structural profit levels
+        "enable_structural_levels": monitor_settings_obj.enable_structural_levels,
+        "structural_level_increment": monitor_settings_obj.structural_level_increment,
+        "structural_level_min_distance_cents": monitor_settings_obj.structural_level_min_distance_cents,
+        # Fix 4: Improved home run trail
+        "enable_improved_home_run_trail": monitor_settings_obj.enable_improved_home_run_trail,
+        "home_run_stop_after_partial": monitor_settings_obj.home_run_stop_after_partial,
+        "home_run_skip_topping_tail": monitor_settings_obj.home_run_skip_topping_tail,
+        "home_run_candle_trail_enabled": monitor_settings_obj.home_run_candle_trail_enabled,
+        "home_run_candle_trail_lookback": monitor_settings_obj.home_run_candle_trail_lookback,
+        # Fix 5: Improved scaling
+        "enable_improved_scaling": monitor_settings_obj.enable_improved_scaling,
+        # Fix 6: Re-entry quality gate
+        "block_reentry_after_loss": monitor_settings_obj.block_reentry_after_loss,
     }
