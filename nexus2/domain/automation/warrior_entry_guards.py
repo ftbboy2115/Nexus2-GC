@@ -204,6 +204,9 @@ async def _check_macd_gate(
         return False, f"FAIL-CLOSED - MACD check failed: {e}. Cannot verify momentum."
 
 
+
+
+
 async def _check_position_guards(
     engine: "WarriorEngine",
     watched: WatchedCandidate,
