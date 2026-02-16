@@ -77,6 +77,7 @@ class WarriorEngineConfigRequest(BaseModel):
     pmh_enabled: Optional[bool] = Field(None, description="Enable PMH breakouts")
     max_shares_per_trade: Optional[int] = Field(None, ge=1, description="Max shares per trade (for testing)")
     max_value_per_trade: Optional[float] = Field(None, gt=0, description="Max $ value per trade (for testing)")
+    max_capital: Optional[float] = Field(None, gt=0, description="Max capital per single trade position")
 
 
 class ScalingSettingsRequest(BaseModel):
@@ -490,6 +491,10 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         engine.config.max_value_per_trade = Decimal(str(request.max_value_per_trade))
         updated["max_value_per_trade"] = request.max_value_per_trade
     
+    if request.max_capital is not None:
+        engine.config.max_capital = Decimal(str(request.max_capital))
+        updated["max_capital"] = request.max_capital
+    
     # Save settings to persist across restarts
     try:
         from nexus2.db.warrior_settings import save_warrior_settings, get_config_dict
@@ -510,6 +515,7 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
             "pmh_enabled": engine.config.pmh_enabled,
             "max_shares_per_trade": engine.config.max_shares_per_trade,
             "max_value_per_trade": float(engine.config.max_value_per_trade) if engine.config.max_value_per_trade else None,
+            "max_capital": float(engine.config.max_capital),
         }
     }
 

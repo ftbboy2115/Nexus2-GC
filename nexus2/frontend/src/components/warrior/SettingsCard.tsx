@@ -10,6 +10,7 @@ interface WarriorConfig {
     risk_per_trade?: number
     max_positions?: number
     max_shares_per_trade?: number
+    max_capital?: number
     orb_enabled?: boolean
     pmh_enabled?: boolean
 }
@@ -61,7 +62,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                             >-</button>
                             <span>${config?.risk_per_trade || 100}</span>
                             <button
-                                onClick={() => updateConfig('risk_per_trade', Math.min(500, (config?.risk_per_trade || 100) + 25))}
+                                onClick={() => updateConfig('risk_per_trade', Math.min(5000, (config?.risk_per_trade || 100) + 25))}
                                 className={styles.btnSmall}
                             >+</button>
                         </div>
@@ -102,6 +103,32 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                             />
                             <button
                                 onClick={() => updateConfig('max_shares_per_trade', Math.min(10000, (config?.max_shares_per_trade || 100) + 10))}
+                                className={styles.btnSmall}
+                            >+</button>
+                        </div>
+                    </div>
+                    <div className={styles.settingItem}>
+                        <label>Max Capital/Trade ($)</label>
+                        <div className={styles.settingControl}>
+                            <button
+                                onClick={() => updateConfig('max_capital', Math.max(1000, (config?.max_capital || 5000) - 1000))}
+                                className={styles.btnSmall}
+                            >-</button>
+                            <input
+                                type="number"
+                                value={config?.max_capital || 5000}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10)
+                                    if (!isNaN(val) && val >= 1000 && val <= 500000) {
+                                        updateConfig('max_capital', val)
+                                    }
+                                }}
+                                className={styles.settingInput}
+                                min={1000}
+                                max={500000}
+                            />
+                            <button
+                                onClick={() => updateConfig('max_capital', Math.min(500000, (config?.max_capital || 5000) + 1000))}
                                 className={styles.btnSmall}
                             >+</button>
                         </div>
