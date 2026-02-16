@@ -184,13 +184,27 @@ class MarketCalendar:
     @staticmethod
     def _get_holiday_name(d) -> str:
         """Identify US market holiday by date. Returns name or empty string."""
-        from datetime import date as date_type
+        from datetime import date as date_type, timedelta
         month, day, weekday = d.month, d.day, d.weekday()
-        # Fixed-date holidays
-        if month == 1 and day == 1: return "New Year's Day"
-        if month == 6 and day == 19: return "Juneteenth"
-        if month == 7 and day == 4: return "Independence Day"
-        if month == 12 and day == 25: return "Christmas Day"
+        
+        # Fixed-date holidays with NYSE observed day rules:
+        # If holiday falls on Saturday → observed Friday
+        # If holiday falls on Sunday → observed Monday
+        def _is_observed(m, dd):
+            """Check if date d is the actual or observed date for month m, day dd."""
+            actual = date_type(d.year, m, dd)
+            wd = actual.weekday()
+            if wd == 5:  # Saturday → observed Friday
+                return d == actual - timedelta(days=1)
+            elif wd == 6:  # Sunday → observed Monday
+                return d == actual + timedelta(days=1)
+            else:
+                return d == actual
+        
+        if _is_observed(1, 1): return "New Year's Day"
+        if _is_observed(6, 19): return "Juneteenth"
+        if _is_observed(7, 4): return "Independence Day"
+        if _is_observed(12, 25): return "Christmas Day"
         # Monday holidays (observed)
         if weekday == 0:  # Monday
             if month == 1 and 15 <= day <= 21: return "MLK Jr. Day"
@@ -200,7 +214,29 @@ class MarketCalendar:
         # Thanksgiving (4th Thursday of November)
         if month == 11 and weekday == 3 and 22 <= day <= 28:
             return "Thanksgiving Day"
-        # Good Friday — harder to compute, skip (would need Easter calc)
+        # Good Friday (2 days before Easter Sunday)
+        # Anonymous Gregorian Easter algorithm
+        try:
+            year = d.year
+            a = year % 19
+            b, c = divmod(year, 100)
+            d2, e = divmod(b, 4)
+            f = (b + 8) // 25
+            g = (b - f + 1) // 3
+            h = (19 * a + b - d2 - g + 15) % 30
+            i, k = divmod(c, 4)
+            l = (32 + 2 * e + 2 * i - h - k) % 7
+            m = (a + 11 * h + 22 * l) // 451
+            month_e = (h + l - 7 * m + 114) // 31
+            day_e = ((h + l - 7 * m + 114) % 31) + 1
+            easter = date_type(year, month_e, day_e)
+            good_friday = easter - timedelta(days=2)
+            if d == good_friday:
+                return "Good Friday"
+        except Exception:
+            pass
+        # Unrecognized holiday — log so we can add it
+        logger.warning(f"[MarketCalendar] Market closed on {d} but holiday not recognized — update _get_holiday_name()")
         return ""
     
     def is_market_open(self) -> bool:
