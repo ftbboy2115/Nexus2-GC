@@ -104,6 +104,9 @@ class WarriorMonitorSettings:
     allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
     move_stop_to_breakeven_after_scale: bool = False  # Keep technical stop after scale (Ross Cameron)
     
+    # Re-Entry After Profit Exit
+    max_reentry_count: int = 3  # Max re-entries per symbol (3 = 4 total entries; A/B tested: +$133 vs unrestricted)
+    
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading
     

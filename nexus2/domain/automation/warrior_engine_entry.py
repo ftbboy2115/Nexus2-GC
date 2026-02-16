@@ -975,6 +975,18 @@ async def enter_position(
     symbol = watched.candidate.symbol
     
     # =========================================================================
+    # RE-ENTRY LIMIT (catches ALL re-entry paths)
+    # =========================================================================
+    max_total_entries = engine.monitor.settings.max_reentry_count + 1  # 0 re-entries = 1 entry total
+    if watched.entry_attempt_count >= max_total_entries:
+        logger.info(
+            f"[Warrior Entry] {symbol}: ENTRY BLOCKED - max entries reached "
+            f"({watched.entry_attempt_count}/{max_total_entries})"
+        )
+        return
+    
+    
+    # =========================================================================
     # ENTRY GUARDS (via extracted module)
     # =========================================================================
     can_enter, block_reason = await check_entry_guards(
@@ -1039,6 +1051,7 @@ async def enter_position(
     
     # Mark as triggered
     watched.entry_triggered = True
+    watched.entry_attempt_count += 1  # Track total entries for re-entry limit
     watched.last_below_vwap = False  # Reset VWAP break tracking after successful entry
     engine.stats.entries_triggered += 1
     

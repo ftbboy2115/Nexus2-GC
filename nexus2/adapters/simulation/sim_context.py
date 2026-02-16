@@ -570,11 +570,37 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         total_pnl = round(realized + unrealized, 2)
         case_time = round(time.time() - start, 2)
 
+        # Extract trade details from per-process in-memory warrior_db
+        trades = []
+        try:
+            from nexus2.db.warrior_db import get_all_warrior_trades
+            for status_filter in ("closed", "partial"):
+                result = get_all_warrior_trades(limit=100, status_filter=status_filter)
+                for wt in (result.get("trades", []) if isinstance(result, dict) else []):
+                    if wt.get("is_sim"):
+                        trades.append({
+                            "entry_price": round(float(wt.get("entry_price", 0)), 2),
+                            "exit_price": round(float(wt.get("exit_price", 0)), 2) if wt.get("exit_price") else None,
+                            "shares": wt.get("quantity", 0),
+                            "pnl": round(float(wt.get("realized_pnl", 0)), 2),
+                            "entry_trigger": wt.get("trigger_type"),
+                            "exit_mode": wt.get("exit_mode"),
+                            "exit_reason": wt.get("exit_reason"),
+                            "entry_time": wt.get("entry_time"),
+                            "exit_time": wt.get("exit_time"),
+                            "stop_price": wt.get("stop_price"),
+                            "stop_method": wt.get("stop_method"),
+                            "target_price": wt.get("target_price"),
+                            "support_level": wt.get("support_level"),
+                        })
+        except Exception as e:
+            log.warning(f"[{case_id}] Failed to extract trades from warrior_db: {e}")
+
         return {
             "case_id": case_id, "symbol": symbol,
             "date": case.get("trade_date"),
             "bar_count": bar_count,
-            "trades": [],
+            "trades": trades,
             "realized_pnl": realized,
             "unrealized_pnl": unrealized,
             "total_pnl": total_pnl,

@@ -221,6 +221,15 @@ class WarriorEngine:
             logger.debug(f"[Warrior Engine] {symbol}: No watched symbol for re-entry")
             return
         
+        # Check re-entry limit before allowing
+        max_reentries = self.monitor.settings.max_reentry_count
+        if watched.entry_attempt_count >= max_reentries:
+            logger.info(
+                f"[Warrior Engine] {symbol}: Re-entry BLOCKED - "
+                f"attempt #{watched.entry_attempt_count + 1} exceeds max {max_reentries}"
+            )
+            return
+        
         # Reset entry_triggered to allow re-entry
         watched.entry_triggered = False
         watched.position_opened = False
