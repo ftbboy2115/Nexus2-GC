@@ -17,6 +17,10 @@ from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, FMPConfig, get_f
 from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter, AlpacaConfig
 from nexus2.adapters.market_data.polygon_adapter import PolygonAdapter, get_polygon_adapter
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class UnifiedConfig:
