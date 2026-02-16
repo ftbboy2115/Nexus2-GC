@@ -39,22 +39,23 @@ ssh root@100.113.178.7 "sqlite3 ~/Nexus2/data/<db>.db 'ALTER TABLE <table> ADD C
 ```
 Verify schema matches Python model before restart.
 
-### 4. Restart Backend (Primary Method: UI or API)
+### 4. Restart Backend (systemd)
 
-The server runs via `run_api.sh` wrapper script, which enables graceful restart.
+The server runs as a systemd service (`nexus2.service`).
 
-**Option A - From UI:**
-Go to **Warrior → 🔧 Server Admin** and click restart.
-
-**Option B - From API:**
+**Option A - From CLI:**
 ```bash
-curl -X POST http://100.113.178.7:8000/admin/restart
+ssh root@100.113.178.7 "systemctl restart nexus2"
 ```
 
-The script handles:
-- Graceful shutdown (6x Ctrl+C with pauses)
-- 60s API cooldown (FMP rate limit protection)
-- Server restart
+**Option B - From UI:**
+Go to **Warrior → 🔧 Server Admin** and click restart.
+(systemd auto-restarts the process when it exits with code 42)
+
+**Option C - From API:**
+```bash
+curl -X POST http://100.113.178.7:8000/admin/restart -H "Content-Type: application/json" -d '{"confirmation":"REBOOT","clear_cache":true}'
+```
 
 ### 5. Restart Frontend (if needed)
 ```bash
@@ -67,26 +68,41 @@ ssh root@100.113.178.7 "tmux send-keys -t frontend 'cd ~/Nexus2/nexus2/frontend 
 ssh root@100.113.178.7 "curl -s http://localhost:8000/health"
 ```
 
+### 7. Check Logs
+```bash
+ssh root@100.113.178.7 "journalctl -u nexus2 --no-pager -n 50"
+```
+
+Or the application log file:
+```bash
+ssh root@100.113.178.7 "tail -50 ~/Nexus2/data/server.log"
+```
+
 ---
 
 ## ⚠️ Never Use
 - `scp` for deployment (bypasses version control)
 - Direct file edits on VPS (causes git conflicts)
+- `tmux` for backend (use systemd — the backend no longer runs in tmux)
 
 ---
 
-## 🔧 Manual Alternative (if run_api.sh not running)
+## 🔧 Systemd Service Details
 
-If the server was started directly with uvicorn (not via `run_api.sh`), use this:
+**Service file:** `/etc/systemd/system/nexus2.service`
 
-**Restart Backend (6x Ctrl+C with pauses + 60s API cooldown):**
+Key behavior:
+- `Restart=always` — auto-restarts on crash or `/admin/restart`
+- `RestartSec=2` — 2-second delay between restarts
+- Auto-starts on VPS reboot (`systemctl enable nexus2`)
+- Logs to `journalctl -u nexus2` AND `~/Nexus2/data/server.log`
+
+**Status check:**
 ```bash
-ssh root@100.113.178.7 "cd ~/Nexus2 && git pull && tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c; sleep 1; tmux send-keys -t nexus:0 C-c && echo 'Waiting 60s for FMP API cooldown...' && sleep 60 && tmux send-keys -t nexus:0 'python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000' Enter"
+ssh root@100.113.178.7 "systemctl status nexus2 --no-pager"
 ```
 
-**To switch to run_api.sh (one-time setup):**
+**Stop (without restart):**
 ```bash
-ssh root@100.113.178.7 "chmod +x ~/Nexus2/run_api.sh"
-ssh root@100.113.178.7 "tmux send-keys -t nexus:0 C-c C-c"  # Stop current server
-ssh root@100.113.178.7 "tmux send-keys -t nexus:0 './run_api.sh' Enter"
+ssh root@100.113.178.7 "systemctl stop nexus2"
 ```
