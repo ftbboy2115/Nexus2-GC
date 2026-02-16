@@ -117,12 +117,29 @@ class MarketCalendar:
                 current_time = current_et.time()
                 if current_et.weekday() >= 5:
                     reason = "weekend"
+                elif next_open:
+                    # Check if next_open is NOT today — that means today is a holiday
+                    next_open_et = next_open.astimezone(ET)
+                    if next_open_et.date() > current_et.date():
+                        holiday_name = self._get_holiday_name(current_et.date())
+                        if current_time >= time(16, 0):
+                            reason = "post_market"
+                        elif holiday_name:
+                            reason = f"holiday: {holiday_name}"
+                        else:
+                            reason = "holiday"
+                    else:
+                        # next_open is today — we're in pre-market or post-market
+                        if current_time < time(9, 30):
+                            reason = "pre_market"
+                        else:
+                            reason = "post_market"
                 elif current_time >= time(16, 0):
-                    reason = "post_market"  # After normal close
+                    reason = "post_market"
                 elif current_time < time(9, 30):
-                    reason = "pre_market"  # Before normal open
+                    reason = "pre_market"
                 else:
-                    reason = "holiday"  # During market hours but closed = holiday
+                    reason = "holiday"
             
             status = MarketStatus(
                 is_open=is_open,
@@ -163,6 +180,28 @@ class MarketCalendar:
             is_open=is_open,
             reason="api_fallback" if not is_open else "",
         )
+    
+    @staticmethod
+    def _get_holiday_name(d) -> str:
+        """Identify US market holiday by date. Returns name or empty string."""
+        from datetime import date as date_type
+        month, day, weekday = d.month, d.day, d.weekday()
+        # Fixed-date holidays
+        if month == 1 and day == 1: return "New Year's Day"
+        if month == 6 and day == 19: return "Juneteenth"
+        if month == 7 and day == 4: return "Independence Day"
+        if month == 12 and day == 25: return "Christmas Day"
+        # Monday holidays (observed)
+        if weekday == 0:  # Monday
+            if month == 1 and 15 <= day <= 21: return "MLK Jr. Day"
+            if month == 2 and 15 <= day <= 21: return "Presidents' Day"
+            if month == 5 and day >= 25: return "Memorial Day"
+            if month == 9 and day <= 7: return "Labor Day"
+        # Thanksgiving (4th Thursday of November)
+        if month == 11 and weekday == 3 and 22 <= day <= 28:
+            return "Thanksgiving Day"
+        # Good Friday — harder to compute, skip (would need Easter calc)
+        return ""
     
     def is_market_open(self) -> bool:
         """Simple check: is the market currently open?"""
