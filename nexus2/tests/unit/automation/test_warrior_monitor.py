@@ -111,15 +111,16 @@ class TestPositionManagement:
             shares=100,
         )
         
-        # Mental stop: $150.00 - $0.50 = $149.50 (default is now 50¢)
-        assert position.mental_stop == Decimal("149.50")
-        assert position.current_stop == Decimal("149.50")
+        # In base_hit mode: mental stop uses base_hit_stop_cents (15¢)
+        # $150.00 - $0.15 = $149.85
+        assert position.mental_stop == Decimal("149.85")
+        assert position.current_stop == Decimal("149.85")
         
-        # Risk per share: $0.50
-        assert position.risk_per_share == Decimal("0.50")
+        # Risk per share: $0.15 (base_hit_stop_cents)
+        assert position.risk_per_share == Decimal("0.15")
         
-        # Profit target (2:1 R): $150.00 + $1.00 = $151.00
-        assert position.profit_target == Decimal("151.000")
+        # Profit target (2:1 R): $150.00 + $0.30 = $150.300
+        assert position.profit_target == Decimal("150.300")
     
     def test_add_position_with_support(self, monitor):
         """Adding position with support level uses tighter stop."""

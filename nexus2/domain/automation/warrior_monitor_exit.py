@@ -443,7 +443,13 @@ async def _check_candle_under_candle(
         )
         return None
     
-
+    # GUARD 2: Skip when position is profitable (green) — let candle trail manage exit
+    if getattr(s, 'candle_exit_only_when_red', True) and current_price > position.entry_price:
+        logger.debug(
+            f"[Warrior] {position.symbol}: Candle-under-candle skipped "
+            f"(position is green: ${current_price:.2f} > entry ${position.entry_price:.2f})"
+        )
+        return None
     
     # Fetch 6 1m candles (need 5 for 5m aggregation + current comparison)
     candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=6)
@@ -703,17 +709,19 @@ async def _check_base_hit_target(
         
         # Step 1: Check if trail should activate
         if position.candle_trail_stop is None and profit_cents >= activation_cents:
-            # Fetch 3 candles: need at least 2 (prev + current)
-            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
-            if candles and len(candles) >= 2:
-                # Use the low of the last completed candle (not current)
-                prev_candle_low = Decimal(str(candles[-2].low))
+            # Fetch enough candles for N-bar lookback + current
+            lookback = getattr(s, 'candle_trail_lookback_bars', 2)
+            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=lookback + 2)
+            if candles and len(candles) >= lookback + 1:
+                # Use the lowest low of the last N completed candles (not current)
+                completed = candles[-(lookback + 1):-1]
+                prev_candle_low = min(Decimal(str(c.low)) for c in completed)
                 # Only activate if trail stop would be above entry (protective)
                 if prev_candle_low > position.entry_price:
                     position.candle_trail_stop = prev_candle_low
                     logger.info(
                         f"[Warrior] {position.symbol}: CANDLE TRAIL ACTIVATED at ${prev_candle_low:.2f} "
-                        f"(1-bar low, profit +{float(profit_cents):.0f}¢, entry=${position.entry_price:.2f})"
+                        f"({lookback}-bar low, profit +{float(profit_cents):.0f}¢, entry=${position.entry_price:.2f})"
                     )
                 else:
                     # Trail would be below entry — not protective enough yet
@@ -724,15 +732,17 @@ async def _check_base_hit_target(
         
         # Step 2: If trail was ALREADY active (not just activated above), update it (only moves UP)
         elif position.candle_trail_stop is not None:
-            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=3)
-            if candles and len(candles) >= 2:
-                prev_candle_low = Decimal(str(candles[-2].low))
+            lookback = getattr(s, 'candle_trail_lookback_bars', 2)
+            candles = await monitor._get_intraday_candles(position.symbol, timeframe="1min", limit=lookback + 2)
+            if candles and len(candles) >= lookback + 1:
+                completed = candles[-(lookback + 1):-1]
+                prev_candle_low = min(Decimal(str(c.low)) for c in completed)
                 if prev_candle_low > position.candle_trail_stop:
                     old_trail = position.candle_trail_stop
                     position.candle_trail_stop = prev_candle_low
                     logger.info(
                         f"[Warrior] {position.symbol}: Candle trail RAISED "
-                        f"${old_trail:.2f} → ${prev_candle_low:.2f} (1-bar low)"
+                        f"${old_trail:.2f} → ${prev_candle_low:.2f} ({lookback}-bar low)"
                     )
             
             # Step 3: Check if trail stop hit

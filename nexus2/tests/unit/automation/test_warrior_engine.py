@@ -180,8 +180,9 @@ class TestEntrySpreadFilter:
         # Entry should be blocked - submit_order should NOT be called
         engine._submit_order.assert_not_called()
         
-        # Position should be marked as triggered to prevent retries
-        assert watched.entry_triggered == True
+        # Spread is a temporary guard (GWAV selective blocking fix) — 
+        # entry_triggered stays False so bot can retry when spread narrows
+        assert watched.entry_triggered == False
     
     def test_narrow_spread_allows_entry(self, engine):
         """Entry is allowed when spread is below threshold."""
@@ -231,10 +232,12 @@ class TestEntrySpreadFilter:
         
         # 3.1% > 3% threshold, should reject
         engine._submit_order.assert_not_called()
-        assert watched.entry_triggered == True
+        # Spread is a temporary guard (GWAV selective blocking fix) —
+        # entry_triggered stays False so bot can retry when spread narrows
+        assert watched.entry_triggered == False
     
-    def test_no_spread_data_proceeds_with_caution(self, engine):
-        """Entry proceeds when quote data is unavailable."""
+    def test_no_spread_data_blocks_entry(self, engine):
+        """Entry is blocked when quote data is unavailable (fail-closed)."""
         # Mock no quote data
         engine._get_quote_with_spread = AsyncMock(return_value=None)
         
@@ -245,8 +248,8 @@ class TestEntrySpreadFilter:
         # Should proceed (fail-open for quote failures)
         engine._submit_order.assert_called_once()
     
-    def test_zero_bid_proceeds_with_caution(self, engine):
-        """Entry proceeds when bid is zero (incomplete quote)."""
+    def test_zero_bid_blocks_entry(self, engine):
+        """Entry is blocked when bid is zero (fail-closed)."""
         engine._get_quote_with_spread = AsyncMock(return_value={
             "price": 10.00,
             "bid": 0,
@@ -257,11 +260,11 @@ class TestEntrySpreadFilter:
         
         _run(engine._enter_position(watched, Decimal("10.00"), EntryTriggerType.PMH_BREAK))
         
-        # Should proceed with caution (incomplete quote)
-        engine._submit_order.assert_called_once()
+        # Fail-closed: invalid bid/ask data blocks entry
+        engine._submit_order.assert_not_called()
     
-    def test_zero_ask_proceeds_with_caution(self, engine):
-        """Entry proceeds when ask is zero (incomplete quote)."""
+    def test_zero_ask_blocks_entry(self, engine):
+        """Entry is blocked when ask is zero (fail-closed)."""
         engine._get_quote_with_spread = AsyncMock(return_value={
             "price": 10.00,
             "bid": 10.00,
@@ -272,19 +275,19 @@ class TestEntrySpreadFilter:
         
         _run(engine._enter_position(watched, Decimal("10.00"), EntryTriggerType.PMH_BREAK))
         
-        # Should proceed with caution (incomplete quote)
-        engine._submit_order.assert_called_once()
+        # Fail-closed: invalid bid/ask data blocks entry
+        engine._submit_order.assert_not_called()
     
-    def test_spread_check_exception_proceeds(self, engine):
-        """Entry proceeds if spread check throws exception."""
+    def test_spread_check_exception_blocks_entry(self, engine):
+        """Entry is blocked if spread check throws exception (fail-closed)."""
         engine._get_quote_with_spread = AsyncMock(side_effect=Exception("API error"))
         
         watched = make_watched_candidate("XYZ", price=10.00)
         
         _run(engine._enter_position(watched, Decimal("10.00"), EntryTriggerType.PMH_BREAK))
         
-        # Should proceed (fail-open)
-        engine._submit_order.assert_called_once()
+        # Fail-closed: spread check error blocks entry
+        engine._submit_order.assert_not_called()
     
     def test_no_callback_skips_spread_check(self, engine):
         """Entry proceeds if no spread callback is configured."""
