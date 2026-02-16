@@ -1,0 +1,267 @@
+[
+  {
+    "case_id": "ross_lcfy_20260116",
+    "symbol": "LCFY",
+    "date": "2026-01-16",
+    "bar_count": 652,
+    "ross_pnl": 10456.94,
+    "bot_pnl": -4832.56,
+    "delta": -15289.5,
+    "entry_count": 2,
+    "sell_count": 1,
+    "buy_orders": [
+      {
+        "price": 4.96,
+        "shares": 5555,
+        "time": "14:59",
+        "trigger": "whole_half_anticipatory",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 4.96,
+        "shares": 2777,
+        "time": "14:59",
+        "trigger": null,
+        "exit_mode": null
+      }
+    ],
+    "sell_orders": [
+      {
+        "price": 4.38,
+        "shares": 8332,
+        "time": "15:32"
+      }
+    ],
+    "config": {
+      "risk_per_trade": "2500.0",
+      "max_shares": 10000
+    },
+    "expected_entry": 7.5,
+    "expected_stop": 7.0,
+    "pmh": 7.42,
+    "runtime": 3.29
+  },
+  {
+    "case_id": "ross_flye_20260206",
+    "symbol": "FLYE",
+    "date": "2026-02-06",
+    "bar_count": 466,
+    "ross_pnl": 4800.0,
+    "bot_pnl": -3866.1,
+    "delta": -8666.1,
+    "entry_count": 2,
+    "sell_count": 1,
+    "buy_orders": [
+      {
+        "price": 7.11,
+        "shares": 877,
+        "time": "09:02",
+        "trigger": "hod_break",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 7.11,
+        "shares": 438,
+        "time": "09:02",
+        "trigger": null,
+        "exit_mode": null
+      }
+    ],
+    "sell_orders": [
+      {
+        "price": 4.17,
+        "shares": 1315,
+        "time": "11:03"
+      }
+    ],
+    "config": {
+      "risk_per_trade": "2500.0",
+      "max_shares": 10000
+    },
+    "expected_entry": 6.32,
+    "expected_stop": 6.0,
+    "pmh": 8.5,
+    "runtime": 0.8
+  },
+  {
+    "case_id": "ross_mnts_20260209",
+    "symbol": "MNTS",
+    "date": "2026-02-09",
+    "bar_count": 686,
+    "ross_pnl": 9000.0,
+    "bot_pnl": -7046.15,
+    "delta": -16046.15,
+    "entry_count": 3,
+    "sell_count": 1,
+    "buy_orders": [
+      {
+        "price": 7.67,
+        "shares": 1381,
+        "time": "08:40",
+        "trigger": "dip_for_level",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 7.67,
+        "shares": 690,
+        "time": "08:40",
+        "trigger": null,
+        "exit_mode": null
+      },
+      {
+        "price": 6.9,
+        "shares": 5102,
+        "time": "13:08",
+        "trigger": "hod_break",
+        "exit_mode": "base_hit"
+      }
+    ],
+    "sell_orders": [
+      {
+        "price": 6.14,
+        "shares": 7173,
+        "time": "19:30"
+      }
+    ],
+    "config": {
+      "risk_per_trade": "2500.0",
+      "max_shares": 10000
+    },
+    "expected_entry": 8.0,
+    "expected_stop": 7.5,
+    "pmh": 9.35,
+    "runtime": 1.65
+  },
+  {
+    "case_id": "ross_bnrg_20260211",
+    "symbol": "BNRG",
+    "date": "2026-02-11",
+    "bar_count": 788,
+    "ross_pnl": 271.74,
+    "bot_pnl": -4525.5,
+    "delta": -4797.24,
+    "entry_count": 2,
+    "sell_count": 1,
+    "buy_orders": [
+      {
+        "price": 3.45,
+        "shares": 8620,
+        "time": "06:48",
+        "trigger": "dip_for_level",
+        "exit_mode": "home_run"
+      },
+      {
+        "price": 3.45,
+        "shares": 4310,
+        "time": "06:48",
+        "trigger": null,
+        "exit_mode": null
+      }
+    ],
+    "sell_orders": [
+      {
+        "price": 3.1,
+        "shares": 12930,
+        "time": "07:02"
+      }
+    ],
+    "config": {
+      "risk_per_trade": "2500.0",
+      "max_shares": 10000
+    },
+    "expected_entry": 4.0,
+    "expected_stop": 3.75,
+    "pmh": 4.56,
+    "runtime": 0.98
+  },
+  {
+    "case_id": "ross_mlec_20260213",
+    "symbol": "MLEC",
+    "date": "2026-02-13",
+    "bar_count": 598,
+    "ross_pnl": 43000.0,
+    "bot_pnl": -2997.38,
+    "delta": -45997.38,
+    "entry_count": 6,
+    "sell_count": 5,
+    "buy_orders": [
+      {
+        "price": 8.71,
+        "shares": 608,
+        "time": "08:11",
+        "trigger": "hod_break",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 8.71,
+        "shares": 304,
+        "time": "08:11",
+        "trigger": null,
+        "exit_mode": null
+      },
+      {
+        "price": 10.12,
+        "shares": 2083,
+        "time": "11:38",
+        "trigger": "hod_break",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 10.12,
+        "shares": 1041,
+        "time": "11:38",
+        "trigger": null,
+        "exit_mode": null
+      },
+      {
+        "price": 8.756,
+        "shares": 4416,
+        "time": "15:39",
+        "trigger": "hod_break",
+        "exit_mode": "base_hit"
+      },
+      {
+        "price": 8.756,
+        "shares": 2208,
+        "time": "15:39",
+        "trigger": null,
+        "exit_mode": null
+      }
+    ],
+    "sell_orders": [
+      {
+        "price": 9.435,
+        "shares": 456,
+        "time": "08:12"
+      },
+      {
+        "price": 8.62,
+        "shares": 456,
+        "time": "09:57"
+      },
+      {
+        "price": 11.0,
+        "shares": 1562,
+        "time": "11:48"
+      },
+      {
+        "price": 9.96,
+        "shares": 1562,
+        "time": "12:03"
+      },
+      {
+        "price": 8.09,
+        "shares": 6624,
+        "time": "16:07"
+      }
+    ],
+    "config": {
+      "risk_per_trade": "2500.0",
+      "max_shares": 10000
+    },
+    "expected_entry": 7.9,
+    "expected_stop": 7.5,
+    "pmh": 12.97,
+    "runtime": 1.09
+  }
+]
