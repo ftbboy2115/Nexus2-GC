@@ -36,6 +36,32 @@ This creates:
 - Transcript file in `.agent/knowledge/warrior_trading/{date}_transcript_{videoId}.md`
 - Console output with video metadata (title, date)
 
+### 2.5. Update Transcript Vault (MANDATORY)
+
+After analyzing the transcript content, update the transcript vault at:
+`.agent/knowledge/warrior_trading/transcript_vault.md` (inside the Antigravity knowledge directory)
+
+> [!CAUTION]
+> This step is **non-optional**. Skipping it causes data gaps that mislead other agents.
+
+**Add a summary row** to the main table (keep chronological order, newest first):
+```markdown
+| **Mon DD** | Video Title | **SYMBOL** | +$XXk | One-line core lesson |
+```
+
+**Add a deep-dive section** at the bottom (before the version line) with:
+- Symbol and P&L
+- Strategy/setup type
+- Entry price, share count (if stated)
+- Scaling pattern (add levels)
+- Exit criteria
+- Bot alignment notes (if applicable)
+
+**Data rules:**
+- P&L must match what Ross states in the transcript — do NOT round or estimate
+- Entry prices must be Ross's stated prices, not YAML `expected.entry_near`
+- If the transcript doesn't state a detail, write "not stated" — do NOT invent
+
 ### 3. Verify Data Quality
 Check the console output for:
 - [ ] Price range matches expected (not a ticker collision)

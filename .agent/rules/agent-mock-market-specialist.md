@@ -114,7 +114,19 @@ The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
 ### What TO Do
 ✅ Run the extraction script and leave the file where it lands
 ✅ If trade date differs from publish date, update the **Date:** line inside the file
+✅ **Update the Transcript Vault** (see below)
 ✅ Analyze content and proceed to Phase 2 (fetch bars, add to YAML)
+
+### Transcript Vault Update (MANDATORY)
+
+> [!CAUTION]
+> After processing EVERY transcript, you MUST update the transcript vault at:
+> `transcript_vault.md` (in the same `.agent/knowledge/warrior_trading/` directory)
+
+1. Add a **summary row** to the main table (chronological, newest first)
+2. Add a **deep-dive section** with: symbol, P&L, entry, scaling, exit, bot alignment
+3. P&L and prices must match Ross's stated values from the transcript — NOT estimates
+4. If a detail isn't stated, write "not stated" — do NOT invent values
 
 ---
 
