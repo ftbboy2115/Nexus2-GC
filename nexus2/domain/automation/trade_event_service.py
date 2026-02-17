@@ -341,6 +341,19 @@ class TradeEventService:
             logger.error(f"[TradeEvent] Failed to log event: {e}")
             return None
     
+    def has_entry_event(self, position_id: str) -> bool:
+        """Check if an ENTRY event already exists for a position_id."""
+        try:
+            with get_session() as db:
+                count = db.query(TradeEventModel).filter(
+                    TradeEventModel.position_id == str(position_id),
+                    TradeEventModel.event_type == "ENTRY",
+                ).count()
+                return count > 0
+        except Exception as e:
+            logger.debug(f"[TradeEvent] has_entry_event check failed: {e}")
+            return False  # Fail open — allow logging if check fails
+    
     # ==================== NAC Methods ====================
     
     def log_nac_entry(
