@@ -1,5 +1,8 @@
 # Non-Entry Investigation: HIND & PRFX
 
+> [!CAUTION]
+> **CORRECTION (2026-02-16 21:07 ET):** This report incorrectly frames HIND/PRFX as un-tradeable by implying the bot can't act during premarket spikes. **The bot trades premarket starting at 6:00 AM.** Ross's prime trading window is 6:00–9:00 AM per `warrior.md`. The real question is: why don't the bot's existing entry patterns (PMH_BREAK, DIP_FOR_LEVEL, HOD_CONSOLIDATION_BREAK, VWAP_BREAK) fire on these premarket bars? The claims below that "all patterns require bars *after* the spike completes" have NOT been verified — this was an agent assumption, not a code-traced finding. The actual pattern detection logic needs to be traced bar-by-bar to determine what specifically fails.
+
 **Date:** 2026-02-16  
 **Cases:** `ross_hind_20260127` ($0 bot P&L, Ross +$55,252), `ross_prfx_20260211` ($0 bot P&L, Ross +$5,971)
 

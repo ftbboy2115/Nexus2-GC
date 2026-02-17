@@ -336,10 +336,9 @@ Ross explicitly classifies market conditions daily:
 ### 9.3 Time-Based Behavior
 | Time (ET) | Behavior |
 |-----------|----------|
-| 4:00–6:30 AM | Scan pre-market, check gaps. No trading. |
-| 6:30–7:00 AM | Sit down, review scanners, build watchlist |
-| 7:00–7:30 AM | First trades possible (pre-market) |
-| 7:30–9:00 AM | **Prime trading window**. Most profit here. |
+| 4:00–6:00 AM | Scan pre-market, check gaps. Building watchlist. |
+| 6:00–7:00 AM | **Active trading possible.** Ross has traded as early as 6 AM on high-conviction setups. |
+| 7:00–9:00 AM | **Prime trading window**. Most profit here. Recorded entries as early as 07:00 (BNRG, ROLR). |
 | 9:00–9:30 AM | Caution. Often stops trading. "Am I done?" |
 | 9:30 AM+ | Open bell. Rarely trades this session. |
 
