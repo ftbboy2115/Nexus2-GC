@@ -34,6 +34,7 @@ Your role: **Research the codebase and produce a detailed technical specificatio
 - Identifying exact insertion/modification points
 - Studying existing patterns as templates
 - Producing a technical spec document
+- **Runtime investigation** — querying APIs, checking logs, and gathering broker data (see [Runtime Investigation](#-runtime-investigation-mode) below)
 
 ❌ **NOT Your Scope**
 - Writing implementation code — defer to Backend Specialist
@@ -45,6 +46,88 @@ Your role: **Research the codebase and produce a detailed technical specificatio
 > **You DO NOT write code. You DO NOT modify files in `nexus2/`.**
 > Your output is a SINGLE technical spec document that the implementer reads.
 > If you catch yourself writing implementation code, STOP immediately.
+
+---
+
+## 🔍 Runtime Investigation Mode
+
+> [!IMPORTANT]
+> When investigating **runtime bugs** (divergent behavior, state mismatches, phantom positions),
+> code-only analysis is insufficient. You MUST also gather runtime evidence.
+
+### When to Use
+- Position state doesn't match expectations (e.g., shares mismatch)
+- Events are missing or out of order
+- Broker state differs from bot state
+- Trade outcomes differ from what code analysis predicts
+
+### Available Runtime Tools
+
+**VPS API queries** (via ssh):
+```powershell
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/<endpoint>' | python3 -m json.tool"
+```
+
+#### Endpoint Discovery (ALWAYS do this first)
+
+List ALL available endpoints dynamically from the live server:
+```powershell
+ssh root@100.113.178.7 "cat > /tmp/list_api.py << 'EOF'
+import sys, json
+d = json.load(sys.stdin)
+for p in sorted(d.get('paths', {})):
+    for m in d['paths'][p]:
+        print(m.upper(), p)
+EOF
+curl -s http://localhost:8000/openapi.json | python3 /tmp/list_api.py"
+```
+
+Get details for a specific endpoint (params, response schema):
+```powershell
+ssh root@100.113.178.7 "cat > /tmp/api_detail.py << 'EOF'
+import sys, json
+d = json.load(sys.stdin)
+import os; ep = os.environ.get('EP', '/warrior/positions')
+print(json.dumps(d.get('paths', {}).get(ep, {}), indent=2))
+EOF
+EP='/warrior/positions' curl -s http://localhost:8000/openapi.json | python3 /tmp/api_detail.py"
+```
+
+> [!TIP]
+> **Always discover endpoints dynamically** via `/openapi.json` rather than assuming they exist.
+> The OpenAPI spec includes all parameters, query filters, and response schemas.
+> Interactive Swagger UI is also available at `http://100.113.178.7:8000/docs`.
+
+#### Common Investigation Queries
+
+```powershell
+# Health check
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/health' | python3 -m json.tool"
+
+# Open positions (in-memory state)
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/warrior/positions' | python3 -m json.tool"
+
+# Trade events for a symbol
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/data/trade-events?symbol=ATOM&limit=30' | python3 -m json.tool"
+
+# Monitor settings (scaling, partials, risk config)
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/warrior/monitor/settings' | python3 -m json.tool"
+
+# Engine diagnostics
+ssh root@100.113.178.7 "curl -s 'http://localhost:8000/warrior/diagnostics' | python3 -m json.tool"
+```
+
+**VPS logs:**
+```powershell
+ssh root@100.113.178.7 "tail -100 ~/Nexus2/data/server.log"
+ssh root@100.113.178.7 "journalctl -u nexus2 --no-pager -n 50"
+```
+
+### Rules for Runtime Investigation
+1. **READ ONLY** — query APIs and logs, never modify state
+2. **Evidence format** — include the exact command run and the full output
+3. **Correlate** — cross-reference runtime data with code paths to identify the gap
+4. **Document gaps** — if runtime data reveals missing events or stale state, document WHERE in the code the logging/update should happen
 
 ---
 

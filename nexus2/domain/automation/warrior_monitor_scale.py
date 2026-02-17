@@ -282,8 +282,34 @@ async def execute_scale_in(
         position.shares += add_shares
         new_total_shares = position.shares
         
-        # Complete scaling in DB (SCALING → OPEN with updated shares)
-        complete_scaling(position.position_id, new_total_shares)
+        # Calculate weighted-average entry price (matches _consolidate_existing_position pattern)
+        old_cost = old_entry * old_shares
+        new_cost = price * add_shares
+        new_avg_entry = (old_cost + new_cost) / new_total_shares
+        
+        # Update position entry price to weighted average
+        position.entry_price = new_avg_entry
+        
+        # Recalculate risk and target based on new average entry
+        risk_per_share = new_avg_entry - position.current_stop
+        position.risk_per_share = risk_per_share
+        
+        s = monitor.settings
+        if s.profit_target_cents > 0:
+            position.profit_target = new_avg_entry + s.profit_target_cents / 100
+        else:
+            position.profit_target = new_avg_entry + (risk_per_share * Decimal(str(s.profit_target_r)))
+        
+        # Complete scaling in DB (SCALING → OPEN with updated shares and avg price)
+        complete_scaling(position.position_id, new_total_shares, new_avg_price=float(new_avg_entry))
+        
+        # Log scale event (Trade Events tab visibility)
+        trade_event_service.log_warrior_scale_in(
+            position_id=position.position_id,
+            symbol=symbol,
+            add_price=price,
+            shares_added=add_shares,
+        )
         
         # Move stop to breakeven (original entry price)
         if monitor.settings.move_stop_to_breakeven_after_scale:
@@ -312,7 +338,7 @@ async def execute_scale_in(
             f"[Warrior Scale TRACE] {symbol}: SCALE EXECUTED — "
             f"scale #{position.scale_count}, "
             f"shares {old_shares} → {position.shares} (+{add_shares}), "
-            f"entry_price was ${old_entry:.2f} (may change via consolidate), "
+            f"entry_price ${old_entry:.2f} → ${position.entry_price:.2f} (weighted avg), "
             f"current_stop=${position.current_stop}, "
             f"partial_taken={getattr(position, 'partial_taken', '?')}, "
             f"exit_mode_override={getattr(position, 'exit_mode_override', None)}, "

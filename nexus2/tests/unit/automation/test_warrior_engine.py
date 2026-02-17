@@ -136,6 +136,7 @@ class TestEntrySpreadFilter:
             mock_monitor._recovery_cooldown_seconds = 120
             mock_monitor.settings = MagicMock()
             mock_monitor.settings.mental_stop_cents = Decimal("15")
+            mock_monitor.settings.max_reentry_count = 3  # Fix: must be int for >= comparison
             MockMonitor.return_value = mock_monitor
             
             with patch("nexus2.domain.automation.warrior_monitor.get_warrior_monitor") as get_monitor:
@@ -335,6 +336,7 @@ class TestEntryFilterPriority:
             mock_monitor._recovery_cooldown_seconds = 120
             mock_monitor.settings = MagicMock()
             mock_monitor.settings.mental_stop_cents = Decimal("15")
+            mock_monitor.settings.max_reentry_count = 3  # Fix: must be int for >= comparison
             MockMonitor.return_value = mock_monitor
             
             with patch("nexus2.domain.automation.warrior_monitor.get_warrior_monitor") as get_monitor:
@@ -415,6 +417,7 @@ class TestSpreadCalculation:
             mock_monitor._recovery_cooldown_seconds = 120
             mock_monitor.settings = MagicMock()
             mock_monitor.settings.mental_stop_cents = Decimal("15")
+            mock_monitor.settings.max_reentry_count = 3  # Fix: must be int for >= comparison
             MockMonitor.return_value = mock_monitor
             
             with patch("nexus2.domain.automation.warrior_monitor.get_warrior_monitor") as get_monitor:
