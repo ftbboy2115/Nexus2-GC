@@ -545,17 +545,18 @@ class WarriorScannerService:
                     timestamp=now_utc(),  # IMPORTANT: Use now_utc() not datetime.now()
                     symbol=symbol,
                     result="PASS" if passed else "FAIL",
-                    gap_pct=float(ctx.gap_pct) if ctx and ctx.gap_pct else None,
-                    rvol=float(ctx.rvol) if ctx and ctx.rvol else None,
+                    # Use 'is not None' checks — Decimal("0") is falsy but is valid data
+                    gap_pct=float(ctx.gap_pct) if ctx and ctx.gap_pct is not None else None,
+                    rvol=float(ctx.rvol) if ctx and ctx.rvol is not None else None,
                     score=candidate.quality_score if candidate else None,
                     float_shares=ctx.float_shares if ctx else None,
                     reason=rejection_reason if not passed else None,
                     catalyst_type=ctx.catalyst_type if ctx else None,
                     # Extended telemetry columns
-                    price=float(ctx.last_price) if ctx and ctx.last_price else None,
+                    price=float(ctx.last_price) if ctx and ctx.last_price is not None else None,
                     country=ctx.country if ctx else None,
-                    ema_200=float(ctx.ema_200_value) if ctx and ctx.ema_200_value else None,
-                    room_to_ema_pct=float(ctx.room_to_ema_pct) if ctx and ctx.room_to_ema_pct else None,
+                    ema_200=float(ctx.ema_200_value) if ctx and ctx.ema_200_value is not None else None,
+                    room_to_ema_pct=float(ctx.room_to_ema_pct) if ctx and ctx.room_to_ema_pct is not None else None,
                     is_etb=str(ctx.easy_to_borrow) if ctx else None,
                     name=ctx.name if ctx else None,
                 ))
@@ -1573,14 +1574,17 @@ class WarriorScannerService:
         """
         s = ctx.settings
         
+        # Track whether we have actual gap data (yesterday_close available)
+        has_gap_data = ctx.yesterday_close is not None and ctx.yesterday_close > 0
+        
         # Calculate opening gap (open price vs yesterday close)
-        if ctx.session_open and ctx.yesterday_close and ctx.yesterday_close > 0:
+        if ctx.session_open and has_gap_data:
             ctx.opening_gap_pct = float(((ctx.session_open - ctx.yesterday_close) / ctx.yesterday_close) * 100)
         else:
             ctx.opening_gap_pct = float(ctx.change_percent)
         
         # Calculate live gap (current price vs yesterday close)
-        if ctx.yesterday_close and ctx.yesterday_close > 0:
+        if has_gap_data:
             ctx.live_gap_pct = float(((ctx.last_price - ctx.yesterday_close) / ctx.yesterday_close) * 100)
         else:
             ctx.live_gap_pct = float(ctx.change_percent)
@@ -1590,6 +1594,22 @@ class WarriorScannerService:
         ctx.gap_pct = Decimal(str(max(ctx.opening_gap_pct, ctx.live_gap_pct)))
         
         if ctx.gap_pct < s.min_gap:
+            # Distinguish between "gap too low" and "gap data missing"
+            # When yesterday_close is unavailable AND change_percent is 0,
+            # the gap defaults to 0 which always fails — but the real issue is missing data
+            if not has_gap_data and float(ctx.change_percent) == 0:
+                rejection_reason = "gap_data_unavailable"
+                scan_logger.info(
+                    f"REJECT {ctx.symbol} | gap_data_unavailable | "
+                    f"yesterday_close=None, change_percent=0 — cannot calculate gap"
+                )
+            else:
+                rejection_reason = "gap_too_low"
+                scan_logger.info(
+                    f"REJECT {ctx.symbol} | gap_too_low | "
+                    f"opening_gap={ctx.opening_gap_pct:.1f}% live_gap={ctx.live_gap_pct:.1f}% min={s.min_gap}%"
+                )
+            
             tracker.record(
                 symbol=ctx.symbol,
                 scanner="warrior",
@@ -1598,12 +1618,8 @@ class WarriorScannerService:
             )
             if ctx.verbose:
                 print(f"{ctx.symbol}: Rejected - Gap {ctx.gap_pct:.1f}% < {s.min_gap}% (open={ctx.opening_gap_pct:.1f}%, live={ctx.live_gap_pct:.1f}%)")
-            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason="gap_too_low")
-            scan_logger.info(
-                f"REJECT {ctx.symbol} | gap_too_low | "
-                f"opening_gap={ctx.opening_gap_pct:.1f}% live_gap={ctx.live_gap_pct:.1f}% min={s.min_gap}%"
-            )
-            return "gap_too_low"
+            self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason=rejection_reason)
+            return rejection_reason
         
         ctx.is_ideal_gap = ctx.gap_pct >= s.ideal_gap
         

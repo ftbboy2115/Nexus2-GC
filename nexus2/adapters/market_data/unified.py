@@ -608,14 +608,26 @@ class UnifiedMarketData:
     
     def get_gainers(self) -> List[Dict]:
         """
-        Get top gainers for today (real-time, refreshed every ~1 min).
+        Get top gainers for today.
         
-        Falls back to pre-market gainers if regular market data is empty.
+        Polygon primary (includes prev_close for accurate gap calculation).
+        FMP fallback. Pre-market gainers as last resort.
         """
+        # Polygon primary — includes prev_close, avoids gap_data_unavailable
+        try:
+            polygon_gainers = self.polygon.get_gainers()
+            if polygon_gainers and len(polygon_gainers) >= 3:
+                logger.debug(f"[Gainers] Using Polygon ({len(polygon_gainers)} stocks)")
+                return polygon_gainers
+        except Exception as e:
+            logger.debug(f"[Gainers] Polygon failed: {e}")
+        
+        # FMP fallback
         gainers = self.fmp.get_gainers()
         if gainers:
+            logger.debug(f"[Gainers] Using FMP fallback ({len(gainers)} stocks)")
             return gainers
-        # Fallback to pre-market gainers when market is closed
+        # Pre-market gainers as last resort
         return self.fmp.get_premarket_gainers()
     
     def get_actives(self) -> List[Dict]:
