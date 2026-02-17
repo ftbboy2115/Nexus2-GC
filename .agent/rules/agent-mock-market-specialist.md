@@ -121,7 +121,7 @@ The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
 
 > [!CAUTION]
 > After processing EVERY transcript, you MUST update the transcript vault at:
-> `transcript_vault.md` (in the same `.agent/knowledge/warrior_trading/` directory)
+> `C:\Users\ftbbo\.gemini\antigravity\knowledge\trading_methodologies\artifacts\warrior\intelligence\transcripts\transcript_vault.md`
 
 1. Add a **summary row** to the main table (chronological, newest first)
 2. Add a **deep-dive section** with: symbol, P&L, entry, scaling, exit, bot alignment

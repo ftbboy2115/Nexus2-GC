@@ -133,6 +133,8 @@ async def get_nac_trades(
     setup_type: Optional[str] = Query(None, description="Filter by setup type"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM) in ET"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM) in ET"),
     entry_time: Optional[str] = Query(None, description="Filter by exact entry_time"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
@@ -177,13 +179,15 @@ async def get_nac_trades(
                 query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
             try:
-                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(NACTradeModel.entry_time >= et_to_utc(et_start))
             except ValueError:
                 pass
         if date_to:
             try:
-                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(NACTradeModel.entry_time <= et_to_utc(et_end))
             except ValueError:
                 pass
@@ -348,18 +352,20 @@ async def get_warrior_scan_history(
         et_tz = ZoneInfo("America/New_York")
         
         if date_from:
-            # Convert ET date to UTC datetime at start of day
+            # Convert ET date+time to UTC datetime
             try:
-                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_start = et_start.astimezone(utc_tz)
                 query = query.filter(WarriorScanResult.timestamp >= utc_start)
             except ValueError:
                 pass  # Invalid date format, skip filter
         
         if date_to:
-            # Convert ET date to UTC datetime at end of day
+            # Convert ET date+time to UTC datetime
             try:
-                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_end = et_end.astimezone(utc_tz)
                 query = query.filter(WarriorScanResult.timestamp <= utc_end)
             except ValueError:
@@ -533,7 +539,8 @@ async def get_catalyst_audits(
         
         if date_from:
             try:
-                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_start = et_start.astimezone(utc_tz)
                 query = query.filter(CatalystAudit.timestamp >= utc_start)
             except ValueError:
@@ -541,7 +548,8 @@ async def get_catalyst_audits(
         
         if date_to:
             try:
-                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_end = et_end.astimezone(utc_tz)
                 query = query.filter(CatalystAudit.timestamp <= utc_end)
             except ValueError:
@@ -661,7 +669,8 @@ async def get_ai_comparisons(
         
         if date_from:
             try:
-                et_start = dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_start = et_start.astimezone(utc_tz)
                 query = query.filter(AIComparison.timestamp >= utc_start)
             except ValueError:
@@ -669,7 +678,8 @@ async def get_ai_comparisons(
         
         if date_to:
             try:
-                et_end = dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=et_tz)
                 utc_end = et_end.astimezone(utc_tz)
                 query = query.filter(AIComparison.timestamp <= utc_end)
             except ValueError:
@@ -767,14 +777,25 @@ async def get_trade_events(
         all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
     if event_type:
         all_events = [e for e in all_events if e.get("event_type") == event_type]
-    # Date and time filter uses created_at field (ISO format)
+    # Date and time filter uses created_at field (stored as UTC, filters are ET)
     if date_from or date_to or time_from or time_to:
+        from zoneinfo import ZoneInfo
+        utc_tz = ZoneInfo("UTC")
+        et_tz = ZoneInfo("America/New_York")
         filtered = []
         for e in all_events:
             created = e.get("created_at", "")
             if len(created) >= 16:
-                entry_date = created[:10]
-                entry_time = created[11:16]
+                try:
+                    # Parse UTC timestamp and convert to ET for comparison
+                    utc_str = created.replace("T", " ").rstrip("Z")[:19]
+                    utc_dt = dt.strptime(utc_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=utc_tz)
+                    et_dt = utc_dt.astimezone(et_tz)
+                    entry_date = et_dt.strftime("%Y-%m-%d")
+                    entry_time = et_dt.strftime("%H:%M")
+                except (ValueError, IndexError):
+                    entry_date = created[:10]
+                    entry_time = created[11:16]
                 if date_from and entry_date < date_from:
                     continue
                 if date_to and entry_date > date_to:
@@ -858,6 +879,8 @@ async def get_warrior_trades(
     partial_taken: Optional[str] = Query(None, description="Filter by partial taken: 'true', 'false', or '__EMPTY__' for null"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM) in ET"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM) in ET"),
     entry_time: Optional[str] = Query(None, description="Filter by exact entry_time"),
     sort_by: str = Query("entry_time", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
@@ -920,13 +943,15 @@ async def get_warrior_trades(
                 query = query.filter(WarriorTradeModel.partial_taken == False)
         if date_from:
             try:
-                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(WarriorTradeModel.entry_time >= et_to_utc(et_start))
             except ValueError:
                 pass
         if date_to:
             try:
-                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(WarriorTradeModel.entry_time <= et_to_utc(et_end))
             except ValueError:
                 pass
@@ -1020,6 +1045,8 @@ async def get_quote_audits(
     high_divergence: Optional[bool] = Query(None, description="Filter by high divergence flag"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM) in ET"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM) in ET"),
     timestamp: Optional[str] = Query(None, description="Filter by exact timestamp"),
     sort_by: str = Query("timestamp", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
@@ -1059,13 +1086,15 @@ async def get_quote_audits(
             query = query.filter(QuoteAuditModel.high_divergence == high_divergence)
         if date_from:
             try:
-                et_start = EASTERN.localize(dt.strptime(f"{date_from} 00:00:00", "%Y-%m-%d %H:%M:%S"))
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(QuoteAuditModel.timestamp >= et_to_utc(et_start))
             except ValueError:
                 pass
         if date_to:
             try:
-                et_end = EASTERN.localize(dt.strptime(f"{date_to} 23:59:59", "%Y-%m-%d %H:%M:%S"))
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S"))
                 query = query.filter(QuoteAuditModel.timestamp <= et_to_utc(et_end))
             except ValueError:
                 pass
@@ -1134,6 +1163,10 @@ async def get_validation_log(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     entry_trigger: Optional[str] = Query(None, description="Filter by entry trigger (abcd, pmh_break, etc)"),
     target_hit: Optional[str] = Query(None, description="Filter by target hit: 'true', 'false', or '__EMPTY__'"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    time_from: Optional[str] = Query(None, description="Start time (HH:MM) in ET"),
+    time_to: Optional[str] = Query(None, description="End time (HH:MM) in ET"),
     created_at: Optional[str] = Query(None, description="Filter by exact created_at timestamp"),
     sort_by: str = Query("created_at", description="Column to sort by"),
     sort_dir: str = Query("desc", description="Sort direction: asc or desc"),
@@ -1164,6 +1197,21 @@ async def get_validation_log(
                 query = query.filter(EntryValidationLogModel.target_hit == True)
             elif target_hit.lower() == 'false':
                 query = query.filter(EntryValidationLogModel.target_hit == False)
+        # Date/time range filter (timestamps stored as UTC, filters in ET)
+        if date_from:
+            try:
+                start_time = f"{time_from}:00" if time_from else "00:00:00"
+                et_start = EASTERN.localize(dt.strptime(f"{date_from} {start_time}", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(EntryValidationLogModel.created_at >= et_to_utc(et_start))
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                end_time = f"{time_to}:59" if time_to else "23:59:59"
+                et_end = EASTERN.localize(dt.strptime(f"{date_to} {end_time}", "%Y-%m-%d %H:%M:%S"))
+                query = query.filter(EntryValidationLogModel.created_at <= et_to_utc(et_end))
+            except ValueError:
+                pass
         # Exact created_at filter (supports comma-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if created_at:
