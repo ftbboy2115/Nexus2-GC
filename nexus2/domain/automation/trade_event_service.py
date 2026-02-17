@@ -140,10 +140,16 @@ class TradeEventService:
                     change_pct = ((spy_quote.price - spy_quote.open) / spy_quote.open) * 100
                     context["spy_change_pct"] = round(float(change_pct), 2)
             
-            # Get VIX (CBOE Volatility Index)
-            vix_quote = umd.get_quote("VIXY")  # VIX ETF proxy
-            if vix_quote:
-                context["vix"] = float(vix_quote.price)
+            # Get VIX (CBOE Volatility Index) — use FMP directly for index quotes
+            try:
+                from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                fmp_vix = get_fmp_adapter()
+                if fmp_vix:
+                    vix_quote = fmp_vix.get_quote("^VIX")
+                    if vix_quote:
+                        context["vix"] = float(vix_quote.price)
+            except Exception as e:
+                logger.debug(f"[TradeEvent] VIX quote failed: {e}")
             
             # SPY Moving Average Status
             try:
