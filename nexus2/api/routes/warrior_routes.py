@@ -778,7 +778,6 @@ async def get_warrior_scanner_settings():
         "max_price": float(s.max_price),
         "require_catalyst": s.require_catalyst,
         "exclude_chinese_stocks": s.exclude_chinese_stocks,
-        "min_dollar_volume": float(s.min_dollar_volume),
     }
 
 

@@ -192,9 +192,55 @@ def get_telemetry_session():
         db.close()
 
 
+def _migrate_telemetry_columns():
+    """Add missing columns to existing telemetry tables (SQLite migration).
+    
+    SQLAlchemy's create_all() creates missing TABLES but does NOT add missing
+    COLUMNS to existing tables. This function handles schema evolution for
+    columns added after initial table creation.
+    """
+    import sqlite3
+    conn = sqlite3.connect(str(TELEMETRY_DB_PATH))
+    cursor = conn.cursor()
+    
+    # Define expected columns and their SQLite types
+    expected_columns = {
+        "warrior_scan_results": {
+            "price": "REAL",
+            "country": "VARCHAR(10)",
+            "ema_200": "REAL",
+            "room_to_ema_pct": "REAL",
+            "is_etb": "VARCHAR(5)",
+            "name": "VARCHAR(100)",
+        }
+    }
+    
+    for table, columns in expected_columns.items():
+        # Get existing columns
+        cursor.execute(f"PRAGMA table_info({table})")
+        existing = {row[1] for row in cursor.fetchall()}
+        
+        if not existing:
+            # Table doesn't exist yet — create_all() will handle it
+            continue
+        
+        # Add missing columns
+        for col_name, col_type in columns.items():
+            if col_name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}")
+                    print(f"[Telemetry DB] Added column {table}.{col_name}")
+                except Exception as e:
+                    print(f"[Telemetry DB] Column migration failed for {table}.{col_name}: {e}")
+    
+    conn.commit()
+    conn.close()
+
+
 def init_telemetry_db():
     """Initialize Telemetry database tables."""
     TelemetryBase.metadata.create_all(bind=telemetry_engine)
+    _migrate_telemetry_columns()
     print(f"[Telemetry DB] Initialized at {TELEMETRY_DB_PATH}")
 
 

@@ -31,7 +31,7 @@ class TestWarriorScannerIntegration:
         assert settings.ideal_rvol == Decimal("3.0")
         assert settings.min_gap == Decimal("4.0")
         assert settings.min_price == Decimal("1.50")
-        assert settings.max_price == Decimal("20.0")
+        assert settings.max_price == Decimal("40.0")
         assert settings.exclude_chinese_stocks is True
     
     def test_candidate_quality_score(self):
@@ -124,8 +124,8 @@ class TestWarriorMonitorIntegration:
         assert positions[0].symbol == "TEST"
         assert positions[0].entry_price == Decimal("5.00")
         
-        # Mental stop should be entry - 50 cents (updated default)
-        assert positions[0].mental_stop == Decimal("4.50")
+        # Mental stop should be entry - 15 cents (base_hit mode default)
+        assert positions[0].mental_stop == Decimal("4.85")
     
     def test_monitor_remove_position(self):
         """Monitor should remove positions correctly."""
