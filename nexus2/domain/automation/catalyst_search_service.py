@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 
+from nexus2.utils.time_utils import now_et
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +52,7 @@ class CatalystSearchService:
         try:
             with open(self.headline_cache_path, "r", encoding="utf-8") as f:
                 self._cache = json.load(f)
-            self._cache_loaded_at = datetime.now()
+            self._cache_loaded_at = now_et()
             logger.info(f"Loaded headline cache: {len(self._cache)} symbols")
             return self._cache
         except Exception as e:

@@ -19,6 +19,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from nexus2.utils.time_utils import now_et
+
 # ─── ANSI colors ────────────────────────────────────────────────────────────────
 GREEN = "\033[92m"
 RED = "\033[91m"
@@ -737,7 +739,7 @@ def format_batch_markdown(results: List[DiagnosticResult]) -> str:
     lines = []
     lines.append("# Scanner Diagnostic Results")
     lines.append(f"")
-    lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"Generated: {now_et().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("")
     
     # Summary table

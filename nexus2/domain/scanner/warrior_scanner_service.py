@@ -510,7 +510,7 @@ class WarriorScannerService:
     
     def _cached(self, key: str, ttl_seconds: int, fetch_fn) -> Any:
         """Return cached value if within TTL, otherwise fetch and cache."""
-        now = datetime.now()
+        now = now_et()
         if key in self._cache:
             value, cached_at = self._cache[key]
             if (now - cached_at).total_seconds() < ttl_seconds:

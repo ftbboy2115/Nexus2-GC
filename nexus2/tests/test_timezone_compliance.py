@@ -58,9 +58,13 @@ def test_no_direct_datetime_now():
                 # Skip comments and strings (simple heuristic)
                 if line.strip().startswith('#'):
                     continue
+                
+                # Strip inline comments to avoid false positives
+                # e.g. "timestamp=now_utc(),  # Use now_utc() not datetime.now()"
+                code_part = line.split('#')[0] if '#' in line else line
                     
                 for pattern in patterns:
-                    if re.search(pattern, line):
+                    if re.search(pattern, code_part):
                         violations.append(f"{py_file.name}:{i}: {line.strip()}")
         except Exception as e:
             print(f"Warning: Could not read {py_file}: {e}")
