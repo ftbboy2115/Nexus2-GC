@@ -668,10 +668,11 @@ class TradeEventService:
         }
         
         # Format slippage for display
+        # For EXITS (sells): actual > intended = BETTER (got more money)
         if slippage_cents > 0:
-            slip_str = f"{slippage_cents:.1f}¢ worse"
+            slip_str = f"{slippage_cents:.1f}¢ better"
         elif slippage_cents < 0:
-            slip_str = f"{abs(slippage_cents):.1f}¢ better"
+            slip_str = f"{abs(slippage_cents):.1f}¢ worse"
         else:
             slip_str = "no slippage"
         

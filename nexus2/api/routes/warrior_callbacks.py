@@ -436,6 +436,18 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
                 if current_price is None:
                     current_price = signal_price
                 elif current_price > signal_price * 1.05:
+                    print(
+                        f"[Warrior] {symbol}: Fresh quote ${current_price:.2f} is "
+                        f"{((current_price / signal_price) - 1) * 100:.1f}% above "
+                        f"signal ${signal_price:.2f} — using fresh quote"
+                    )
+                    # Don't clip — limit sell is protective (won't fill below limit)
+                elif current_price < signal_price * 0.90:
+                    print(
+                        f"[Warrior] {symbol}: Fresh quote ${current_price:.2f} is "
+                        f"{((signal_price - current_price) / signal_price) * 100:.1f}% below "
+                        f"signal ${signal_price:.2f} — using signal price (stale guard)"
+                    )
                     current_price = signal_price
             
             # Calculate offset
@@ -460,23 +472,25 @@ def create_execute_exit(get_broker_fn: Callable, get_quote_fn: Callable, get_quo
             )
             print(f"[Warrior] Exit LIMIT order submitted: {symbol} x{shares} @ ${limit_price:.2f} ({reason})")
             
-            # Poll for actual fill price (up to 2 seconds)
+            # Poll for actual fill price (up to 4 seconds)
             actual_fill_price = None
-            order_id = str(order.id) if hasattr(order, 'id') else None
+            order_id = order.broker_order_id if hasattr(order, 'broker_order_id') else None
             if order_id:
-                for _ in range(4):
+                for attempt in range(8):  # 8 × 0.5s = 4 seconds max
                     await asyncio.sleep(0.5)
                     try:
-                        filled_order = alpaca.get_order(order_id)
-                        if hasattr(filled_order, 'filled_avg_price') and filled_order.filled_avg_price:
-                            actual_fill_price = float(filled_order.filled_avg_price)
+                        filled_order = alpaca.get_order_status(order_id)
+                        if filled_order.avg_fill_price and float(filled_order.avg_fill_price) > 0:
+                            actual_fill_price = float(filled_order.avg_fill_price)
                             print(f"[Warrior] {symbol} filled @ ${actual_fill_price:.2f}")
                             break
                     except Exception as poll_err:
-                        print(f"[Warrior] Poll error: {poll_err}")
-                        break
+                        print(f"[Warrior] Poll attempt {attempt+1}/8 error: {poll_err}")
+                        continue  # Retry, don't give up
             
             exit_price = actual_fill_price if actual_fill_price else float(limit_price)
+            if not actual_fill_price:
+                print(f"[Warrior] ⚠️ {symbol}: Fill poll failed after 8 attempts, using limit ${limit_price:.2f} as exit price")
             
             # Log to DB
             try:

@@ -150,6 +150,21 @@ Last updated: 2026-02-16 (Scaling investigation complete, Ross add methodology r
   - Cases show 0 trades but have P&L (e.g., GWAV: $630 P&L, 505 max_shares, 0 "trades")
   - Fix: Add `total_trades_executed` counter to batch response, or return full trade log
 
+- [/] **Exit Fill P&L Recording — CRITICAL** — All exit fills used limit price instead of actual Alpaca fill (Feb 18)
+  - [x] Fix `get_order()`→`get_order_status()` + attribute names (`filled_avg_price`→`avg_fill_price`)
+  - [x] Increase poll retries (4→8), fix error handling (`break`→`continue`)
+  - [x] Fix slippage labels inverted for sells
+  - [x] Fix entry fill attribute names (`filled_avg_price`→`avg_fill_price`, `filled_qty`→`filled_quantity`)
+  - [ ] Fix `order.id`→`order.broker_order_id` (poll loop was always skipped)
+  - [ ] Replace upward-only stale guard with bidirectional guard + warning log
+  - See: `reports/2026-02-18/spec_exit_fill_fix.md`, `audit_exit_quote_freshness.md`
+- [ ] **Polygon lastTrade Staleness for Illiquid Tickers** — P1 root cause behind LRHC $0.41 gap (Feb 18)
+  - [ ] (R2) Use bid/ask midpoint when `lastTrade.t` is >120s old in `polygon_adapter.py`
+  - [ ] (R3) Propagate actual trade timestamp instead of `datetime.now()` in Polygon adapter
+  - [ ] (R4) Log warning when only one quote source available (no cross-validation possible)
+  - Root cause: Polygon `lastTrade.p` returned stale premarket price at market open for thinly-traded LRHC
+  - See: `reports/2026-02-18/audit_exit_quote_freshness.md`
+
 ---
 
 ## 📝 UI / UX

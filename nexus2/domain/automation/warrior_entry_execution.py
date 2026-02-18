@@ -209,10 +209,10 @@ async def poll_for_fill(
                 if status:
                     status_str = status.value if hasattr(status, 'value') else str(status)
                     if status_str.lower() in ("filled", "partially_filled"):
-                        fill_price = getattr(order_detail, 'filled_avg_price', None)
+                        fill_price = getattr(order_detail, 'avg_fill_price', None)
                         if fill_price and float(fill_price) > 0:
                             actual_fill_price = Decimal(str(fill_price))
-                            filled_qty = getattr(order_detail, 'filled_qty', None)
+                            filled_qty = getattr(order_detail, 'filled_quantity', None)
                             order_status = status_str
                             logger.info(
                                 f"[Warrior Entry] {symbol}: Filled @ ${actual_fill_price:.2f} "
