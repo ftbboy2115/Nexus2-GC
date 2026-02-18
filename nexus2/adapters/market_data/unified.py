@@ -151,6 +151,8 @@ class UnifiedMarketData:
                         selected_source="Polygon",
                         divergence_pct=price_diff,
                         time_window=determine_time_window(),
+                        polygon_trade_age_seconds=str(polygon_quote.quote_age_seconds) if polygon_quote and polygon_quote.quote_age_seconds else None,
+                        polygon_price_source=polygon_quote.price_source if polygon_quote else None,
                     )
                 except Exception:
                     pass
@@ -194,6 +196,8 @@ class UnifiedMarketData:
                     divergence_pct=divergence,
                     time_window=time_window,
                     fmp_endpoint=fmp_endpoint if fmp_price else None,
+                    polygon_trade_age_seconds=str(polygon_quote.quote_age_seconds) if polygon_quote and polygon_quote.quote_age_seconds else None,
+                    polygon_price_source=polygon_quote.price_source if polygon_quote else None,
                 )
             except Exception as e:
                 logger.debug(f"[Quote] {symbol}: Audit logging failed: {e}")
@@ -224,8 +228,16 @@ class UnifiedMarketData:
         # If only one source, use it
         if len(prices) == 1:
             source, price = list(prices.items())[0]
-            logger.debug(f"[Quote] {symbol}: Only {source} available (${price:.2f})")
+            logger.warning(
+                f"[Quote] {symbol}: SINGLE SOURCE only ({source}, ${price:.2f}) — "
+                f"no cross-validation possible"
+            )
             if source == "Polygon":
+                if polygon_quote and polygon_quote.quote_age_seconds and polygon_quote.quote_age_seconds > 120:
+                    logger.warning(
+                        f"[Quote] {symbol}: Polygon lastTrade is {polygon_quote.quote_age_seconds:.0f}s old — "
+                        f"price may be stale for illiquid ticker"
+                    )
                 return _log_and_return(polygon_quote, "Polygon", 0.0)
             if source == "Alpaca": 
                 return _log_and_return(alpaca_quote, "Alpaca", 0.0)

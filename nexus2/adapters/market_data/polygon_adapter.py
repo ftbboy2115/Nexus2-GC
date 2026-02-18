@@ -34,6 +34,10 @@ class PolygonConfig:
     timeout: float = 10.0
 
 
+# Staleness threshold for lastTrade (seconds) — beyond this, use bid/ask midpoint
+STALE_TRADE_THRESHOLD_SECONDS = 120
+
+
 class PolygonAdapter:
     """
     Polygon.io Market Data Adapter.
@@ -92,11 +96,29 @@ class PolygonAdapter:
     # Quote Methods
     # =========================================================================
     
+    @staticmethod
+    def _parse_polygon_timestamp(ns_timestamp) -> datetime:
+        """Convert Polygon nanosecond Unix timestamp to datetime (UTC).
+        
+        Polygon API returns timestamps in nanoseconds since epoch.
+        Falls back to datetime.now(UTC) if parsing fails.
+        """
+        if not ns_timestamp:
+            return datetime.now(timezone.utc)
+        try:
+            # Nanoseconds → seconds
+            seconds = int(ns_timestamp) / 1_000_000_000
+            return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        except (ValueError, TypeError, OSError):
+            return datetime.now(timezone.utc)
+    
     def get_quote(self, symbol: str) -> Optional[Quote]:
         """
         Get real-time quote using snapshot endpoint.
         
         Returns latest trade price, NBBO bid/ask, and volume.
+        Detects stale lastTrade and falls back to bid/ask midpoint
+        during market hours when staleness exceeds threshold.
         """
         data = self._get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol}")
         if not data or data.get("status") != "OK":
@@ -108,8 +130,31 @@ class PolygonAdapter:
         last_quote = ticker.get("lastQuote", {})
         prev_day = ticker.get("prevDay", {})
         
-        # Use last trade price, fallback to close
+        # Parse real trade timestamp (not datetime.now!)
+        trade_timestamp = self._parse_polygon_timestamp(last_trade.get("t"))
+        trade_age_seconds = (datetime.now(timezone.utc) - trade_timestamp).total_seconds()
+        
+        # Primary price: lastTrade, fallback to day close
         price = last_trade.get("p") or day.get("c") or 0
+        bid_price = last_quote.get("p", 0) or 0
+        ask_price = last_quote.get("P", 0) or 0
+        price_source = "lastTrade"
+        
+        # Midpoint fallback during market hours when lastTrade is stale
+        from nexus2.utils.time_utils import is_market_hours
+        if (is_market_hours() and
+            trade_age_seconds > STALE_TRADE_THRESHOLD_SECONDS and
+            bid_price > 0 and ask_price > 0 and float(price) > 0):
+            midpoint = (float(bid_price) + float(ask_price)) / 2
+            spread_pct = (float(ask_price) - float(bid_price)) / float(bid_price) * 100
+            if spread_pct < 5.0 and abs(midpoint - float(price)) / float(price) > 0.01:
+                logger.warning(
+                    f"[Polygon] {symbol}: lastTrade is {trade_age_seconds:.0f}s old "
+                    f"(${price:.2f}), using bid/ask midpoint ${midpoint:.2f} "
+                    f"(bid=${bid_price:.2f}, ask=${ask_price:.2f}, spread={spread_pct:.1f}%)"
+                )
+                price = midpoint
+                price_source = "midpoint"
         
         # Calculate change from prev_day
         prev_close = prev_day.get("c", 0) or 0
@@ -121,10 +166,12 @@ class PolygonAdapter:
             price=Decimal(str(price)),
             change=Decimal(str(round(change, 2))),
             change_percent=Decimal(str(round(change_pct, 2))),
-            bid=Decimal(str(last_quote.get("p", 0) or 0)),  # bid price
-            ask=Decimal(str(last_quote.get("P", 0) or 0)),  # ask price
+            bid=Decimal(str(bid_price)),
+            ask=Decimal(str(ask_price)),
             volume=day.get("v", 0),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=trade_timestamp,
+            quote_age_seconds=trade_age_seconds,
+            price_source=price_source,
         )
     
     def get_session_snapshot(self, symbol: str) -> Optional[dict]:
@@ -169,6 +216,7 @@ class PolygonAdapter:
         result = data.get("results", {})
         price = result.get("p", 0)
         
+        trade_timestamp = self._parse_polygon_timestamp(result.get("t"))
         return Quote(
             symbol=symbol,
             price=Decimal(str(price)),
@@ -177,7 +225,9 @@ class PolygonAdapter:
             bid=Decimal("0"),
             ask=Decimal("0"),
             volume=0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=trade_timestamp,
+            quote_age_seconds=(datetime.now(timezone.utc) - trade_timestamp).total_seconds(),
+            price_source="lastTrade",
         )
     
     def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Quote]:
@@ -210,6 +260,29 @@ class PolygonAdapter:
             last_quote = ticker.get("lastQuote", {})
             
             price = last_trade.get("p") or day.get("c") or 0
+            bid_price = last_quote.get("p", 0) or 0
+            ask_price = last_quote.get("P", 0) or 0
+            
+            # Parse real trade timestamp
+            trade_timestamp = self._parse_polygon_timestamp(last_trade.get("t"))
+            trade_age_seconds = (datetime.now(timezone.utc) - trade_timestamp).total_seconds()
+            price_source = "lastTrade"
+            
+            # Midpoint fallback during market hours when lastTrade is stale
+            from nexus2.utils.time_utils import is_market_hours
+            if (is_market_hours() and
+                trade_age_seconds > STALE_TRADE_THRESHOLD_SECONDS and
+                bid_price > 0 and ask_price > 0 and float(price) > 0):
+                midpoint = (float(bid_price) + float(ask_price)) / 2
+                spread_pct = (float(ask_price) - float(bid_price)) / float(bid_price) * 100
+                if spread_pct < 5.0 and abs(midpoint - float(price)) / float(price) > 0.01:
+                    logger.warning(
+                        f"[Polygon] {sym}: lastTrade is {trade_age_seconds:.0f}s old "
+                        f"(${price:.2f}), using bid/ask midpoint ${midpoint:.2f} "
+                        f"(bid=${bid_price:.2f}, ask=${ask_price:.2f}, spread={spread_pct:.1f}%)"
+                    )
+                    price = midpoint
+                    price_source = "midpoint"
             
             # Calculate change
             prev_day = ticker.get("prevDay", {})
@@ -222,10 +295,12 @@ class PolygonAdapter:
                 price=Decimal(str(price)),
                 change=Decimal(str(round(change, 2))),
                 change_percent=Decimal(str(round(change_pct, 2))),
-                bid=Decimal(str(last_quote.get("p", 0) or 0)),
-                ask=Decimal(str(last_quote.get("P", 0) or 0)),
+                bid=Decimal(str(bid_price)),
+                ask=Decimal(str(ask_price)),
                 volume=day.get("v", 0),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=trade_timestamp,
+                quote_age_seconds=trade_age_seconds,
+                price_source=price_source,
             )
         
         return quotes

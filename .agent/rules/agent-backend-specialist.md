@@ -28,6 +28,9 @@ Your domain: FastAPI routes, domain logic, adapters, services, database migratio
 - Writing tests → defer to Testing Specialist
 - Trading methodology rules → **consult Strategy Registry**
 
+> [!CAUTION]
+> **Do NOT create test files.** You implement code; the Testing Specialist writes tests independently. If you write your own tests, you're validating against your own assumptions — which defeats the purpose of independent verification. Instead, document testable claims in your status report (file:line, expected behavior, grep patterns) so the Testing Specialist can write proper tests.
+
 ---
 
 ## Team Awareness

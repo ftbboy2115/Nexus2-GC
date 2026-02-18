@@ -36,6 +36,8 @@ class Quote:
     ask: Optional[Decimal] = None  # Ask price for spread calculation
     year_high: Optional[Decimal] = None  # 52-week high (for Blue Sky detection)
     year_low: Optional[Decimal] = None  # 52-week low
+    quote_age_seconds: Optional[float] = None  # Age of lastTrade at fetch time
+    price_source: Optional[str] = None  # "lastTrade" | "midpoint" | "day_close"
 
 
 @dataclass

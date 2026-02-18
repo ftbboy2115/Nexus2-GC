@@ -502,6 +502,10 @@ class QuoteAuditModel(Base):
     # Flags
     high_divergence = Column(Boolean, default=False, index=True)  # True if divergence >20%
     
+    # Staleness tracking (Phase 1)
+    polygon_trade_age_seconds = Column(String(10), nullable=True)  # Age of Polygon lastTrade
+    polygon_price_source = Column(String(20), nullable=True)  # "lastTrade" | "midpoint" | "day_close"
+    
     def to_dict(self):
         """Convert to dictionary."""
         return {
@@ -517,6 +521,8 @@ class QuoteAuditModel(Base):
             "divergence_pct": self.divergence_pct,
             "fmp_endpoint": self.fmp_endpoint,
             "high_divergence": self.high_divergence,
+            "polygon_trade_age_seconds": self.polygon_trade_age_seconds,
+            "polygon_price_source": self.polygon_price_source,
         }
 
 

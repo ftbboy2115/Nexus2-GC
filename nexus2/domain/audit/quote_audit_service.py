@@ -45,6 +45,8 @@ class QuoteAuditEntry:
     selected_price: float
     divergence_pct: float
     fmp_endpoint: Optional[str] = None  # "quote" or "aftermarket-quote"
+    polygon_trade_age_seconds: Optional[str] = None  # Staleness of Polygon lastTrade
+    polygon_price_source: Optional[str] = None  # "lastTrade" | "midpoint" | "day_close"
 
 
 class QuoteAuditService:
@@ -127,6 +129,8 @@ class QuoteAuditService:
                         divergence_pct=f"{entry.divergence_pct:.2f}",
                         fmp_endpoint=entry.fmp_endpoint,
                         high_divergence=entry.divergence_pct > HIGH_DIVERGENCE_THRESHOLD,
+                        polygon_trade_age_seconds=entry.polygon_trade_age_seconds,
+                        polygon_price_source=entry.polygon_price_source,
                     )
                     session.add(model)
                 session.commit()
@@ -142,6 +146,8 @@ class QuoteAuditService:
         divergence_pct: float,
         time_window: str,
         fmp_endpoint: Optional[str] = None,
+        polygon_trade_age_seconds: Optional[str] = None,
+        polygon_price_source: Optional[str] = None,
     ):
         """
         Log a quote validation event.
@@ -158,6 +164,8 @@ class QuoteAuditService:
             selected_price=sources_dict.get(selected_source, 0) or 0,
             divergence_pct=divergence_pct,
             fmp_endpoint=fmp_endpoint,
+            polygon_trade_age_seconds=polygon_trade_age_seconds,
+            polygon_price_source=polygon_price_source,
         )
         
         try:
