@@ -399,6 +399,11 @@ def test_monitor_positions_clearable():
     monitor = WarriorMonitor()
     monitor.sim_mode = True
 
+    # Clear any data loaded from disk during __init__
+    monitor._positions.clear()
+    monitor._recently_exited.clear()
+    monitor._recently_exited_sim_time.clear()
+
     # Add position
     monitor._positions["pos_1"] = WarriorPosition(
         position_id="pos_1",

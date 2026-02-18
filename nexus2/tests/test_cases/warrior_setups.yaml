@@ -1073,6 +1073,36 @@ test_cases:
       stop_near: 7.50
     notes: "Cold market day, Friday the 13th. Ross didn't open broker initially, just charts. MLEC hit scanner 8am with news flame. Restricted on ThinkorSwim (Luxembourg). Entry on break of HOD ~$7.90, immediate rip to $9. Added micro pullback, squeezed to $11. Sold ~$10.09-$10.14 on red candle. Missed second move to $12.50 and third to $13. $43K in 3 minutes. Disqualified: MGRT (dead cat bounce, HK co), MTVA (too cheap). Transcript: 2026-02-13_transcript_AfxuHHa_sFY.md"
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 17, 2026)
+  # Transcript: 2026-02-17_transcript_NA90q8dBJkI.md
+  # Day total: +$1,600 (one trade, icebreaker)
+  # --------------------------------------------------------------------------
+
+  - id: ross_vhub_20260217
+    symbol: VHUB
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$1,600 - Recent IPO Blue Sky Curl, Icebreaker"
+    trade_date: "2026-02-17"
+    intraday_file: "intraday/ross_vhub_20260217.json"
+    ross_pnl: 1600.00
+    ross_entry_time: "07:30"  # Premarket, curl entry
+    premarket_data:
+      gap_percent: 3.3
+      premarket_high: 3.53
+      previous_close: 3.42  # Estimated from gap calc
+      float_shares: 5000000  # Ross noted "a little higher" but not specific
+      catalyst: "news"  # Headline popped it on scanner
+    expected:
+      entry_near: 3.33  # Ross avg from transcript
+      stop_near: 3.20
+    notes: "Icebreaker trade. VHUB recent IPO with blue sky above $40. News headline at ~7:30 AM. Popped to $3.45, dipped, curled back up. Entry $3.33 with 20K shares looking for $3.45→$3.50 break. Failed at $3.50, quick out for +$1,600. Cold market day. Avoided: PLYX ($4→$66 spike), RIME (crowded), SUEN/GXAI (thickly traded). Transcript: 2026-02-17_transcript_NA90q8dBJkI.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1081,7 +1111,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               32 (+ MLEC from 2026-02-13)
+# POLYGON_DATA:               33 (+ VHUB from 2026-02-17)
 # ==========================================================================
 
 

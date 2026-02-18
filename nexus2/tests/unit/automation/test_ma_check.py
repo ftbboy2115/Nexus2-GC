@@ -131,7 +131,7 @@ class TestMACheckJobRun:
     
     def _run(self, coro):
         """Helper to run async code in sync tests."""
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
     
     @pytest.fixture
     def job(self):
@@ -316,7 +316,7 @@ class TestMATypeSelection:
     
     def _run(self, coro):
         """Helper to run async code in sync tests."""
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
     
     @pytest.fixture
     def job(self):
@@ -379,7 +379,7 @@ class TestGetMAValue:
     
     def _run(self, coro):
         """Helper to run async code in sync tests."""
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
     
     @pytest.fixture
     def job(self):
