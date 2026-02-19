@@ -39,7 +39,7 @@ This creates:
 ### 2.5. Update Transcript Vault (MANDATORY)
 
 After analyzing the transcript content, update the transcript vault at:
-`.agent/knowledge/warrior_trading/transcript_vault.md` (inside the Antigravity knowledge directory)
+`C:\Users\ftbbo\.gemini\antigravity\knowledge\trading_methodologies\artifacts\warrior\intelligence\transcripts\transcript_vault.md`
 
 > [!CAUTION]
 > This step is **non-optional**. Skipping it causes data gaps that mislead other agents.

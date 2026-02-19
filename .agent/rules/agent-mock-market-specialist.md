@@ -103,6 +103,7 @@ The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
 ✅ If trade date differs from publish date, update the **Date:** line inside the file
 ✅ **Update the Transcript Vault** (see below)
 ✅ Analyze content and proceed to Phase 2 (fetch bars, add to YAML)
+✅ **Run headless batch test** to verify test case is runnable (see below)
 
 ### Transcript Vault Update (MANDATORY)
 
@@ -114,6 +115,19 @@ The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
 2. Add a **deep-dive section** with: symbol, P&L, entry, scaling, exit, bot alignment
 3. P&L and prices must match Ross's stated values from the transcript — NOT estimates
 4. If a detail isn't stated, write "not stated" — do NOT invent values
+
+### Headless Batch Test Verification
+
+After adding the test case to YAML, verify it runs via API (server must be running on port 8000):
+
+```powershell
+Invoke-RestMethod -Method POST -Uri "http://localhost:8000/warrior/sim/run_batch_concurrent" -ContentType "application/json" -Body '{"case_ids": ["ross_SYMBOL_YYYYMMDD"]}' | ConvertTo-Json -Depth 10
+```
+
+Key endpoints (all under `/warrior` prefix):
+- `POST /warrior/sim/run_batch_concurrent` — Concurrent batch test (fast, isolated contexts)
+- `POST /warrior/sim/run_batch` — Sequential batch test (uses shared engine)
+- Both accept `{"case_ids": [...]}` to filter, or empty body for all `POLYGON_DATA` cases
 
 ---
 
@@ -171,8 +185,8 @@ If you need new sim endpoints, write to `backend_requests.md`:
 2. Check which test cases are affected
 3. **Read simulation_engineering.md** in knowledge base for framework details
 4. Run the Mock Market UI manually to understand current behavior:
-   - Start backend: `cd nexus2 && python -m uvicorn api.main:app`
-   - Start frontend: `cd nexus2/frontend && npm run dev`
+   - Start backend: `.venv\Scripts\python -m uvicorn nexus2.api.main:app --host 0.0.0.0 --port 8000`
+   - Start frontend: `cd nexus2\frontend; npm run dev`
    - Navigate to http://localhost:3000/warrior → Mock Market tab
 
 ---

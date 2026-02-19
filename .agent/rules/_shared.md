@@ -39,3 +39,31 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 - Test results: `batch_test_hod_break.md`
 - Validation: `validation_entry_logic.md`
 - Specs: `spec_pattern_competition.md`
+
+---
+
+## 🚨 Verify Before Asserting (CRITICAL)
+
+> [!CAUTION]
+> **If you haven't verified it with a tool call, do NOT state it as fact.**
+
+This applies to ALL communication — handoffs, reports, AND direct conversation with Clay.
+
+| Claim Type | Must Verify With | Example Failure |
+|------------|-----------------|-----------------|
+| File/table names | Search tools or `Select-String` | Said "table is in quote_audit.db" — it was in `nexus.db` |
+| Root causes | Code trace, not speculation | Said "Polygon API calls cause slowness" — data was pre-cached |
+| Tool capabilities | Say "I'm not sure" if untested | Confidently "corrected" a true DBeaver SSH claim to false |
+| DB schemas | Search for `__tablename__` in code | Guessed table name instead of checking model |
+
+**The rule:** Before stating a fact, ask: *"Did I verify this with a tool, or am I generating from memory?"*
+- Verified with tool → state as fact
+- From memory → say "I believe" / "likely" / "let me check"
+- Don't know → say "I don't know"
+
+> [!WARNING]
+> **Confident self-corrections are equally dangerous.**
+> When correcting a previous statement, verify the correction too — don't just flip your answer.
+> On Feb 18 2026, the coordinator correctly stated DBeaver supports SSH for SQLite, then when
+> challenged, confidently "corrected" itself to say it doesn't — which was wrong. Both the
+> original assertion AND the correction were made without verification.
