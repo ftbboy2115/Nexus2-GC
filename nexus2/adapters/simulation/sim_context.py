@@ -328,6 +328,25 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
         success = _broker.sell_position(signal.symbol, shares_to_sell)
         if success:
             log.info(f"[{case_id}] EXIT: {signal.symbol} x{shares_to_sell} @ ${signal.exit_price}")
+
+            # Log exit to warrior_db (matches LIVE/sequential sim behavior)
+            # Without this, trades stay status='open' and get_all_warrior_trades('closed') returns nothing
+            try:
+                from nexus2.db.warrior_db import (
+                    get_warrior_trade_by_symbol, log_warrior_exit
+                )
+                trade = get_warrior_trade_by_symbol(signal.symbol)
+                if trade:
+                    exit_reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
+                    log_warrior_exit(
+                        trade_id=trade["id"],
+                        exit_price=float(signal.exit_price),
+                        exit_reason=exit_reason,
+                        quantity_exited=shares_to_sell,
+                    )
+            except Exception as e:
+                log.warning(f"[{case_id}] warrior_db exit log failed: {e}")
+
         return success
 
     # -- Callback 4: update_stop (L895) --
@@ -575,7 +594,7 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         trades = []
         try:
             from nexus2.db.warrior_db import get_all_warrior_trades
-            for status_filter in ("closed", "partial"):
+            for status_filter in ("closed", "partial", "open"):
                 result = get_all_warrior_trades(limit=100, status_filter=status_filter)
                 for wt in (result.get("trades", []) if isinstance(result, dict) else []):
                     if wt.get("is_sim"):

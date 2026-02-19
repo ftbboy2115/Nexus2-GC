@@ -1328,6 +1328,7 @@ async def step_clock(minutes: int = 1, headless: bool = False):
 class BatchTestRequest(BaseModel):
     """Request body for batch test runner."""
     case_ids: Optional[List[str]] = Field(None, description="List of test case IDs to run. If None, runs all POLYGON_DATA cases.")
+    include_trades: bool = Field(False, description="If True, include per-trade detail arrays in each result. Default False for compact output.")
 
 
 @sim_router.post("/sim/run_batch")
@@ -1551,6 +1552,10 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
                     "runtime_seconds": case_time,
                 })
                 
+                # Conditionally strip trade details for compact output
+                if not request.include_trades:
+                    results[-1].pop("trades", None)
+                
                 print(f"[Batch Runner] {case_id}: P&L=${total_pnl:+.2f} (Ross: ${ross_pnl:+.2f}, Δ=${total_pnl - ross_pnl:+.2f}) [{case_time}s]")
                 
             except Exception as e:
@@ -1635,6 +1640,11 @@ async def run_batch_concurrent_endpoint(request: BatchTestRequest = BatchTestReq
     # Run concurrently
     from nexus2.adapters.simulation.sim_context import run_batch_concurrent
     results = await run_batch_concurrent(cases, yaml_data)
+
+    # Conditionally strip trade details for compact output
+    if not request.include_trades:
+        for r in results:
+            r.pop("trades", None)
 
     # Build summary (same format as run_batch_tests)
     total_runtime = round(time.time() - start_time, 2)

@@ -271,7 +271,7 @@ class WarriorCandidate:
     # Borrow status (from Alpaca)
     # Ross Cameron: "If it's easy to borrow with no news, it's probably going to just drop right back down"
     hard_to_borrow: bool = False  # HTB = squeezable, shorts can't pile in
-    easy_to_borrow: bool = True  # ETB = default assumption if no data
+    easy_to_borrow: Optional[bool] = None  # None = not yet evaluated
     
     # Icebreaker flag (Chinese stock with high score)
     is_icebreaker: bool = False  # Flag for reduced position sizing
@@ -465,7 +465,7 @@ class EvaluationContext:
     
     # Borrow status
     hard_to_borrow: bool = False
-    easy_to_borrow: bool = True
+    easy_to_borrow: Optional[bool] = None  # None = not yet evaluated
     
     # Reverse split data
     is_reverse_split: bool = False
@@ -521,6 +521,21 @@ class WarriorScannerService:
         scan_logger.debug(f"CACHE MISS | {key}")
         return value
     
+    def _resolve_etb(self, ctx: Optional['EvaluationContext']) -> Optional[str]:
+        """Resolve ETB value for DB write: ctx value → cache → None."""
+        if ctx is None:
+            return None
+        etb_value = ctx.easy_to_borrow
+        if etb_value is None:
+            cached = self._cache.get(f"etb:{ctx.symbol}")
+            if cached:
+                etb_value, cached_at = cached
+                # 24-hour TTL check (Alpaca updates ETB once daily)
+                age = (now_et() - cached_at).total_seconds()
+                if age > 86400:
+                    etb_value = None
+        return str(etb_value) if etb_value is not None else None
+    
     def _write_scan_result_to_db(
         self,
         symbol: str,
@@ -557,7 +572,7 @@ class WarriorScannerService:
                     country=ctx.country if ctx else None,
                     ema_200=float(ctx.ema_200_value) if ctx and ctx.ema_200_value is not None else None,
                     room_to_ema_pct=float(ctx.room_to_ema_pct) if ctx and ctx.room_to_ema_pct is not None else None,
-                    is_etb=str(ctx.easy_to_borrow) if ctx else None,
+                    is_etb=self._resolve_etb(ctx),
                     name=ctx.name if ctx else None,
                 ))
                 db.commit()
@@ -1696,6 +1711,8 @@ class WarriorScannerService:
                 asset_info = self.alpaca_broker.get_asset_info(ctx.symbol)
                 ctx.hard_to_borrow = asset_info.get("hard_to_borrow", False)
                 ctx.easy_to_borrow = asset_info.get("easy_to_borrow", True)
+                # Cache ETB per-symbol (Alpaca updates ETB once daily)
+                self._cache[f"etb:{ctx.symbol}"] = (ctx.easy_to_borrow, now_et())
                 scan_logger.debug(f"BORROW CHECK | {ctx.symbol} | HTB={ctx.hard_to_borrow}, ETB={ctx.easy_to_borrow}")
                 if ctx.hard_to_borrow:
                     scan_logger.info(f"HTB BONUS | {ctx.symbol} is Hard-to-Borrow (+1 score)")
@@ -1722,7 +1739,7 @@ class WarriorScannerService:
             return "high_float"
         
         # ETB + medium-high float disqualifier
-        if ctx.easy_to_borrow and ctx.float_shares and ctx.float_shares > s.etb_high_float_threshold:
+        if ctx.easy_to_borrow is True and ctx.float_shares and ctx.float_shares > s.etb_high_float_threshold:
             tracker.record(
                 symbol=ctx.symbol,
                 scanner="warrior",
