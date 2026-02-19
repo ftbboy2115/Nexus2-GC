@@ -569,15 +569,24 @@ async def complete_entry(
                 )
             
             # Log FILL_CONFIRMED event for Trade Events UI
+            # PARTIAL-FILL GUARD: Only log on full fills, not partial fills.
+            # Sync recovery will log the definitive fill once complete.
+            # (Prevents duplicate FILL_CONFIRMED — see CISS investigation)
             from nexus2.domain.automation.trade_event_service import trade_event_service
-            trade_event_service.log_warrior_fill_confirmed(
-                position_id=order_id,
-                symbol=symbol,
-                quote_price=entry_price,
-                fill_price=actual_fill_decimal,
-                slippage_cents=slippage,
-                shares=int(filled_qty) if filled_qty else shares,
-            )
+            if order_status and order_status.lower() == "filled":
+                trade_event_service.log_warrior_fill_confirmed(
+                    position_id=order_id,
+                    symbol=symbol,
+                    quote_price=entry_price,
+                    fill_price=actual_fill_decimal,
+                    slippage_cents=slippage,
+                    shares=int(filled_qty) if filled_qty else shares,
+                )
+            else:
+                logger.info(
+                    f"[Warrior Entry] {symbol}: Skipping FILL_CONFIRMED "
+                    f"(partial fill: {filled_qty}/{shares}, sync will confirm)"
+                )
         except Exception as e:
             logger.warning(f"[Warrior Entry] {symbol}: DB fill update failed: {e}")
     

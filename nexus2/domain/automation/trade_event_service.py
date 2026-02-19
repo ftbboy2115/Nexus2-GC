@@ -354,6 +354,23 @@ class TradeEventService:
             logger.debug(f"[TradeEvent] has_entry_event check failed: {e}")
             return False  # Fail open — allow logging if check fails
     
+    def has_fill_confirmed_event(self, position_id: str) -> bool:
+        """Check if a FILL_CONFIRMED event already exists for a position_id.
+        
+        Used by broker sync recovery to avoid logging a duplicate FILL_CONFIRMED
+        when the entry poll loop already logged one.
+        """
+        try:
+            with get_session() as db:
+                count = db.query(TradeEventModel).filter(
+                    TradeEventModel.position_id == str(position_id),
+                    TradeEventModel.event_type == "FILL_CONFIRMED",
+                ).count()
+                return count > 0
+        except Exception as e:
+            logger.debug(f"[TradeEvent] has_fill_confirmed_event check failed: {e}")
+            return False  # Fail open — allow logging if check fails
+    
     # ==================== NAC Methods ====================
     
     def log_nac_entry(

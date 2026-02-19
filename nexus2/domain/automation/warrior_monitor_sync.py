@@ -465,15 +465,23 @@ async def _recover_position(
                     logger.debug(f"[Warrior Sync] {symbol}: Recovery event log failed: {event_err}")
             
             # Log FILL_CONFIRMED event for Trade Events UI (after ENTRY)
-            slippage_cents = float((entry_price - quote_price) * 100)
-            trade_event_service.log_warrior_fill_confirmed(
-                position_id=recovered_position_id,
-                symbol=symbol,
-                quote_price=quote_price,
-                fill_price=entry_price,
-                slippage_cents=slippage_cents,
-                shares=qty,
-            )
+            # DE-DUP GUARD: Only log if entry poll loop didn't already log one
+            # (Prevents duplicate FILL_CONFIRMED on partial fills — see CISS investigation)
+            if not trade_event_service.has_fill_confirmed_event(recovered_position_id):
+                slippage_cents = float((entry_price - quote_price) * 100)
+                trade_event_service.log_warrior_fill_confirmed(
+                    position_id=recovered_position_id,
+                    symbol=symbol,
+                    quote_price=quote_price,
+                    fill_price=entry_price,
+                    slippage_cents=slippage_cents,
+                    shares=qty,
+                )
+            else:
+                logger.info(
+                    f"[Warrior Sync] {symbol}: Skipping FILL_CONFIRMED "
+                    f"(already logged by entry poll loop)"
+                )
         except Exception as fill_err:
             logger.debug(f"[Warrior Sync] {symbol}: Fill price update failed: {fill_err}")
     
