@@ -13,9 +13,9 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-import pytz
+from zoneinfo import ZoneInfo
 
-ET = pytz.timezone("US/Eastern")
+ET = ZoneInfo("US/Eastern")
 
 def fetch_bars(symbol: str, date_str: str, include_prev_day: bool = True) -> dict:
     """
