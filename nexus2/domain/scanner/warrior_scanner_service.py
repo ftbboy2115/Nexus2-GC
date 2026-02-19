@@ -430,12 +430,12 @@ class EvaluationContext:
     settings: WarriorScanSettings = None
     
     # Session snapshot data
-    session_volume: int = 0
-    avg_volume: int = 0
-    session_high: Decimal = Decimal("0")
-    session_low: Decimal = Decimal("0")
+    session_volume: Optional[int] = None
+    avg_volume: Optional[int] = None
+    session_high: Optional[Decimal] = None
+    session_low: Optional[Decimal] = None
     session_open: Optional[Decimal] = None
-    last_price: Decimal = Decimal("0")
+    last_price: Optional[Decimal] = None
     yesterday_close: Optional[Decimal] = None
     
     # Float data
@@ -443,7 +443,7 @@ class EvaluationContext:
     is_ideal_float: bool = False
     
     # RVOL data
-    rvol: Decimal = Decimal("0")
+    rvol: Optional[Decimal] = None
     is_ideal_rvol: bool = False
     
     # Catalyst data
@@ -454,7 +454,7 @@ class EvaluationContext:
     catalyst_date: Optional[datetime] = None
     
     # Gap data
-    gap_pct: Decimal = Decimal("0")
+    gap_pct: Optional[Decimal] = None
     opening_gap_pct: Optional[float] = None  # Gap at open (open vs prev close)
     live_gap_pct: Optional[float] = None     # Gap now (live price vs prev close)
     is_ideal_gap: bool = False
