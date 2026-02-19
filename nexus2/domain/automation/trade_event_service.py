@@ -731,8 +731,17 @@ class TradeEventService:
         position_id: str,
         symbol: str,
         entry_price: Decimal,
+        shares: int = None,
+        old_stop: Decimal = None,
     ) -> Optional[int]:
         """Log Warrior stop moved to breakeven after partial."""
+        metadata = {}
+        if shares is not None:
+            metadata["shares"] = shares
+        if old_stop is not None:
+            metadata["old_stop"] = str(old_stop)
+        metadata["new_stop"] = str(entry_price)
+
         # TML: Write to persistent file log
         self._log_to_file(
             strategy="WARRIOR",
@@ -748,6 +757,7 @@ class TradeEventService:
             event_type=self.WARRIOR_BREAKEVEN_SET,
             new_value=str(entry_price),
             reason="Stop to breakeven after 2:1 R partial",
+            metadata=metadata if metadata else None,
         )
     
     def log_warrior_partial_exit(
@@ -823,6 +833,7 @@ class TradeEventService:
         exit_price: Decimal,
         exit_reason: str,
         pnl: Decimal,
+        shares: int = None,
     ) -> Optional[int]:
         """Log Warrior full exit."""
         # Map exit reason to event type
@@ -846,6 +857,8 @@ class TradeEventService:
             "pnl": str(pnl),
             "is_mock_market": is_mock_market,
         }
+        if shares is not None:
+            metadata["shares"] = shares
         # Add market context
         metadata.update(self._get_market_context())
         

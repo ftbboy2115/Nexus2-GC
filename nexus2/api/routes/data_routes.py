@@ -827,7 +827,16 @@ async def get_trade_events(
                 meta = json.loads(meta)
             except:
                 meta = {}
-        event["shares"] = meta.get("shares", "")
+        event["shares"] = meta.get("shares") or meta.get("shares_added") or meta.get("shares_sold") or ""
+
+        # Round numeric display values to 2 decimal places
+        for field in ("new_value", "old_value"):
+            val = event.get(field)
+            if val:
+                try:
+                    event[field] = f"{float(val):.2f}"
+                except (ValueError, TypeError):
+                    pass
     
     return {
         "events": events,

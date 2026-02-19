@@ -854,6 +854,8 @@ async def _check_base_hit_target(
                                 position_id=position.position_id,
                                 symbol=position.symbol,
                                 entry_price=position.entry_price,
+                                shares=position.shares,
+                                old_stop=position.current_stop,
                             )
                             logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
                     else:
@@ -866,6 +868,8 @@ async def _check_base_hit_target(
                             position_id=position.position_id,
                             symbol=position.symbol,
                             entry_price=position.entry_price,
+                            shares=position.shares,
+                            old_stop=position.current_stop,
                         )
                         logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
                     
@@ -1001,6 +1005,8 @@ async def _check_base_hit_target(
                     position_id=position.position_id,
                     symbol=position.symbol,
                     entry_price=position.entry_price,
+                    shares=position.shares,
+                    old_stop=position.current_stop,
                 )
                 logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
         else:
@@ -1013,6 +1019,8 @@ async def _check_base_hit_target(
                 position_id=position.position_id,
                 symbol=position.symbol,
                 entry_price=position.entry_price,
+                shares=position.shares,
+                old_stop=position.current_stop,
             )
             logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven, mode → home_run")
         
@@ -1152,6 +1160,8 @@ async def _check_home_run_exit(
                 position_id=position.position_id,
                 symbol=position.symbol,
                 entry_price=position.entry_price,
+                shares=position.shares,
+                old_stop=position.current_stop,
             )
             logger.info(f"[Warrior] {position.symbol}: Stop moved to breakeven")
         
