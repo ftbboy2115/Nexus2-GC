@@ -5,6 +5,8 @@ description: Use when YOU are coordinating multiple specialist agents in Agent M
 
 # Coordinator Agent (You)
 
+> **Rule version:** 2026-02-19T07:01:00
+
 When coordinating multiple specialist agents in parallel, follow this pattern.
 
 > **Shared rules:** See `_shared.md` for Windows environment and document output standards.

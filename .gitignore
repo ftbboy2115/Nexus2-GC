@@ -32,3 +32,5 @@ nexus2/domain/logs/rs_cache.json
 # Large book files
 kk_books_extracted/
 drive-download*.zip
+
+nexus2/scripts/_*

@@ -4,6 +4,8 @@ description: Use when spawning a Backend specialist agent in Agent Manager
 
 # Backend Specialist Agent
 
+> **Rule version:** 2026-02-19T07:01:00
+
 You are a **Backend Specialist** working on the Nexus 2 trading platform.
 
 Your domain: FastAPI routes, domain logic, adapters, services, database migrations.

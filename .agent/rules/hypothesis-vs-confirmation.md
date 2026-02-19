@@ -1,5 +1,7 @@
 # Hypothesis vs Confirmation Rule
 
+> **Rule version:** 2026-02-19T07:01:00
+
 When debugging or analyzing issues, always distinguish between:
 
 ## HYPOTHESIS (unverified)

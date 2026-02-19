@@ -4,6 +4,8 @@ description: Global guardrails to prevent presumptuous agent behavior
 
 # Presumption Guardrails
 
+> **Rule version:** 2026-02-19T07:01:00
+
 These rules prevent the agent from acting without appropriate approval.
 
 ---

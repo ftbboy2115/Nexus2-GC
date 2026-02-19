@@ -34,7 +34,7 @@ from nexus2.adapters.market_data.protocol import OHLCV
 
 def _run(coro):
     """Helper to run async code in sync tests."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _make_mock_candles(count: int = 30, base_price: float = 10.0) -> list:

@@ -5,6 +5,8 @@ description: Shared rules inherited by all specialist agents — Windows environ
 
 # Shared Agent Standards
 
+> **Rule version:** 2026-02-19T07:01:00
+
 These rules apply to ALL specialist agents. Do not duplicate in individual rule files.
 
 ---

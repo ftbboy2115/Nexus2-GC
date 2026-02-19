@@ -1,3 +1,5 @@
+> **Rule version:** 2026-02-19T07:01:00
+
 ---
 trigger: model_decision
 description: This is secondary to KK's strategy and to the platform, but one I have found success with in manual trades. Thus, I would like to carve out funcitonal incorporation of this when appropriate. Do not mix up the main goal with this one. 

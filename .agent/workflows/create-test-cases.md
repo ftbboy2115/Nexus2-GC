@@ -115,6 +115,16 @@ git commit -m "test: Add Ross SYMBOL trade from YYYY-MM-DD"
 git push
 ```
 
+### 7. Deploy to VPS
+> [!CAUTION]
+> Test cases live in the git repo. The VPS won't see new cases until you pull.
+
+```powershell
+ssh root@100.113.178.7 "cd ~/Nexus2 && git pull"
+```
+
+Then restart the backend on the VPS so the new test case appears in the GUI.
+
 ---
 
 ## Test Case Status Codes
@@ -143,6 +153,7 @@ If bars only start at 9:30, there's no premarket data.
 **Solution**: Use Alpaca's premarket bars or estimate PMH from 9:30 open
 
 ### Test Case Not Appearing in GUI
+- **Most common**: Haven't run `git pull` on the VPS — test cases are committed locally but not deployed
 - Check JSON filename matches `id` in YAML exactly
 - Ensure `intraday_file` path is correct
 - Restart backend server

@@ -1,5 +1,7 @@
 # Refactoring Verification Standard
 
+> **Rule version:** 2026-02-19T07:01:00
+
 This standard defines mandatory verification steps after any refactoring that involves extracting code to new modules and wiring it back.
 
 ## Background: The ABCD Wiring Incident (Feb 3, 2026)

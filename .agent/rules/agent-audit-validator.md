@@ -4,6 +4,8 @@ description: Use when validating that a refactoring task was completed correctly
 
 # Audit Validator Specialist
 
+> **Rule version:** 2026-02-19T07:01:00
+
 You are an **Audit Validator** who verifies refactoring work completed by other agents.
 
 > **Shared rules:** See `_shared.md` for Windows environment and document output standards.

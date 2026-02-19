@@ -4,6 +4,8 @@ trigger: always_on
 
 # Windows Environment Rules
 
+> **Rule version:** 2026-02-19T07:01:00
+
 You are operating in a **Windows environment with PowerShell**. Always remember:
 
 ## Command Syntax

@@ -1103,6 +1103,36 @@ test_cases:
       stop_near: 3.20
     notes: "Icebreaker trade. VHUB recent IPO with blue sky above $40. News headline at ~7:30 AM. Popped to $3.45, dipped, curled back up. Entry $3.33 with 20K shares looking for $3.45→$3.50 break. Failed at $3.50, quick out for +$1,600. Cold market day. Avoided: PLYX ($4→$66 spike), RIME (crowded), SUEN/GXAI (thickly traded). Transcript: 2026-02-17_transcript_NA90q8dBJkI.md"
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (February 18, 2026)
+  # Transcript: 2026-02-18_transcript_hxIw63KWMZI.md
+  # Day total: +$9,373.32 (one trade, SNSE)
+  # --------------------------------------------------------------------------
+
+  - id: ross_snse_20260218
+    symbol: SNSE
+    setup_type: halt_resume_pullback
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$9,373 - 300% Short Squeeze, Halt Resume Pullback"
+    trade_date: "2026-02-18"
+    intraday_file: "intraday/ross_snse_20260218.json"
+    ross_pnl: 9373.32
+    ross_entry_time: "~08:55"  # First pullback after ~8:50 halt resume
+    premarket_data:
+      gap_percent: 55.6  # From fetch output
+      premarket_high: 36.72  # From fetch output
+      previous_close: 8.00  # Ross stated ~$8/share previous day
+      float_shares: 5000000
+      catalyst: "news"  # $200M private placement + therapeutic company acquisition, biotech
+    expected:
+      entry_near: 27.53  # Ross's stated first entry
+      stop_near: 26.00  # Below pullback low
+    notes: "T1/T2/T3 halt pre-market on news ($200M private placement + acquisition). Resumed ~8:50 at $15, spiked to $28.99 on thin volume (spread $20x$24). Ross waited for first micro-pullback, entered $27.53. Broke $28.99→$31→$32 (took profit). Re-entered on ascending trendline bounces, final push to $35. Avoided: unnamed 8 AM stock (insider suspicion), MLEC (no news, lighter volume). Transcript: 2026-02-18_transcript_hxIw63KWMZI.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1111,7 +1141,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               33 (+ VHUB from 2026-02-17)
+# POLYGON_DATA:               34 (+ SNSE from 2026-02-18)
 # ==========================================================================
 
 

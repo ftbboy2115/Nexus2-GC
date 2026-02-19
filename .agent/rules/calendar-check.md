@@ -4,6 +4,8 @@ description: Always verify calendar date and market status before trading assump
 
 # Calendar and Market Status Check
 
+> **Rule version:** 2026-02-19T07:01:00
+
 Before making any assumptions about:
 - Market hours (open, after-hours, pre-market)
 - Trading day status (weekday vs weekend)

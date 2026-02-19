@@ -1,5 +1,7 @@
 # Artifact Protection Rules
 
+> **Rule version:** 2026-02-19T07:01:00
+
 > [!CAUTION]
 > **READ THIS FILE** before creating any artifact in the brain directory.
 > This rule applies EVERY TIME you create `plan_*.md`, `handoff_*.md`, `walkthrough_*.md`, or `investigation_*.md`.

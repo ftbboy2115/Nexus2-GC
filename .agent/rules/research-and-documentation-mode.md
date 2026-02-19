@@ -1,3 +1,5 @@
+> **Rule version:** 2026-02-19T07:01:00
+
 ---
 trigger: always_on
 ---
