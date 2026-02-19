@@ -244,6 +244,8 @@ export default function DataExplorer() {
         'country': 'ISO country code where company is headquartered',
         'float': 'DB column: float_shares (formatted for display)',
         'catalyst': 'DB column: catalyst_type',
+        'reason': 'Why the scanner rejected this stock (blank for PASS)',
+        'is_etb': 'Easy-to-Borrow status from Alpaca (updated daily). None = not evaluated.',
     }
 
 
