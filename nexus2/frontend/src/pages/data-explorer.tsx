@@ -1298,6 +1298,17 @@ Stocks fail at first unmet check.` },
                                                         if (isHeadlineWithUrl && (e.target as HTMLElement).tagName === 'A') {
                                                             return
                                                         }
+                                                        // Shift+Click on symbol cell = open TradingView chart
+                                                        if (e.shiftKey && col.toLowerCase() === 'symbol' && rawVal) {
+                                                            const width = window.screen.width
+                                                            const height = window.screen.height
+                                                            window.open(
+                                                                `https://www.tradingview.com/chart/D7F9NNnO/?symbol=${rawVal}`,
+                                                                '_blank',
+                                                                `width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no`
+                                                            )
+                                                            return
+                                                        }
                                                         if (e.shiftKey && isTruncated) {
                                                             setExpandedCell(isExpanded ? null : { row: i, col })
                                                         } else {
