@@ -1342,8 +1342,8 @@ class WarriorScannerService:
                         confidence="calendar",
                     ))
                     db.commit()
-            except Exception:
-                pass  # Calendar audit is observability, not critical
+            except Exception as e:
+                logger.warning(f"[Catalyst] {ctx.symbol}: Failed to write calendar CatalystAudit: {e}")
         
         # Step 2: Check headlines with classifier (confidence-based regex)
         if headlines:
