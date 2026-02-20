@@ -874,6 +874,22 @@ Is this a valid Qullamaggie EP catalyst?"""
         if not self._can_call_model("flash_lite"):
             # Rate limited - fall back to regex only
             logger.warning(f"[MultiModel] {symbol}: Flash rate limited, using regex only")
+            # Still write CatalystAudit so symbol appears in audit tab
+            try:
+                with get_telemetry_session() as db:
+                    db.add(CatalystAudit(
+                        timestamp=now_utc(),
+                        symbol=symbol,
+                        result="PASS" if regex_passed else "FAIL",
+                        headline=headline[:200] if headline else None,
+                        article_url=article_url,
+                        source=None,
+                        match_type=regex_type,
+                        confidence="regex_only",
+                    ))
+                    db.commit()
+            except Exception as e:
+                logger.warning(f"Failed to write regex_only catalyst audit: {e}")
             return (regex_passed, regex_type, regex_passed, None, "regex_only")
         
         flash_result = self._validate_with_model("flash_lite", headline, symbol)
