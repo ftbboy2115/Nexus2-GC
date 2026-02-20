@@ -1309,14 +1309,17 @@ Stocks fail at first unmet check.` },
                                                             )
                                                             return
                                                         }
+                                                        // Shift+Click on truncated cell = expand/collapse
                                                         if (e.shiftKey && isTruncated) {
                                                             setExpandedCell(isExpanded ? null : { row: i, col })
-                                                        } else {
-                                                            // Click on cell = filter to show only this value
-                                                            const clickedVal = rawVal === null || rawVal === undefined || rawVal === '' ? '(empty)' : String(rawVal)
-                                                            setFilters(prev => ({ ...prev, [col]: new Set([clickedVal]) }))
-                                                            setOffset(0)
+                                                            return
                                                         }
+                                                        // Shift held on non-symbol, non-truncated cell = do nothing
+                                                        if (e.shiftKey) return
+                                                        // Plain click = filter to this value
+                                                        const clickedVal = rawVal === null || rawVal === undefined || rawVal === '' ? '(empty)' : String(rawVal)
+                                                        setFilters(prev => ({ ...prev, [col]: new Set([clickedVal]) }))
+                                                        setOffset(0)
                                                     }}
                                                 >
                                                     {isExpanded ? (
