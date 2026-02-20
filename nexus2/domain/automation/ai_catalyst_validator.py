@@ -176,10 +176,10 @@ class HeadlineCache:
     
     Headlines are stored by symbol with text hash for deduplication.
     Cache persists to JSON file for survival across restarts.
-    TTL is 14 days - old headlines are pruned on load.
+    TTL is 7 days - old headlines are pruned on load.
     """
     
-    def __init__(self, cache_path: Optional[Path] = None, ttl_days: int = 14):
+    def __init__(self, cache_path: Optional[Path] = None, ttl_days: int = 7):
         self._cache_path = cache_path or Path(__file__).parent.parent.parent.parent / "data" / "headline_cache.json"
         self._ttl = timedelta(days=ttl_days)
         self._data: Dict[str, List[dict]] = {}
