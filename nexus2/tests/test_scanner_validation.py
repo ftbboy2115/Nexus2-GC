@@ -282,7 +282,7 @@ class TestScannerPicksUpValidTickers:
         print(
             f"✅ {tc['symbol']:6s} | Score: {candidate.quality_score:2d} | "
             f"Gap: {gap_pct:6.1f}% | RVOL: {float(candidate.relative_volume):5.1f}x | "
-            f"Ross P&L: ${tc.get('ross_pnl', 0):>10,.2f}"
+            f"Ross P&L: ${(tc.get('ross_pnl') or 0):>10,.2f}"
         )
 
 
@@ -524,7 +524,7 @@ class TestScannerSummaryReport:
             print("✅ PASSED:")
             print(f"{'─' * 80}")
             for tc, cand in passed:
-                ross_note = f" (Ross: ${tc.get('ross_pnl', 0):,.0f})" if tc.get("ross_traded") else ""
+                ross_note = f" (Ross: ${(tc.get('ross_pnl') or 0):,.0f})" if tc.get("ross_traded") else ""
                 print(
                     f"  {tc['symbol']:6s} | Score: {cand.quality_score:2d} | "
                     f"Gap: {tc['premarket_data'].get('gap_percent', 0):6.1f}% | "
@@ -537,7 +537,7 @@ class TestScannerSummaryReport:
             print("❌ FAILED:")
             print(f"{'─' * 80}")
             for tc, err in failed:
-                ross_note = f" (Ross: ${tc.get('ross_pnl', 0):,.0f})" if tc.get("ross_traded") else ""
+                ross_note = f" (Ross: ${(tc.get('ross_pnl') or 0):,.0f})" if tc.get("ross_traded") else ""
                 print(
                     f"  {tc['symbol']:6s} | "
                     f"Gap: {tc['premarket_data'].get('gap_percent', 0):6.1f}% | "
