@@ -245,6 +245,7 @@ export default function DataExplorer() {
         'country': 'ISO country code where company is headquartered',
         'float': 'Float shares. Required <100M, ideal <20M',
         'catalyst': 'Catalyst type: earnings, fda, contract, etc. Includes dilution filter',
+        'catalyst_source': 'How catalyst was resolved: calendar (earnings date), regex (headline match), ai (AI validation), former_runner',
         'reason': 'Why the scanner rejected this stock (blank for PASS)',
         'is_etb': 'Easy-to-Borrow from Alpaca. ETB + high float = rejected. None = not checked',
         'price': 'Last price at scan time. Range: $1.50-$20',
@@ -256,7 +257,7 @@ export default function DataExplorer() {
 
     // Preferred column order per tab - ensures stable column positions
     const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {
-        'warrior-scans': ['timestamp', 'symbol', 'result', 'reason', 'country', 'float', 'rvol', 'price', 'gap_pct', 'catalyst', 'ema_200', 'room_to_ema_pct', 'is_etb', 'score', 'name'],
+        'warrior-scans': ['timestamp', 'symbol', 'result', 'reason', 'country', 'float', 'rvol', 'price', 'gap_pct', 'catalyst', 'catalyst_source', 'ema_200', 'room_to_ema_pct', 'is_etb', 'score', 'name'],
         'nac-scans': ['timestamp', 'symbol', 'result', 'gap_pct', 'rvol', 'volume', 'catalyst', 'reason'],
         'catalyst-audits': ['timestamp', 'symbol', 'regex_result', 'regex_match_type', 'headline_index', 'confidence', 'headline', 'passed'],
         'ai-comparisons': ['timestamp', 'symbol', 'flash_valid', 'pro_valid', 'tiebreaker_used', 'regex_conf', 'flash_ms', 'reason'],
@@ -811,8 +812,8 @@ export default function DataExplorer() {
 9. Borrow/Float check → 10. Score (0-18)
 Stocks fail at first unmet check.` },
                         { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
-                        { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc.' },
-                        { id: 'ai-comparisons', label: 'AI Comparisons', tooltip: 'Side-by-side comparison of Regex vs Flash-Lite vs Pro catalyst classification.' },
+                        { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc. Note: Symbols resolved via earnings calendar bypass this pipeline and won\'t appear here.' },
+                        { id: 'ai-comparisons', label: 'AI Comparisons', tooltip: 'Side-by-side comparison of Regex vs Flash-Lite vs Pro catalyst classification. Only symbols with ambiguous headlines trigger AI validation. Earnings-calendar symbols are resolved without AI and won\'t appear here.' },
                         { id: 'trade-events', label: 'Trade Events', tooltip: 'Event stream from nexus.db. Every state transition: ENTRY, FILL, EXIT, STOP_RAISED, etc.' },
                         { id: 'warrior-trades', label: 'Warrior Trades', tooltip: 'Position lifecycle from warrior.db. One row per trade: entry → exit with P&L.' },
                         { id: 'nac-trades', label: 'Nac Trades', tooltip: 'NAC position lifecycle from nac.db. One row per trade with full position data.' },
@@ -829,6 +830,20 @@ Stocks fail at first unmet check.` },
                         </button>
                     ))}
                 </div>
+
+                {/* Info banner for AI pipeline tabs */}
+                {(activeTab === 'catalyst-audits' || activeTab === 'ai-comparisons') && (
+                    <div style={{
+                        padding: '6px 16px',
+                        background: '#1a2332',
+                        borderLeft: '3px solid #4dabf7',
+                        fontSize: '12px',
+                        color: '#8899aa',
+                        margin: '0 0 8px 0',
+                    }}>
+                        ℹ️ Only symbols evaluated by the multi-model AI pipeline appear here. Earnings-calendar matches are visible in Warrior Scans.
+                    </div>
+                )}
 
                 {/* Filters & Pagination */}
                 <div className={styles.controls}>
@@ -1312,6 +1327,10 @@ Stocks fail at first unmet check.` },
                                                         >
                                                             {displayVal} <span style={{ fontSize: '10px' }}>↗</span>
                                                         </a>
+                                                    ) : col === 'catalyst_source' && rawVal ? (
+                                                        <span title={`Resolved via: ${rawVal}`}>
+                                                            {rawVal === 'calendar' ? '📅' : rawVal === 'ai' ? '🤖' : rawVal === 'regex' ? '📰' : rawVal === 'former_runner' ? '🔄' : ''} {displayVal}
+                                                        </span>
                                                     ) : col === 'country' && rawVal ? (
                                                         <span title={COUNTRY_NAMES[rawVal as string] || rawVal as string}>
                                                             {displayVal}

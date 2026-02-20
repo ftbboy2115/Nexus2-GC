@@ -50,6 +50,7 @@ class WarriorScanResult(TelemetryBase):
     float_shares = Column(BigInteger, nullable=True)
     reason = Column(String(100), nullable=True)  # Rejection reason (null for PASS)
     catalyst_type = Column(String(50), nullable=True)
+    catalyst_source = Column(String(20), nullable=True)  # calendar, regex, ai, former_runner
     
     # Extended telemetry columns (Feb 2026)
     price = Column(Float, nullable=True)  # Last price at scan time
@@ -72,6 +73,7 @@ class WarriorScanResult(TelemetryBase):
             "float_shares": self.float_shares,
             "reason": self.reason,
             "catalyst_type": self.catalyst_type,
+            "catalyst_source": self.catalyst_source,
             # Extended telemetry columns
             "price": self.price,
             "country": self.country,
@@ -212,6 +214,7 @@ def _migrate_telemetry_columns():
             "room_to_ema_pct": "REAL",
             "is_etb": "VARCHAR(5)",
             "name": "VARCHAR(100)",
+            "catalyst_source": "VARCHAR(20)",
         }
     }
     

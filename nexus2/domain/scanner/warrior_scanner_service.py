@@ -452,6 +452,7 @@ class EvaluationContext:
     catalyst_desc: str = "No catalyst found"
     catalyst_confidence: float = 0.0
     catalyst_date: Optional[datetime] = None
+    catalyst_source: Optional[str] = None  # "calendar", "regex", "ai", "former_runner"
     
     # Gap data
     gap_pct: Optional[Decimal] = None
@@ -574,6 +575,7 @@ class WarriorScannerService:
                     room_to_ema_pct=float(ctx.room_to_ema_pct) if ctx and ctx.room_to_ema_pct is not None else None,
                     is_etb=self._resolve_etb(ctx),
                     name=ctx.name if ctx else None,
+                    catalyst_source=ctx.catalyst_source if ctx else None,
                 ))
                 db.commit()
         except Exception as e:
@@ -1332,6 +1334,7 @@ class WarriorScannerService:
                 if ctx.catalyst_confidence >= 0.6:
                     ctx.has_catalyst = True
                     ctx.catalyst_type = best_type
+                    ctx.catalyst_source = "regex"
                     ctx.catalyst_desc = best_headline[:80] if best_headline else ""
                     # Get publish date for freshness scoring
                     news_with_dates = self.market_data.fmp.get_news_with_dates(
@@ -1405,6 +1408,7 @@ class WarriorScannerService:
             if has_earnings:
                 ctx.has_catalyst = True
                 ctx.catalyst_type = "earnings"
+                ctx.catalyst_source = "calendar"
                 ctx.catalyst_desc = f"Earnings {earnings_date}"
                 ctx.catalyst_confidence = 0.9
                 from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
@@ -1415,6 +1419,7 @@ class WarriorScannerService:
             if self._is_former_runner(ctx.symbol):
                 ctx.has_catalyst = True
                 ctx.catalyst_type = "former_runner"
+                ctx.catalyst_source = "former_runner"
                 ctx.catalyst_desc = "History of big moves"
                 ctx.catalyst_confidence = 0.7
         
@@ -1438,6 +1443,7 @@ class WarriorScannerService:
         if cached_valid and not ctx.has_catalyst:
             ctx.has_catalyst = True
             ctx.catalyst_type = f"cached_{cached_type}"
+            ctx.catalyst_source = "ai"
             ctx.catalyst_desc = f"Cached: {cached_type}"
             ctx.catalyst_confidence = 0.85
             from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
@@ -1494,6 +1500,7 @@ class WarriorScannerService:
                     if final_valid and not ctx.has_catalyst:
                         ctx.has_catalyst = True
                         ctx.catalyst_type = final_type
+                        ctx.catalyst_source = "ai"
                         ctx.catalyst_desc = f"{method}: {headline[:50]}"
                         ctx.catalyst_confidence = 0.85
                         from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
