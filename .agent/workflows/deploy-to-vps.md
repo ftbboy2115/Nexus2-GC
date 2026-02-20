@@ -21,10 +21,12 @@ ssh root@100.113.178.7 "find ~/Nexus2 -type d -name '__pycache__' -exec rm -rf {
 
 ### 3. Rebuild if Needed
 
-**Frontend changes:**
-```bash
-ssh root@100.113.178.7 "cd ~/Nexus2/nexus2/frontend && npm run build"
-```
+**Frontend changes:** No build step required — dev server hot-reloads on file changes.
+If you need to force a restart, see Step 5.
+
+> [!TIP]
+> The frontend runs `next dev` (not `next start`), so `git pull` is usually sufficient
+> for frontend changes — the dev server detects file changes automatically.
 
 **Backend changes:** No build step required (Python).
 
@@ -59,8 +61,7 @@ curl -X POST http://100.113.178.7:8000/admin/restart -H "Content-Type: applicati
 
 ### 5. Restart Frontend (if needed)
 ```bash
-ssh root@100.113.178.7 "tmux send-keys -t frontend C-c C-c C-c"
-ssh root@100.113.178.7 "tmux send-keys -t frontend 'cd ~/Nexus2/nexus2/frontend && npm start' Enter"
+ssh root@100.113.178.7 "fuser -k 3000/tcp 2>/dev/null; sleep 2; screen -wipe 2>/dev/null; screen -dmS frontend bash -c 'cd ~/Nexus2/nexus2/frontend && npx next dev -p 3000 -H 0.0.0.0 > /tmp/frontend.log 2>&1'; sleep 4; tail -5 /tmp/frontend.log"
 ```
 
 ### 6. Verify Deployment
