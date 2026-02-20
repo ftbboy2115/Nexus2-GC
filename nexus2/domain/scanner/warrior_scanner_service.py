@@ -1502,15 +1502,17 @@ class WarriorScannerService:
                         article_url=article_url,
                     )
                     
-                    headline_cache.add(
-                        symbol=ctx.symbol,
-                        headline=headline,
-                        is_valid=final_valid,
-                        catalyst_type=final_type,
-                        regex_passed=regex_valid,
-                        flash_passed=flash_passed,
-                        method=method,
-                    )
+                    # Don't cache regex_only results — retry after rate limit resets
+                    if method != "regex_only":
+                        headline_cache.add(
+                            symbol=ctx.symbol,
+                            headline=headline,
+                            is_valid=final_valid,
+                            catalyst_type=final_type,
+                            regex_passed=regex_valid,
+                            flash_passed=flash_passed,
+                            method=method,
+                        )
                     
                     if final_valid and not ctx.has_catalyst:
                         ctx.has_catalyst = True
