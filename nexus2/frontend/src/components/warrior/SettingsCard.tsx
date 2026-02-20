@@ -14,6 +14,7 @@ interface WarriorConfig {
     orb_enabled?: boolean
     pmh_enabled?: boolean
     entry_bar_timeframe?: string  // "1min" or "10s"
+    always_run_ai_comparison?: boolean
 }
 
 interface SettingsCardProps {
@@ -160,6 +161,13 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         title="Entry bar timeframe: 10s for faster entry, 1min for standard"
                     >
                         {config?.entry_bar_timeframe === '10s' ? '⚡' : '📊'} {config?.entry_bar_timeframe === '10s' ? '10s Bars' : '1min Bars'}
+                    </button>
+                    <button
+                        onClick={() => updateConfig('always_run_ai_comparison', !(config?.always_run_ai_comparison ?? true))}
+                        className={(config?.always_run_ai_comparison ?? true) ? styles.btnToggleOn : styles.btnToggleOff}
+                        title="Run AI comparison on all headlines (even when regex/calendar already found catalyst). Disable to reduce API calls."
+                    >
+                        {(config?.always_run_ai_comparison ?? true) ? '🤖' : '💤'} AI Compare
                     </button>
                 </div>
             </div>

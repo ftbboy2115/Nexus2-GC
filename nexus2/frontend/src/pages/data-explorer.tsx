@@ -232,7 +232,7 @@ export default function DataExplorer() {
         'regex_result': 'PASS = regex matched a catalyst pattern, FAIL = no match',
         'regex_match_type': 'Pattern that matched: earnings, fda, contract, acquisition, ipo, clinical_advance, or no_match',
         'headline_index': 'Position 1-5 of headlines evaluated for this symbol',
-        'confidence': 'Regex tier: 0.9 = primary catalyst (earnings/fda/contract), 0.5 = supportive only, 0.0 = no match. Threshold ≥0.6 to pass.',
+        'confidence': 'Evaluation method: consensus (regex+flash agree), tiebreaker (pro broke tie), flash_only (pro rate-limited), regex_only (flash rate-limited), calendar (earnings date match)',
         'flash_valid': 'Whether Flash-Lite AI model classified the headline as a valid catalyst',
         'pro_valid': 'Whether Pro AI model classified the headline as a valid catalyst (tiebreaker)',
         'tiebreaker_used': 'True if Regex and Flash-Lite disagreed, requiring Pro model tiebreaker',

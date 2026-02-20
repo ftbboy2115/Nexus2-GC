@@ -710,6 +710,14 @@ class WarriorEngine:
     # STATUS
     # =========================================================================
     
+    def _get_scanner_setting(self, key: str, default=None):
+        """Safely read a setting from the scanner service singleton."""
+        try:
+            from nexus2.domain.scanner.warrior_scanner_service import get_warrior_scanner_service
+            return getattr(get_warrior_scanner_service().settings, key, default)
+        except Exception:
+            return default
+
     def get_status(self) -> dict:
         """Get engine status."""
         return {
@@ -761,6 +769,7 @@ class WarriorEngine:
                 "max_shares_per_trade": self.config.max_shares_per_trade,
                 "max_capital": float(self.config.max_capital),
                 "entry_bar_timeframe": self.config.entry_bar_timeframe,
+                "always_run_ai_comparison": self._get_scanner_setting("always_run_ai_comparison", True),
             },
             "last_scan_result": self._last_scan_result,
         }

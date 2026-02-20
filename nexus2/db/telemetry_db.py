@@ -127,7 +127,7 @@ class CatalystAudit(TelemetryBase):
     article_url = Column(Text, nullable=True)  # Link to source article
     source = Column(String(50), nullable=True)  # FMP, Benzinga, etc.
     match_type = Column(String(50), nullable=True)  # earnings, contract, fda, etc.
-    confidence = Column(String(20), nullable=True)
+    confidence = Column(String(20), nullable=True)  # Evaluation method: consensus|tiebreaker|flash_only|regex_only|calendar
 
     def to_dict(self):
         return {

@@ -79,6 +79,7 @@ class WarriorEngineConfigRequest(BaseModel):
     max_value_per_trade: Optional[float] = Field(None, gt=0, description="Max $ value per trade (for testing)")
     max_capital: Optional[float] = Field(None, gt=0, description="Max capital per single trade position")
     entry_bar_timeframe: Optional[str] = Field(None, description="Entry bar timeframe: '1min' or '10s'", pattern="^(1min|10s)$")
+    always_run_ai_comparison: Optional[bool] = Field(None, description="Run AI comparison even when catalyst already found")
 
 
 class ScalingSettingsRequest(BaseModel):
@@ -500,6 +501,11 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         engine.config.entry_bar_timeframe = request.entry_bar_timeframe
         updated["entry_bar_timeframe"] = request.entry_bar_timeframe
     
+    if request.always_run_ai_comparison is not None:
+        scanner = get_warrior_scanner_service()
+        scanner.settings.always_run_ai_comparison = request.always_run_ai_comparison
+        updated["always_run_ai_comparison"] = request.always_run_ai_comparison
+    
     # Save settings to persist across restarts
     try:
         from nexus2.db.warrior_settings import save_warrior_settings, get_config_dict
@@ -522,6 +528,7 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
             "max_value_per_trade": float(engine.config.max_value_per_trade) if engine.config.max_value_per_trade else None,
             "max_capital": float(engine.config.max_capital),
             "entry_bar_timeframe": engine.config.entry_bar_timeframe,
+            "always_run_ai_comparison": get_warrior_scanner_service().settings.always_run_ai_comparison,
         }
     }
 
