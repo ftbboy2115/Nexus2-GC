@@ -238,20 +238,25 @@ export default function DataExplorer() {
         'tiebreaker_used': 'True if Regex and Flash-Lite disagreed, requiring Pro model tiebreaker',
         'regex_conf': 'Regex confidence score (0.0-0.9)',
         'flash_ms': 'Flash-Lite model response latency in milliseconds',
-        'gap_pct': 'Pre-market gap percentage vs previous close',
-        'rvol': 'Relative volume vs 20-day average',
-        'score': 'Composite scanner score based on multiple criteria',
+        'result': 'PASS = passed all checks, FAIL = rejected (see reason)',
+        'gap_pct': 'Gap % vs previous close. Dual-gate: opening OR live gap ≥4%',
+        'rvol': 'Relative volume vs 20-day avg (time-adjusted). Min 2x',
+        'score': 'Quality score (0-18). Higher = better candidate',
         'country': 'ISO country code where company is headquartered',
-        'float': 'DB column: float_shares (formatted for display)',
-        'catalyst': 'DB column: catalyst_type',
+        'float': 'Float shares. Required <100M, ideal <20M',
+        'catalyst': 'Catalyst type: earnings, fda, contract, etc. Includes dilution filter',
         'reason': 'Why the scanner rejected this stock (blank for PASS)',
-        'is_etb': 'Easy-to-Borrow status from Alpaca (updated daily). None = not evaluated.',
+        'is_etb': 'Easy-to-Borrow from Alpaca. ETB + high float = rejected. None = not checked',
+        'price': 'Last price at scan time. Range: $1.50-$20',
+        'ema_200': '200-day EMA. Rejected if price is below with <15% room',
+        'room_to_ema_pct': 'Room-to-200-EMA %. Negative = price below EMA',
+        'name': 'Company name from FMP profile',
     }
 
 
     // Preferred column order per tab - ensures stable column positions
     const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {
-        'warrior-scans': ['timestamp', 'source', 'symbol', 'result', 'gap_pct', 'score', 'rvol', 'float', 'catalyst', 'reason'],
+        'warrior-scans': ['timestamp', 'symbol', 'result', 'reason', 'country', 'float', 'rvol', 'price', 'gap_pct', 'catalyst', 'ema_200', 'room_to_ema_pct', 'is_etb', 'score', 'name', 'source'],
         'nac-scans': ['timestamp', 'symbol', 'result', 'gap_pct', 'rvol', 'volume', 'catalyst', 'reason'],
         'catalyst-audits': ['timestamp', 'symbol', 'regex_result', 'regex_match_type', 'headline_index', 'confidence', 'headline', 'passed'],
         'ai-comparisons': ['timestamp', 'symbol', 'flash_valid', 'pro_valid', 'tiebreaker_used', 'regex_conf', 'flash_ms', 'reason'],
@@ -799,10 +804,11 @@ export default function DataExplorer() {
                 <div className={styles.tabs}>
                     {([
                         {
-                            id: 'warrior-scans', label: 'Warrior Scans', tooltip: `Scanner evaluates stocks in fail-fast order:
+                            id: 'warrior-scans', label: 'Warrior Scans', tooltip: `Scanner evaluates in fail-fast order:
 1. Snapshot → 2. Country (no CN/HK) → 3. Float (<100M)
 4. RVOL (>2x) → 5. Price ($1.50-$20) → 6. Gap% (>4%)
-7. Catalyst (expensive AI check) → 8. 200 EMA → 9. Score (0-16)
+7. Catalyst (Regex/AI + dilution filter) → 8. 200 EMA (>15% room)
+9. Borrow/Float check → 10. Score (0-18)
 Stocks fail at first unmet check.` },
                         { id: 'nac-scans', label: 'Nac Scans', tooltip: 'NAC strategy scan history. Shows which stocks passed/failed MA checks.' },
                         { id: 'catalyst-audits', label: 'Catalyst Audits', tooltip: 'Regex-based headline classification (Tier 0.9/0.5/0.0). Shows which headlines matched catalyst patterns like earnings, FDA approvals, etc.' },
