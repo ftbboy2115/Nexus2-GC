@@ -27,6 +27,18 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 
 ---
 
+## ⚠️ Command Execution (CRITICAL)
+
+> [!WARNING]
+> **Wait for each command to complete before doing other work.**
+> If you try to run additional tools while a command is pending, they will fail.
+
+- Run your commands and **wait for output** before proceeding
+- You CAN run multiple commands in parallel — but don't mix commands with non-command tool calls
+- If a command hangs, **ask Clay for help** rather than trying to work around it
+
+---
+
 ## 📁 Document Output Location
 
 > [!IMPORTANT]

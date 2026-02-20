@@ -32,7 +32,7 @@ from nexus2.domain.automation.ai_catalyst_validator import (
     get_headline_cache,
 )
 from nexus2.utils.time_utils import now_et, now_utc_factory, now_utc
-from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult as WarriorScanResultDB
+from nexus2.db.telemetry_db import get_telemetry_session, WarriorScanResult as WarriorScanResultDB, CatalystAudit
 
 
 # =============================================================================
@@ -146,6 +146,7 @@ class WarriorScanSettings:
     
     # Multi-Model Comparison (for training regex patterns)
     enable_multi_model_comparison: bool = True  # Queue headlines for AI comparison
+    always_run_ai_comparison: bool = True  # Run AI even when regex/calendar already resolved (kill switch for rate limits)
     comparison_models: list = None  # Default: ["flash_lite", "pro"] - set in __post_init__
     
     def __post_init__(self):
@@ -1316,7 +1317,35 @@ class WarriorScannerService:
         s = ctx.settings
         classifier = get_classifier()
         
-        # Check headlines with classifier (confidence-based)
+        # Step 1: Calendar check FIRST (deterministic, no API call needed for AI)
+        has_earnings, earnings_date = self.market_data.fmp.has_recent_earnings(
+            ctx.symbol, days=s.catalyst_lookback_days
+        )
+        if has_earnings:
+            ctx.has_catalyst = True
+            ctx.catalyst_type = "earnings"
+            ctx.catalyst_source = "calendar"
+            ctx.catalyst_desc = f"Earnings {earnings_date}"
+            ctx.catalyst_confidence = 0.9
+            from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+            log_headline_evaluation(ctx.symbol, [f"Recent earnings on {earnings_date}"], "PASS", "earnings")
+            # Write CatalystAudit for calendar resolution (observability)
+            try:
+                with get_telemetry_session() as db:
+                    db.add(CatalystAudit(
+                        timestamp=now_utc(),
+                        symbol=ctx.symbol,
+                        result="PASS",
+                        headline=f"Earnings date: {earnings_date}",
+                        source="calendar",
+                        match_type="earnings",
+                        confidence="calendar",
+                    ))
+                    db.commit()
+            except Exception:
+                pass  # Calendar audit is observability, not critical
+        
+        # Step 2: Check headlines with classifier (confidence-based regex)
         if headlines:
             if ctx.verbose:
                 print(f"[Catalyst Debug] {ctx.symbol}: Found {len(headlines)} headlines")
@@ -1400,21 +1429,7 @@ class WarriorScannerService:
                     self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason=f"negative_catalyst:{neg_type}")
                     return "negative_catalyst"
         
-        # Check for recent earnings as backup
-        if not ctx.has_catalyst:
-            has_earnings, earnings_date = self.market_data.fmp.has_recent_earnings(
-                ctx.symbol, days=s.catalyst_lookback_days
-            )
-            if has_earnings:
-                ctx.has_catalyst = True
-                ctx.catalyst_type = "earnings"
-                ctx.catalyst_source = "calendar"
-                ctx.catalyst_desc = f"Earnings {earnings_date}"
-                ctx.catalyst_confidence = 0.9
-                from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
-                log_headline_evaluation(ctx.symbol, [f"Recent earnings on {earnings_date}"], "PASS", "earnings")
-        
-        # Check former runner
+        # Step 3: Check former runner (fallback)
         if s.require_catalyst and not ctx.has_catalyst and s.include_former_runners:
             if self._is_former_runner(ctx.symbol):
                 ctx.has_catalyst = True
@@ -1450,12 +1465,12 @@ class WarriorScannerService:
             log_headline_evaluation(ctx.symbol, [f"Cache hit: {cached_type}"], "PASS", cached_type)
             if ctx.verbose:
                 print(f"[Headline Cache] {ctx.symbol}: HIT - valid catalyst from cache ({cached_type})")
-            return
+            # NOTE: No early return — continue processing new headlines for comparison data
         
         # Filter to new headlines
         new_headlines = headline_cache.get_new_headlines(ctx.symbol, headlines)
         
-        if new_headlines and not ctx.has_catalyst:
+        if new_headlines and (not ctx.has_catalyst or s.always_run_ai_comparison):
             multi_validator = get_multi_validator()
             classifier = get_classifier()
             
@@ -1505,7 +1520,7 @@ class WarriorScannerService:
                         ctx.catalyst_confidence = 0.85
                         from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
                         log_headline_evaluation(ctx.symbol, new_headlines, "PASS", final_type)
-                        break
+                        # NOTE: No break — process ALL headlines (up to 3) for comparison data
                         
                 except Exception as e:
                     if ctx.verbose:
