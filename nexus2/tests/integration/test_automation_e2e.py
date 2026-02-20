@@ -256,6 +256,7 @@ def test_6_full_signal_flow():
 
 import pytest
 
+@pytest.mark.slow  # Requires live VPS server - skip with -m "not slow"
 @pytest.mark.timeout(30)  # Allow time for all 4 endpoints
 def test_7_api_endpoints():
     """
