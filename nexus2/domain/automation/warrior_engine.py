@@ -760,6 +760,7 @@ class WarriorEngine:
                 "pmh_enabled": self.config.pmh_enabled,
                 "max_shares_per_trade": self.config.max_shares_per_trade,
                 "max_capital": float(self.config.max_capital),
+                "entry_bar_timeframe": self.config.entry_bar_timeframe,
             },
             "last_scan_result": self._last_scan_result,
         }
