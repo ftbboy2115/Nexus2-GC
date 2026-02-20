@@ -68,6 +68,23 @@ nexus2/tests/test_cases/
     └── ...
 ```
 
+### Data Inspection: `peek_bars.py`
+
+Use `scripts/peek_bars.py` to quickly inspect test case bar data without writing throwaway scripts.
+
+```powershell
+# Default: show bars around market open (09:25-09:45)
+python scripts/peek_bars.py nexus2/tests/test_cases/intraday/ross_mlec_20260220.json
+
+# Custom time range
+python scripts/peek_bars.py <file> 09:30 10:00
+
+# Show premarket bars
+python scripts/peek_bars.py <file> 07:00 09:30
+```
+
+Outputs: symbol metadata (PMH, gap%, catalyst), formatted OHLCV table with ▲/▼ indicators, session summary (high, low, total volume), and premarket/market bar split.
+
 ### Test Case Creation
 See workflow: `/create-test-cases` or `.agent/workflows/create-test-cases.md`
 
@@ -140,6 +157,7 @@ Key endpoints (all under `/warrior` prefix):
 - Clock advancing (step, play, speed control)
 - Order visibility in UI
 - Load vs Replay mode distinction
+- `scripts/peek_bars.py` — CLI data inspection tool for test case bar files
 
 ### Pending
 - **Bar chart visualization** - TradingView-style candlestick panel

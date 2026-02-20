@@ -1165,6 +1165,53 @@ test_cases:
       stop_near: 3.00  # Below the dip after the initial pop to $3.60
     notes: "Cold market, hit or miss. ENVB hit running up scanner just after 8am at $2.78 with breaking news (biotech, US company). Squeezed to $3.60, dipped, Ross entered ~$3.50 on dip buy. Added for break of $4, added again at $4.35-$4.43 looking for $5. Peaked $4.50, reversed — spoofer placing/cancelling large sell orders above ask. Ross bailed on reversal. Avoided: INDO (choppy), CISS (choppy), RUBY (no news, crowded L2), CDIO (day 2, risky), MLEC (big spread), RBNE (brief). Transcript: 2026-02-19_transcript_PPJLNKFS224.md"
 
+  - id: ross_mlec_20260220
+    symbol: MLEC
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$5,612 - Day 3 Reverse Split PMH Break at $20"
+    trade_date: "2026-02-20"
+    intraday_file: "intraday/ross_mlec_20260220.json"
+    ross_pnl: 5612.00
+    ross_entry_time: "09:43"  # Break of $20 PMH after open dip
+    premarket_data:
+      gap_percent: -7.7
+      premarket_high: 20.00
+      previous_close: 19.50
+      float_shares: 5000000
+      catalyst: "reverse_split"
+    expected:
+      entry_near: 20.00  # Ross said "I got in for the break of 20"
+      stop_near: 19.00  # Below the dip low area
+    notes: "Day 3 of multi-day pattern on ultra low float reverse split. Ross made $43K on MLEC last Friday (Feb 13). Missed Tue/Wed/Thu moves. PMH break at $20 squeezed to $21.75 (halt level), couldn't go higher. Volume divergence (decreasing vol on price rise). Also traded EDHL (loss -$111.78, Chinese stock, 2500 shares, speculative). Day total +$5,500. Cold market week. Transcript: 2026-02-20_transcript_K1Zvoes1SNQ.md"
+
+  - id: ross_edhl_20260220
+    symbol: EDHL
+    setup_type: speculative
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$112 - Speculative Chinese Stock, Quick Stop"
+    trade_date: "2026-02-20"
+    intraday_file: null  # Not fetched — minor speculative loss
+    ross_pnl: -111.78
+    premarket_data:
+      gap_percent: null
+      premarket_high: null
+      previous_close: null
+      float_shares: null
+      catalyst: "news"  # Chinese stock with news
+    expected:
+      entry_near: null  # Not stated precisely — somewhere in $3.50-5.50 range
+      stop_near: null
+    notes: "Speculative trade, 2500 shares. Ross was 60/40 expecting a loss. Chinese stock popping $3.50→$5.50, dip-bought, bounced only 200 shares, stopped out. Went red on the day afterward. Transcript: 2026-02-20_transcript_K1Zvoes1SNQ.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================

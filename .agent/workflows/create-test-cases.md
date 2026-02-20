@@ -63,7 +63,18 @@ After analyzing the transcript content, update the transcript vault at:
 - If the transcript doesn't state a detail, write "not stated" — do NOT invent
 
 ### 3. Verify Data Quality
-Check the console output for:
+Use `scripts/peek_bars.py` to inspect the bars:
+```powershell
+// turbo
+python scripts/peek_bars.py nexus2/tests/test_cases/intraday/ross_SYMBOL_YYYYMMDD.json
+```
+
+Custom time range (e.g., to check a specific entry):
+```powershell
+python scripts/peek_bars.py <file> 09:30 10:00
+```
+
+Check the output for:
 - [ ] Price range matches expected (not a ticker collision)
 - [ ] Premarket High (PMH) aligns with Ross's entry
 - [ ] Gap percent is reasonable
