@@ -298,11 +298,22 @@ def create_get_intraday_bars():
             from nexus2.adapters.market_data.polygon_adapter import PolygonAdapter
             polygon = PolygonAdapter()
             
-            # Use Polygon's get_intraday_bars (includes premarket by default)
-            # Convert timeframe: "1min" -> "1", "5min" -> "5" (Polygon expects just the number)
-            polygon_tf = timeframe.replace("min", "").replace("Min", "")
+            # Parse timeframe into multiplier + unit
+            # "10s" / "10sec" -> multiplier="10", unit="second"
+            # "1min" / "5min" -> multiplier="1"/"5", unit="minute"
+            import re
+            sec_match = re.match(r"^(\d+)s(?:ec)?$", timeframe)
+            if sec_match:
+                polygon_tf = sec_match.group(1)
+                polygon_unit = "second"
+            else:
+                polygon_tf = timeframe.replace("min", "").replace("Min", "")
+                polygon_unit = "minute"
+            
             if hasattr(polygon, 'get_intraday_bars'):
-                bars = polygon.get_intraday_bars(symbol, timeframe=polygon_tf, limit=limit)
+                bars = polygon.get_intraday_bars(
+                    symbol, timeframe=polygon_tf, limit=limit, unit=polygon_unit
+                )
                 if bars:
                     return [Bar(
                         open=float(b.open),
@@ -314,41 +325,44 @@ def create_get_intraday_bars():
         except Exception as e:
             logger.debug(f"[Warrior] Polygon bars failed for {symbol}: {e}")
         
-        # ALPACA FALLBACK: Secondary source
-        try:
-            from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
-            alpaca = AlpacaAdapter()
+        # ALPACA/FMP FALLBACK: Only for minute-based timeframes
+        # (Alpaca and FMP do not support sub-minute bars)
+        if not timeframe.endswith("s") and not timeframe.endswith("sec"):
+            # ALPACA FALLBACK: Secondary source
+            try:
+                from nexus2.adapters.market_data.alpaca_adapter import AlpacaAdapter
+                alpaca = AlpacaAdapter()
+                
+                if hasattr(alpaca, 'get_intraday_bars'):
+                    bars = alpaca.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
+                    if bars:
+                        return [Bar(
+                            open=float(b.open),
+                            high=float(b.high),
+                            low=float(b.low),
+                            close=float(b.close),
+                            volume=int(b.volume)
+                        ) for b in bars]
+            except Exception as e:
+                logger.debug(f"[Warrior] Alpaca bars failed for {symbol}: {e}")
             
-            if hasattr(alpaca, 'get_intraday_bars'):
-                bars = alpaca.get_intraday_bars(symbol, timeframe=timeframe, limit=limit)
-                if bars:
-                    return [Bar(
-                        open=float(b.open),
-                        high=float(b.high),
-                        low=float(b.low),
-                        close=float(b.close),
-                        volume=int(b.volume)
-                    ) for b in bars]
-        except Exception as e:
-            logger.debug(f"[Warrior] Alpaca bars failed for {symbol}: {e}")
-        
-        # FMP FALLBACK: Tertiary source (run in thread pool to avoid blocking)
-        try:
-            from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
-            fmp = get_fmp_adapter()
-            if fmp:
-                fmp_bars = await asyncio.to_thread(fmp.get_intraday_bars, symbol, timeframe)
-                if fmp_bars and len(fmp_bars) >= 5:
-                    bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
-                    return [Bar(
-                        open=float(b.open),
-                        high=float(b.high),
-                        low=float(b.low),
-                        close=float(b.close),
-                        volume=int(b.volume)
-                    ) for b in bars_to_use]
-        except Exception as e:
-            logger.debug(f"[Warrior] FMP bars failed for {symbol}: {e}")
+            # FMP FALLBACK: Tertiary source (run in thread pool to avoid blocking)
+            try:
+                from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
+                fmp = get_fmp_adapter()
+                if fmp:
+                    fmp_bars = await asyncio.to_thread(fmp.get_intraday_bars, symbol, timeframe)
+                    if fmp_bars and len(fmp_bars) >= 5:
+                        bars_to_use = fmp_bars[-limit:] if len(fmp_bars) > limit else fmp_bars
+                        return [Bar(
+                            open=float(b.open),
+                            high=float(b.high),
+                            low=float(b.low),
+                            close=float(b.close),
+                            volume=int(b.volume)
+                        ) for b in bars_to_use]
+            except Exception as e:
+                logger.debug(f"[Warrior] FMP bars failed for {symbol}: {e}")
         
         return None
     

@@ -391,20 +391,22 @@ class PolygonAdapter:
     def get_intraday_bars(
         self,
         symbol: str,
-        timeframe: str = "1",  # minutes
+        timeframe: str = "1",  # multiplier (minutes or seconds)
         limit: int = 1000,
         from_date: Optional[str] = None,  # YYYY-MM-DD
         to_date: Optional[str] = None,
+        unit: str = "minute",  # "minute" or "second"
     ) -> Optional[List[OHLCV]]:
         """
         Get intraday bars.
         
         Args:
             symbol: Stock symbol
-            timeframe: Bar size in minutes (1, 5, 15, 30, 60)
+            timeframe: Bar size multiplier (1, 5, 15 for minutes; 10, 30 for seconds)
             limit: Max bars to return
             from_date: Start date (YYYY-MM-DD)
             to_date: End date (YYYY-MM-DD)
+            unit: Time unit - "minute" (default) or "second"
         """
         # Default to today
         if not from_date:
@@ -412,9 +414,12 @@ class PolygonAdapter:
         if not to_date:
             to_date = from_date
         
+        # Support sub-minute timeframes (e.g., 10-second bars)
+        # Polygon API: /range/{multiplier}/{timespan}/{from}/{to}
+        sort_order = "desc" if unit == "minute" else "asc"
         data = self._get(
-            f"/v2/aggs/ticker/{symbol}/range/{timeframe}/minute/{from_date}/{to_date}",
-            params={"limit": limit, "sort": "desc"}  # CRITICAL: desc = newest first
+            f"/v2/aggs/ticker/{symbol}/range/{timeframe}/{unit}/{from_date}/{to_date}",
+            params={"limit": limit, "sort": sort_order}
         )
         
         if not data or data.get("status") != "OK":
@@ -437,7 +442,9 @@ class PolygonAdapter:
         
         # Reverse to chronological order (oldest first) for indicator calculations
         # We fetch sort=desc to get NEWEST bars within limit, then reverse
-        return list(reversed(bars))
+        if sort_order == "desc":
+            return list(reversed(bars))
+        return bars
     
     def get_second_bars(
         self,

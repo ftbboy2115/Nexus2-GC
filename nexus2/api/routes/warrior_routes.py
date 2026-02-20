@@ -78,6 +78,7 @@ class WarriorEngineConfigRequest(BaseModel):
     max_shares_per_trade: Optional[int] = Field(None, ge=1, description="Max shares per trade (for testing)")
     max_value_per_trade: Optional[float] = Field(None, gt=0, description="Max $ value per trade (for testing)")
     max_capital: Optional[float] = Field(None, gt=0, description="Max capital per single trade position")
+    entry_bar_timeframe: Optional[str] = Field(None, description="Entry bar timeframe: '1min' or '10s'", pattern="^(1min|10s)$")
 
 
 class ScalingSettingsRequest(BaseModel):
@@ -495,6 +496,10 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         engine.config.max_capital = Decimal(str(request.max_capital))
         updated["max_capital"] = request.max_capital
     
+    if request.entry_bar_timeframe is not None:
+        engine.config.entry_bar_timeframe = request.entry_bar_timeframe
+        updated["entry_bar_timeframe"] = request.entry_bar_timeframe
+    
     # Save settings to persist across restarts
     try:
         from nexus2.db.warrior_settings import save_warrior_settings, get_config_dict
@@ -516,6 +521,7 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
             "max_shares_per_trade": engine.config.max_shares_per_trade,
             "max_value_per_trade": float(engine.config.max_value_per_trade) if engine.config.max_value_per_trade else None,
             "max_capital": float(engine.config.max_capital),
+            "entry_bar_timeframe": engine.config.entry_bar_timeframe,
         }
     }
 

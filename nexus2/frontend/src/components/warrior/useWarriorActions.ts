@@ -33,7 +33,7 @@ export interface UseWarriorActionsReturn {
 
     // Config
     toggleAutoEnable: () => Promise<void>
-    updateConfig: (field: string, value: number | boolean) => Promise<void>
+    updateConfig: (field: string, value: number | boolean | string) => Promise<void>
 
     // Generic action handler for custom use
     handleAction: (actionId: string, endpoint: string, method?: 'GET' | 'POST' | 'PUT', body?: object) => Promise<any>
@@ -114,7 +114,7 @@ export function useWarriorActions({
     }, [status?.auto_enable, addToLog, refetch])
 
     // Config updates
-    const updateConfig = useCallback(async (field: string, value: number | boolean) => {
+    const updateConfig = useCallback(async (field: string, value: number | boolean | string) => {
         setActionLoading(`config-${field}`)
         try {
             const res = await fetch(`${API_BASE}/warrior/config`, {

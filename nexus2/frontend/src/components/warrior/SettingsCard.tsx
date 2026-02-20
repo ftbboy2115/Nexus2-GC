@@ -13,11 +13,12 @@ interface WarriorConfig {
     max_capital?: number
     orb_enabled?: boolean
     pmh_enabled?: boolean
+    entry_bar_timeframe?: string  // "1min" or "10s"
 }
 
 interface SettingsCardProps {
     config?: WarriorConfig
-    updateConfig: (key: string, value: number | boolean) => void
+    updateConfig: (key: string, value: number | boolean | string) => void
 }
 
 export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
@@ -148,6 +149,17 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         className={config?.pmh_enabled ? styles.btnToggleOn : styles.btnToggleOff}
                     >
                         {config?.pmh_enabled ? '✅' : '❌'} PMH
+                    </button>
+                    {/* Bar Timeframe Toggle */}
+                    <button
+                        onClick={() => updateConfig(
+                            'entry_bar_timeframe',
+                            config?.entry_bar_timeframe === '10s' ? '1min' : '10s'
+                        )}
+                        className={config?.entry_bar_timeframe === '10s' ? styles.btnToggleOn : styles.btnToggleOff}
+                        title="Entry bar timeframe: 10s for faster entry, 1min for standard"
+                    >
+                        {config?.entry_bar_timeframe === '10s' ? '⚡' : '📊'} {config?.entry_bar_timeframe === '10s' ? '10s Bars' : '1min Bars'}
                     </button>
                 </div>
             </div>

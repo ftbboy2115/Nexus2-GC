@@ -392,7 +392,11 @@ async def detect_dip_for_level(
     if engine._get_intraday_bars:
         try:
             if activity_candles is None:
-                activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+                tf = engine.config.entry_bar_timeframe
+                if tf == "10s":
+                    activity_candles = await engine._get_intraday_bars(symbol, "10s", limit=60)
+                else:
+                    activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
             
             logger.info(
                 f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market check - "
@@ -400,12 +404,22 @@ async def detect_dip_for_level(
             )
             
             if activity_candles:
-                market_active, inactive_reason = check_active_market(
-                    activity_candles,
-                    min_bars=5,
-                    min_volume_per_bar=1000,
-                    max_time_gap_minutes=15,
-                )
+                # Adjust thresholds for 10s bars vs 1min bars
+                tf = engine.config.entry_bar_timeframe
+                if tf == "10s":
+                    market_active, inactive_reason = check_active_market(
+                        activity_candles,
+                        min_bars=18,
+                        min_volume_per_bar=200,
+                        max_time_gap_minutes=5,
+                    )
+                else:
+                    market_active, inactive_reason = check_active_market(
+                        activity_candles,
+                        min_bars=5,
+                        min_volume_per_bar=1000,
+                        max_time_gap_minutes=15,
+                    )
                 logger.info(
                     f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market result: "
                     f"active={market_active}, reason='{inactive_reason}'"
@@ -558,17 +572,30 @@ async def detect_pmh_break(
     
     if engine._get_intraday_bars:
         try:
-            activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
+            tf = engine.config.entry_bar_timeframe
+            if tf == "10s":
+                activity_candles = await engine._get_intraday_bars(symbol, "10s", limit=60)
+            else:
+                activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
             logger.info(
                 f"[Warrior Entry] {symbol}: Active market check - got {len(activity_candles) if activity_candles else 0} candles"
             )
             if activity_candles:
-                market_active, inactive_reason = check_active_market(
-                    activity_candles,
-                    min_bars=5,
-                    min_volume_per_bar=1000,
-                    max_time_gap_minutes=15,
-                )
+                # Adjust thresholds for 10s bars vs 1min bars
+                if tf == "10s":
+                    market_active, inactive_reason = check_active_market(
+                        activity_candles,
+                        min_bars=18,
+                        min_volume_per_bar=200,
+                        max_time_gap_minutes=5,
+                    )
+                else:
+                    market_active, inactive_reason = check_active_market(
+                        activity_candles,
+                        min_bars=5,
+                        min_volume_per_bar=1000,
+                        max_time_gap_minutes=15,
+                    )
                 logger.info(
                     f"[Warrior Entry] {symbol}: Active market result: active={market_active}, reason='{inactive_reason}'"
                 )

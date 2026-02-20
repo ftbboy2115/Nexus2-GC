@@ -137,6 +137,11 @@ class WarriorEngineConfig:
     
     # HOD Consolidation Break (Ross: "Break of high-of-day" — MLEC $43K trade)
     hod_break_enabled: bool = True  # Enable HOD consolidation break pattern detection
+    
+    # Entry bar timeframe (configurable: "1min" or "10s")
+    # Ross Cameron uses 10s charts for entry timing. 10s bars enable faster
+    # activation and finer-grained pattern detection.
+    entry_bar_timeframe: str = "1min"  # Options: "1min", "10s"
 
 
 @dataclass
