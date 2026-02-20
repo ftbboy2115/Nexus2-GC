@@ -256,7 +256,7 @@ export default function DataExplorer() {
 
     // Preferred column order per tab - ensures stable column positions
     const PREFERRED_COLUMN_ORDER: Record<TabType, string[]> = {
-        'warrior-scans': ['timestamp', 'symbol', 'result', 'reason', 'country', 'float', 'rvol', 'price', 'gap_pct', 'catalyst', 'ema_200', 'room_to_ema_pct', 'is_etb', 'score', 'name', 'source'],
+        'warrior-scans': ['timestamp', 'symbol', 'result', 'reason', 'country', 'float', 'rvol', 'price', 'gap_pct', 'catalyst', 'ema_200', 'room_to_ema_pct', 'is_etb', 'score', 'name'],
         'nac-scans': ['timestamp', 'symbol', 'result', 'gap_pct', 'rvol', 'volume', 'catalyst', 'reason'],
         'catalyst-audits': ['timestamp', 'symbol', 'regex_result', 'regex_match_type', 'headline_index', 'confidence', 'headline', 'passed'],
         'ai-comparisons': ['timestamp', 'symbol', 'flash_valid', 'pro_valid', 'tiebreaker_used', 'regex_conf', 'flash_ms', 'reason'],
