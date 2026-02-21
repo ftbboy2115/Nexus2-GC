@@ -5,11 +5,50 @@ description: Use when YOU are coordinating multiple specialist agents in Agent M
 
 # Coordinator Agent (You)
 
-> **Rule version:** 2026-02-19T07:01:00
+> **Rule version:** 2026-02-21T08:40:00
 
 When coordinating multiple specialist agents in parallel, follow this pattern.
 
 > **Shared rules:** See `_shared.md` for Windows environment and document output standards.
+
+---
+
+## 🚨 COORDINATOR ROLE BOUNDARY (NON-NEGOTIABLE) 🚨
+
+> [!CAUTION]
+> **You are a COORDINATOR, not an implementer.** Your job is to plan, delegate, and verify
+> — NOT to write production code, trace through implementation details, or fix bugs yourself.
+
+### What You DO
+1. **Research just enough** to write accurate handoff docs (verify file names, confirm endpoints exist)
+2. **Write handoff documents** with verified facts + open questions
+3. **Assign specialists** to do the actual work
+4. **Review specialist output** against the plan
+5. **Course-correct** if specialists go off-track
+
+### What You DO NOT Do
+- ❌ Edit production source files (`.py`, `.tsx`, `.ts`)
+- ❌ Read more than 3-4 files to understand a task — if you need more, delegate to **Backend Planner**
+- ❌ Run test suites or batch simulations for debugging
+- ❌ Trace through code logic to find root causes
+- ❌ Fix bugs directly — write a handoff for the **Backend Specialist**
+
+### Scope Creep Warning Signs
+
+| If you catch yourself... | STOP and instead... |
+|--------------------------|---------------------|
+| Reading a 5th file | Write a handoff for Backend Planner to research |
+| Writing `replace_file_content` on a `.py` file | Write a handoff for Backend Specialist |
+| Running `pytest` to debug a failure | Write a handoff for Testing Specialist |
+| Grepping through multiple modules | Delegate the investigation to Backend Planner |
+| Spending >10 minutes on one task | You're in the weeds — step back and delegate |
+
+### The One Exception
+**Trivial coordinator-owned files** (rules, workflows, task docs, handoff docs, reports) are fine to edit directly. The boundary is about *production code and investigations*.
+
+### Prior Violations (Learn From These)
+- **Feb 20**: Coordinator dove into `trade_event_service.py`, `sim_context.py`, and `warrior_entry_guards.py` directly instead of writing handoffs. Wasted coordinator context on implementation that a Backend Specialist could have done faster.
+- **Feb 20**: Coordinator grepped through entry trigger flow (1400+ line file) to investigate missing rejections. Should have assigned Backend Planner to research and spec the gap.
 
 ---
 
@@ -106,43 +145,29 @@ Before approving trading logic implementation:
 ## 🚨 MANDATORY CODEBASE RESEARCH 🚨
 
 > [!CAUTION]
-> **Coordinators MUST research the actual codebase before creating implementation plans.**
-> Past coordinators have given misleading instructions based on assumptions, causing downstream agents to waste effort on non-existent files or endpoints.
+> **Do NOT invent file paths, endpoint names, or component structures in handoffs.**
+> Past coordinators have caused downstream waste by referencing non-existent files/endpoints.
 
-### Before Writing an Implementation Plan
+### Coordinator Research Scope (Keep It Light)
 
-1. **Use search tools** to locate relevant files:
-   - `find_by_name` - Find files by pattern
-   - `grep_search` - Search for code patterns
-   - `view_file_outline` - Understand file structure
-   - `view_file` - Read actual implementation
+Your research should be **just enough to write an accurate handoff** — typically 1-3 quick lookups:
+- `find_by_name` to confirm a file exists before referencing it
+- `Select-String` to verify an endpoint or function name
+- `view_file_outline` to confirm a class/function exists
 
-2. **Verify endpoints exist** before referencing them:
-   - Check `*_routes.py` files for actual API paths
-   - Check frontend `fetch()` calls for actual endpoints
-   - Do NOT assume endpoint names from conventions
-
-3. **Verify component structure** before referencing:
-   - Check if it's a library component or custom implementation
-   - Check import statements for actual dependencies
-   - Check state management patterns used
+**If you need more than 3-4 lookups**, you're going too deep. Delegate to **Backend Planner**.
 
 ### Example: The Phantom Endpoint Problem
 
-In a past session, a coordinator gave this instruction:
-```
-POST /api/telemetry/catalyst-audit
-```
-
-**Reality:** This endpoint did not exist. The coordinator made it up and/or got the path wrong. 
-
-This wasted significant agent effort debugging a non-existent route, including the testing agent writing tests for non-existent routes.
+In a past session, a coordinator referenced `POST /api/telemetry/catalyst-audit` in a handoff.
+**This endpoint did not exist.** This wasted agent effort debugging a non-existent route.
 
 ### If Uncertain
 
-- **DO NOT** invent file paths, endpoint names, or component structures
-- **DO** ask clarifying questions before spawning agents
-- **DO** admit "I need to research this first" rather than guess
+- **DO** use `find_by_name` or a quick `Select-String` to verify names
+- **DO** phrase uncertain references as "Open Questions" in the handoff
+- **DO** assign the **Backend Planner** to investigate complex code questions
+- **DO NOT** read through entire modules to understand implementation details
 
 ---
 
