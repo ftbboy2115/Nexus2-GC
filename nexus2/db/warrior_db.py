@@ -76,6 +76,7 @@ class WarriorTradeModel(WarriorBase):
     # Partial tracking
     partial_taken = Column(Boolean, default=False)
     remaining_quantity = Column(Integer, nullable=True)
+    partial_exit_prices = Column(Text, nullable=True)  # JSON: [{"price": 20.15, "qty": 651}, ...]
     
     # Broker order tracking
     entry_order_id = Column(String(36), nullable=True)  # Alpaca order ID for entry
@@ -123,6 +124,7 @@ class WarriorTradeModel(WarriorBase):
             "realized_pnl": self.realized_pnl,
             "partial_taken": self.partial_taken,
             "remaining_quantity": self.remaining_quantity,
+            "partial_exit_prices": self.partial_exit_prices,
             "entry_order_id": self.entry_order_id,
             "exit_order_id": self.exit_order_id,
             "high_since_entry": self.high_since_entry,
@@ -251,6 +253,12 @@ def init_warrior_db():
             conn.commit()
         except Exception:
             pass  # Column already exists
+        # Partial exit prices tracking (sim display fix)
+        try:
+            conn.execute(text("ALTER TABLE warrior_trades ADD COLUMN partial_exit_prices TEXT"))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
     
     print(f"[Warrior DB] Initialized at {WARRIOR_DB_PATH}")
 
@@ -280,6 +288,8 @@ def log_warrior_entry(
     is_sim: bool = False,
     # Batch run tracking (concurrent batch runner)
     batch_run_id: str = None,
+    # Timestamp override (sim mode uses sim clock instead of wall-clock)
+    entry_time_override: datetime = None,
 ):
     """Log a new Warrior trade entry with quote tracking."""
     # Default high_since_entry to entry_price if not provided
@@ -292,7 +302,7 @@ def log_warrior_entry(
             status=PositionStatus.OPEN.value,
             entry_price=str(entry_price),
             quantity=quantity,
-            entry_time=now_utc(),
+            entry_time=entry_time_override or now_utc(),
             trigger_type=trigger_type,
             stop_price=str(stop_price),
             stop_method=stop_method,
@@ -372,6 +382,7 @@ def log_warrior_exit(
     exit_price: float,
     exit_reason: str,
     quantity_exited: int = None,
+    exit_time_override: datetime = None,
 ):
     """Log a Warrior trade exit (full or partial)."""
     with get_warrior_session() as db:
@@ -384,7 +395,7 @@ def log_warrior_exit(
             # Full exit
             trade.status = PositionStatus.CLOSED.value
             trade.exit_price = str(exit_price)
-            trade.exit_time = now_utc()
+            trade.exit_time = exit_time_override or now_utc()
             trade.exit_reason = exit_reason
             
             # Calculate P&L for remaining shares only, add to accumulated partial P&L
@@ -397,6 +408,12 @@ def log_warrior_exit(
             trade.status = PositionStatus.PARTIAL.value
             trade.partial_taken = True
             trade.remaining_quantity -= quantity_exited
+            
+            # Track partial exit prices for avg_exit_price calculation
+            import json
+            existing_partials = json.loads(trade.partial_exit_prices or "[]")
+            existing_partials.append({"price": exit_price, "qty": quantity_exited})
+            trade.partial_exit_prices = json.dumps(existing_partials)
             
             # Calculate and accumulate P&L for partial shares
             entry = float(trade.entry_price)

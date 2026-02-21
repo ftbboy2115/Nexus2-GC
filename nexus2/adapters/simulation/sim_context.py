@@ -343,6 +343,7 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
                         exit_price=float(signal.exit_price),
                         exit_reason=exit_reason,
                         quantity_exited=shares_to_sell,
+                        exit_time_override=ctx.clock.current_time,
                     )
             except Exception as e:
                 log.warning(f"[{case_id}] warrior_db exit log failed: {e}")
@@ -494,6 +495,58 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
 
 
 
+def _compute_avg_exit_price(wt: dict) -> float | None:
+    """Compute volume-weighted average exit price across all exits (partials + final).
+
+    Args:
+        wt: Trade dict from warrior_db (has partial_exit_prices JSON, exit_price, remaining_quantity, quantity)
+
+    Returns:
+        Volume-weighted average exit price, or exit_price if no partials, or None if no exit.
+    """
+    import json
+
+    exit_price_str = wt.get("exit_price")
+    partial_json = wt.get("partial_exit_prices")
+
+    # No exit at all
+    if not exit_price_str:
+        return None
+
+    final_exit_price = float(exit_price_str)
+    original_qty = wt.get("quantity", 0)
+
+    # No partials — just use exit_price
+    if not partial_json:
+        return round(final_exit_price, 2)
+
+    try:
+        partials = json.loads(partial_json)
+    except (json.JSONDecodeError, TypeError):
+        return round(final_exit_price, 2)
+
+    if not partials:
+        return round(final_exit_price, 2)
+
+    # Compute VWAP across all exits
+    total_value = 0.0
+    total_qty = 0
+    for p in partials:
+        total_value += p["price"] * p["qty"]
+        total_qty += p["qty"]
+
+    # Final exit quantity = original - partial total
+    final_qty = original_qty - total_qty
+    if final_qty > 0:
+        total_value += final_exit_price * final_qty
+        total_qty += final_qty
+
+    if total_qty <= 0:
+        return round(final_exit_price, 2)
+
+    return round(total_value / total_qty, 4)
+
+
 def _run_case_sync(case_tuple: tuple) -> dict:
     """
     Run a single test case in a separate process.
@@ -524,7 +577,27 @@ def _run_case_sync(case_tuple: tuple) -> dict:
 
 
 async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
-    """Async wrapper that creates SimContext and runs one case in an isolated process."""
+    """Async wrapper that creates SimContext and runs one case in an isolated process.
+
+    NOTE: Dual P&L System
+    ---------------------
+    Two independent P&L calculations exist in the sim engine:
+
+    1. MockBroker P&L (top-level `total_pnl` in result):
+       Formula: (current_price - avg_entry_price) × sell_qty
+       Source: mock_broker.py → ctx.broker.get_account()["realized_pnl"]
+
+    2. warrior_db P&L (per-trade `pnl` in result):
+       Formula: (exit_price - entry) × quantity, accumulated across partial exits
+       Source: warrior_db.py → trade.realized_pnl
+
+    These can diverge when scale-ins shift avg_entry_price in MockBroker but
+    warrior_db uses the original (or updated via complete_scaling) entry_price.
+    The per-trade pnl from warrior_db is what users see in trade details.
+
+    When partial exits occur, the displayed exit_price only shows the FINAL exit,
+    while realized_pnl includes all partials. Use avg_exit_price for reconciliation.
+    """
     import time
     case_id = case.get("id", "unknown")
     symbol = case.get("symbol", "")
@@ -579,6 +652,7 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
                             exit_price=float(eod_price),
                             exit_reason="eod_close",
                             quantity_exited=pos_qty,
+                            exit_time_override=ctx.clock.current_time,
                         )
                 except Exception as e:
                     log.warning(f"[{case_id}] warrior_db EOD exit failed: {e}")
@@ -603,6 +677,10 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
                             "exit_price": round(float(wt.get("exit_price", 0)), 2) if wt.get("exit_price") else None,
                             "shares": wt.get("quantity", 0),
                             "pnl": round(float(wt.get("realized_pnl", 0)), 2),
+                            # Partial exit enrichment (sim display fix)
+                            "partial_taken": wt.get("partial_taken", False),
+                            "remaining_quantity": wt.get("remaining_quantity"),
+                            "avg_exit_price": _compute_avg_exit_price(wt),
                             "entry_trigger": wt.get("trigger_type"),
                             "exit_mode": wt.get("exit_mode"),
                             "exit_reason": wt.get("exit_reason"),

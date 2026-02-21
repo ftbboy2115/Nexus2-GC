@@ -1239,6 +1239,12 @@ async def enter_position(
                     quote_source="unified",  # TODO: Pass actual source from quote
                     exit_mode=selected_exit_mode,  # Auto-selected based on quality score
                     is_sim=engine.monitor.sim_mode,  # Track SIM vs LIVE
+                    # Sim clock timestamp (uses sim market time instead of wall-clock)
+                    entry_time_override=(
+                        engine._sim_clock.current_time
+                        if getattr(engine, '_sim_clock', None)
+                        else None
+                    ),
                 )
                 set_entry_order_id(order_id, order_id)
                 logger.info(
