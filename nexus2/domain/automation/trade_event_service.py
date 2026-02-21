@@ -303,6 +303,23 @@ class TradeEventService:
             logger.debug(f"[TradeEvent] Symbol technical context failed for {symbol}: {e}")
             return {}
     
+    def _get_event_timestamp(self) -> datetime:
+        """Get the appropriate timestamp for events.
+        
+        Uses sim clock when in sim mode, wall clock otherwise.
+        This ensures batch replay events get simulated timestamps
+        instead of today's wall clock time.
+        """
+        if is_sim_mode():
+            try:
+                from nexus2.adapters.simulation.sim_clock import get_simulation_clock
+                clock = get_simulation_clock()
+                if clock and clock.current_time:
+                    return clock.current_time
+            except Exception:
+                pass
+        return now_utc()
+
     def _log_event(
         self,
         strategy: str,
@@ -330,7 +347,7 @@ class TradeEventService:
                     new_value=new_value,
                     reason=reason,
                     metadata_json=json.dumps(metadata) if metadata else None,
-                    created_at=now_utc(),
+                    created_at=self._get_event_timestamp(),
                 )
                 db.add(event)
                 db.commit()
