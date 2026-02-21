@@ -694,6 +694,25 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         except Exception as e:
             log.warning(f"[{case_id}] Failed to extract trades from warrior_db: {e}")
 
+        # Extract guard block events from trade_events DB
+        guard_blocks = []
+        try:
+            from nexus2.db.database import get_session
+            from nexus2.db.models import TradeEventModel
+            with get_session() as db:
+                blocks = db.query(TradeEventModel).filter(
+                    TradeEventModel.event_type == "GUARD_BLOCK",
+                    TradeEventModel.symbol == symbol.upper(),
+                ).all()
+                for b in blocks:
+                    guard_blocks.append({
+                        "guard": b.new_value,
+                        "reason": b.reason,
+                        "symbol": b.symbol,
+                    })
+        except Exception as e:
+            log.warning(f"[{case_id}] Failed to extract guard blocks: {e}")
+
         return {
             "case_id": case_id, "symbol": symbol,
             "date": case.get("trade_date"),
@@ -704,6 +723,8 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
             "total_pnl": total_pnl,
             "ross_pnl": ross_pnl,
             "delta": round(total_pnl - ross_pnl, 2),
+            "guard_blocks": guard_blocks,
+            "guard_block_count": len(guard_blocks),
             "runtime_seconds": case_time,
         }
     except Exception as e:

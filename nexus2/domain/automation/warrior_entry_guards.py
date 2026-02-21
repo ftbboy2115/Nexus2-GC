@@ -122,7 +122,9 @@ async def check_entry_guards(
         seconds_ago = (now_utc() - exit_time).total_seconds()
         cooldown = engine.monitor._recovery_cooldown_seconds
         if seconds_ago < cooldown:
-            return False, f"Re-entry cooldown - exited {seconds_ago:.0f}s ago (waiting {cooldown}s)"
+            reason = f"Re-entry cooldown - exited {seconds_ago:.0f}s ago (waiting {cooldown}s)"
+            tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price)
+            return False, reason
     
     # SIM MODE COOLDOWN
     if engine.monitor.sim_mode and symbol in engine.monitor._recently_exited_sim_time:

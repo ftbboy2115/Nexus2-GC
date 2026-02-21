@@ -984,8 +984,8 @@ class TradeEventService:
         """
         Log when an entry guard blocks a trade attempt.
         
-        This is TML file-only (no DB write) to avoid noise in the events table.
-        Guard blocks happen frequently and are primarily for forensic review.
+        Writes to BOTH the TML file (forensic review) AND the database
+        (queryable via Data Explorer → Trade Events tab).
         """
         price_str = f"${price:.2f}" if price else "N/A"
         details = f"guard={guard_name} | trigger={trigger_type} | price={price_str} | {reason}"
@@ -995,6 +995,20 @@ class TradeEventService:
             symbol=symbol,
             event_type=self.WARRIOR_GUARD_BLOCK,
             details=details,
+        )
+        
+        self._log_event(
+            strategy="WARRIOR",
+            position_id="GUARD_BLOCK",
+            symbol=symbol,
+            event_type=self.WARRIOR_GUARD_BLOCK,
+            new_value=guard_name,
+            reason=reason,
+            metadata={
+                "guard_name": guard_name,
+                "trigger_type": trigger_type,
+                "price": price,
+            },
         )
     
     def log_warrior_reentry_enabled(
