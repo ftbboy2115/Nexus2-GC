@@ -75,7 +75,7 @@ def get_ross_traded_winners():
         if tc.get("ross_traded", False)
         and tc.get("outcome") == "winner"
         and tc.get("setup_type") not in NON_GAP_SCANNER_SETUPS
-        and tc.get("premarket_data", {}).get("gap_percent", 0) >= 4.0
+        and (tc.get("premarket_data", {}).get("gap_percent") or 0) >= 4.0
     ]
 
 
@@ -101,6 +101,22 @@ def scanner_service():
     return service
 
 
+def _safe_premarket_vals(tc: dict):
+    """Extract prev_close and gap_pct with None-safe defaults.
+    
+    Some test cases (e.g. EDHL) have all-null premarket data.
+    None means 'no data', 0 means 'calculated and the value is 0'.
+    """
+    premarket = tc.get("premarket_data", {})
+    prev_close = premarket.get("previous_close")
+    if prev_close is None:
+        prev_close = 5.0
+    gap_pct = premarket.get("gap_percent")
+    if gap_pct is None:
+        gap_pct = 25.0
+    return prev_close, gap_pct
+
+
 def setup_mocks_for_case(scanner: WarriorScannerService, tc: dict):
     """
     Configure all mocks on the scanner to simulate the market conditions
@@ -120,9 +136,8 @@ def setup_mocks_for_case(scanner: WarriorScannerService, tc: dict):
     expected = tc.get("expected", {})
     symbol = tc.get("symbol")
 
-    prev_close = premarket.get("previous_close", 5.0)
-    gap_pct = premarket.get("gap_percent", 25.0)
-    pmh = premarket.get("premarket_high", prev_close * (1 + gap_pct / 100))
+    prev_close, gap_pct = _safe_premarket_vals(tc)
+    pmh = premarket.get("premarket_high") or prev_close * (1 + gap_pct / 100)
     entry_near = expected.get("entry_near", pmh)
     float_shares = premarket.get("float_shares", 5_000_000)
     catalyst = premarket.get("catalyst", "news")
@@ -253,8 +268,7 @@ class TestScannerPicksUpValidTickers:
         setup_mocks_for_case(scanner_service, tc)
 
         premarket = tc.get("premarket_data", {})
-        prev_close = premarket.get("previous_close", 5.0)
-        gap_pct = premarket.get("gap_percent", 25.0)
+        prev_close, gap_pct = _safe_premarket_vals(tc)
         expected = tc.get("expected", {})
         entry_near = expected.get("entry_near")
         current_price = entry_near if entry_near else prev_close * (1 + gap_pct / 100)
@@ -301,8 +315,7 @@ class TestScannerPillarIsolation:
         """Price pillar should accept all test case prices ($1.50 - $40)."""
         premarket = tc.get("premarket_data", {})
         expected = tc.get("expected", {})
-        prev_close = premarket.get("previous_close", 5.0)
-        gap_pct = premarket.get("gap_percent", 25.0)
+        prev_close, gap_pct = _safe_premarket_vals(tc)
         entry_near = expected.get("entry_near")
         price = entry_near if entry_near else prev_close * (1 + gap_pct / 100)
 
@@ -333,8 +346,8 @@ class TestScannerPillarIsolation:
         """Gap pillar should accept all test case gap percentages."""
         premarket = tc.get("premarket_data", {})
         expected = tc.get("expected", {})
-        gap_pct = premarket.get("gap_percent", 25.0)
-        prev_close = premarket.get("previous_close", 5.0)
+        prev_close, gap_pct = _safe_premarket_vals(tc)
+
         entry_near = expected.get("entry_near")
         price = entry_near if entry_near else prev_close * (1 + gap_pct / 100)
         session_open = prev_close * (1 + gap_pct / 100)
@@ -487,8 +500,7 @@ class TestScannerSummaryReport:
 
             premarket = tc.get("premarket_data", {})
             expected = tc.get("expected", {})
-            prev_close = premarket.get("previous_close", 5.0)
-            gap_pct = premarket.get("gap_percent", 25.0)
+            prev_close, gap_pct = _safe_premarket_vals(tc)
             entry_near = expected.get("entry_near")
             current_price = entry_near if entry_near else prev_close * (1 + gap_pct / 100)
 
@@ -527,7 +539,7 @@ class TestScannerSummaryReport:
                 ross_note = f" (Ross: ${(tc.get('ross_pnl') or 0):,.0f})" if tc.get("ross_traded") else ""
                 print(
                     f"  {tc['symbol']:6s} | Score: {cand.quality_score:2d} | "
-                    f"Gap: {tc['premarket_data'].get('gap_percent', 0):6.1f}% | "
+                    f"Gap: {(tc['premarket_data'].get('gap_percent') or 0):6.1f}% | "
                     f"RVOL: {float(cand.relative_volume):5.1f}x | "
                     f"{tc.get('outcome', '?'):8s}{ross_note}"
                 )
@@ -540,7 +552,7 @@ class TestScannerSummaryReport:
                 ross_note = f" (Ross: ${(tc.get('ross_pnl') or 0):,.0f})" if tc.get("ross_traded") else ""
                 print(
                     f"  {tc['symbol']:6s} | "
-                    f"Gap: {tc['premarket_data'].get('gap_percent', 0):6.1f}% | "
+                    f"Gap: {(tc['premarket_data'].get('gap_percent') or 0):6.1f}% | "
                     f"{tc.get('outcome', '?'):8s}{ross_note} | "
                     f"Error: {err if isinstance(err, str) else 'Rejected'}"
                 )
