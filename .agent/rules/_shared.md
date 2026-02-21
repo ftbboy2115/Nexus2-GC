@@ -27,6 +27,26 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 
 ---
 
+## 🔍 Search Tool Limitation (Path with Spaces)
+
+> [!WARNING]
+> The project path contains spaces and parentheses: `Documents (sync'd)`
+> The built-in `grep_search` / `codebase_search` tools may return **0 results even when matches exist** due to path encoding issues.
+
+**Workarounds (use these FIRST before concluding code doesn't exist):**
+1. Use `view_file` to inspect specific files at known line numbers
+2. Use `Select-String` via `run_command` with properly quoted paths:
+   ```powershell
+   Select-String -Path "nexus2\db\warrior_db.py" -Pattern "partial_exit_prices"
+   ```
+3. Use `view_code_item` or `view_file_outline` for structural exploration
+
+> [!CAUTION]
+> **Do NOT conclude that code is missing based solely on grep_search returning 0 results.**
+> Always verify with `view_file` before reporting a claim as FAILED.
+
+---
+
 ## ⚠️ Command Execution (CRITICAL)
 
 > [!WARNING]
