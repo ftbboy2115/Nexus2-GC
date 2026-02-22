@@ -633,6 +633,7 @@ test_cases:
     data_source: polygon
     ross_pnl: 55252.51  # Per-trade P&L for HIND. Day total was $59,752.51 minus BCTX +$4,500
     ross_entry_time: "08:00"  # Breaking news hit, Ross jumped in
+    ross_chart_timeframe: "10s"  # Ross used 10-second chart for micro-timing
     premarket_data:
       gap_percent: 8.7
       premarket_high: 7.57
@@ -643,6 +644,31 @@ test_cases:
       entry_near: 5.00  # First entry near $5 for breakout
       stop_near: 4.75
     notes: "Ross used ALL buying power (~$370k). Day total $59,752.51 included BCTX +$4,500. Added every 50 cents: $5→$5.50→$6→$6.50→$7→$7.40."
+
+  - id: ross_bctx_20260127
+    symbol: BCTX
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    description: "Ross Cameron +$4,500 - Breaking News Phase 2 Breast Cancer Trial"
+    trade_date: "2026-01-27"
+    intraday_file: "intraday/ross_bctx_20260127.json"
+    data_source: polygon
+    ross_pnl: 4500.00  # Per-trade P&L for BCTX. Day total was $59,752.51 (HIND +$55,252 + BCTX +$4,500)
+    ross_entry_time: "07:30"  # Breaking news spike, micro pullback entry
+    ross_chart_timeframe: "10s"  # Ross used 10-second chart for micro-timing
+    premarket_data:
+      gap_percent: -1.7
+      premarket_high: 6.03
+      previous_close: 4.68  # From data: first bar open
+      float_shares: 5000000
+      catalyst: "news"  # Phase 2 metastatic breast cancer trial
+    expected:
+      entry_near: 5.00  # Break of $5 whole number
+      stop_near: 4.75
+    notes: "Canadian company, low float. Breaking news: Phase 2 breast cancer trial. PMH $6.03 was single-bar wick at 07:31. Entry on $5 break, adds $5.39-$5.46, peak $6. Sold on pullback — disappointed it didn't hold $6. Sub-minute moves only visible on 10s chart."
 
   - id: ross_dcx_20260129
     symbol: DCX

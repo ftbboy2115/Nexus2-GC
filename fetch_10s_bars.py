@@ -44,4 +44,18 @@ def fetch_10s_bars(symbol: str, date: str):
     print(f"Time range (ET): {first_time} to {last_time}")
 
 if __name__ == "__main__":
-    fetch_10s_bars("GRI", "2026-01-28")
+    import sys
+    if len(sys.argv) >= 3:
+        fetch_10s_bars(sys.argv[1], sys.argv[2])
+    else:
+        # Fetch all 10s chart cases
+        cases = [
+            ("GRI", "2026-01-28"),
+            ("HIND", "2026-01-27"),
+            ("BCTX", "2026-01-27"),
+        ]
+        for symbol, date in cases:
+            try:
+                fetch_10s_bars(symbol, date)
+            except Exception as e:
+                print(f"Error fetching {symbol}: {e}")
