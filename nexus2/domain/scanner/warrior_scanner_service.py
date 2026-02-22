@@ -1853,4 +1853,14 @@ def get_warrior_scanner_service() -> WarriorScannerService:
             scan_logger.warning(f"Could not create AlpacaBroker for ETB checks: {e}")
             alpaca_broker = None
         _warrior_scanner_service = WarriorScannerService(alpaca_broker=alpaca_broker)
+        
+        # Load persisted scanner settings (survive restarts)
+        try:
+            from nexus2.db.warrior_scanner_settings import load_scanner_settings, apply_scanner_settings
+            saved = load_scanner_settings()
+            if saved:
+                apply_scanner_settings(_warrior_scanner_service.settings, saved)
+                scan_logger.info(f"Loaded persisted scanner settings: min_rvol={_warrior_scanner_service.settings.min_rvol}")
+        except Exception as e:
+            scan_logger.warning(f"Could not load persisted scanner settings: {e}")
     return _warrior_scanner_service

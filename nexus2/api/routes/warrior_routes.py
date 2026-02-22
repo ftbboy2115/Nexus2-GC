@@ -812,6 +812,13 @@ async def update_warrior_scanner_settings(request: WarriorScannerSettingsRequest
     if request.require_catalyst is not None:
         scanner.settings.require_catalyst = request.require_catalyst
     
+    # Persist scanner settings to disk (survive restarts)
+    try:
+        from nexus2.db.warrior_scanner_settings import save_scanner_settings, get_scanner_settings_dict
+        save_scanner_settings(get_scanner_settings_dict(scanner.settings))
+    except Exception as e:
+        print(f"[Warrior] Failed to persist scanner settings: {e}")
+    
     return {"status": "updated", "settings": await get_warrior_scanner_settings()}
 
 
