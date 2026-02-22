@@ -416,6 +416,20 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 micro_trigger = await _check_micro_pullback_pattern(engine, watched, current_price)
                 if micro_trigger:
                     await enter_position(engine, watched, current_price, micro_trigger)
+                else:
+                    # Log first skip per symbol (throttled to avoid noise)
+                    if not getattr(watched, '_micro_skip_logged', False):
+                        from nexus2.domain.automation.trade_event_service import trade_event_service
+                        trade_event_service.log_warrior_trigger_rejection(
+                            symbol=symbol,
+                            best_pattern="MICRO_PULLBACK_SKIP",
+                            best_score=0.0,
+                            threshold=0.0,
+                            candidate_count=0,
+                            price=float(current_price),
+                            all_candidates={},
+                        )
+                        watched._micro_skip_logged = True
                 continue  # Skip PMH break logic for extended stocks
             
             # =============================================================================
@@ -614,6 +628,17 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                     logger.info(
                         f"[Warrior Entry] {symbol}: Best candidate {winner.pattern.name} "
                         f"BELOW THRESHOLD ({winner.score:.3f} < {MIN_SCORE_THRESHOLD})"
+                    )
+                    # Persist rejection to DB for analytics (closest-to-trade events)
+                    from nexus2.domain.automation.trade_event_service import trade_event_service
+                    trade_event_service.log_warrior_trigger_rejection(
+                        symbol=symbol,
+                        best_pattern=winner.pattern.name,
+                        best_score=winner.score,
+                        threshold=MIN_SCORE_THRESHOLD,
+                        candidate_count=len(candidates),
+                        price=float(current_price),
+                        all_candidates={c.pattern.name: c.score for c in candidates},
                     )
                     
         except Exception as e:

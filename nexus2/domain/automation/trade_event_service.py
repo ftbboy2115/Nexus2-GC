@@ -7,6 +7,7 @@ Supports both NAC (KK swing) and Warrior (day trading) strategies.
 
 import json
 import logging
+import time
 from contextvars import ContextVar
 from datetime import datetime
 from decimal import Decimal
@@ -76,6 +77,7 @@ class TradeEventService:
     WARRIOR_FILL_CONFIRMED = "FILL_CONFIRMED"  # Broker fill price received (entry)
     WARRIOR_EXIT_FILL_CONFIRMED = "EXIT_FILL_CONFIRMED"  # Broker exit fill received
     WARRIOR_GUARD_BLOCK = "GUARD_BLOCK"  # Entry blocked by guard (position, macd, cooldown, etc.)
+    WARRIOR_TRIGGER_REJECTION = "TRIGGER_REJECTION"  # Pattern scored but below threshold
     WARRIOR_REENTRY_ENABLED = "REENTRY_ENABLED"  # Re-entry enabled after profit exit (Phase 11 C4)
     
     def __init__(self):
@@ -84,6 +86,10 @@ class TradeEventService:
         self._nac_log_path = Path(__file__).parent.parent.parent.parent / "data" / "nac_trade.log"
         self._nac_log_path.parent.mkdir(exist_ok=True)
         self._warrior_log_path = Path(__file__).parent.parent.parent.parent / "data" / "warrior_trade.log"
+        
+        # Dedup tracker for trigger rejections: {"SYMBOL_PATTERN": timestamp}
+        # Prevents redundant events during live trading (5s poll cycles)
+        self._trigger_rejection_dedup: Dict[str, float] = {}
     
     def _log_to_file(self, strategy: str, symbol: str, event_type: str, details: str, order_id: str = None):
         """Append event to persistent TML file for forensics (NAC and Warrior)."""
@@ -1026,6 +1032,67 @@ class TradeEventService:
                 "trigger_type": trigger_type,
                 "price": price,
             },
+        )
+    
+    def log_warrior_trigger_rejection(
+        self,
+        symbol: str,
+        best_pattern: str,
+        best_score: float,
+        threshold: float,
+        candidate_count: int,
+        price: float,
+        all_candidates: Dict[str, float],
+    ) -> None:
+        """Log when a pattern candidate is rejected for being below score threshold.
+        
+        This is the closest the engine gets to entering without actually entering.
+        Persists to BOTH TML file and DB for analytics via Data Explorer.
+        
+        Includes 30-second per-symbol+pattern dedup to collapse redundant
+        events during live trading (5s poll cycles seeing same price/pattern).
+        """
+        # Dedup: skip if same symbol+pattern was rejected < 30s ago
+        dedup_key = f"{symbol}_{best_pattern}"
+        now = time.time()
+        last_ts = self._trigger_rejection_dedup.get(dedup_key, 0)
+        if (now - last_ts) < 30:
+            return  # Suppress duplicate within 30s window
+        self._trigger_rejection_dedup[dedup_key] = now
+        
+        gap_to_threshold = round(threshold - best_score, 4)
+        price_str = f"${price:.2f}" if price else "N/A"
+        
+        details = (
+            f"pattern={best_pattern} | score={best_score:.3f} < {threshold} "
+            f"(gap={gap_to_threshold:.3f}) | candidates={candidate_count} | price={price_str}"
+        )
+        
+        self._log_to_file(
+            strategy="WARRIOR",
+            symbol=symbol,
+            event_type=self.WARRIOR_TRIGGER_REJECTION,
+            details=details,
+        )
+        
+        metadata = {
+            "best_pattern": best_pattern,
+            "best_score": best_score,
+            "threshold": threshold,
+            "gap_to_threshold": gap_to_threshold,
+            "candidate_count": candidate_count,
+            "price": price,
+            "all_candidates": all_candidates,
+        }
+        
+        self._log_event(
+            strategy="WARRIOR",
+            position_id="TRIGGER_REJECTION",
+            symbol=symbol,
+            event_type=self.WARRIOR_TRIGGER_REJECTION,
+            new_value=best_pattern,
+            reason=f"{best_pattern} scored {best_score:.3f} < threshold {threshold}",
+            metadata=metadata,
         )
     
     def log_warrior_reentry_enabled(

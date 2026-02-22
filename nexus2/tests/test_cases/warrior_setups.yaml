@@ -1225,17 +1225,17 @@ test_cases:
     data_source: polygon
     description: "Ross Cameron -$112 - Speculative Chinese Stock, Quick Stop"
     trade_date: "2026-02-20"
-    intraday_file: null  # Not fetched — minor speculative loss
+    intraday_file: "intraday/ross_edhl_20260220.json"
     ross_pnl: -111.78
     premarket_data:
-      gap_percent: null
-      premarket_high: null
-      previous_close: null
-      float_shares: null
+      gap_percent: -37.7
+      premarket_high: 5.64
+      previous_close: 5.91  # Estimated from gap calc
+      float_shares: 5000000
       catalyst: "news"  # Chinese stock with news
     expected:
-      entry_near: null  # Not stated precisely — somewhere in $3.50-5.50 range
-      stop_near: null
+      entry_near: 4.50  # Dip buy in $3.50-5.50 range after spike to $5.64
+      stop_near: 4.00
     notes: "Speculative trade, 2500 shares. Ross was 60/40 expecting a loss. Chinese stock popping $3.50→$5.50, dip-bought, bounced only 200 shares, stopped out. Went red on the day afterward. Transcript: 2026-02-20_transcript_K1Zvoes1SNQ.md"
 
 # ==========================================================================
