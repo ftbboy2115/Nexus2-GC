@@ -148,6 +148,23 @@ Key endpoints (all under `/warrior` prefix):
 - `POST /warrior/sim/run_batch` — Sequential batch test (uses shared engine)
 - Both accept `{"case_ids": [...]}` to filter, or empty body for all `POLYGON_DATA` cases
 
+### Benchmark Tracker (MANDATORY)
+
+> [!IMPORTANT]
+> After EVERY full batch run (all cases), you **MUST** update the benchmark tracker at:
+> `nexus2/reports/benchmark_tracker.md`
+
+**Steps:**
+1. Append a new row to the **Summary Timeline** table with:
+   - Date, commit hash (`git rev-parse --short HEAD`), key changes description
+   - Cases, profitable count/%, bot P&L, Ross P&L, capture %, runtime
+2. Update the **Key Metrics Over Time** section with the latest values
+3. Update the **Per-Case Stability Tracker** if any case changed direction (profitable ↔ loss)
+4. Update the **Runtime History** table
+5. Flag any regressions or notable changes in the iteration details section
+
+**This is how we track whether code changes improve or hurt trade performance over time.**
+
 ---
 
 ## Current Implementation Status
