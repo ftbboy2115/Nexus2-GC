@@ -1,7 +1,7 @@
 """Quick batch runner with clean output."""
 import requests, json
 
-r = requests.post("http://localhost:8000/warrior/sim/run_batch_concurrent", json={"case_ids": []}, timeout=300)
+r = requests.post("http://localhost:8000/warrior/sim/run_batch_concurrent", json={"case_ids": []}, timeout=600)
 data = r.json()
 
 summary = data.get("summary", {})
