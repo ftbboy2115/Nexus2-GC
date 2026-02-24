@@ -1423,7 +1423,7 @@ async def detect_hod_consolidation_break(
             return None
 
         if consol_range > max_allowed_range:
-            logger.info(
+            logger.debug(
                 f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
                 f"consolidation too wide (range=${consol_range:.2f} > "
                 f"2×ATR=${max_allowed_range:.2f}, ATR=${consol_atr:.2f})"
@@ -1432,7 +1432,7 @@ async def detect_hod_consolidation_break(
 
         # Consolidation must be BELOW HOD (at least 1% below)
         if consol_high >= hod_level:
-            logger.info(
+            logger.debug(
                 f"[Warrior Entry] {symbol}: HOD_BREAK skip - "
                 f"consolidation not below HOD (consol_high=${consol_high:.2f} "
                 f">= HOD=${hod_level:.2f})"

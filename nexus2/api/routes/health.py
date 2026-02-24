@@ -60,6 +60,7 @@ async def health_check():
         mode=mode,
         timestamp=format_et(),  # Using centralized time utility
         uptime_seconds=uptime_seconds,
+        started_at=_server_start_time.strftime("%Y-%m-%d %H:%M:%S ET"),
         memory_mb=memory_mb,
         disk_used_gb=disk_used_gb,
         disk_total_gb=disk_total_gb,

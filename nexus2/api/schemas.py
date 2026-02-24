@@ -169,6 +169,7 @@ class HealthResponse(BaseModel):
     mode: str  # "alpaca_paper", "alpaca_live", "sim"
     timestamp: str  # Always ET for consistency
     uptime_seconds: Optional[int] = None
+    started_at: Optional[str] = None  # Server start timestamp (ET)
     memory_mb: Optional[float] = None  # RSS memory usage
     disk_used_gb: Optional[float] = None  # Disk storage used
     disk_total_gb: Optional[float] = None  # Disk storage total
