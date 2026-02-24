@@ -373,6 +373,9 @@ test_cases:
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_lcfy_20260116.json"
     ross_pnl: 10456.94  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
+    ross_entry_time: "08:01"  # VERIFIED from video: entry ~$6.25 on 8:01:20 bar (10s chart)
+    ross_chart_timeframe: "10s"  # Ross used 10-second chart
+    data_quality: "VIDEO_VERIFIED"  # Entry details from video spot-check, NOT transcript (Ross showed visually)
     premarket_data:
       gap_percent: 70.9
       premarket_high: 7.42
@@ -380,9 +383,9 @@ test_cases:
       float_shares: 5000000
       catalyst: "headline"
     expected:
-      entry_near: 7.50
-      stop_near: 7.00
-    notes: "Ross Cameron transcript Jan 16 - 4 Base Hit Winners. Per-trade: LCFY +$10,456.94, GWAV +$3,974.68, VERO +$3,484.88, TNMG +$2,102.25"
+      entry_near: 6.25  # VERIFIED from video: circled entry ~$6.25 on 8:01:20 bar
+      stop_near: 5.80  # ESTIMATED — not stated in transcript or video
+    notes: "VERIFIED from video: Entry ~$6.25 at 8:01:20 AM (10s chart), exit ~$7.25 next bar, re-entry for break over $7 at ~8:53. Ross used 10s chart (not visible in transcript). Day total $20,018.75 across 4 stocks: LCFY +$10,456.94, GWAV +$3,974.68, VERO +$3,484.88, TNMG +$2,102.25"
 
   - id: ross_pavm_20260121
     symbol: PAVM
@@ -396,6 +399,7 @@ test_cases:
     intraday_file: "intraday/ross_pavm_20260121.json"
     data_source: polygon
     ross_pnl: 43950.00
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry price $12.31 confirmed, exact entry time not stated in transcript
     premarket_data:
       gap_percent: 177.2
       premarket_high: 19.90
@@ -463,6 +467,8 @@ test_cases:
     trade_date: "2026-01-14"
     intraday_file: "intraday/ross_rolr_20260114.json"
     ross_pnl: 85000.00  # Per-trade P&L - ROLR was only trade, used ALL buying power ($140k)
+    ross_entry_time: "08:18"  # Scanner alert at 8:18 AM, entry on break of $5 shortly after
+    data_quality: "TRANSCRIPT_VERIFIED"  # Entry price $5.17 and time ~8:18 confirmed from transcript
     premarket_data:
       gap_percent: 120.0
       premarket_high: 15.00
@@ -510,6 +516,7 @@ test_cases:
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_tnmg_20260116.json"
     ross_pnl: 2102.25  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Cost basis $3.90 confirmed, exact entry time not stated
     premarket_data:
       gap_percent: 50.0
       premarket_high: 5.00
@@ -533,6 +540,7 @@ test_cases:
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_gwav_20260116.json"
     ross_pnl: 3974.68  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Cost basis $7.82 confirmed (entry $6.50 + add at $7), exact time not stated
     premarket_data:
       gap_percent: 40.0
       premarket_high: 3.00
@@ -556,6 +564,7 @@ test_cases:
     trade_date: "2026-01-16"
     intraday_file: "intraday/ross_vero_20260116.json"
     ross_pnl: 3484.88  # Per-trade P&L from Jan 16 transcript (day total $20,018.75 across 4 stocks)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Cost basis $5.92 confirmed, exact entry time not stated
     premarket_data:
       gap_percent: 375.0
       premarket_high: 3.50
@@ -754,6 +763,7 @@ test_cases:
     intraday_file: "intraday/ross_rnaz_20260205.json"
     data_source: polygon
     ross_pnl: 1700.00
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry ~$12 estimated, exact price/time not stated in transcript
     premarket_data:
       gap_percent: 23.7
       premarket_high: 14.80
@@ -777,6 +787,7 @@ test_cases:
     intraday_file: "intraday/ross_rvsn_20260205.json"
     data_source: polygon
     ross_pnl: -3000.00
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry $5.50 confirmed, exact entry time not stated (after RNAZ, before 08:45 stop time)
     premarket_data:
       gap_percent: 2.4
       premarket_high: 6.08
@@ -824,6 +835,7 @@ test_cases:
     intraday_file: "intraday/ross_rdib_20260206.json"
     data_source: polygon
     ross_pnl: 700.00
+    data_quality: "TRANSCRIPT_PARTIAL"  # VWAP reclaim area entry (~$15), exact price/time not stated
     premarket_data:
       gap_percent: 35.8
       premarket_high: 34.96
@@ -878,6 +890,7 @@ test_cases:
     trade_date: "2026-02-09"
     intraday_file: "intraday/ross_sxtc_20260209.json"
     ross_pnl: -5000.00  # Combined: -$1,500 (trade 1) + -$3,500 (trade 2)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry ~$4.50 confirmed, exact time not stated (after MNTS trade)
     premarket_data:
       gap_percent: -5.7
       premarket_high: 4.71
@@ -901,6 +914,8 @@ test_cases:
     trade_date: "2026-02-09"
     intraday_file: "intraday/ross_uoka_20260209.json"
     ross_pnl: 858.00
+    ross_entry_time: "~09:30"  # At open, after double halt up, bought dip under $4
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry ~$4.00 confirmed, time approx at open after halts
     premarket_data:
       gap_percent: 34.4
       premarket_high: 2.74
@@ -955,6 +970,7 @@ test_cases:
     trade_date: "2026-02-10"
     intraday_file: "intraday/ross_velo_20260210.json"
     ross_pnl: -2000.00  # Approx: took $300 profit on partial, lost on rest
+    data_quality: "NEEDS_VIDEO_CHECK"  # Feb 10 transcript is empty template. Entry $16, add $16.50 from full transcript text but no exact time.
     premarket_data:
       gap_percent: 13.3
       premarket_high: 16.89
@@ -1227,6 +1243,7 @@ test_cases:
     trade_date: "2026-02-20"
     intraday_file: "intraday/ross_edhl_20260220.json"
     ross_pnl: -111.78
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry ~$4.50 dip buy, 2500 shares. Time before MLEC (09:43). Ross was 60/40 expecting loss.
     premarket_data:
       gap_percent: -37.7
       premarket_high: 5.64

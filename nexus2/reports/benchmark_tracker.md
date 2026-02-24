@@ -14,6 +14,8 @@
 | Feb 18 | — | Exit tuning, pattern improvements | 30 | 18 (60%) | $101,256 | $413,626 | 24.5% | 155s | +1 case; big jump from exit logic changes |
 | Feb 21 | 3eaacd9 | +5 test cases, trigger rejection logging | 35 | 23 (66%) | $120,889 | $433,000 | 27.9% | 93s | HIND $0→$14K; BCTX 96.7% capture |
 | Feb 22 | 654b3f3 | RVOL slider, scanner persistence fix | 35 | 22 (63%) | $119,105 | $433,000 | 27.5% | 322s | BCTX flipped -$156; runtime 3.5x regression |
+| Feb 23 | — | GC batch run | 35 | 22 (63%) | $118,983 | $433,000 | 27.5% | 291s | Auto-tracked by GC |
+
 
 ---
 
@@ -96,6 +98,8 @@ Cases that have changed direction or significantly shifted P&L between runs:
 | Feb 18 | 30 | 155s | 5.2s | ⚠️ 4x jump vs Feb 16 |
 | Feb 21 | 35 | 93s | 2.7s | Improved vs Feb 18 |
 | Feb 22 | 35 | 322s | 9.2s | ⚠️ Investigate regression |
+| Feb 23 | 35 | 291s | 8.3s | ⚠️ Needs investigation |
+
 
 > [!WARNING]
 > Runtime has regressed from ~35s to 322s over 2 weeks. Needs profiling investigation.

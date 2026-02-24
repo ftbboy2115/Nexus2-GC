@@ -1329,6 +1329,7 @@ class BatchTestRequest(BaseModel):
     """Request body for batch test runner."""
     case_ids: Optional[List[str]] = Field(None, description="List of test case IDs to run. If None, runs all POLYGON_DATA cases.")
     include_trades: bool = Field(False, description="If True, include per-trade detail arrays in each result. Default False for compact output.")
+    skip_guards: bool = Field(False, description="If True, skip entry guards for A/B comparison testing. SIM ONLY.")
 
 
 @sim_router.post("/sim/run_batch")
@@ -1639,7 +1640,7 @@ async def run_batch_concurrent_endpoint(request: BatchTestRequest = BatchTestReq
 
     # Run concurrently
     from nexus2.adapters.simulation.sim_context import run_batch_concurrent
-    results = await run_batch_concurrent(cases, yaml_data)
+    results = await run_batch_concurrent(cases, yaml_data, skip_guards=request.skip_guards)
 
     # Conditionally strip trade details for compact output
     if not request.include_trades:

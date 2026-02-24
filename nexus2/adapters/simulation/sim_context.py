@@ -551,7 +551,7 @@ def _run_case_sync(case_tuple: tuple) -> dict:
     """
     Run a single test case in a separate process.
     Must be a top-level function (picklable for ProcessPoolExecutor).
-    Receives (case_dict, yaml_data_dict) as a tuple.
+    Receives (case_dict, yaml_data_dict, skip_guards) as a tuple.
     """
     # === PER-PROCESS IN-MEMORY DB (Phase 8) ===
     # Replace shared warrior.db with ephemeral in-memory SQLite.
@@ -567,16 +567,21 @@ def _run_case_sync(case_tuple: tuple) -> dict:
     wdb.WarriorBase.metadata.create_all(bind=mem_engine)
 
     import asyncio
-    case, yaml_data = case_tuple
+    # Support both 2-tuple (backward compat) and 3-tuple (with skip_guards)
+    if len(case_tuple) == 3:
+        case, yaml_data, skip_guards = case_tuple
+    else:
+        case, yaml_data = case_tuple
+        skip_guards = False
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_run_single_case_async(case, yaml_data))
+        return loop.run_until_complete(_run_single_case_async(case, yaml_data, skip_guards=skip_guards))
     finally:
         loop.close()
 
 
-async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
+async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool = False) -> dict:
     """Async wrapper that creates SimContext and runs one case in an isolated process.
 
     NOTE: Dual P&L System
@@ -607,6 +612,12 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
     try:
         # Create isolated context (fresh process = no shared state)
         ctx = SimContext.create(case_id)
+
+        # Phase 1: Set skip_guards on engine (A/B testing mode)
+        if skip_guards:
+            assert ctx.engine.monitor.sim_mode, "skip_guards only allowed in simulation"
+            ctx.engine.skip_guards = True
+            log.info(f"[{case_id}] Guards DISABLED (A/B test mode)")
 
         # Set ContextVars for this task
         from nexus2.adapters.simulation.sim_clock import set_simulation_clock_ctx
@@ -697,6 +708,7 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         # Extract guard block events from trade_events DB
         guard_blocks = []
         try:
+            import json as _json
             from nexus2.db.database import get_session
             from nexus2.db.models import TradeEventModel
             with get_session() as db:
@@ -705,13 +717,31 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
                     TradeEventModel.symbol == symbol.upper(),
                 ).all()
                 for b in blocks:
-                    guard_blocks.append({
+                    block_entry = {
                         "guard": b.new_value,
                         "reason": b.reason,
                         "symbol": b.symbol,
-                    })
+                    }
+                    # Phase 2: Extract enriched metadata (blocked_price, blocked_time)
+                    if b.metadata_json:
+                        try:
+                            meta = _json.loads(b.metadata_json)
+                            block_entry["blocked_price"] = meta.get("blocked_price")
+                            block_entry["blocked_time"] = meta.get("blocked_time")
+                        except (ValueError, TypeError):
+                            pass
+                    guard_blocks.append(block_entry)
         except Exception as e:
             log.warning(f"[{case_id}] Failed to extract guard blocks: {e}")
+
+        # Phase 2: Counterfactual guard analysis
+        guard_analysis = None
+        if guard_blocks:
+            try:
+                all_bars = ctx.loader.get_bars_up_to(symbol, "19:30", include_continuity=False)
+                guard_analysis = analyze_guard_outcomes(guard_blocks, all_bars, symbol)
+            except Exception as e:
+                log.warning(f"[{case_id}] Guard analysis failed: {e}")
 
         return {
             "case_id": case_id, "symbol": symbol,
@@ -725,6 +755,8 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
             "delta": round(total_pnl - ross_pnl, 2),
             "guard_blocks": guard_blocks,
             "guard_block_count": len(guard_blocks),
+            "guard_analysis": guard_analysis,
+            "skip_guards": skip_guards,
             "runtime_seconds": case_time,
         }
     except Exception as e:
@@ -739,7 +771,140 @@ async def _run_single_case_async(case: dict, yaml_data: dict) -> dict:
         }
 
 
-async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
+def analyze_guard_outcomes(guard_blocks: list, bars: list, symbol: str) -> dict:
+    """For each guard block, check what price did after the block.
+
+    Returns per-guard-type accuracy stats and per-block detail.
+
+    A block is "correct" if price at +15 min is LOWER than the blocked
+    entry price. If price went higher, it was a "missed opportunity".
+    """
+    from collections import defaultdict
+
+    outcomes = []
+    by_guard = defaultdict(lambda: {"blocks": 0, "correct": 0, "missed": 0, "net_impact": 0.0})
+
+    for block in guard_blocks:
+        blocked_price = block.get("blocked_price")
+        blocked_time = block.get("blocked_time")
+        guard_type = block.get("guard", "unknown")
+
+        if blocked_price is None or blocked_time is None or not bars:
+            by_guard[guard_type]["blocks"] += 1
+            continue
+
+        blocked_price = float(blocked_price)
+
+        # Parse blocked_time to compare with bar times
+        # blocked_time is HH:MM or HH:MM:SS format
+        block_time_str = str(blocked_time)
+        if "T" in block_time_str:
+            block_time_str = block_time_str.split("T")[1]
+        # Normalize to HH:MM for comparison
+        block_hhmm = block_time_str[:5] if len(block_time_str) >= 5 else block_time_str
+
+        # Find bars AFTER the block time
+        future_bars = []
+        found_block_bar = False
+        for b in bars:
+            bar_time = getattr(b, "time", None) or ""
+            if not bar_time:
+                continue
+            if bar_time >= block_hhmm:
+                if not found_block_bar:
+                    found_block_bar = True
+                    continue  # Skip the block bar itself
+                future_bars.append(b)
+
+        if not future_bars:
+            by_guard[guard_type]["blocks"] += 1
+            continue
+
+        # Price at various horizons
+        def _price_at_offset(bars_after, minutes):
+            for b in bars_after:
+                bar_time = getattr(b, "time", None) or ""
+                if not bar_time or not block_hhmm:
+                    continue
+                try:
+                    bh, bm = int(bar_time.split(":")[0]), int(bar_time.split(":")[1])
+                    oh, om = int(block_hhmm.split(":")[0]), int(block_hhmm.split(":")[1])
+                    diff = (bh * 60 + bm) - (oh * 60 + om)
+                    if diff >= minutes:
+                        return float(getattr(b, "close", getattr(b, "high", 0)))
+                except (ValueError, IndexError):
+                    continue
+            return None
+
+        price_5m = _price_at_offset(future_bars, 5)
+        price_15m = _price_at_offset(future_bars, 15)
+        price_30m = _price_at_offset(future_bars, 30)
+
+        # MFE/MAE from next 30 bars
+        window = future_bars[:30]
+        highs = [float(b.high) for b in window if hasattr(b, "high")]
+        lows = [float(b.low) for b in window if hasattr(b, "low")]
+        mfe = round(max(highs) - blocked_price, 4) if highs else 0
+        mae = round(blocked_price - min(lows), 4) if lows else 0
+
+        # Classify: correct if price_15m < blocked_price (would have been a losing entry)
+        if price_15m is not None:
+            outcome = "CORRECT_BLOCK" if price_15m < blocked_price else "MISSED_OPPORTUNITY"
+            hypo_pnl = round(price_15m - blocked_price, 4)
+        else:
+            outcome = "NO_DATA"
+            hypo_pnl = 0
+
+        outcomes.append({
+            "guard": guard_type,
+            "blocked_price": blocked_price,
+            "blocked_time": blocked_time,
+            "price_5m": price_5m,
+            "price_15m": price_15m,
+            "price_30m": price_30m,
+            "mfe": mfe,
+            "mae": mae,
+            "outcome": outcome,
+            "hypothetical_pnl_15m": hypo_pnl,
+        })
+
+        # Aggregate by guard type
+        by_guard[guard_type]["blocks"] += 1
+        if outcome == "CORRECT_BLOCK":
+            by_guard[guard_type]["correct"] += 1
+        elif outcome == "MISSED_OPPORTUNITY":
+            by_guard[guard_type]["missed"] += 1
+        by_guard[guard_type]["net_impact"] += hypo_pnl
+
+    total = len(outcomes)
+    correct = sum(1 for o in outcomes if o["outcome"] == "CORRECT_BLOCK")
+    missed = sum(1 for o in outcomes if o["outcome"] == "MISSED_OPPORTUNITY")
+
+    # Per-guard summary
+    by_guard_summary = {}
+    for gtype, stats in by_guard.items():
+        gt_total = stats["correct"] + stats["missed"]
+        by_guard_summary[gtype] = {
+            "blocks": stats["blocks"],
+            "correct": stats["correct"],
+            "missed": stats["missed"],
+            "accuracy": round(stats["correct"] / gt_total, 3) if gt_total > 0 else None,
+            "net_impact": round(stats["net_impact"], 2),
+        }
+
+    return {
+        "total_blocks": len(guard_blocks),
+        "analyzed_blocks": total,
+        "correct_blocks": correct,
+        "missed_opportunities": missed,
+        "guard_accuracy": round(correct / (correct + missed), 3) if (correct + missed) > 0 else None,
+        "net_guard_impact": round(sum(o["hypothetical_pnl_15m"] for o in outcomes), 2),
+        "by_guard_type": by_guard_summary,
+        "details": outcomes,
+    }
+
+
+async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool = False) -> list:
     """
     Run all test cases in parallel using ProcessPoolExecutor.
 
@@ -750,6 +915,7 @@ async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
     Args:
         cases: List of test case dicts from YAML
         yaml_data: Full YAML data dict
+        skip_guards: If True, skip entry guards (A/B testing)
 
     Returns:
         List of result dicts, one per case
@@ -763,7 +929,7 @@ async def run_batch_concurrent(cases: list, yaml_data: dict) -> list:
 
     with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futures = [
-            loop.run_in_executor(pool, _run_case_sync, (case, yaml_data))
+            loop.run_in_executor(pool, _run_case_sync, (case, yaml_data, skip_guards))
             for case in cases
         ]
         results = await asyncio.gather(*futures, return_exceptions=True)

@@ -1003,23 +1003,36 @@ class TradeEventService:
         reason: str,
         trigger_type: str = "unknown",
         price: float = None,
+        blocked_time: str = None,
     ) -> None:
         """
         Log when an entry guard blocks a trade attempt.
-        
+
         Writes to BOTH the TML file (forensic review) AND the database
         (queryable via Data Explorer → Trade Events tab).
+
+        Args:
+            blocked_time: Time of block in HH:MM format (for counterfactual analysis)
         """
         price_str = f"${price:.2f}" if price else "N/A"
         details = f"guard={guard_name} | trigger={trigger_type} | price={price_str} | {reason}"
-        
+
         self._log_to_file(
             strategy="WARRIOR",
             symbol=symbol,
             event_type=self.WARRIOR_GUARD_BLOCK,
             details=details,
         )
-        
+
+        metadata = {
+            "guard_name": guard_name,
+            "trigger_type": trigger_type,
+            "price": price,
+            "blocked_price": price,
+        }
+        if blocked_time:
+            metadata["blocked_time"] = blocked_time
+
         self._log_event(
             strategy="WARRIOR",
             position_id="GUARD_BLOCK",
@@ -1027,11 +1040,7 @@ class TradeEventService:
             event_type=self.WARRIOR_GUARD_BLOCK,
             new_value=guard_name,
             reason=reason,
-            metadata={
-                "guard_name": guard_name,
-                "trigger_type": trigger_type,
-                "price": price,
-            },
+            metadata=metadata,
         )
     
     def log_warrior_trigger_rejection(

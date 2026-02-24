@@ -34,3 +34,6 @@ kk_books_extracted/
 drive-download*.zip
 
 nexus2/scripts/_*
+
+# Gravity Claw (separate project, shares workspace for dev convenience)
+gravity-claw/

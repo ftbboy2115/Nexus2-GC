@@ -1,0 +1,38 @@
+[
+  {
+    "max_reentry_after_loss": 1,
+    "total_pnl": 161115.7,
+    "ross_pnl": 432999.62,
+    "delta": -271883.92,
+    "winners": 24,
+    "cases": 35,
+    "runtime": 22.8
+  },
+  {
+    "max_reentry_after_loss": 2,
+    "total_pnl": 161115.7,
+    "ross_pnl": 432999.62,
+    "delta": -271883.92,
+    "winners": 24,
+    "cases": 35,
+    "runtime": 25.8
+  },
+  {
+    "max_reentry_after_loss": 3,
+    "total_pnl": 161115.7,
+    "ross_pnl": 432999.62,
+    "delta": -271883.92,
+    "winners": 24,
+    "cases": 35,
+    "runtime": 30.2
+  },
+  {
+    "max_reentry_after_loss": 5,
+    "total_pnl": 161115.7,
+    "ross_pnl": 432999.62,
+    "delta": -271883.92,
+    "winners": 24,
+    "cases": 35,
+    "runtime": 66.3
+  }
+]

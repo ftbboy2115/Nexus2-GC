@@ -389,6 +389,9 @@ async def detect_dip_for_level(
     market_active = True
     inactive_reason = ""
     
+    # Determine if premarket (now_et already set above at L308-317)
+    dfl_is_premarket = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+    
     if engine._get_intraday_bars:
         try:
             if activity_candles is None:
@@ -401,25 +404,35 @@ async def detect_dip_for_level(
             logger.info(
                 f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market check - "
                 f"got {len(activity_candles) if activity_candles else 0} candles"
+                f" (premarket={dfl_is_premarket})"
             )
             
             if activity_candles:
-                # Adjust thresholds for 10s bars vs 1min bars
-                tf = engine.config.entry_bar_timeframe
-                if tf == "10s":
+                if dfl_is_premarket:
+                    # PREMARKET RELAXED THRESHOLDS (same as PMH break)
                     market_active, inactive_reason = check_active_market(
                         activity_candles,
-                        min_bars=18,
-                        min_volume_per_bar=200,
-                        max_time_gap_minutes=5,
+                        min_bars=3,
+                        min_volume_per_bar=500,
+                        max_time_gap_minutes=30,
                     )
                 else:
-                    market_active, inactive_reason = check_active_market(
-                        activity_candles,
-                        min_bars=5,
-                        min_volume_per_bar=1000,
-                        max_time_gap_minutes=15,
-                    )
+                    # Adjust thresholds for 10s bars vs 1min bars
+                    tf = engine.config.entry_bar_timeframe
+                    if tf == "10s":
+                        market_active, inactive_reason = check_active_market(
+                            activity_candles,
+                            min_bars=18,
+                            min_volume_per_bar=200,
+                            max_time_gap_minutes=5,
+                        )
+                    else:
+                        market_active, inactive_reason = check_active_market(
+                            activity_candles,
+                            min_bars=5,
+                            min_volume_per_bar=1000,
+                            max_time_gap_minutes=15,
+                        )
                 logger.info(
                     f"[Warrior Entry] {symbol}: DIP-FOR-LEVEL active market result: "
                     f"active={market_active}, reason='{inactive_reason}'"
@@ -570,6 +583,23 @@ async def detect_pmh_break(
     market_active = True
     inactive_reason = ""
     
+    # Get current time for premarket-aware thresholds
+    is_premarket = False
+    try:
+        from nexus2.adapters.simulation import get_simulation_clock
+        sim_clock = get_simulation_clock()
+        if sim_clock and sim_clock.current_time:
+            is_premarket = sim_clock.current_time.hour < 9 or (
+                sim_clock.current_time.hour == 9 and sim_clock.current_time.minute < 30
+            )
+        else:
+            import pytz
+            from datetime import datetime as _dt
+            _now_et = _dt.now(pytz.timezone("US/Eastern"))
+            is_premarket = _now_et.hour < 9 or (_now_et.hour == 9 and _now_et.minute < 30)
+    except Exception:
+        pass
+    
     if engine._get_intraday_bars:
         try:
             tf = engine.config.entry_bar_timeframe
@@ -579,10 +609,20 @@ async def detect_pmh_break(
                 activity_candles = await engine._get_intraday_bars(symbol, "1min", limit=10)
             logger.info(
                 f"[Warrior Entry] {symbol}: Active market check - got {len(activity_candles) if activity_candles else 0} candles"
+                f" (premarket={is_premarket})"
             )
             if activity_candles:
-                # Adjust thresholds for 10s bars vs 1min bars
-                if tf == "10s":
+                if is_premarket:
+                    # PREMARKET RELAXED THRESHOLDS:
+                    # Ross trades premarket when he sees ACTIVITY — even 3 bars with
+                    # 500+ vol/bar is enough. Sparse bars ARE the norm in premarket.
+                    market_active, inactive_reason = check_active_market(
+                        activity_candles,
+                        min_bars=3,
+                        min_volume_per_bar=500,
+                        max_time_gap_minutes=30,
+                    )
+                elif tf == "10s":
                     market_active, inactive_reason = check_active_market(
                         activity_candles,
                         min_bars=18,
@@ -608,6 +648,18 @@ async def detect_pmh_break(
             f"({inactive_reason}). Waiting for more activity..."
         )
         return None
+    
+    # PREMARKET INSTANT ENTRY: Skip candle-over-candle in premarket
+    # In premarket, bars are sparse (15-60 min apart). Waiting for a 2nd candle
+    # adds huge delay. If price > PMH + buffer AND we passed the active market
+    # gate above, enter immediately.
+    if is_premarket:
+        logger.info(
+            f"[Warrior Entry] {symbol}: PREMARKET PMH BREAK - "
+            f"${current_price:.2f} > PMH ${watched.pmh:.2f} "
+            f"(skipping candle-over-candle for premarket)"
+        )
+        return EntryTriggerType.PMH_BREAK
     
     # STAGE 1: Set control candle if not already set
     if watched.control_candle_high is None:

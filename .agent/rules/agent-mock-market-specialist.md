@@ -135,6 +135,51 @@ The script `.venv\Scripts\python -m nexus2.scripts.extract_transcript <URL>`:
 3. P&L and prices must match Ross's stated values from the transcript — NOT estimates
 4. If a detail isn't stated, write "not stated" — do NOT invent values
 
+### Data Completeness Verification (MANDATORY)
+
+> [!CAUTION]
+> **"The job's not done until the paperwork is complete."**
+> After processing EVERY transcript and before writing the YAML test case, you MUST verify
+> that all critical trade data was successfully extracted. If ANY required field is missing,
+> you MUST proactively ask Clay for the information — do NOT silently skip it.
+
+**Required fields for every ross_traded test case:**
+
+| Field | Source | If Missing |
+|-------|--------|------------|
+| `ross_pnl` | Transcript (verbally stated) | Ask Clay |
+| `ross_entry_time` | Transcript (verbally stated) | Set `data_quality: "NEEDS_VIDEO_CHECK"`, ask Clay |
+| `expected.entry_near` | Transcript (verbally stated price) | Set `data_quality: "NEEDS_VIDEO_CHECK"`, ask Clay |
+| `ross_chart_timeframe` | Transcript (if Ross mentions chart type) | Default to `"1m"`, note if uncertain |
+| Scaling pattern | Transcript (adds/trims/exits) | Document whatever is stated |
+
+**The `data_quality` field MUST be set on every new test case:**
+
+- `TRANSCRIPT_VERIFIED` — Entry price AND time explicitly stated verbally by Ross
+- `TRANSCRIPT_PARTIAL` — Some data extracted but entry price OR time is approximate (use `~`)
+- `NEEDS_VIDEO_CHECK` — Could NOT extract entry price or time from audio (Ross likely showed visually)
+- `VIDEO_VERIFIED` — Human (Clay) confirmed entry data against the actual video
+
+**When data is missing, you MUST ask Clay explicitly:**
+
+```
+⚠️ Data Completeness Check for {SYMBOL}:
+I could not extract the following from the transcript:
+- [ ] Ross's exact entry price (he may have shown it on chart without stating verbally)
+- [ ] Ross's entry time (not mentioned in audio)
+- [ ] Chart timeframe (Ross may be using 10s chart — only visible in video)
+
+Could you check the video at {URL} and provide these details?
+I've flagged this case as NEEDS_VIDEO_CHECK in the YAML.
+```
+
+> [!WARNING]
+> **WHY THIS MATTERS:** Ross frequently shows his entries on-screen (circling chart levels)
+> without stating the exact price verbally. The transcript extraction can only capture what
+> Ross SAYS, not what he SHOWS. Audio-only extraction has ~64% coverage for entry times.
+> Cases marked NEEDS_VIDEO_CHECK cannot be reliably used for bot-vs-Ross P&L comparison
+> until verified.
+
 ### Headless Batch Test Verification
 
 After adding the test case to YAML, verify it runs via API (server must be running on port 8000):
