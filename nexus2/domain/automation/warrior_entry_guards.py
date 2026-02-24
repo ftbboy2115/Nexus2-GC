@@ -206,13 +206,27 @@ async def _check_macd_gate(
         ]
         snapshot = tech.get_snapshot(symbol, candle_dicts, entry_price)
         
-        if not snapshot.is_macd_bullish:
+        # TOLERANCE-BASED MACD CHECK (Feb 24, 2026):
+        # Ross uses MACD as "confirmation only" — slightly negative histogram
+        # during a pullback doesn't disqualify an entry. Only block when MACD
+        # is meaningfully negative (below tolerance threshold).
+        histogram = snapshot.macd_histogram or 0
+        tolerance = engine.config.macd_histogram_tolerance  # default -0.02
+        
+        if histogram < tolerance and snapshot.macd_crossover != "bullish":
             reason = (
                 f"MACD GATE - blocking entry "
-                f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'}, "
-                f"crossover={snapshot.macd_crossover}) - Ross rule: no entry when MACD negative"
+                f"(histogram={histogram:.4f} < tolerance={tolerance}, "
+                f"crossover={snapshot.macd_crossover}) - MACD too negative for entry"
             )
             return False, reason
+        
+        # If histogram is between tolerance and 0, allow with info log
+        if histogram < 0:
+            logger.info(
+                f"[Warrior Entry] {symbol}: MACD slightly negative but within tolerance "
+                f"(histogram={histogram:.4f}, tolerance={tolerance}) - allowing entry"
+            )
         
         # CRITICAL: Store snapshot for audit logging
         watched.entry_snapshot = snapshot
@@ -254,18 +268,15 @@ async def _check_position_guards(
             if pos.scale_count >= max_scales:
                 return False, f"BLOCKED - already at max scale #{pos.scale_count} (limit={max_scales})"
             
-            # PROFIT-CHECK GUARD: Block adds when position is past profit target
-            unrealized_pnl_pct = ((entry_price - pos.entry_price) / pos.entry_price) * 100
-            profit_target = pos.profit_target or Decimal("0")
-            price_past_target = profit_target > 0 and entry_price >= profit_target
-            pnl_above_threshold = unrealized_pnl_pct > 25  # 25% gain threshold
-            
-            if price_past_target or pnl_above_threshold:
-                reason = (
-                    f"past target ${profit_target:.2f}" if price_past_target
-                    else f"+{unrealized_pnl_pct:.1f}% unrealized"
-                )
-                return False, f"BLOCKING {trigger_type.name} - position already {reason}. Take profit first."
+            # 25% profit-check guard (toggleable for A/B testing via GC param sweep)
+            # Default OFF — Ross adds on strength well past 25% gain.
+            # Setting enable_profit_check_guard=True restores old blocking behavior.
+            if monitor.settings.enable_profit_check_guard:
+                unrealized_pnl_pct = ((entry_price - pos.entry_price) / pos.entry_price) * 100
+                price_past_target = pos.profit_target and entry_price > pos.profit_target
+                pnl_above_threshold = unrealized_pnl_pct > 25
+                if price_past_target or pnl_above_threshold:
+                    return False, "BLOCKING - position already past target/25% gain. Take profit first."
             
             break
     

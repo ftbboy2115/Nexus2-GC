@@ -576,7 +576,9 @@ class WarriorMonitor:
                 else:
                     # No exit signal - check for scaling opportunity
                     # Skip scaling entirely during closed markets (reduces log spam)
-                    should_check_scale = current_price and self.settings.enable_scaling
+                    should_check_scale = current_price and (
+                        self.settings.enable_scaling or self.settings.enable_momentum_adds
+                    )
                     if should_check_scale and not self.sim_mode:
                         from nexus2.adapters.market_data.market_calendar import get_market_calendar
                         calendar = get_market_calendar(paper=True)
@@ -585,11 +587,23 @@ class WarriorMonitor:
                             should_check_scale = False  # Don't check during holidays/weekends
                     
                     if should_check_scale:
-                        scale_signal = await self._check_scale_opportunity(
-                            position, Decimal(str(current_price))
-                        )
+                        scale_signal = None
+                        
+                        # Check pullback scaling first
+                        if self.settings.enable_scaling:
+                            scale_signal = await self._check_scale_opportunity(
+                                position, Decimal(str(current_price))
+                            )
+                        
+                        # Momentum add check (independent trigger, same execution path)
+                        if not scale_signal and self.settings.enable_momentum_adds:
+                            from nexus2.domain.automation.warrior_monitor_scale import check_momentum_add
+                            scale_signal = await check_momentum_add(
+                                self, position, Decimal(str(current_price))
+                            )
+                        
                         if scale_signal:
-                            # Execute scale-in order
+                            # Execute scale-in order (works for both pullback and momentum)
                             await self._execute_scale_in(position, scale_signal)
             except Exception as e:
                 logger.error(f"[Warrior] Error checking {position.symbol}: {e}")

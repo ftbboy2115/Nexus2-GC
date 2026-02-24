@@ -64,6 +64,14 @@ class WarriorMonitorSettingsRequest(BaseModel):
     min_rvol_for_scale: Optional[float] = Field(None, description="Min RVOL for scaling")
     allow_scale_below_entry: Optional[bool] = Field(None, description="Allow scaling below entry")
     move_stop_to_breakeven_after_scale: Optional[bool] = Field(None, description="Move stop to breakeven after add")
+    enable_improved_scaling: Optional[bool] = Field(None, description="Enable improved pullback zone logic")
+    # Guard toggles (for GC param sweep A/B testing)
+    enable_profit_check_guard: Optional[bool] = Field(None, description="Block adds when position >25% gain (A/B testing)")
+    # Momentum scaling (Ross Cameron add on strength)
+    enable_momentum_adds: Optional[bool] = Field(None, description="Enable momentum adds on breakout continuation")
+    momentum_add_interval: Optional[float] = Field(None, description="Min price move for momentum add ($)")
+    momentum_add_size_pct: Optional[int] = Field(None, description="Momentum add size as % of original")
+    max_momentum_adds: Optional[int] = Field(None, description="Max momentum adds per position")
 
 
 class WarriorEngineConfigRequest(BaseModel):
@@ -80,6 +88,7 @@ class WarriorEngineConfigRequest(BaseModel):
     max_capital: Optional[float] = Field(None, gt=0, description="Max capital per single trade position")
     entry_bar_timeframe: Optional[str] = Field(None, description="Entry bar timeframe: '1min' or '10s'", pattern="^(1min|10s)$")
     always_run_ai_comparison: Optional[bool] = Field(None, description="Run AI comparison even when catalyst already found")
+    macd_histogram_tolerance: Optional[float] = Field(None, description="MACD histogram tolerance (default -0.02, 0=binary blocking)")
 
 
 class ScalingSettingsRequest(BaseModel):
@@ -369,6 +378,15 @@ async def start_warrior_engine(request: WarriorStartRequest = WarriorStartReques
     
     Begins pre-market scanning and entry monitoring.
     """
+    # Safety guard: block live engine start unless explicitly allowed
+    import os, logging
+    if os.getenv("ALLOW_LIVE_ENGINE", "false").lower() != "true":
+        logging.warning("[Warrior] BLOCKED: start_warrior_engine rejected — ALLOW_LIVE_ENGINE is not true")
+        raise HTTPException(
+            status_code=403,
+            detail="Live engine disabled on this instance. Set ALLOW_LIVE_ENGINE=true in .env to enable.",
+        )
+    
     engine = get_engine()
     
     # Only update config for explicitly provided values (preserve loaded settings)
@@ -506,6 +524,10 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
         scanner.settings.always_run_ai_comparison = request.always_run_ai_comparison
         updated["always_run_ai_comparison"] = request.always_run_ai_comparison
     
+    if request.macd_histogram_tolerance is not None:
+        engine.config.macd_histogram_tolerance = request.macd_histogram_tolerance
+        updated["macd_histogram_tolerance"] = request.macd_histogram_tolerance
+    
     # Save settings to persist across restarts
     try:
         from nexus2.db.warrior_settings import save_warrior_settings, get_config_dict
@@ -529,6 +551,7 @@ async def update_warrior_config(request: WarriorEngineConfigRequest):
             "max_capital": float(engine.config.max_capital),
             "entry_bar_timeframe": engine.config.entry_bar_timeframe,
             "always_run_ai_comparison": get_warrior_scanner_service().settings.always_run_ai_comparison,
+            "macd_histogram_tolerance": engine.config.macd_histogram_tolerance,
         }
     }
 
@@ -856,6 +879,14 @@ async def get_warrior_monitor_settings():
         "min_rvol_for_scale": s.min_rvol_for_scale,
         "allow_scale_below_entry": s.allow_scale_below_entry,
         "move_stop_to_breakeven_after_scale": s.move_stop_to_breakeven_after_scale,
+        "enable_improved_scaling": s.enable_improved_scaling,
+        # Guard toggles (for GC param sweep A/B testing)
+        "enable_profit_check_guard": s.enable_profit_check_guard,
+        # Momentum scaling (Ross Cameron add on strength)
+        "enable_momentum_adds": s.enable_momentum_adds,
+        "momentum_add_interval": s.momentum_add_interval,
+        "momentum_add_size_pct": s.momentum_add_size_pct,
+        "max_momentum_adds": s.max_momentum_adds,
         # Exit mode (base_hit vs home_run)
         "session_exit_mode": s.session_exit_mode,
     }
@@ -886,6 +917,22 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
         engine.monitor.settings.allow_scale_below_entry = request.allow_scale_below_entry
     if hasattr(request, 'move_stop_to_breakeven_after_scale') and request.move_stop_to_breakeven_after_scale is not None:
         engine.monitor.settings.move_stop_to_breakeven_after_scale = request.move_stop_to_breakeven_after_scale
+    if hasattr(request, 'enable_improved_scaling') and request.enable_improved_scaling is not None:
+        engine.monitor.settings.enable_improved_scaling = request.enable_improved_scaling
+    
+    # Guard toggles (for GC param sweep A/B testing)
+    if hasattr(request, 'enable_profit_check_guard') and request.enable_profit_check_guard is not None:
+        engine.monitor.settings.enable_profit_check_guard = request.enable_profit_check_guard
+    
+    # Momentum scaling (Ross Cameron add on strength)
+    if hasattr(request, 'enable_momentum_adds') and request.enable_momentum_adds is not None:
+        engine.monitor.settings.enable_momentum_adds = request.enable_momentum_adds
+    if hasattr(request, 'momentum_add_interval') and request.momentum_add_interval is not None:
+        engine.monitor.settings.momentum_add_interval = request.momentum_add_interval
+    if hasattr(request, 'momentum_add_size_pct') and request.momentum_add_size_pct is not None:
+        engine.monitor.settings.momentum_add_size_pct = request.momentum_add_size_pct
+    if hasattr(request, 'max_momentum_adds') and request.max_momentum_adds is not None:
+        engine.monitor.settings.max_momentum_adds = request.max_momentum_adds
     
     # Persist settings to disk
     try:

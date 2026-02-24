@@ -136,6 +136,16 @@ async def lifespan(app: FastAPI):
     else:
         print("[Startup] Skipping signal handler (not main thread)")
     
+    # Log ALLOW_LIVE_ENGINE state on startup (safety visibility)
+    import os
+    allow_live = os.getenv("ALLOW_LIVE_ENGINE", "false").lower() == "true"
+    if allow_live:
+        logging.warning("⚠️ ALLOW_LIVE_ENGINE=true — this instance CAN start the live trading engine")
+        print("⚠️ [Startup] ALLOW_LIVE_ENGINE=true — live engine start is ENABLED")
+    else:
+        logging.info("ALLOW_LIVE_ENGINE=false — live engine start is disabled (sim still works)")
+        print("[Startup] ALLOW_LIVE_ENGINE=false — live engine start is disabled (sim still works)")
+    
     # Startup
     app.state.order_service = OrderService()
     app.state.position_service = PositionService()
@@ -193,28 +203,33 @@ async def lifespan(app: FastAPI):
         warrior_auto_enable = False  # Don't auto-start if manually stopped
     
     if warrior_auto_enable:
-        try:
-            from nexus2.api.routes.warrior_broker_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker, wire_warrior_callbacks
-            warrior_broker = create_warrior_alpaca_broker()
-            if warrior_broker:
-                set_warrior_alpaca_broker(warrior_broker)
-                print("[Startup] Warrior Alpaca broker (Account B) auto-enabled")
-                # Wire callbacks and sync positions automatically
-                try:
-                    result = await wire_warrior_callbacks(warrior_broker)
-                    print(f"[Startup] Warrior callbacks wired, account value: ${result.get('account_value', 0):.2f}")
-                    
-                    # Auto-start engine (scan loop) when toggle is ON
-                    from nexus2.api.routes.warrior_routes import get_engine
-                    engine = get_engine()
-                    await engine.start()
-                    print("[Startup] Warrior engine auto-started")
-                except Exception as wire_err:
-                    print(f"[Startup] Warrior callback wiring failed (will need manual enable): {wire_err}")
-            else:
-                print("[Startup] Warrior Alpaca broker not available (missing credentials)")
-        except Exception as e:
-            print(f"[Startup] Warrior broker auto-enable failed: {e}")
+        # Safety guard: respect ALLOW_LIVE_ENGINE even for auto-start
+        if not allow_live:
+            print("[Startup] Warrior auto-start BLOCKED — ALLOW_LIVE_ENGINE is not true")
+            logging.warning("[Startup] Warrior auto-start blocked by ALLOW_LIVE_ENGINE=false")
+        else:
+            try:
+                from nexus2.api.routes.warrior_broker_routes import create_warrior_alpaca_broker, set_warrior_alpaca_broker, wire_warrior_callbacks
+                warrior_broker = create_warrior_alpaca_broker()
+                if warrior_broker:
+                    set_warrior_alpaca_broker(warrior_broker)
+                    print("[Startup] Warrior Alpaca broker (Account B) auto-enabled")
+                    # Wire callbacks and sync positions automatically
+                    try:
+                        result = await wire_warrior_callbacks(warrior_broker)
+                        print(f"[Startup] Warrior callbacks wired, account value: ${result.get('account_value', 0):.2f}")
+                        
+                        # Auto-start engine (scan loop) when toggle is ON
+                        from nexus2.api.routes.warrior_routes import get_engine
+                        engine = get_engine()
+                        await engine.start()
+                        print("[Startup] Warrior engine auto-started")
+                    except Exception as wire_err:
+                        print(f"[Startup] Warrior callback wiring failed (will need manual enable): {wire_err}")
+                else:
+                    print("[Startup] Warrior Alpaca broker not available (missing credentials)")
+            except Exception as e:
+                print(f"[Startup] Warrior broker auto-enable failed: {e}")
     
     # Create shared FMP adapter singleton first
     from nexus2.adapters.market_data.fmp_adapter import FMPAdapter, set_fmp_adapter
@@ -251,6 +266,9 @@ async def lifespan(app: FastAPI):
         
         if not market_status.is_open:
             print(f"[Startup] NAC scheduler not resuming - market is closed (reason: {market_status.reason})")
+        elif not allow_live:
+            print("[Startup] NAC scheduler auto-resume BLOCKED — ALLOW_LIVE_ENGINE is not true")
+            logging.warning("[Startup] NAC scheduler auto-resume blocked by ALLOW_LIVE_ENGINE=false")
         else:
             with get_session() as db:
                 settings = SchedulerSettingsRepository(db).get()

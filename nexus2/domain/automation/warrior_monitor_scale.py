@@ -152,6 +152,105 @@ async def check_scale_opportunity(
         "price": float(current_price),
         "support": float(support),
         "scale_count": position.scale_count + 1,
+        "trigger": "pullback",  # Distinguish from momentum adds
+    }
+
+
+# =============================================================================
+# MOMENTUM ADD DETECTION (Ross Cameron breakout continuation)
+# =============================================================================
+
+
+async def check_momentum_add(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+) -> Optional[Dict]:
+    """
+    Check if position qualifies for a momentum add (Ross Cameron "add on strength").
+    
+    Ross adds shares as price moves up: e.g., entry at $7.50, add at $10, $11, $12.
+    This is INDEPENDENT from pullback scaling — uses its own counter.
+    
+    Criteria:
+    1. enable_momentum_adds is True
+    2. Position is green (current_price > entry_price)
+    3. momentum_add_count < max_momentum_adds
+    4. Price moved up at least momentum_add_interval since last add (or entry)
+    5. Position not pending exit
+    6. Price not too close to stop (safety buffer)
+    
+    Returns dict with scale signal details if opportunity detected, else None.
+    """
+    s = monitor.settings
+    
+    if not s.enable_momentum_adds:
+        return None
+    
+    if position.momentum_add_count >= s.max_momentum_adds:
+        return None
+    
+    # Must be green (price above entry)
+    if current_price <= position.entry_price:
+        return None
+    
+    # SAFETY: Skip if position is pending exit
+    symbol = position.symbol
+    if monitor._is_pending_exit(symbol):
+        logger.debug(f"[Warrior Momentum] {symbol}: Skipping - pending exit")
+        return None
+    
+    # Reference price: last momentum add price, or entry price if no adds yet
+    reference_price = position.last_momentum_add_price or position.entry_price
+    
+    # Check if price has moved up enough since last add
+    price_move = current_price - reference_price
+    interval = Decimal(str(s.momentum_add_interval))
+    
+    if price_move < interval:
+        return None
+    
+    # SAFETY: Skip if price is too close to stop (< 1% buffer)
+    support = position.technical_stop or position.mental_stop
+    if support and support > 0:
+        stop_buffer_pct = (current_price - support) / current_price * 100 if current_price > 0 else 0
+        if stop_buffer_pct < 1.0:
+            logger.debug(
+                f"[Warrior Momentum] {symbol}: Skipping - price too close to stop "
+                f"({stop_buffer_pct:.1f}% buffer)"
+            )
+            return None
+    
+    # SAFETY: Cooldown check — skip if recently attempted (sim mode bypasses this)
+    if position.last_scale_attempt and not monitor.sim_mode:
+        cooldown_seconds = 60
+        elapsed = (now_et() - position.last_scale_attempt).total_seconds()
+        if elapsed < cooldown_seconds:
+            logger.debug(
+                f"[Warrior Momentum] {symbol}: Skipping - cooldown "
+                f"({cooldown_seconds - elapsed:.0f}s remaining)"
+            )
+            return None
+    
+    # Calculate add size
+    add_shares = int(position.original_shares * s.momentum_add_size_pct / 100)
+    if add_shares < 1:
+        add_shares = 1
+    
+    logger.info(
+        f"[Warrior Momentum] {position.symbol}: Momentum add opportunity - "
+        f"price=${current_price} (+${price_move:.2f} since ref=${reference_price}), "
+        f"add_shares={add_shares}, momentum_add #{position.momentum_add_count + 1}"
+    )
+    
+    return {
+        "position_id": position.position_id,
+        "symbol": position.symbol,
+        "add_shares": add_shares,
+        "price": float(current_price),
+        "support": float(support) if support else 0.0,
+        "scale_count": position.scale_count + 1,
+        "trigger": "momentum",  # Distinguish from pullback
     }
 
 
@@ -349,6 +448,15 @@ async def execute_scale_in(
             f"[Warrior Scale] {symbol}: Scale #{position.scale_count} complete - "
             f"now {position.shares} shares"
         )
+        
+        # Update momentum tracking if this was a momentum add
+        if scale_signal.get("trigger") == "momentum":
+            position.last_momentum_add_price = price
+            position.momentum_add_count += 1
+            logger.info(
+                f"[Warrior Momentum] {symbol}: Momentum add #{position.momentum_add_count} tracked "
+                f"at ${price:.2f}"
+            )
         
         return True
         

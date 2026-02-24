@@ -12,7 +12,7 @@ import json
 import time
 import requests
 
-API_BASE = "http://localhost:8000"
+API_BASE = "http://127.0.0.1:8000"
 SETTINGS_URL = f"{API_BASE}/warrior/monitor/settings"
 BATCH_URL = f"{API_BASE}/warrior/sim/run_batch_concurrent"
 

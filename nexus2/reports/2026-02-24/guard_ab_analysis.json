@@ -1,0 +1,364 @@
+{
+  "summary": {
+    "guards_on_pnl": 161115.7,
+    "guards_off_pnl": 151169.55,
+    "delta": -9946.150000000023,
+    "ross_total": 432999.62,
+    "capture_on": 37.20920124595029,
+    "capture_off": 34.91216689751367
+  },
+  "per_case": [
+    {
+      "case_id": "ross_batl_20260127",
+      "on_pnl": 23292.96,
+      "off_pnl": 35689.11,
+      "delta": 12396.150000000001,
+      "ross_pnl": 0,
+      "guard_blocks": 3609,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_bctx_20260127",
+      "on_pnl": 4352.97,
+      "off_pnl": 10275.0,
+      "delta": 5922.03,
+      "ross_pnl": 4500.0,
+      "guard_blocks": 208,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_batl_20260126",
+      "on_pnl": 7740.0,
+      "off_pnl": 13415.5,
+      "delta": 5675.5,
+      "ross_pnl": 0,
+      "guard_blocks": 3609,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_mlec_20260213",
+      "on_pnl": -2997.38,
+      "off_pnl": 1901.8,
+      "delta": 4899.18,
+      "ross_pnl": 43000.0,
+      "guard_blocks": 950,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_tnmg_20260116",
+      "on_pnl": 2151.95,
+      "off_pnl": 6336.15,
+      "delta": 4184.2,
+      "ross_pnl": 2102.25,
+      "guard_blocks": 771,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_lrhc_20260130",
+      "on_pnl": 868.68,
+      "off_pnl": 3525.0,
+      "delta": 2656.32,
+      "ross_pnl": 31076.62,
+      "guard_blocks": 66,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_dcx_20260129",
+      "on_pnl": 558.95,
+      "off_pnl": 1541.76,
+      "delta": 982.81,
+      "ross_pnl": 6268.28,
+      "guard_blocks": 0,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_lcfy_20260116",
+      "on_pnl": -4832.56,
+      "off_pnl": -4304.66,
+      "delta": 527.9000000000005,
+      "ross_pnl": 10456.94,
+      "guard_blocks": 0,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_vhub_20260217",
+      "on_pnl": 0,
+      "off_pnl": 526.5,
+      "delta": 526.5,
+      "ross_pnl": 1600.0,
+      "guard_blocks": 0,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_prfx_20260211",
+      "on_pnl": 0,
+      "off_pnl": 365.76,
+      "delta": 365.76,
+      "ross_pnl": 5970.9,
+      "guard_blocks": 132,
+      "impact": "HURT"
+    },
+    {
+      "case_id": "ross_snse_20260218",
+      "on_pnl": -207.14,
+      "off_pnl": -192.97,
+      "delta": 14.169999999999987,
+      "ross_pnl": 9373.32,
+      "guard_blocks": 134,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_bnai_20260205",
+      "on_pnl": 1454.67,
+      "off_pnl": 1454.67,
+      "delta": 0.0,
+      "ross_pnl": -7900.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_bnkk_20260115",
+      "on_pnl": 180.09,
+      "off_pnl": 180.09,
+      "delta": 0.0,
+      "ross_pnl": 15000.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_edhl_20260220",
+      "on_pnl": 1632.0,
+      "off_pnl": 1632.0,
+      "delta": 0.0,
+      "ross_pnl": -111.78,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_evmn_20260210",
+      "on_pnl": 10635.45,
+      "off_pnl": 10635.45,
+      "delta": 0.0,
+      "ross_pnl": -10000.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_flye_20260206",
+      "on_pnl": -3866.1,
+      "off_pnl": -3866.1,
+      "delta": 0.0,
+      "ross_pnl": 4800.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_gri_20260128",
+      "on_pnl": 5351.11,
+      "off_pnl": 5351.11,
+      "delta": 0.0,
+      "ross_pnl": 31599.98,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_hind_20260127",
+      "on_pnl": 14110.46,
+      "off_pnl": 14110.46,
+      "delta": 0.0,
+      "ross_pnl": 55252.51,
+      "guard_blocks": 564,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_npt_20260203",
+      "on_pnl": 17538.56,
+      "off_pnl": 17538.56,
+      "delta": 0.0,
+      "ross_pnl": 81000.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_onco_20260212",
+      "on_pnl": -5178.24,
+      "off_pnl": -5178.24,
+      "delta": 0.0,
+      "ross_pnl": -5500.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_pmi_20260212",
+      "on_pnl": 7051.5,
+      "off_pnl": 7051.5,
+      "delta": 0.0,
+      "ross_pnl": 9959.3,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_rdib_20260206",
+      "on_pnl": -98.7,
+      "off_pnl": -98.7,
+      "delta": 0.0,
+      "ross_pnl": 700.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_sxtc_20260209",
+      "on_pnl": 6600.0,
+      "off_pnl": 6600.0,
+      "delta": 0.0,
+      "ross_pnl": -5000.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_velo_20260210",
+      "on_pnl": -3908.42,
+      "off_pnl": -3908.42,
+      "delta": 0.0,
+      "ross_pnl": -2000.0,
+      "guard_blocks": 0,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_pavm_20260121",
+      "on_pnl": 105.11,
+      "off_pnl": 65.82,
+      "delta": -39.290000000000006,
+      "ross_pnl": 43950.0,
+      "guard_blocks": 66,
+      "impact": "~"
+    },
+    {
+      "case_id": "ross_bnrg_20260211",
+      "on_pnl": -4525.5,
+      "off_pnl": -4583.04,
+      "delta": -57.539999999999964,
+      "ross_pnl": 271.74,
+      "guard_blocks": 0,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_envb_20260219",
+      "on_pnl": 1.5,
+      "off_pnl": -825.0,
+      "delta": -826.5,
+      "ross_pnl": 0,
+      "guard_blocks": 65,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_uoka_20260209",
+      "on_pnl": 5645.68,
+      "off_pnl": 3155.43,
+      "delta": -2490.2500000000005,
+      "ross_pnl": 858.0,
+      "guard_blocks": 126,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_rnaz_20260205",
+      "on_pnl": 425.81,
+      "off_pnl": -2245.8,
+      "delta": -2671.61,
+      "ross_pnl": 1700.0,
+      "guard_blocks": 198,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_rvsn_20260205",
+      "on_pnl": 200.87,
+      "off_pnl": -3046.77,
+      "delta": -3247.64,
+      "ross_pnl": -3000.0,
+      "guard_blocks": 0,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_mnts_20260209",
+      "on_pnl": -7046.15,
+      "off_pnl": -10901.31,
+      "delta": -3855.16,
+      "ross_pnl": 9000.0,
+      "guard_blocks": 198,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_gwav_20260116",
+      "on_pnl": 2179.45,
+      "off_pnl": -1918.48,
+      "delta": -4097.93,
+      "ross_pnl": 3974.68,
+      "guard_blocks": 0,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_mlec_20260220",
+      "on_pnl": 1060.39,
+      "off_pnl": -3661.96,
+      "delta": -4722.35,
+      "ross_pnl": 5612.0,
+      "guard_blocks": 952,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_rolr_20260114",
+      "on_pnl": 61565.78,
+      "off_pnl": 51461.54,
+      "delta": -10104.239999999998,
+      "ross_pnl": 85000.0,
+      "guard_blocks": 268,
+      "impact": "HELP"
+    },
+    {
+      "case_id": "ross_vero_20260116",
+      "on_pnl": 19071.95,
+      "off_pnl": 3087.79,
+      "delta": -15984.16,
+      "ross_pnl": 3484.88,
+      "guard_blocks": 255,
+      "impact": "HELP"
+    }
+  ],
+  "guard_breakdown": {
+    "macd": {
+      "blocks": 6340,
+      "correct": 4035,
+      "missed": 2305,
+      "net_impact": -853.5699999999999,
+      "cases": 13
+    },
+    "position": {
+      "blocks": 2448,
+      "correct": 1385,
+      "missed": 1063,
+      "net_impact": -11.729999999999983,
+      "cases": 8
+    },
+    "reentry_loss": {
+      "blocks": 3311,
+      "correct": 1853,
+      "missed": 1458,
+      "net_impact": -711.97,
+      "cases": 6
+    },
+    "sim_cooldown": {
+      "blocks": 66,
+      "correct": 51,
+      "missed": 15,
+      "net_impact": -2.92,
+      "cases": 2
+    },
+    "pending_entry": {
+      "blocks": 6,
+      "correct": 0,
+      "missed": 6,
+      "net_impact": 0.16,
+      "cases": 1
+    }
+  }
+}

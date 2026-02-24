@@ -66,8 +66,8 @@ class TestSchedulerControl:
         """Can start scheduler with defaults."""
         response = client.post("/automation/scheduler/start")
         
-        # May fail if already running or missing broker, but should not 500
-        assert response.status_code in [200, 400, 500]
+        # May fail if already running, missing broker, or ALLOW_LIVE_ENGINE guard (403)
+        assert response.status_code in [200, 400, 403, 500]
     
     def test_stop_scheduler(self, client):
         """Can stop scheduler."""

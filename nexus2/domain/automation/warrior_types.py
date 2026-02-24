@@ -111,6 +111,16 @@ class WarriorMonitorSettings:
     allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
     move_stop_to_breakeven_after_scale: bool = False  # Keep technical stop after scale (Ross Cameron)
     
+    # Guard Toggles (for GC param sweep A/B testing)
+    enable_profit_check_guard: bool = False  # Block adds when position >25% gain (not Ross methodology, for A/B testing)
+    
+    # Momentum Scaling (add on strength — Ross adds at $10, $11, $12 etc.)
+    # Independent from pullback scaling above — uses separate counters for A/B testing
+    enable_momentum_adds: bool = False      # A/B testable: add shares on breakout continuation
+    momentum_add_interval: float = 1.00     # Min price move above last add/entry before triggering ($1)
+    momentum_add_size_pct: int = 50         # Size of each momentum add (% of original position)
+    max_momentum_adds: int = 3              # Max momentum adds per position
+    
     # Re-Entry After Profit Exit
     max_reentry_count: int = 3  # Max re-entries per symbol (3 = 4 total entries; A/B tested: +$133 vs unrestricted)
     block_reentry_after_loss: bool = True  # Fix 6: Block re-entry if last exit was a loss (no revenge trading)
@@ -201,6 +211,8 @@ class WarriorPosition:
     scale_count: int = 0  # Number of adds taken
     original_shares: int = 0  # Initial position size (for calculating add size)
     last_scale_attempt: Optional[datetime] = None  # Track last scale attempt for cooldown
+    last_momentum_add_price: Optional[Decimal] = None  # Track price of last momentum add
+    momentum_add_count: int = 0                         # Number of momentum adds taken
     recovered_at: Optional[datetime] = None  # When position was recovered from broker sync (grace period)
     
     # Intraday candle tracking (for pattern exits)

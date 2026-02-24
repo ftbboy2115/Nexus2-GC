@@ -152,6 +152,7 @@ def get_config_dict(config) -> dict:
         "max_value_per_trade": float(config.max_value_per_trade) if config.max_value_per_trade else None,
         "static_blacklist": list(config.static_blacklist),
         "entry_bar_timeframe": config.entry_bar_timeframe,
+        "macd_histogram_tolerance": config.macd_histogram_tolerance,
     }
 
 
@@ -186,5 +187,7 @@ def apply_settings_to_config(config, settings: dict) -> None:
         config.static_blacklist = set(settings["static_blacklist"])
     if "entry_bar_timeframe" in settings:
         config.entry_bar_timeframe = settings["entry_bar_timeframe"]
+    if "macd_histogram_tolerance" in settings:
+        config.macd_histogram_tolerance = settings["macd_histogram_tolerance"]
     
     print(f"[Warrior Settings] Applied: max_positions={config.max_positions}, max_shares={config.max_shares_per_trade}")

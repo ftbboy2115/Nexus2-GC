@@ -33,7 +33,7 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from gc_memory_bridge import write_benchmark_memory
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://127.0.0.1:8000"
 NEXUS_PATH = os.environ.get(
     "NEXUS_PATH",
     r"C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus"
@@ -196,8 +196,11 @@ def diff_results(current: dict, baseline: dict):
     total = improved + regressed + unchanged
     capture = (new_total_pnl / new_total_ross * 100) if new_total_ross else 0
 
-    # Get baseline timestamp
+    # Get baseline timestamp and runtimes
     baseline_ts = baseline.get("saved_at", "unknown")
+    current_runtime = current.get("_runtime", 0)
+    baseline_runtime = baseline.get("_runtime", 0)
+    runtime_delta = current_runtime - baseline_runtime if baseline_runtime else 0
 
     # Print SUMMARY FIRST (so GC always sees it before truncation)
     print(f"\n{'='*80}")
@@ -210,6 +213,10 @@ def diff_results(current: dict, baseline: dict):
     print(f"  Net change:  ${total_change:>+,.2f}")
     print(f"  New total P&L: ${new_total_pnl:>,.2f}  (Ross: ${new_total_ross:>,.2f})")
     print(f"  Capture: {capture:.1f}%")
+    runtime_str = f"  Runtime: {current_runtime}s"
+    if baseline_runtime:
+        runtime_str += f"  (baseline: {baseline_runtime}s, delta: {runtime_delta:+.1f}s)"
+    print(runtime_str)
     print(f"{'='*80}")
 
     # Then show per-case changes (sorted by impact)

@@ -6,6 +6,7 @@ Contains all scheduler-related endpoints for starting, stopping, and configuring
 the automated trading scheduler, plus force scan and diagnostics.
 """
 
+import os
 import logging
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -38,6 +39,9 @@ router = APIRouter(prefix="/automation", tags=["automation"])
 # NOTE: _sim_broker moved to automation_state.py for thread safety
 # Use get_sim_broker() and set_sim_broker() instead
 
+# Safety guard: prevent dual-instance live trading (fail-closed)
+ALLOW_LIVE_ENGINE = os.getenv("ALLOW_LIVE_ENGINE", "false").lower() == "true"
+
 
 @router.post("/scheduler/start", response_model=dict)
 async def start_scheduler(
@@ -51,6 +55,13 @@ async def start_scheduler(
     Runs scan cycles at configured intervals during market hours.
     Set auto_execute=True to automatically execute trades (careful!).
     """
+    # Safety guard: block live engine start unless explicitly allowed
+    if not ALLOW_LIVE_ENGINE:
+        logger.warning("[Scheduler] BLOCKED: start_scheduler rejected — ALLOW_LIVE_ENGINE is not true")
+        raise HTTPException(
+            status_code=403,
+            detail="Live engine disabled on this instance. Set ALLOW_LIVE_ENGINE=true in .env to enable.",
+        )
     scheduler = get_scheduler()
     
     # Configure scheduler

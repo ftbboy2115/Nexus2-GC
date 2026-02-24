@@ -23,7 +23,7 @@ except (AttributeError, TypeError):
 
 import urllib.request
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://127.0.0.1:8000"
 NEXUS_PATH = os.environ.get(
     "NEXUS_PATH",
     r"C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus"

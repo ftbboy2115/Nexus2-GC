@@ -20,7 +20,7 @@ import urllib.request
 from datetime import datetime
 from collections import defaultdict
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://127.0.0.1:8000"
 NEXUS_PATH = os.environ.get("NEXUS_PATH", r"C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus")
 DIAG_DIR = os.path.join(NEXUS_PATH, "nexus2", "reports", "gc_diagnostics")
 

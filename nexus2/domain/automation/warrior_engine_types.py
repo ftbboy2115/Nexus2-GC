@@ -114,6 +114,7 @@ class WarriorEngineConfig:
     level_proximity_cents: int = 10  # How close to level to trigger (default 10c)
     level_granularity: str = "quarter"  # "quarter" ($0.25), "half" ($0.50), "whole" ($1.00)
     require_macd_positive: bool = True  # Ross-confirmed: MACD must be positive for entry
+    macd_histogram_tolerance: float = -0.02  # Allow slightly negative histogram during pullbacks (Ross: MACD is "confirmation only")
     
     # MICRO-PULLBACK settings (for extended stocks)
     micro_pullback_enabled: bool = True  # Enable micro-pullback entries for extended stocks
