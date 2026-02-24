@@ -41,6 +41,23 @@ class ETFormatter(logging.Formatter):
             return et_time.strftime(datefmt)
         return et_time.strftime('%H:%M:%S') + f'.{int(et_time.microsecond / 1000):03d}'
 
+
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that survives Windows PermissionError during rotation.
+    
+    When ProcessPoolExecutor spawns sim workers, each process gets its own
+    RotatingFileHandler pointing at the same server.log. If rotation triggers
+    while another process has the file open, os.rename() raises PermissionError.
+    This handler catches that error — the log message stays in the current file
+    and rotation retries naturally on the next size check.
+    """
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass  # Another process has the file — skip rotation, retry later
+
+
 log_format = '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s'
 formatter = ETFormatter(log_format)
 
@@ -54,11 +71,12 @@ root_logger.setLevel(logging.INFO)
 # console_handler.setFormatter(formatter)
 # root_logger.addHandler(console_handler)
 
-# File handler - auto-rotates at 10MB, keeps 5 backups
-file_handler = RotatingFileHandler(
+# File handler - auto-rotates at 50MB, keeps 3 backups
+# Uses SafeRotatingFileHandler to survive concurrent sim workers on Windows
+file_handler = SafeRotatingFileHandler(
     log_dir / "server.log",
-    maxBytes=10*1024*1024,  # 10MB
-    backupCount=5,
+    maxBytes=50*1024*1024,  # 50MB
+    backupCount=3,
     encoding='utf-8'
 )
 file_handler.setFormatter(formatter)

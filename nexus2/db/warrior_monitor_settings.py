@@ -121,6 +121,9 @@ def apply_monitor_settings(monitor_settings_obj, settings: dict) -> None:
     # Fix 6: Re-entry quality gate
     if "block_reentry_after_loss" in settings:
         monitor_settings_obj.block_reentry_after_loss = settings["block_reentry_after_loss"]
+    # Fix 7: Graduated re-entry gate
+    if "max_reentry_after_loss" in settings:
+        monitor_settings_obj.max_reentry_after_loss = settings["max_reentry_after_loss"]
     
     print(f"[Warrior Monitor Settings] Applied: enable_scaling={monitor_settings_obj.enable_scaling}")
 
@@ -162,4 +165,6 @@ def get_monitor_settings_dict(monitor_settings_obj) -> dict:
         "enable_improved_scaling": monitor_settings_obj.enable_improved_scaling,
         # Fix 6: Re-entry quality gate
         "block_reentry_after_loss": monitor_settings_obj.block_reentry_after_loss,
+        # Fix 7: Graduated re-entry gate
+        "max_reentry_after_loss": monitor_settings_obj.max_reentry_after_loss,
     }

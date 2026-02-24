@@ -60,6 +60,16 @@ async def check_entry_guards(
     _trigger = trigger_type.value
     _price = float(current_price)
     
+    # Derive blocked_time (HH:MM ET) for counterfactual analysis
+    et_now = engine._get_eastern_time()
+    _btime = et_now.strftime("%H:%M") if et_now else None
+    
+    # PHASE 1: Skip all guards for A/B comparison testing (SIM ONLY)
+    if getattr(engine, 'skip_guards', False):
+        assert engine.monitor.sim_mode, "skip_guards only allowed in simulation"
+        logger.info(f"[Warrior Guards] {symbol}: ALL GUARDS SKIPPED (A/B test mode)")
+        return True, ""
+    
     # TOP X PICKS - Ross Cameron (Jan 20 2026): "TWWG was the ONLY trade I took today"
     if engine.config.top_x_picks > 0:
         all_watched = sorted(
@@ -77,43 +87,43 @@ async def check_entry_guards(
                     f"dynamic={watched.dynamic_score}) "
                     f"top pick is {top_pick.candidate.symbol} (dynamic={top_pick.dynamic_score})"
                 )
-                tml.log_warrior_guard_block(symbol, "top_x", reason, _trigger, _price)
+                tml.log_warrior_guard_block(symbol, "top_x", reason, _trigger, _price, _btime)
                 return False, reason
     
     # MIN SCORE CHECK
     candidate_score = getattr(watched.candidate, 'quality_score', 0) or 0
     if candidate_score < engine.config.min_entry_score:
-        tml.log_warrior_guard_block(symbol, "min_score", f"Score {candidate_score} < min {engine.config.min_entry_score}", _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "min_score", f"Score {candidate_score} < min {engine.config.min_entry_score}", _trigger, _price, _btime)
         return False, f"Score {candidate_score} < min {engine.config.min_entry_score}"
     
     # BLACKLIST CHECK
     if symbol in engine.config.static_blacklist or symbol in engine._blacklist:
-        tml.log_warrior_guard_block(symbol, "blacklist", "Blacklisted", _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "blacklist", "Blacklisted", _trigger, _price, _btime)
         return False, "Blacklisted"
     
     # PER-SYMBOL FAIL LIMIT
     symbol_fails = engine._symbol_fails.get(symbol, 0)
     if symbol_fails >= engine._max_fails_per_symbol:
         reason = f"Max fails hit - {symbol_fails} stops today (max={engine._max_fails_per_symbol})"
-        tml.log_warrior_guard_block(symbol, "fail_limit", reason, _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "fail_limit", reason, _trigger, _price, _btime)
         return False, reason
     
     # MACD GATE - Block ALL entries when MACD is negative
     # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
     macd_result = await _check_macd_gate(engine, watched, current_price)
     if not macd_result[0]:
-        tml.log_warrior_guard_block(symbol, "macd", macd_result[1], _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "macd", macd_result[1], _trigger, _price, _btime)
         return macd_result
     
     # POSITION CHECKS (existing position, max scales, profit check)
     position_result = await _check_position_guards(engine, watched, current_price, trigger_type)
     if not position_result[0]:
-        tml.log_warrior_guard_block(symbol, "position", position_result[1], _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "position", position_result[1], _trigger, _price, _btime)
         return position_result
     
     # PENDING ENTRY CHECK
     if symbol in engine._pending_entries:
-        tml.log_warrior_guard_block(symbol, "pending_entry", "Pending buy order exists", _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "pending_entry", "Pending buy order exists", _trigger, _price, _btime)
         return False, "Pending buy order exists"
     
     # RE-ENTRY COOLDOWN (LIVE mode)
@@ -123,7 +133,7 @@ async def check_entry_guards(
         cooldown = engine.monitor._recovery_cooldown_seconds
         if seconds_ago < cooldown:
             reason = f"Re-entry cooldown - exited {seconds_ago:.0f}s ago (waiting {cooldown}s)"
-            tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price)
+            tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price, _btime)
             return False, reason
     
     # SIM MODE COOLDOWN
@@ -135,24 +145,17 @@ async def check_entry_guards(
             cooldown_minutes = engine.monitor._reentry_cooldown_minutes
             if minutes_since_exit < cooldown_minutes:
                 reason = f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
-                tml.log_warrior_guard_block(symbol, "sim_cooldown", reason, _trigger, _price)
+                tml.log_warrior_guard_block(symbol, "sim_cooldown", reason, _trigger, _price, _btime)
                 return False, reason
     
-    # RE-ENTRY QUALITY GATE: Block re-entry after loss (Ross: no revenge trading)
-    # Dual strategy: in-memory field (works in concurrent sim) + DB fallback (server restart)
+    # RE-ENTRY QUALITY GATE: Block re-entry after consecutive losses (Ross: 3-5 trades max per symbol)
+    # Graduated policy: allow N consecutive losses before blocking. Resets on profit exit.
     if watched.entry_attempt_count > 0 and engine.monitor.settings.block_reentry_after_loss:
-        # Primary: in-memory field (set by _handle_exit_pnl callback)
-        last_pnl = watched.last_trade_pnl
-        # Fallback: DB query (handles server restart where in-memory state is lost)
-        if last_pnl is None:
-            try:
-                from nexus2.db.warrior_db import get_last_trade_pnl
-                last_pnl = get_last_trade_pnl(symbol)
-            except Exception:
-                pass  # DB unavailable (e.g., in-memory sim DB) — degrade gracefully
-        if last_pnl is not None and last_pnl < 0:
-            reason = f"Re-entry BLOCKED after loss (P&L=${last_pnl:.2f}) - no revenge trading"
-            tml.log_warrior_guard_block(symbol, "reentry_loss", reason, _trigger, _price)
+        max_attempts = engine.monitor.settings.max_reentry_after_loss  # Default: 3
+        consecutive_losses = watched.consecutive_loss_count
+        if consecutive_losses >= max_attempts:
+            reason = f"Re-entry BLOCKED after {consecutive_losses} consecutive losses (max={max_attempts}) - Ross gives up after 2+ failures"
+            tml.log_warrior_guard_block(symbol, "reentry_loss", reason, _trigger, _price, _btime)
             return False, reason
     
     # SPREAD FILTER
@@ -162,7 +165,7 @@ async def check_entry_guards(
     if current_ask is not None:
         watched._spread_check_ask = current_ask  # Store for enter_position to use
     if not spread_ok:
-        tml.log_warrior_guard_block(symbol, "spread", spread_reason, _trigger, _price)
+        tml.log_warrior_guard_block(symbol, "spread", spread_reason, _trigger, _price, _btime)
         return False, spread_reason
     
     return True, ""
@@ -363,6 +366,12 @@ async def validate_technicals(
         (False, rejection_reason) if failed
     """
     symbol = watched.candidate.symbol
+    
+    # PHASE 1: Skip technical validation for A/B comparison testing (SIM ONLY)
+    if getattr(engine, 'skip_guards', False):
+        assert engine.monitor.sim_mode, "skip_guards only allowed in simulation"
+        logger.info(f"[Warrior Technicals] {symbol}: VALIDATION SKIPPED (A/B test mode)")
+        return True, None
     
     if not engine._get_intraday_bars:
         # Cannot validate - proceed with caution

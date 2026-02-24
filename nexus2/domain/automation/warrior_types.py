@@ -114,6 +114,7 @@ class WarriorMonitorSettings:
     # Re-Entry After Profit Exit
     max_reentry_count: int = 3  # Max re-entries per symbol (3 = 4 total entries; A/B tested: +$133 vs unrestricted)
     block_reentry_after_loss: bool = True  # Fix 6: Block re-entry if last exit was a loss (no revenge trading)
+    max_reentry_after_loss: int = 3  # Fix 7: Allow N consecutive losses before blocking (Ross: 3-5 trades/stock)
     
     # Polling
     check_interval_seconds: int = 2  # Fast polling for day trading

@@ -218,7 +218,12 @@ class WarriorEngine:
         if not watched:
             return
         watched.last_trade_pnl = pnl
-        logger.info(f"[Warrior Engine] {symbol}: Exit P&L tracked: ${pnl:+.2f}")
+        # Graduated re-entry gate: track consecutive losses (Fix 7)
+        if pnl < 0:
+            watched.consecutive_loss_count += 1
+        else:
+            watched.consecutive_loss_count = 0  # Reset on profit exit
+        logger.info(f"[Warrior Engine] {symbol}: Exit P&L tracked: ${pnl:+.2f} (consecutive_losses={watched.consecutive_loss_count})")
     
     def _handle_profit_exit(self, symbol: str, exit_price: float, exit_time: datetime):
         """

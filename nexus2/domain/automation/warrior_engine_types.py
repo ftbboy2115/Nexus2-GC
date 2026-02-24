@@ -176,6 +176,7 @@ class WatchedCandidate:
     last_exit_time: Optional[datetime] = None  # When last exit occurred (for cooldown)
     last_exit_price: Optional[Decimal] = None  # Price at last exit (must buy higher for strength)
     last_trade_pnl: Optional[float] = None  # P&L of last closed trade (for re-entry quality gate)
+    consecutive_loss_count: int = 0  # Consecutive losing exits (reset on win; for graduated re-entry gate)
     entry_volume_ratio: float = 0.0  # Volume ratio at entry (for exit mode selection)
     
     last_below_pmh: bool = False  # True if price was below PMH since last entry attempt
