@@ -230,6 +230,31 @@ Every finding in EVERY report must include:
 
 ---
 
+## 🚨 VERIFIED FACTS SOURCE (MANDATORY) 🚨
+
+> [!CAUTION]
+> **Before claiming ANY per-case P&L number or benchmark statistic, read the GC memory file.**
+> Past coordinators have relayed unverified P&L estimates from agent reports as facts.
+
+### The Source of Truth
+
+GC's benchmark memory is auto-updated by `gc_quick_test.py` every time batch tests run:
+```
+gravity-claw/data/memory/wb-benchmark.md
+gravity-claw/data/memory/wb-known-issues.md
+```
+
+### The Rule
+
+1. **Before stating any P&L number**, read `wb-benchmark.md`
+2. If a report says one thing and `wb-benchmark.md` says another, **trust the memory file**
+3. The memory file comes from actual code execution — reports may contain estimates
+
+### Prior Violations (Learn From These)
+- **Feb 23**: Coordinator relayed "ROLR = ~$0 bot P&L" from a Backend Planner spec. The actual verified number was $61,566. The spec was based on estimates, not execution.
+
+---
+
 ## 🚨 MANDATORY VALIDATION PROTOCOL 🚨
 
 > [!CAUTION]
