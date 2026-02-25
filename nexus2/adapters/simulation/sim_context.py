@@ -30,7 +30,7 @@ class SimContext:
     case_id: str
     
     @classmethod
-    def create(cls, case_id: str, batch_id: Optional[str] = None) -> "SimContext":
+    def create(cls, case_id: str, batch_id: Optional[str] = None, config_overrides: Optional[dict] = None, monitor_overrides: Optional[dict] = None) -> "SimContext":
         clock = SimulationClock()
         
         # MockBroker with injected clock (Wave 1 Phase 1B)
@@ -72,6 +72,20 @@ class SimContext:
                 engine.config.sim_only = True  # Force sim_only regardless of saved settings
         except Exception as e:
             print(f"[SimContext] Failed to load saved engine settings, using defaults: {e}")
+        
+        # Apply config overrides from param sweep (takes precedence over saved settings)
+        if config_overrides:
+            for key, value in config_overrides.items():
+                if hasattr(engine.config, key):
+                    setattr(engine.config, key, value)
+                    log.info(f"[SimContext] Override: engine.config.{key} = {value}")
+        
+        # Apply monitor overrides from param sweep (takes precedence over saved settings)
+        if monitor_overrides:
+            for key, value in monitor_overrides.items():
+                if hasattr(engine.monitor.settings, key):
+                    setattr(engine.monitor.settings, key, value)
+                    log.info(f"[SimContext] Override: monitor.settings.{key} = {value}")
         
         return cls(
             broker=broker,
@@ -372,9 +386,23 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
         """Return historical bars up to current simulated time.
 
         Excludes current minute's bar to avoid future data leakage.
+        Supports "1min", "5min", and "10s" timeframes.
         """
         time_with_seconds = _clock.get_time_string_with_seconds()
         time_str = _clock.get_time_string()
+
+        # 10s timeframe: use 10s bars if available, fall back to 1min
+        if timeframe == "10s":
+            if _loader.has_10s_bars(symbol):
+                # For 10s bars, exclude current 10s bar to avoid leakage
+                # Step back by 10 seconds from current time
+                bars = _loader.get_bars_up_to(symbol, time_with_seconds, "10s", include_continuity=False)
+                if bars and len(bars) > limit:
+                    bars = bars[-limit:]
+                return bars
+            else:
+                # Fall back to 1min when 10s data unavailable
+                timeframe = "1min"
 
         seconds = int(time_with_seconds.split(":")[-1]) if ":" in time_with_seconds else 0
         if seconds > 0:
@@ -551,7 +579,7 @@ def _run_case_sync(case_tuple: tuple) -> dict:
     """
     Run a single test case in a separate process.
     Must be a top-level function (picklable for ProcessPoolExecutor).
-    Receives (case_dict, yaml_data_dict, skip_guards) as a tuple.
+    Receives (case_dict, yaml_data_dict, skip_guards[, config_overrides[, monitor_overrides]]) as a tuple.
     """
     # === PER-PROCESS IN-MEMORY DB (Phase 8) ===
     # Replace shared warrior.db with ephemeral in-memory SQLite.
@@ -567,21 +595,30 @@ def _run_case_sync(case_tuple: tuple) -> dict:
     wdb.WarriorBase.metadata.create_all(bind=mem_engine)
 
     import asyncio
-    # Support both 2-tuple (backward compat) and 3-tuple (with skip_guards)
-    if len(case_tuple) == 3:
+    # Support 2-tuple through 5-tuple (with config_overrides and monitor_overrides)
+    if len(case_tuple) == 5:
+        case, yaml_data, skip_guards, config_overrides, monitor_overrides = case_tuple
+    elif len(case_tuple) == 4:
+        case, yaml_data, skip_guards, config_overrides = case_tuple
+        monitor_overrides = None
+    elif len(case_tuple) == 3:
         case, yaml_data, skip_guards = case_tuple
+        config_overrides = None
+        monitor_overrides = None
     else:
         case, yaml_data = case_tuple
         skip_guards = False
+        config_overrides = None
+        monitor_overrides = None
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_run_single_case_async(case, yaml_data, skip_guards=skip_guards))
+        return loop.run_until_complete(_run_single_case_async(case, yaml_data, skip_guards=skip_guards, config_overrides=config_overrides, monitor_overrides=monitor_overrides))
     finally:
         loop.close()
 
 
-async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool = False) -> dict:
+async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool = False, config_overrides: Optional[dict] = None, monitor_overrides: Optional[dict] = None) -> dict:
     """Async wrapper that creates SimContext and runs one case in an isolated process.
 
     NOTE: Dual P&L System
@@ -610,8 +647,8 @@ async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool 
     start = time.time()
 
     try:
-        # Create isolated context (fresh process = no shared state)
-        ctx = SimContext.create(case_id)
+        # Create isolated context with config and monitor overrides (param sweeps)
+        ctx = SimContext.create(case_id, config_overrides=config_overrides, monitor_overrides=monitor_overrides)
 
         # Phase 1: Set skip_guards on engine (A/B testing mode)
         if skip_guards:
@@ -904,7 +941,7 @@ def analyze_guard_outcomes(guard_blocks: list, bars: list, symbol: str) -> dict:
     }
 
 
-async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool = False) -> list:
+async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool = False, config_overrides: Optional[dict] = None, monitor_overrides: Optional[dict] = None) -> list:
     """
     Run all test cases in parallel using ProcessPoolExecutor.
 
@@ -916,6 +953,8 @@ async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool =
         cases: List of test case dicts from YAML
         yaml_data: Full YAML data dict
         skip_guards: If True, skip entry guards (A/B testing)
+        config_overrides: Engine config overrides for param sweeps
+        monitor_overrides: Monitor settings overrides for param sweeps
 
     Returns:
         List of result dicts, one per case
@@ -929,7 +968,7 @@ async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool =
 
     with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futures = [
-            loop.run_in_executor(pool, _run_case_sync, (case, yaml_data, skip_guards))
+            loop.run_in_executor(pool, _run_case_sync, (case, yaml_data, skip_guards, config_overrides, monitor_overrides))
             for case in cases
         ]
         results = await asyncio.gather(*futures, return_exceptions=True)

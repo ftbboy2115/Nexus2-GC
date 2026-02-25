@@ -126,7 +126,7 @@ Ross exits entirely (sells remaining position) on:
 |--------|-------------|
 | **VWAP loss** | Falls below VWAP and can't reclaim |
 | **High-volume red candles** | Multiple large-body red candles = sellers in control |
-| **MACD goes negative** | Technical weakness confirmed |
+| **MACD goes negative** | Technical weakness confirmed. Also a hard gate: MACD negative = don't enter new trades (see §8.1) |
 | **Big seller on Level 2** | Large ask orders that keep reloading (20,000+ shares) |
 | **Can't break key level** | Double-top rejection, resistance wall |
 | **Spread widens** | Liquidity drying up |
@@ -301,7 +301,7 @@ Ross explicitly classifies market conditions daily:
 | Indicator | How Used |
 |-----------|----------|
 | **VWAP** | Primary bias indicator. Above = bullish, below = bearish. Break of VWAP = entry trigger. |
-| **MACD** | Confirmation only. "MACD goes negative" = caution / potential exit. |
+| **MACD (12,26,9)** | **Binary gate: Positive = Trade, Negative = Don't trade.** See §8.1 below. |
 | **Level 2 / Order Book** | Primary tool for reading supply/demand. Watches for big buyers on bid, big sellers on ask. |
 | **10-second chart** | Entry timing. Micro pullback patterns. |
 | **1-minute chart** | Intraday structure. Base patterns, candle patterns. |
@@ -309,6 +309,33 @@ Ross explicitly classifies market conditions daily:
 | **Daily chart** | Float rotation, 200 MA position, recent history. |
 | **Volume** | Relative volume vs 50-day average. Confirms interest. |
 | **Spreads** | Tight = good liquidity. Wide = dangerous. |
+
+### 8.1 MACD — Verified Ground Truth
+
+> **Sources:** Ross's MACD training video (Sep 2025, "The Simple MACD Strategy to Spot Big Winners Early") + 10 validated Jan 2026 trade recaps
+> **Verification date:** 2026-02-24 (transcript re-processing with evidence tags)
+
+**Ross's MACD rules (from training video — direct quotes):**
+1. Settings: 12 / 26 / 9 (standard — Ross insists on standard)
+2. **"Red light, green light"** — MACD negative = DO NOT TRADE
+3. MACD crossover from negative → positive IS a valid entry signal
+4. Requires **5x RVOL** as a prerequisite for MACD signals to be meaningful
+5. Entry: Wait for first pullback when MACD is positive. Stop = low of pullback
+6. Required risk: 2:1 profit/loss ratio
+
+**How Ross uses MACD in actual trading (Jan 1-15 validated transcripts):**
+- 3 of 10 trade recaps mention MACD
+- Jan 8 FLYX: MACD negative + declining volume = **avoid** (bull trap warning)
+- Jan 14 ROLR: MACD negative after peak = **don't re-enter**
+- Jan 15 PHL: "Looking for MACD to cross into the positive" = **re-entry confirmation**
+- Other 7 recaps: MACD not mentioned
+
+**Summary:** MACD is a **hard binary gate** for entries (negative = don't trade), a **crossover signal** for re-entries (neg→pos = valid entry), and a **defensive warning** against entering weak setups. It is NOT merely "confirmation only."
+
+> [!CAUTION]
+> Previous version of this document characterized MACD as "confirmation only" — this was based on
+> hallucinated transcript extractions from the early processing agent (Dec 2025). The training video
+> and validated transcripts prove MACD is a harder gate than previously documented.
 
 ### NOT Used
 - RSI

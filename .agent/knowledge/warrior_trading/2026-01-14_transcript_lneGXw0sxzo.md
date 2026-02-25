@@ -3,7 +3,22 @@
 **Date:** 2026-01-14  
 **Video:** [Will Prediction Markets Become The Latest HOT Theme?](https://www.youtube.com/watch?v=lneGXw0sxzo)  
 **Stock:** ROLR (High Roller Technologies)  
-**Result:** +$85,000
+**Result:** +$85,000 (biggest day of the year)
+
+---
+
+## Methodology Checklist
+
+| Topic | Ross Mentioned? | Evidence Tag | Quote (if yes) |
+|-------|----------------|-------------|----------------|
+| MACD | YES | [DIRECT QUOTE] | "because the MACD was negative, it was taking too much risk" — Ross uses MACD going negative as reason NOT to re-enter ROLR near the top at $18/share. MACD used as a **no-re-entry signal**, not an entry trigger. |
+| VWAP | YES | [PARAPHRASED] | Ross mentions reclaiming the "volume weight average price" as a trigger to add back — "it curls back up, reclaims the volume weight average price, and I add back for the break of 950" |
+| Level 2 / Order Book | YES | [DIRECT QUOTE] | "the second I read 'prediction market space,' I pulled up the level two" — Ross uses Level 2 to assess demand immediately after reading the catalyst headline |
+| Stop method | NO | [NOT MENTIONED] | — |
+| Re-entry criteria | YES | [DIRECT QUOTE] | "I add back for the break of 950" — Ross re-enters on VWAP reclaim and break of key levels. Also describes NOT re-entering when "the MACD was negative, it was taking too much risk" |
+| Position sizing logic | YES | [DIRECT QUOTE] | "I used all of the buying power that I had in my account... $140k" — Ross uses ALL buying power on this conviction trade. Also notes later: "at $18 a share, I couldn't really buy very many shares" as a constraint |
+| Exit strategy | YES | [PARAPHRASED] | Ross scales out on strength throughout the move. Takes profit at each dollar level. Stops adding when spreads get too wide and when MACD goes negative. Final reason for stopping: "live to trade another day" |
+| Market temperature | YES | [PARAPHRASED] | Ross frames this as the payoff for patience during cold market days — "if I only have one day like today each month, it's still worth showing up every single day waiting for that one headline to drop" |
 
 ---
 
@@ -24,11 +39,12 @@
 
 ## Setup Criteria (Why He Took It)
 
-1. **Hot Theme Catalyst**: "Prediction market space" - immediately recognized as potential new hot theme for 2026
-2. **US Company**: Tradable at Schwab (unlike many international small caps being blocked)
-3. **Blue Sky Setup**: All-time highs were just over $8, so no overhead resistance
-4. **Strong Price Action**: Pop from $4.20 → $4.92 (+$1) while reading headline = "That's what I like to see"
-5. **Quality Over Quantity**: Waited through slow days (Mon/Tue) for the right setup
+1. **Hot Theme Catalyst** [DIRECT QUOTE]: "the second I read 'prediction market space,' I pulled up the level two" — immediately recognized as potential new hot theme for 2026
+2. **US Company** [PARAPHRASED]: Tradable at Schwab (unlike many international small caps being blocked)
+3. **Blue Sky Setup** [PARAPHRASED]: All-time highs were just over $8, so no overhead resistance — "this is also a blue sky setup"
+4. **Strong Price Action** [DIRECT QUOTE]: "$1 pop while reading headline — 'That's what I like to see'"
+5. **Level 2 Demand** [DIRECT QUOTE]: "I pulled up the level two" — checked order book demand before entry
+6. **Quality Over Quantity** [PARAPHRASED]: Waited through slow days (Mon/Tue) for the right setup
 
 ---
 
@@ -39,24 +55,23 @@
   - Initial look: Already at $4.20-$4.25
 
 Read headline: "Partners with Crypto.com to enter rapidly growing prediction market space"
-  → Immediately recognized prediction markets as hot theme
-  → Pulled up Level 2
+  → [DIRECT QUOTE] "the second I read prediction market space, I pulled up the level two"
 
 Price action while reviewing:
-  - Popped to $4.72 → $4.92 (a dollar pop!)
+  - Popped to $4.72 → $4.92 (a dollar pop!) [DIRECT QUOTE] "That's what I like to see"
   - Dipped briefly to $4.60
   - Curled back up toward $5.00
 
 Entry: Punched it for break of $5.00
   - Filled at $5.17 average (slippage - some below $5, some above)
-  - Used ALL buying power in account ($140k)
+  - [DIRECT QUOTE] "I used all of the buying power that I had in my account"
 ```
 
 ---
 
 ## Scaling Pattern (Adds & Exits)
 
-### First 5 Minutes ($52,000 profit)
+### First 5 Minutes ($52,000 profit) [PARAPHRASED from detailed walkthrough]
 | Action | Price | Trigger |
 |--------|-------|---------|
 | Entry | $5.17 | Break of $5.00 whole dollar |
@@ -67,12 +82,12 @@ Entry: Punched it for break of $5.00
 | Take profit | $8.50-$9.00 | Scaling out |
 | Buy dip | ~$8.00 | Dip after $9 |
 | All out | choppy | Got choppy, exited |
-| Add back | $9.50 | VWAP reclaim + break |
+| Add back | $9.50 | VWAP reclaim + break [DIRECT QUOTE] "reclaims the volume weight average price, and I add back" |
 | Take profit | $10.50 | New highs |
-| Add | $10.00 | Micro pullback for HOD break |
+| Add | $10.00 | Micro pullback for HOD break [PARAPHRASED] |
 | Squeeze | $12.00 | Strong move |
 
-### Later Moves ($34,000 additional profit)
+### Later Moves ($34,000 additional profit) [PARAPHRASED]
 | Action | Price | Trigger |
 |--------|-------|---------|
 | Smaller adds | $13-14 | Spreads getting bigger |
@@ -81,100 +96,69 @@ Entry: Punched it for break of $5.00
 
 ---
 
+## MACD Usage Detail (CRITICAL — Verified Direct Quote)
+
+> [!IMPORTANT]
+> Ross mentions MACD in this transcript as a **no-re-entry signal**. This is NOT an entry trigger.
+
+**Context:** After the stock peaked near $21 and pulled back, Ross considered getting back in at the $18 level but decided against it.
+
+**Direct Quote:** "I held back on it because at that point at $18 a share, I couldn't really buy very many shares. I didn't feel like I'd really make a considerable amount more money. And I thought because the MACD was negative, it was taking too much risk."
+
+**Rule extracted:** [DIRECT QUOTE] When MACD is negative after a major run, do NOT re-enter. The risk is too high. Combined with inability to take meaningful size = stay out.
+
+---
+
 ## Exit Criteria
 
-### Why He Took Profits
+### Why He Took Profits [PARAPHRASED]
 - Scaled out on strength throughout the move
 - Spreads got wider above $14 = more risk
-- MACD went negative after peak = no re-entry
+- MACD went negative after peak = no re-entry [DIRECT QUOTE]
 - At $18/share couldn't buy meaningful size anymore
-- "Live to trade another day"
-
-### Why He Didn't Re-enter at Top
-- At $18/share, position size too small to matter
-- MACD was negative = taking too much risk
-- "I held back on it"
+- [DIRECT QUOTE] "live to trade another day"
 
 ---
 
 ## Disqualifiers (What He Avoided)
 
-| Stock | Reason |
-|-------|--------|
-| EVTV | Too cheap (low price risk) |
-| FAMI | Chinese company, popped and reversed full round trip |
-| [Unnamed] | International company, not tradable at Schwab, previous rejection at $4.62 |
-| FEED | Popped and failed the other day, why would it work today? |
-| AHMA | "If you mention that stock I'll get a headache" - difficult despite big move |
-| GELS | Popped after hours but selling off into pre-market |
-| MLEC | Recent reverse split but NO NEWS |
-| RVL | Recent reverse split but NO NEWS |
+| Stock | Reason | Evidence Tag |
+|-------|--------|-------------|
+| EVTV | Too cheap (low price risk) | [PARAPHRASED] |
+| FAMI | Chinese company, popped and reversed full round trip | [PARAPHRASED] |
+| FEED | [DIRECT QUOTE] "it popped up the other day. It didn't work. Why would it work today?" | [DIRECT QUOTE] |
+| AHMA | [DIRECT QUOTE] "If you mention that stock I'll get a headache" | [DIRECT QUOTE] |
+| GELS | Popped after hours but selling off into pre-market | [PARAPHRASED] |
+| MLEC / RVL | Reverse split but NO NEWS — [DIRECT QUOTE] "just because it's a recent reverse split doesn't mean it's a trade. We need the news on it" | [DIRECT QUOTE] |
 
 ---
 
 ## Key Patterns Extracted
 
 ### Entry Rules
-1. **Theme recognition is critical** - "The second I read 'prediction market space,' I pulled up the level two"
-2. **Look for $1+ pops while reading headline** - Confirms strong interest
-3. **US company preferred** - Tradable at Schwab, no exchange restrictions
-4. **Blue sky setup** - Near or at all-time highs = no overhead resistance
-5. **Wait for it** - "If I only have one day like today each month, it's still worth showing up"
+1. **Theme recognition is critical** [DIRECT QUOTE]: "The second I read 'prediction market space,' I pulled up the level two"
+2. **Look for $1+ pops while reading headline** [DIRECT QUOTE]: "That's what I like to see" — confirms strong interest
+3. **US company preferred** [PARAPHRASED]: Tradable at Schwab, no exchange restrictions
+4. **Blue sky setup** — Near or at all-time highs = no overhead resistance [PARAPHRASED]
+5. **Level 2 check immediately** [DIRECT QUOTE]: Ross opens Level 2 right after reading headline
 
 ### Add Rules
-1. Add on breaks of whole dollars ($5, $8, $10)
-2. Add on VWAP reclaims
-3. Add on micro pullbacks for HOD breaks
-4. Reduce size as price increases (buying power constraint)
+1. **Add on breaks of whole dollars ($5, $8, $10)** [PARAPHRASED]
+2. **Add on VWAP reclaims** [DIRECT QUOTE]: "reclaims the volume weight average price, and I add back"
+3. **Add on micro pullbacks for HOD breaks** [PARAPHRASED]
+4. **Reduce size as price increases** (buying power constraint) [PARAPHRASED]
 
 ### Exit Rules
-1. Scale out on strength - take profit when up $1+/share
-2. Exit when action gets choppy
-3. Exit when spreads widen significantly
-4. No re-entry when MACD is negative
-5. Don't chase when size becomes meaningless
+1. **Scale out on strength** — take profit when up $1+/share [PARAPHRASED]
+2. **Exit when action gets choppy** [PARAPHRASED]
+3. **Exit when spreads widen significantly** [PARAPHRASED]
+4. **No re-entry when MACD is negative** [DIRECT QUOTE]
+5. **Don't chase when size becomes meaningless** [PARAPHRASED]
 
 ### Avoid Rules
-1. **No trades on cheap stocks** - "I don't want to take the risk on lower priced stocks"
-2. **No international/blocked stocks** - Can't trade at Schwab
-3. **No repeat failures** - "It failed the other day, why would it work today?"
-4. **No trades without news** - Reverse split alone is not a trade
-5. **No difficult stocks** - If it gave you a headache yesterday, skip it
-
----
-
-## Ross's Mental Framework (This Session)
-
-> "Quality over quantity. I was being very patient, disciplined, self-control... I'd had that red day on Friday. When are we going to have something that finally opens up?"
-
-### Theme Recognition
-- Identified prediction markets as potential HOT theme for 2026
-- Previously hot themes: Crypto treasury (2024-2025), AI (faded)
-- Immediately recognized timing opportunity when headline dropped
-
-### Risk Management Philosophy
-- Started year at $100k to control risk
-- "I don't want to go red on the year"
-- Account now at $225k (+125% YTD by Jan 14)
-- Regret: Didn't punch same trade in WeBull/RobinHood small accounts
-
-### Account Update
-- Started year: $100,000
-- Before this trade: $140,000 (+40% YTD)
-- After this trade: ~$225,000 (+125% YTD)
-- Single day profit: +$85,000 (+60% on account)
-
----
-
-## Actionable Takeaways for Nexus
-
-1. **Theme Scanner**: Add "prediction market" to catalyst keywords - this is the new hot sector
-2. **Blue Sky Detection**: Flag stocks at/near all-time highs with catalyst
-3. **US Company Filter**: Prioritize US-listed stocks (Schwab tradable)
-4. **Dollar Pop Alert**: Alert when stock pops $1+ while catalyst is fresh
-5. **Repeat Failure Tracking**: If a stock failed recently, lower its score
-6. **News Required**: Reverse split momentum needs catalyst - no news = no trade
-7. **Spread Monitoring**: Track bid/ask spread expansion during moves 
+1. **No repeat failures** [DIRECT QUOTE]: "It failed the other day, why would it work today?"
+2. **No trades without news** [DIRECT QUOTE]: "just because it's a recent reverse split doesn't mean it's a trade. We need the news on it"
+3. **No difficult stocks** [DIRECT QUOTE]: "If you mention that stock I'll get a headache"
 
 ---
 

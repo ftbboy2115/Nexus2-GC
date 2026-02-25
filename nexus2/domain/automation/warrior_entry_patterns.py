@@ -730,9 +730,13 @@ async def check_micro_pullback_entry(
     
     if engine._get_intraday_bars:
         try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
-            if not candles or len(candles) < 20:
-                logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - not enough candles ({len(candles) if candles else 0} < 20)")
+            tf = engine.config.entry_bar_timeframe
+            # 10s bars: 6x more bars per minute, scale limit and min threshold
+            bar_limit = 180 if tf == "10s" else 30
+            min_candles = 120 if tf == "10s" else 20
+            candles = await engine._get_intraday_bars(symbol, tf, limit=bar_limit)
+            if not candles or len(candles) < min_candles:
+                logger.info(f"[Warrior Entry] {symbol}: MICRO_PULLBACK skip - not enough candles ({len(candles) if candles else 0} < {min_candles})")
                 return None
             if True:  # candles check passed
                 from nexus2.domain.indicators import get_technical_service
@@ -891,7 +895,9 @@ async def detect_pullback_pattern(
     candles = None
     if engine._get_intraday_bars:
         try:
-            candles = await engine._get_intraday_bars(symbol, "1min", limit=30)
+            tf = engine.config.entry_bar_timeframe
+            bar_limit = 180 if tf == "10s" else 30
+            candles = await engine._get_intraday_bars(symbol, tf, limit=bar_limit)
             if candles and len(candles) >= 5:
                 from nexus2.domain.indicators import get_technical_service
                 tech = get_technical_service()
@@ -1085,8 +1091,12 @@ async def detect_vwap_break_pattern(
     snapshot = None
     
     try:
+        tf = engine.config.entry_bar_timeframe
         bar_limit = get_session_bar_limit(engine)
-        candles = await engine._get_intraday_bars(symbol, "1min", limit=bar_limit)
+        # For 10s bars, scale the limit 6x (6 bars per minute)
+        if tf == "10s":
+            bar_limit = min(bar_limit * 6, 6000)
+        candles = await engine._get_intraday_bars(symbol, tf, limit=bar_limit)
         if candles and len(candles) >= 5:
             from nexus2.domain.indicators import get_technical_service
             tech = get_technical_service()

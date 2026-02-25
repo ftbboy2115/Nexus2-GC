@@ -2,8 +2,23 @@
 
 **Date:** 2026-01-14  
 **Video:** [These Stocks Were NOT AVAILABLE on Schwab...](https://www.youtube.com/watch?v=cXp-i4wM4eQ)  
-**Stocks:** AHMA (difficult), IOTR (loss)  
+**Stocks:** AHMA (difficult, multiple attempts), IOTR (loss)  
 **Result:** +$4,000 (small green day, very frustrating)
+
+---
+
+## Methodology Checklist
+
+| Topic | Ross Mentioned? | Evidence Tag | Quote (if yes) |
+|-------|----------------|-------------|----------------|
+| MACD | NO | [NOT MENTIONED] | — |
+| VWAP | YES | [PARAPHRASED] | Ross references VWAP break at 7 AM as entry trigger for IOTR — "if this breaks VWAP right here at 7 a.m. and we can hold over these levels" |
+| Level 2 / Order Book | NO | [NOT MENTIONED] | — |
+| Stop method | YES | [PARAPHRASED] | Ross describes stopping out quickly on IOTR for -$371 (good risk management), and getting out break-even multiple times on AHMA when breakouts immediately rejected |
+| Re-entry criteria | YES | [PARAPHRASED] | Ross describes attempting 5+ re-entries on AHMA, each time the stock pulled back and set up again. Eventually stopped trying after too many close calls, then missed the big move $10.50 → $15 |
+| Position sizing logic | NO | [NOT MENTIONED] | — |
+| Exit strategy | YES | [DIRECT QUOTE] | "I am not entertaining selling" — Ross held through one pullback on AHMA out of frustration, breaking his normal quick-exit discipline. Also describes taking partial profits immediately when target hit briefly. |
+| Market temperature | YES | [DIRECT QUOTE] | "There's hot cycles and cold cycles... just got to get through when it's cold" and "try to make sure I restrain myself from taking unnecessary risk when it's cold" |
 
 ---
 
@@ -37,16 +52,16 @@
 ## Setup Criteria (Why He Took It)
 
 ### AHMA
-1. Low float (1.3M shares) with massive volume (37x rotation)
-2. Hard to borrow status (not easy to borrow = less likely to dump)
-3. New IPO, near all-time highs (~$18)
-4. **Warning**: No news catalyst - risky
+1. **Low float** (1.3M shares) with massive volume (37x rotation) [PARAPHRASED]
+2. **Hard to borrow status** (not easy to borrow = less likely to dump) [PARAPHRASED]: "if it was easy to borrow with no news, it's probably just going to drop right back down"
+3. **New IPO**, near all-time highs (~$18) [PARAPHRASED]
+4. **Warning**: No news catalyst — risky [PARAPHRASED]
 
 ### IOTR
-1. Inverted head & shoulders pattern
-2. Sub 1 million float
-3. Looking for VWAP break at 7 AM
-4. **Warning**: No news catalyst - risky
+1. **Inverted head & shoulders pattern** [PARAPHRASED]
+2. **Sub 1 million float** [PARAPHRASED]
+3. **Looking for VWAP break at 7 AM** [PARAPHRASED]: "if this breaks VWAP right here at 7 a.m."
+4. **Warning**: No news catalyst — risky [PARAPHRASED]
 
 ---
 
@@ -55,19 +70,19 @@
 ### AHMA (What Went Wrong - Multiple Frustrating Entries)
 ```
 First Entry: $6.73 looking for squeeze to $7
-  → Hit $6.96 for ONE SECOND, then dropped
+  → Hit $6.96 for ONE SECOND, then dropped [DIRECT QUOTE]
   → Sold half for profit, rest for loss
   → Net: +$400
-  
+
 Entry 2-5: Multiple attempts at breakouts
   → Each time: Pop → immediate rejection → topping tails
   → Got out break-even multiple times
-  → "Almost thought a blood vessel was going to burst in my brain"
+  → [DIRECT QUOTE] "I almost thought like a blood vessel was going to burst in my brain"
 
 The Move He Missed:
   → Stopped trying after too many close calls
   → Stock broke $10.50 and went straight to $15
-  → "There's not a chance I'm getting in this thing"
+  → [DIRECT QUOTE] "There's not a chance I'm getting in this thing"
 
 Final Trade: $13-$15 area
   → Got in for HOD break
@@ -81,153 +96,42 @@ Pattern: Inverted head & shoulders
 Entry: ~$7.00 looking for VWAP break
   → Didn't work, stopped out
   → Loss: -$371
-  → Good risk management
+  → Good risk management [PARAPHRASED]
 ```
-
----
-
-## Scaling Pattern (Adds & Exits)
-
-### AHMA (Multiple Attempts)
-| Action | Price | Trigger |
-|--------|-------|---------|
-| Entry 1 | $6.73 | Breakout, looking for $7 |
-| Partial exit | $6.96 | Hit high for 1 second |
-| Stop loss | ~$6.50 | Dropped back |
-| Entry 2 | ~$7.00 | Came back up |
-| Exit | break-even | Immediate rejection |
-| Entry 3-5 | various | Same pattern, all break-even |
-| MISSED | $10.50 → $15 | "Not a chance" |
-| Final entry | ~$13.50 | Looking for HOD break |
-| Exit | ~$14.50 | Rejected before $15 break |
-
-### IOTR
-| Action | Price | Trigger |
-|--------|-------|---------|
-| Entry | ~$7.00 | Inverted H&S, VWAP break |
-| Stop | ~$6.50 | Pattern failed |
-| Loss | -$371 | Good risk management |
-
----
-
-## Exit Criteria
-
-### Why He Kept Stopping Out on AHMA
-- Immediate rejections after each pop
-- Multiple topping tails = heavy sellers
-- Stock felt "thickly traded" and "heavy"
-- No cushion from previous wins to hold through
-
-### Why He Missed the Big Move
-- Burned 5 times in a row (barely got out break-even)
-- Emotional exhaustion: "blood vessel was going to burst"
-- No trust left: "There's not a chance I'm getting in this"
-
----
-
-## Disqualifiers (What He Avoided)
-
-| Stock | Reason |
-|-------|--------|
-| TH | Very light volume (less than 500k shares) |
-| XAIR | Lower priced |
-| GELS | After hours move |
-| XTLB | Cheaper stock |
-| AHMA (after losses) | "This stock has been driving me nuts" |
 
 ---
 
 ## Key Patterns Extracted
 
 ### Entry Rules
-1. Check borrow status first - hard to borrow = less likely to dump with no news
-2. Inverted head & shoulders can work on low float
-3. Look for VWAP breaks at 7 AM as entry trigger
-4. **No news = higher risk** - be extra cautious
-
-### Add Rules
-1. Don't add on choppy action with topping tails
-2. If you've been burned 5 times, don't add again
-3. Reduce size when action is "thickly traded"
+1. **Check borrow status first** — hard to borrow = less likely to dump with no news [PARAPHRASED]
+2. **Inverted head & shoulders** can work on low float [PARAPHRASED]
+3. **VWAP breaks at 7 AM** as entry trigger [PARAPHRASED]
+4. **No news = higher risk** — be extra cautious [PARAPHRASED]
 
 ### Exit Rules
-1. Take partial profits immediately when target hit briefly
-2. Stop out quickly when pattern fails (-$371 is fine)
-3. If stock rejects instantly after entry, get out break-even
-4. Don't hold through topping tails
+1. **Take partial profits immediately** when target hit briefly [PARAPHRASED]: AHMA hit $6.96 for one second
+2. **Stop out quickly when pattern fails** — $371 loss is fine [PARAPHRASED]
+3. **If stock rejects instantly after entry, get out break-even** [PARAPHRASED]
+4. **Don't hold through topping tails** [PARAPHRASED]
 
 ### Avoid Rules
-1. **Stocks not tradable at Schwab** - but have backup broker ready
-2. **Light volume stocks** - less than 500k shares
-3. **Lower priced stocks** - "smaller range"
-4. **After hours movers** - often fade
-5. **No news movers** - higher risk of failure
+1. **Stocks not tradable at Schwab** — but have backup broker ready [DIRECT QUOTE]: "Father Schwab said no"
+2. **Light volume stocks** — less than 500k shares [PARAPHRASED]
+3. **No news movers** — higher risk of failure [PARAPHRASED]
+
+### Emotional Trading Warning
+1. **After 5 failed attempts, you lose objectivity** [PARAPHRASED]: Ross was burned 5 times and then missed the $10.50 → $15 move because he couldn't trust the stock
+2. **"Blood vessel" frustration** [DIRECT QUOTE]: Extreme frustration from repeated close calls erodes decision-making
 
 ---
 
-## Schwab Restrictions (CRITICAL ISSUE)
+## Schwab Restrictions [DIRECT QUOTE]
 
-### The Problem
 > "Father Schwab said no... I just don't think that's fair."
 
-- **Both stocks traded today (AHMA, IOTR) were blocked at Schwab**
-- Schwab blocking "hundreds of different stocks" - primarily international small caps
-- Users are "livid" when hot stock makes 150% move and they can't trade it
-
-### Affected Stocks
-| Stock | Country | Status |
-|-------|---------|--------|
-| AHMA | UAE | Blocked |
-| IOTR | Singapore | Blocked |
-| Many others | International | Blocked |
-
-### Options for Affected Traders
-1. **Don't trade them** - "Not a good option"
-2. **Switch brokers** - Many people doing this
-3. **Call Schwab and complain** - Make your voice heard
-4. **Request high-risk disclosure** - Other brokers have this option
-
-### Ross's Take
-> "If you're using Schwab as your primary broker... you have really two choices."
-
-- Schwab should offer a disclosure/waiver system
-- Other brokers have day trading disclosures, penny stock disclosures
-- Potential liability issue if companies sue for discrimination
-
----
-
-## Ross's Mental Framework (This Session)
-
-> "I'm used to being up 5,000, $10,000 pretty quickly on the first couple trades and here I am up $100. It's better than being red, but this is not good."
-
-### Frustration Management
-- Almost had an emotional breakdown on AHMA
-- "Blood vessel was going to burst in my brain"
-- Held through the pain on one trade, "I am not entertaining selling"
-- Eventually got out break-even
-
-### Cold Market Philosophy
-- Daily goal: $20k hot market, $5k cold market
-- Today: Only $4k = "very small green day"
-- "There's hot cycles and cold cycles... just got to get through when it's cold"
-- "Restrain myself from taking unnecessary risk when it's cold"
-
-### Account Update
-- Started year: $100,000
-- Current: ~$140,000 (+40% YTD)
-- Recovered Friday's red day
-- Back to all-time highs on the account
-
----
-
-## Actionable Takeaways for Nexus
-
-1. **Broker Compatibility Flag**: Track which stocks are Schwab-tradable vs blocked
-2. **Borrow Status Check**: Hard to borrow + no news = still might work
-3. **Topping Tail Counter**: Count consecutive topping tails as chop indicator
-4. **Float Rotation Metric**: 37x rotation = extreme volume relative to float
-5. **No News Warning**: Flag stocks with no catalyst as higher risk
-6. **Multi-Broker Support**: Plan for broker restrictions in automation 
+- Both stocks traded today (AHMA, IOTR) were blocked at Schwab
+- Schwab blocking "hundreds of different stocks" — primarily international small caps [PARAPHRASED]
 
 ---
 
@@ -236,6 +140,6 @@ Entry: ~$7.00 looking for VWAP break
 <details>
 <summary>Click to expand full transcript</summary>
 
-What's up everyone? All right, so in today's episode, I'm going to break down my trades from the morning. I'm sitting in the green and I'm grateful for that. But I also got myself really frustrated today because we had this one stock, AHMA, that I found to be very difficult to time. It's like I I was much better at taking the worst entry possible and then riding through a pullback until it came back up to green. I I just I don't know. There was something about it. that I couldn't get dialed in. So, let's jump onto the screen share. We'll start breaking it down. Um, you can see I'm up about just under $4,000, which is a good day. Well, to be honest, it's not a great day. It's a very small green day. My daily goal is 20,000 in a hot market, 5,000 in a cold market. Uh, so, you know, being up 1,600 yesterday and then only 4,900 today. I feel like I'm not really making any progress on my, you know, I don't know, my my goal for the week or my goal for the month, but I try not to get too fixated on big number goals because if the market's hot, they'll happen. And if it's not, well, there's nothing I can really do about it. So, I might as well just roll with the punches and, you know, recognize that there's hot cycles and cold cycles and I just got to get through when it's cold and try to make sure I restrain myself from taking unnecessary risk when it's cold because if I take a big loss, it's going to be hard to recover from it. So, AHMA, this stock 1.3 million share float up 146% right now. Um, 43 million shares of volume. So that's, you know, float rotation of, you know, nearly 40x, 375 times above average volume today versus um its average 50-day average. It hasn't even been around for 50 days. It's a somewhat new IPO. All-time high on it is up around um what was it? $18 a share, something like that, up at the top of this candle. So, you know, when this first popped up this morning, I initially was kind of excited about it until I realized that it had no news. So, there's actually a couple things that we should talk about today. Um, first is that the two stocks I traded, AHMA and IOTR, neither of these stocks were tradable at Charles Schwab. So if you use Charles Schwab using Think or Swim, you couldn't have traded either of these stocks today because they're blocking they must be blocking hundreds of different stocks primarily small cap stocks that are not based in the US. Uh this one's um AE uh IOTR is also international, but it's it's you know, look, you know, Father Schwab knows best. um or so they think. But I I I have to tell you guys, if you're using Schwab as your primary broker, you're unable to trade a lot all of a sudden because this new policy they've put into into effect, you're unable to trade a lot of small cap stocks and you have really two choices. You either switch your strategy, you trade the ones that are available, which is going to make you really frustrated because when you have a stock like this that goes up 150% in one day, and especially if you were in the red from a red day on Friday like I was, and you can't trade it, you're livid. Now, a stock makes a move, is finally clean, and I can't buy it. So, what are your options? You either just don't trade them, which is not a good option. That doesn't make sense. You switch to a different broker. Well, that's what a lot of people are doing. And number two, number three, you call Schwab and complain. So I think you guys should all be calling them and complaining and saying, "This is ridiculous. How am I supposed to trade here with this policy and tell them, look, I mean, just make your voice heard." you're going to speak with your money when you leave, when you go switch to a different broker. But, you know, I think it it it can't hurt to give them a call and or if you have a rep there to email them and and just tell them, you know, this is really frustrating. And if you guys think that these stocks are too risky, at the very least, you should make give a disclosure like a high-risisk disclosure that I sign saying I'm I want to take the risk and trade these. Other brokers have these. They have day trading disclosures. They have penny stock disclosures. You sign it and then you can trade and you're, you know, waving that you're not going to sue Think or Swim for letting or whatever Schwab for letting you or giving you, you know, access to stocks that maybe were high risk. But it just seems to me that um it's not it's not a sustainable relationship to rely on a broker that is um basically, you know, preventing you from trading stocks that um as you see on a day like today uh were volatile. So I could have traded any of these stocks at Schwab today. No one could have because they said, you know, Father Schwab said no. I just don't think that that's fair. And it wouldn't surprise me if at some point one of these companies goes ahead and tries to take some type of legal action against Schwab saying you this is discriminating you know against that company because now no one using your broker can invest in our company and that's going to hurt you know in theory it could hurt the stock price of those companies. So I I they could create liability for themselves in a different way. But in any event, um you know, I I find that very frustrating and I saw a lot of people uh talking about it today and expressing their disappointment that Schwab was blocking, you know, these and many other stocks and they just there's nothing they could do except twiddle their thumbs and wait and hope for something else to come along. So anyways, make your voice heard if this is affecting you and you're frustrated about it. Um so anyways um so that that was the first thing I was going to mention. Now AHMA when this first popped up I did notice it was um you know AE Arab Emirates. So I I thought okay well it's an international company it's popping up and what's the catalyst and there was no news and so that threw me off a little bit. But the next thing I checked was is it easy to borrow or hard to borrow? And it was uh hard to borrow with the L for locate. So, I was like, "All right, well, at least it's not easy to borrow because I figured if it was easy to borrow with no news, it's probably just going to drop right back down." So, so I break the ice on it, and this is the area where I got so triggered. Look at this. If you just saw this and then it went all the way back to five, you would not be surprised. High volume red candles, all these topping tails, and I got basically my first entry on this. Um, when I first jumped in it, I jumped in looking for, let's see. So, IOTR was the first stock I traded. And then when I got in AHMA, my first entry was at $6.73, which admittedly was, you know, a little bit high. So, it had just broken out here and then as it squeezed up right here, I got in during this candle and I was looking for the squeeze to seven. It hit it hits a high for one second of 696 and then it immediately drops back down. I sold half the position for a profit and the rest I sold for a loss. And so I was read $371 on IOTR, which we'll go over in a second. And I was green $400 on AHMA. So I was up like $130 on the day. And I just thought, this is this is ridiculous. I mean, I'm I'm used to being up 5,000, you know, $10,000 pretty quickly on the first couple trades and here I am up $100. It's better than being red, but it's still this is not good. Uh, so then it pops up here and then it dips down and as it comes back up, I got back in and I get in, it pops up for a second, it drops down, it comes back up and I get back out, break even, and I'm like, yikes, that was a close call. Then it drops down. It comes back up again. It drops back down again. And I'm like, "This thing is impossible." So, I ended up getting back in and let's see. I I got actually um I got it I got back in on this candle here and I got back out of it um break even. So, I traded it here and here and here. And these none of these trades worked at all. I was still only up like $400 on the stock, 500 on the stock. So, I was only up 130 on the day factoring in the loss on IOTR. And so, I stop out. I had a 9,000 share position like right around here. I stop out and then a moment later it squeezes up. It goes to 750, then to eight, then to 850, then to nine. And I was like, you've got to be kidding me. So, it ends up squeezing, as you can see there, all the way up to a high of $10. And I got back in. And this is this is the one that um that kind of like kills me. So I end up getting back in this um like right sort of like right in the middle of this candle here. I get in it and it squeeze up for a second and then instantly rejects and I'm down like 50 cents a share. And I just I I didn't I didn't sell. I was like, you know what? you. This is I in fact that in the in that moment that I pressed the buy button and then was almost instantly down 50 cents a share. I I almost thought like I like a blood vessel was going to burst in my brain. I was just so annoyed. I was like, "You have got to be kidding me." And it drops down and I was like, "I am not I I I don't I'm not even entertaining selling. I'm just This is ridiculous. I'm just going to hold this and it comes back up here and I get back out break even and it goes up to 1050 more topping tails. It drops back down and then look at this candle. It comes up here and it breaks 1050 and I was like there's not a chance that I'm getting in this thing. This is this stock has been driving me nuts and it goes from 1050 on that breakout to $15 a share and I missed the entire candle. you know, it had already burned me. Well, I mean, technically I was green on it, but I felt like I had been had five close calls in a row basically and just barely made it out and then, you know, finally it rips. So then in this area here, it's going sideways. Um, I did get a trade on it uh right here. And so that trade gave me, you know, the basically all the profit I have today. It was about $4,000 and I was looking for it to break through the high a day right here and it didn't as you can see and it rejected and dropped $2 a share back down from 15 to 13 but I on that one was out and I I didn't I didn't get back in. So this one was really tricky and it I don't know you know it felt very thickly traded. It felt very heavy in these areas like there were a ton of sellers and but then suddenly you would get this massive squeeze, right? So, I don't know. It was just very bizarre and and at the end of the day, there was not even news. So, we don't even know what really got it started here, but it just felt weird. So, anyways, that one was really frustrating. Um, ended up, you know, being at $13, so it still held up pretty well. Um, and then IOTR, this was the first stock I traded today. Um, this is a Singapore company. It had popped up early um in pre-market around 5:00 a.m. sold off, popped back up, sold off, and I looked at this as an inverted head and shoulders pattern. And so I got in right here. And I knew it was a little risky because I'd seen these topping tails here. But I kind of thought if this breaks VWAP right here at 7 a.m. and we can hold over these levels, we're going to be back at the high in in no time at all, especially with a sub 1 million share float. So I did jump in it. it. This one also was up on no news. So again, another risk factor there. But anyways, I thought that was going to work. It didn't. But I got in, I got out. I lost 370 bucks and and that was fine. That was good risk management. So, you know, and even that one popped up a little bit more later in the day. Um, so those were the two. Then TH, this one, uh, very light volume, less than half a million shares, up 135%. Um then X AIRIR X air this one was the lower priced one today. 400 million shares of volume popped up sold off then it kind of rallies up here. Um anyways didn't break the ice on this one although I guess in hindsight but little cheaper so not a huge range. Gels up 80% after hours X XTLB this one is cheaper. So, I mean, at the end of the day, I I think it's it's nice to see that we had a lot of volume today and we have one, two, three, four stocks up over 100%. I'd say that's pretty good. And it's a little bit of a divergence here that we have big moves, but I don't have substantial profit. And that was really just in part because a lot of these movers were lowerric stocks. Um, this one was too expensive. And this was the one that kind of made the most sense. and it was really not easy to trade for whatever reason. It was just not easy. So, it is what it is. I'm grateful that I survived another day of choppy markets and my account is, you know, basically back to the all-time highs. Um, you know, here on the year, you know, I I funded or I dropped my account down to about um $100,000. So, I began this year with a smaller balance. I'm at about aboutund let's see $40,000 right now in the account. So, um account's up about 40% from the profit from last week. And you know, I've recovered the the loss from Friday here. So, that's good. And, you know, I'm just going to keep chipping away. A small green day is all right. And just got to keep the risk in check until we start to see some uh better action. So, that's um that's where I'm at for right now. and I will be back at it first thing tomorrow morning, 7:00 a.m. So, I'll see you guys bright and early. And I'll remind you as always that trading is risky. My results aren't typical. So, manage your risk and always practice a simulator before putting real money on the line. All right. So, with that, I'll see you guys tomorrow morning.
+What's up everyone? All right, so in today's episode, I'm going to break down my trades from the morning. I'm sitting in the green and I'm grateful for that. But I also got myself really frustrated today because we had this one stock, AHMA, that I found to be very difficult to time. It's like I I was much better at taking the worst entry possible and then riding through a pullback until it came back up to green. I I just I don't know. There was something about it. that I couldn't get dialed in. So, let's jump onto the screen share. We'll start breaking it down. Um, you can see I'm up about just under $4,000, which is a good day. Well, to be honest, it's not a great day. It's a very small green day. My daily goal is 20,000 in a hot market, 5,000 in a cold market. Uh, so, you know, being up 1,600 yesterday and then only 4,900 today. I feel like I'm not really making any progress on my, you know, I don't know, my my goal for the week or my goal for the month, but I try not to get too fixated on big number goals because if the market's hot, they'll happen. And if it's not, well, there's nothing I can really do about it. So, I might as well just roll with the punches and, you know, recognize that there's hot cycles and cold cycles and I just got to get through when it's cold and try to make sure I restrain myself from taking unnecessary risk when it's cold because if I take a big loss, it's going to be hard to recover from it. So, AHMA, this stock 1.3 million share float up 146% right now. Um, 43 million shares of volume. So that's, you know, float rotation of, you know, nearly 40x, 375 times above average volume today versus um its average 50-day average. It hasn't even been around for 50 days. It's a somewhat new IPO. All-time high on it is up around um what was it? $18 a share, something like that, up at the top of this candle. So, you know, when this first popped up this morning, I initially was kind of excited about it until I realized that it had no news. So, there's actually a couple things that we should talk about today. Um, first is that the two stocks I traded, AHMA and IOTR, neither of these stocks were tradable at Charles Schwab. So if you use Charles Schwab using Think or Swim, you couldn't have traded either of these stocks today because they're blocking they must be blocking hundreds of different stocks primarily small cap stocks that are not based in the US. Uh this one's um AE uh IOTR is also international, but it's it's you know, look, you know, Father Schwab knows best. um or so they think. But I I I have to tell you guys, if you're using Schwab as your primary broker, you're unable to trade a lot all of a sudden because this new policy they've put into into effect, you're unable to trade a lot of small cap stocks and you have really two choices. You either switch your strategy, you trade the ones that are available, which is going to make you really frustrated because when you have a stock like this that goes up 150% in one day, and especially if you were in the red from a red day on Friday like I was, and you can't trade it, you're livid. Now, a stock makes a move, is finally clean, and I can't buy it. So, what are your options? You either just don't trade them, which is not a good option. That doesn't make sense. You switch to a different broker. Well, that's what a lot of people are doing. And number two, number three, you call Schwab and complain. So I think you guys should all be calling them and complaining and saying, "This is ridiculous. How am I supposed to trade here with this policy and tell them, look, I mean, just make your voice heard." you're going to speak with your money when you leave, when you go switch to a different broker. But, you know, I think it it it can't hurt to give them a call and or if you have a rep there to email them and and just tell them, you know, this is really frustrating. And if you guys think that these stocks are too risky, at the very least, you should make give a disclosure like a high-risisk disclosure that I sign saying I'm I want to take the risk and trade these. Other brokers have these. They have day trading disclosures. They have penny stock disclosures. You sign it and then you can trade and you're, you know, waving that you're not going to sue Think or Swim for letting or whatever Schwab for letting you or giving you, you know, access to stocks that maybe were high risk. But it just seems to me that um it's not it's not a sustainable relationship to rely on a broker that is um basically, you know, preventing you from trading stocks that um as you see on a day like today uh were volatile. So I could have traded any of these stocks at Schwab today. No one could have because they said, you know, Father Schwab said no. I just don't think that that's fair. And it wouldn't surprise me if at some point one of these companies goes ahead and tries to take some type of legal action against Schwab saying you this is discriminating you know against that company because now no one using your broker can invest in our company and that's going to hurt you know in theory it could hurt the stock price of those companies. So I I they could create liability for themselves in a different way. But in any event, um you know, I I find that very frustrating and I saw a lot of people uh talking about it today and expressing their disappointment that Schwab was blocking, you know, these and many other stocks and they just there's nothing they could do except twiddle their thumbs and wait and hope for something else to come along. So anyways, make your voice heard if this is affecting you and you're frustrated about it. Um so anyways um so that that was the first thing I was going to mention. Now AHMA when this first popped up I did notice it was um you know AE Arab Emirates. So I I thought okay well it's an international company it's popping up and what's the catalyst and there was no news and so that threw me off a little bit. But the next thing I checked was is it easy to borrow or hard to borrow? And it was uh hard to borrow with the L for locate. So, I was like, "All right, well, at least it's not easy to borrow because I figured if it was easy to borrow with no news, it's probably just going to drop right back down." So, so I break the ice on it, and this is the area where I got so triggered. Look at this. If you just saw this and then it went all the way back to five, you would not be surprised. High volume red candles, all these topping tails, and I got basically my first entry on this. Um, when I first jumped in it, I jumped in looking for, let's see. So, IOTR was the first stock I traded. And then when I got in AHMA, my first entry was at $6.73, which admittedly was, you know, a little bit high. So, it had just broken out here and then as it squeezed up right here, I got in during this candle and I was looking for the squeeze to seven. It hit it hits a high for one second of 696 and then it immediately drops back down. I sold half the position for a profit and the rest I sold for a loss. And so I was read $371 on IOTR, which we'll go over in a second. And I was green $400 on AHMA. So I was up like $130 on the day. And I just thought, this is this is ridiculous. I mean, I'm I'm used to being up 5,000, you know, $10,000 pretty quickly on the first couple trades and here I am up $100. It's better than being red, but this is not good. Uh, so then it pops up here and then it dips down and as it comes back up, I got back in and I get in, it pops up for a second, it drops down, it comes back up and I get back out, break even, and I'm like, yikes, that was a close call. Then it drops down. It comes back up again. It drops back down again. And I'm like, "This thing is impossible." So, I ended up getting back in and let's see. I I got actually um I got it I got back in on this candle here and I got back out of it um break even. So, I traded it here and here and here. And these none of these trades worked at all. I was still only up like $400 on the stock, 500 on the stock. So, I was only up 130 on the day factoring in the loss on IOTR. And so, I stop out. I had a 9,000 share position like right around here. I stop out and then a moment later it squeezes up. It goes to 750, then to eight, then to 850, then to nine. And I was like, you've got to be kidding me. So, it ends up squeezing, as you can see there, all the way up to a high of $10. And I got back in. And this is this is the one that um that kind of like kills me. So I end up getting back in this um like right sort of like right in the middle of this candle here. I get in it and it squeeze up for a second and then instantly rejects and I'm down like 50 cents a share. And I just I I didn't I didn't sell. I was like, you know what? you. This is I in fact that in the in that moment that I pressed the buy button and then was almost instantly down 50 cents a share. I I almost thought like I like a blood vessel was going to burst in my brain. I was just so annoyed. I was like, "You have got to be kidding me." And it drops down and I was like, "I am not I I I don't I'm not even entertaining selling. I'm just This is ridiculous. I'm just going to hold this and it comes back up here and I get back out break even and it goes up to 1050 more topping tails. It drops back down and then look at this candle. It comes up here and it breaks 1050 and I was like there's not a chance that I'm getting in this thing. This is this stock has been driving me nuts and it goes from 1050 on that breakout to $15 a share and I missed the entire candle. you know, it had already burned me. Well, I mean, technically I was green on it, but I felt like I had been had five close calls in a row basically and just barely made it out and then, you know, finally it rips. So then in this area here, it's going sideways. Um, I did get a trade on it uh right here. And so that trade gave me, you know, the basically all the profit I have today. It was about $4,000 and I was looking for it to break through the high a day right here and it didn't as you can see and it rejected and dropped $2 a share back down from 15 to 13 but I on that one was out and I I didn't I didn't get back in. So this one was really tricky and it I don't know you know it felt very thickly traded. It felt very heavy in these areas like there were a ton of sellers and but then suddenly you would get this massive squeeze, right? So, I don't know. It was just very bizarre and and at the end of the day, there was not even news. So, we don't even know what really got it started here, but it just felt weird. So, anyways, that one was really frustrating. Um, ended up, you know, being at $13, so it still held up pretty well. Um, and then IOTR, this was the first stock I traded today. Um, this is a Singapore company. It had popped up early um in pre-market around 5:00 a.m. sold off, popped back up, sold off, and I looked at this as an inverted head and shoulders pattern. And so I got in right here. And I knew it was a little risky because I'd seen these topping tails here. But I kind of thought if this breaks VWAP right here at 7 a.m. and we can hold over these levels, we're going to be back at the high in in no time at all, especially with a sub 1 million share float. So I did jump in it. it. This one also was up on no news. So again, another risk factor there. But anyways, I thought that was going to work. It didn't. But I got in, I got out. I lost 370 bucks and and that was fine. That was good risk management. So, you know, and even that one popped up a little bit more later in the day. Um, so those were the two. Then TH, this one, uh, very light volume, less than half a million shares, up 135%. Um then X AIRIR X air this one was the lower priced one today. 400 million shares of volume popped up sold off then it kind of rallies up here. Um anyways didn't break the ice on this one although I guess in hindsight but little cheaper so not a huge range. Gels up 80% after hours X XTLB this one is cheaper. So, I mean, at the end of the day, I I think it's it's nice to see that we had a lot of volume today and we have one, two, three, four stocks up over 100%. I'd say that's pretty good. And it's a little bit of a divergence here that we have big moves, but I don't have substantial profit. And that was really just in part because a lot of these movers were lowerric stocks. Um, this one was too expensive. And this was the one that kind of made the most sense. and it was really not easy to trade for whatever reason. It was just not easy. So, it is what it is. I'm grateful that I survived another day of choppy markets and my account is, you know, basically back to the all-time highs. Um, you know, here on the year, you know, I I funded or I dropped my account down to about um $100,000. So, I began this year with a smaller balance. I'm at about aboutund let's see $40,000 right now in the account. So, um account's up about 40% from the profit from last week. And you know, I've recovered the the loss from Friday here. So, that's good. And, you know, I'm just going to keep chipping away. A small green day is all right. And just got to keep the risk in check until we start to see some uh better action. So, that's um that's where I'm at for right now. and I will be back at it first thing tomorrow morning, 7:00 a.m. So, I'll see you guys bright and early. And I'll remind you as always that trading is risky. My results aren't typical. So, manage your risk and always practice a simulator before putting real money on the line. All right. So, with that, I'll see you guys tomorrow morning.
 
 </details>

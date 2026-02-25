@@ -424,7 +424,7 @@ class HistoricalBarLoader:
         Args:
             symbol: Stock symbol
             time_str: Time in "HH:MM" format
-            timeframe: "1min" or "5min"
+            timeframe: "1min", "5min", or "10s"
             include_continuity: If True, prepend previous day's bars for MACD calculation.
                                Set False for chart display (avoids time order issues).
         
@@ -438,6 +438,13 @@ class HistoricalBarLoader:
         
         if timeframe == "5min":
             return data.aggregate_to_5min(time_str)
+        elif timeframe == "10s":
+            # Use 10s bars if available, fall back to 1min
+            if data.has_10s_bars():
+                return data.get_10s_bars_up_to(time_str)
+            else:
+                logger.debug(f"[HistoricalBarLoader] No 10s bars for {symbol}, falling back to 1min")
+                return data.get_bars_up_to(time_str, include_continuity=include_continuity)
         else:
             return data.get_bars_up_to(time_str, include_continuity=include_continuity)
     

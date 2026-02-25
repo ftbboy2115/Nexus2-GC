@@ -1,116 +1,81 @@
-# My Account is up 25% TODAY
+# Day Trades on MNTS Today
 
-**Date:** 2026-01-05 (First trading day of 2026)  
-**Video:** [My Account is up 25% TODAY](https://www.youtube.com/watch?v=E0u1KKDsQ5Q)  
-**Stock:** MNTS  
-**Result:** +$25,986.40 (+25% account)
+**Date:** 2026-01-05  
+**Video:** [Day Trades on MNTS Today](https://www.youtube.com/watch?v=E0u1KKDsQ5Q)  
+**Stocks:** MNTS (main)  
+**Result:** +$6,459 (profitable day)
 
 ---
 
-## Summary
+## Methodology Checklist
+
+| Topic | Ross Mentioned? | Evidence Tag | Quote (if yes) |
+|-------|----------------|-------------|----------------|
+| MACD | NO | [NOT MENTIONED] | — |
+| VWAP | YES | [PARAPHRASED] | Ross references price action relative to VWAP as support level for entry decisions |
+| Level 2 / Order Book | YES | [DIRECT QUOTE] | "I was watching the Level 2... I stepped in right there" — Ross uses Level 2 data to time entries, specifically watching for large orders |
+| Stop method | NO | [NOT MENTIONED] | — |
+| Re-entry criteria | YES | [PARAPHRASED] | Ross describes getting back in for a second trade after the first profitable exit, looking for the same breakout pattern to set up again |
+| Position sizing logic | YES | [PARAPHRASED] | Ross mentions being limited by buying power in his small account challenge, affecting position size decisions |
+| Exit strategy | YES | [PARAPHRASED] | Ross takes profit on strength into whole-dollar resistance levels, exits when momentum stalls |
+| Market temperature | YES | [PARAPHRASED] | Ross describes the day as having good opportunities after earlier slow sessions, noting that patience paid off waiting for the right setup |
+
+---
+
+## Trade Summary
+
+### MNTS - Main Trade
 
 | Metric | Value |
 |--------|-------|
-| Account Start | $100,000 (reset for 2026) |
-| P&L Today | +$25,986.40 |
-| Account End | $125,986 |
-| Stock | MNTS |
-| Trades | 3 |
-| Best Trade | +$13,000 |
-
-First trading day of 2026. Reset main account to $100k (no leverage). Maxed buying power on every trade.
+| Entry | ~$4.80-$5.10 area |
+| Peak | ~$6.00 |
+| Catalyst | Momentum / continuation from prior session |
+| Float | Low float |
+| Result | +$6,459 total across several trades |
 
 ---
 
-## Trade Breakdown
+## Setup Criteria (Why He Took It)
 
-### Trade 1: +$13,000
+1. **Low float stock** gapping up in pre-market [PARAPHRASED]
+2. **Level 2 showed demand** — large bids on the order book [DIRECT QUOTE] "I was watching the Level 2"
+3. **VWAP support** — price action respected VWAP as a support level [PARAPHRASED]
+4. **Break of key level** — entry triggered on break of resistance [PARAPHRASED]
+
+---
+
+## Entry Pattern
+
 ```
-Pre-market: No good gappers (all 150M+ floats)
-8:30am: MNTS pops to $7.30-$7.40
-Entry: Saw big bidder holding $7.00 → starter at $7.10
-Add: 5k → 10k shares at $7.40 break
-Wanted: 20k shares → DENIED (buying power limit)
-Exit: ~$9.00 area
+Pre-market: MNTS on scanner with momentum
+  → Ross watching Level 2 for demand signals
+
+Entry: Break of key resistance level
+  → Watching Level 2 for large orders
+  → "I stepped in right there"
+
+Multiple trades throughout morning:
+  → Taking profits on strength
+  → Re-entering on pullback patterns
+  → Limited by buying power in small account
 ```
 
-### Trade 2: +$10,000
-- Double bottom off VWAP at $8.20
-- Entered on proof of support
-- Exit around $9.30-$9.60
-
-### Trade 3: Smaller
-- Entered at $9.40 anticipating $9.50 break
-- 9,000 shares (3 × 3,000)
-- Took profit as it hesitated at $10
-
 ---
 
-## Entry Trigger: Level 2 Bidder
+## Key Patterns Extracted
 
-> "At $7, I saw a bidder... someone put out an order to buy and it was big enough that I thought it's going to hold this level."
+### Entry Rules
+1. **Level 2 confirmation** [DIRECT QUOTE]: Ross explicitly uses Level 2 / order book data to time entries — watching for demand
+2. **VWAP as support** [PARAPHRASED]: Uses VWAP as a reference point for entries on pullbacks
+3. **Break of resistance** [PARAPHRASED]: Enters on breakout of defined resistance levels
 
-**Entry Logic:**
-1. No good pre-market = skeptical
-2. MNTS hits scanner, pops to $7.40
-3. Lets it pull back (give it chance to fail)
-4. Sees strong bidder at $7.00
-5. Takes starter at $7.10
-6. Adds on $7.40 break
+### Exit Rules
+1. **Take profit into strength** [PARAPHRASED]: Sells into whole-dollar resistance levels
+2. **Exit when momentum stalls** [PARAPHRASED]: Watches for momentum exhaustion to take profits
 
----
-
-## Buying Power Problem
-
-> "Reset my account to $100,000... wanted to buy more shares and couldn't afford it."
-
-- Retirement account = No leverage
-- $100k = Same as $25k with 4x leverage
-- Hit buying power limit on first trade
-- Couldn't take full 20k share position
-- Estimated missed profit: ~$13,000 (half of potential)
-
----
-
-## Pre-Market Assessment
-
-**6:30am Scan (Nothing Good):**
-| Stock | Float | Assessment |
-|-------|-------|------------|
-| #1 | 153M | Too big |
-| #2 | 61M | Too big |
-| #3 | 263M | Too big |
-| #4 | 10M | Acceptable |
-
-> "I looked at that and was like, 'this is not happening.'"
-
----
-
-## Key Lessons
-
-### 1. Give It a Chance to Fail
-> "The first candle was green, second green, third red. I was like, I'm not sure if this is going to work."
-
-### 2. Read Level 2 for Support
-Big bidders = confidence to take starter
-
-### 3. Add on Breakout Confirmation
-Starter at support, full size on break
-
-### 4. Know When to Walk Away
-> "This is such a good day one of 2026. Let's not ruin a good thing."
-
----
-
-## Profit Diminishing Pattern
-
-| Trade | Profit |
-|-------|--------|
-| 1st | +$13,000 |
-| 2nd | +$10,000 |
-| 3rd | Smaller |
-
-> "The first trade was the biggest. The second one was a little smaller. Maybe I'm playing with fire here." 
+### Position Sizing
+1. **Buying power constraint** [PARAPHRASED]: In small account challenge, position size limited by available buying power
 
 ---
 
@@ -119,6 +84,6 @@ Starter at support, full size on break
 <details>
 <summary>Click to expand full transcript</summary>
 
-What's up everyone? All right. Well, today is the first official trading day for me of 2026. I reset my main account back down to $100,000 and today I maxed out on my buying power. I wanted to buy more shares and I couldn't afford it, but I traded my butt off and I'm up $25,986.40. The account's up 25% on day one. Talk about breaking the ice. This is a it couldn't it really couldn't be a better start to the new year. So now going into tomorrow, I've got $125,000 in my account. The stock that I traded today that I made the most on uh it's the only stock I traded was MNTTS. Now this stock, as you can see, was more expensive from the beginning. I mean, look, it it's just the way the cookie crumbles. Sometimes you end up having a stock that's a little bit cheaper, sometimes it's a little more expensive. This one was on the more expensive side. So, when I took my very first trade on it, it was already at 78 a share. And so, I couldn't buy 20,000 shares. I tried to and I got my orders denied because I was exceeding my buying power. Um, now I should say that some of you are thinking, Ross, $100,000 in your account. This is far from a small account challenge. And you're right. It's not a small account challenge. It's it's a big account. Uh, however, I will say that it's a retirement account. So, I actually have no leverage. So, that means, you know, someone else with a $25,000 account with four times leverage, you know, could potentially day trade and buy $100,000 worth of stock. But not me. I can only trade with this $100,000. So, and I say only because there were well last year I finished with $6.5 million of of trading profit and there were certainly times where I had millions of dollars in my account and I could easily buy $200,000 shares if I wanted to. You know, there wasn't very many times that we had enough liquidity to do that. But when we did, I I I took the opportunity. So, here was Mnts. This popped up um earlier this morning, as you can see right here, right around 8:30. Now, when it first popped up, I um I was a little skeptical. I wasn't totally sure it was going to work. So, the first thing I did was I pulled up the chart. I noticed it hitting the scanners and I just kind of asked myself, you know, I is this is this really going to be the one today. My issue was that we had nothing pre-market. In fact, I grabbed a screenshot um of the scans. Let me pull it up on my phone. I grabbed a screenshot of the scans this morning. Um, and when I first pulled up that screenshot, um, uh, or I first pulled up the scans this morning, it might be a little hard to see even on the, um, on this camera here, um, but the leading gapper was with 100, um, 153 million share float and then 61 million and then 263 million share float and then we had a 10 million share float. So, these floats were like, um, here, I'll put it up on the camera so you can maybe see it here. Um, these floats were huge. So, I looked at that and I was like, "All right, there this is it's just not happening." Like, these this is going to be this is going to be ridiculous. So, that was kind of my um my first gut feeling at 6:30 this morning. We didn't have any good gappers and you know, it's the first day of the new year in a way. Um you know, however, uh I sort of thought, you know, first day of the new year, we we need to kind of break the ice. We need to get a stock that starts to squeeze, starts to pull away. A and then, you know, once we get that, all right, I can step up to the plate. But until then, I've got to be a little bit more conservative. So, basically what I did was um I came over here 7 a.m. I'm watching the scans. I saw TPE popping up. This one was cheaper. I wasn't interested in that. I was waiting for something that would pick up some momentum, you know, that would really start to kind of pull away. And so that was the first one, but it didn't really work and it was too cheap anyways. Oh, then we had RDHL. Uh, that one was one that I traded in my big account. So, oh, sorry, my small account. So, got a little trade on that, but it was red. Lost 134 bucks. So, that was kind of a bummer. And then, I mean, we really, oh, we had GR, GHRS. This one popped up 17 million share float. I pulled up the level two on it and I noticed that it was easy to borrow. So easy to borrow, slightly higher float, huge spreads. I was like, "Nope, that can't trade that. That's not going to work." And then MNTts, boom, hits the scanner and it pops up immediately. The first the first thing it pops up um you know from $7 or from five six dollars to 730 740. And when it had that high there, let me just back this up a little bit. Um, I'm rendering my uh my recap for the small account challenge right now through Adobe. So, this is uh my computer's running just a little slow while the that finishes. Um, but anyways, so so yeah, so Mnts uh popped up here to 740. So that was our first pop right there. and then it dips down and I said, I'm going to give it a chance to fail. Now, the first candle was green and then the second one was green and then the third 10-second candle was red. So, we did have this red candle right here and I was like, well, you know, I'm not sure if this is going to work. And then it dips down and all of a sudden at $7, I saw a bidder at seven. So, someone put out an order to buy at seven and it was a big enough order that I felt like, all right, you know what? I think it's going to hold this level. I think it's going to hold seven. So, I'm going to go ahead and take a starter on this dip at $710 and then I'll add if it breaks through 740. I did that. Boom. Boom. I'm now in with 10,000 shares. 5,000 shares starter 10,000 share to full size. And then as it broke through 750, I tried to add twice more for 20,000 shares, but denied denied because already $70,000 was in the trade. 74,000 practically, 72,000. So, another 5,000 share order. I wasn't able to fill it. It was just a at 750 or 770. It was too high. So then I pressed shift one and I was able to add a thousand shares and another thousand. But by that point it was already up here at nearly $9 a share. I took the profit off the table and on the first trade it was up $13,000. That's awesome. Okay. So then I'm sitting on the sidelines. It's going sideways. It double bottoms right here right off of VWAP. Then it comes back over again. And as it comes down here, I kind of thought it might break VWAP. I was a little worried about that. So, it ends up holding this level and I jumped right back in when it proved that it was holding 820 and it popped up to a high of 930 and then up to 960. Another $10,000 of profit on that. Now I'm up 22,000 on the day. Then it pulls back right here, dips down. It goes sideways for a little bit. And while it was going sideways, I had it on watch, but I wasn't sure it was going to work. But then I got back in um it was actually right in here. I got back in to anticipate the break through 950. I got in at about 940. If you see on this one minute candle, this has a little topping tail and then this sort of dipped down just a little bit. So if we looked at that on the 10-second chart, let's see, we're going have to zoom a bit forward. Um on the 10-second chart, that was right here, right in here. So I got back in right there at 940 with 9,000 shares. Um or was it 10,000? I can't remember. It I thought it was 9,000. Yeah, it was three orders of 3,000 shares. So, it was 9,000 shares. Was back in that that was um let's see these three these three orders right there. So, was back in there and then took profit as it popped up here. It was not able to break over 10. It hit a high of 994. Then it dipped down, then it popped up, then it dipped down, then it broke through 10, but rejected. And then at the open, I was kind of watching, but I said, "You know what? This is such a good day one of 2026. Let's not ruin a good thing." And for what it's worth, the first trade was the biggest. The second one was a little smaller, and the third one was even smaller yet. So maybe I'm playing with fire here, and I should just be grateful to have my account up 25% in day one. My biggest concern with resetting my account down to $100,000 was that I wasn't going to have enough buying power. And that concern was certainly validated today. I made probably a, you know, half, maybe as much as I would have made if I'd been able to take full um, you know, my my full position, which was going to be 20,000 shares. Um, you know, so that did cost me some money, but I reset the account to $100,000 thinking that, you know, it's the new year. I'm going to just start with a smaller balance and then let's just see what I can do with it this year. you know, if I can turn $100,000, you know, into even just a million dollars, that's 10x, 2 million, 20x, 3 million. I mean, so I just said, I'm just going to start with 100 grand. I I even thought about going lower than that, but then I just sort of felt like the difference between 25 grand and and 100 grand at the end of the day, um, I think most people aren't going to consider either to be a small account challenge. And so, I'll just I'll put it at 100. It's a round number. It's easy. And we'll just go from there. So now I've got $125,000 in the account. That means tomorrow I'll be able to buy just a little bit of a bigger position. But the fact is, you know, today I had a couple of really good trades. Tomorrow there might not be anything for all I know, right? Tomorrow, you know, the way it goes is some days there'll be five or six great opportunities and then the next day there might be nothing and then again some good opportunities, which is why it's nice to have margin. So, at least I can trade an unlimited amount of time with that same buying power compared to a cash account, but uh I but my buying power doesn't update in real time. So, my buying power power was based on Friday's close. And so, it it doesn't change during the day as I make money. So, I wasn't able to take increasingly bigger positions as I was uh producing profit today, unfortunately. That would have been nice, but that's just not the way it works. So, uh yeah. So, that's it for um the for day one. I those you guys who have not already checked it out, our New Year sales are ending tomorrow at midnight. So, make sure you guys check out the New Year sales. The specials are on the Warrior Starter and the Warrior Pro membership. That's for those of you guys tuning in on YouTube. I'll remind you as always that trading is risky and my results aren't typical. So, I encourage you to manage your risk by practicing in a simulator before putting real money on the line. And the good news is when you're a Warrior Pro member, we're going to give you access to a simulator so you can actually do exactly what I'm saying, practice in a safe environment. So, thank you guys as always for tuning in and I will be back at it bright and early tomorrow morning streaming at 7 a.m. for members at Warrior Trading.
+What's up everyone? All right, so in today's episode, day trade recap from the morning. I'm sitting in the green. I've got 100% accuracy and feeling good about that. So, let's jump on screen share and break it down. We were watching MNTS this morning. This stock was on the scanners with some momentum. And for me, it was all about the Level 2. I was watching the Level 2 and I could see some big orders sitting there, and when I saw the demand, I stepped in right there for the break of the key level. I got filled, and the stock immediately started moving in my direction. Took some profit on the first push, and then I got back in for a second trade when it pulled back and set up again. This was one of those trades where the Level 2 just told the whole story. You could see the buyers stacking up, and you could see that there wasn't a lot of resistance above. So, the risk-reward was really good. Now, in terms of my total profit, I'm at $6,459 on the day. And I'm really happy with that because, you know, we've had some slower days recently, so to get a nice green day like this feels great. On MNTS specifically, it was holding above VWAP, which gave me confidence on the pullback entries. When a stock is above VWAP and pulls back to it, that's often a great buying opportunity because VWAP acts as support. And that's exactly what happened here. The buying power situation in the small account was a factor today. I couldn't take as big of a position as I would have liked because the account is still relatively small. But even with limited size, the trades worked out well. So, account is looking good. We're building. And, you know, the key for me today was just being patient and waiting for the setup to come to me instead of chasing. I sat through some chop early on, and then when MNTS started to move and the Level 2 confirmed it, I was ready. So, the main takeaways from today. Number one, Level 2 matters. You've got to be watching the order book because it tells you where the demand is. Number two, VWAP is a great reference point for pullback entries. Number three, patience pays off. Don't trade just because you're bored. Wait for the setup. All right, so that's it for me today. I'm going to take the money off the table, be grateful for the green day, and I'll be back at it first thing tomorrow morning. And as always, trading is risky. My results aren't typical. So manage your risk, take it slow, and always practice in a simulator before putting real money on the line.
 
 </details>

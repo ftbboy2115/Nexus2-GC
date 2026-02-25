@@ -1330,6 +1330,8 @@ class BatchTestRequest(BaseModel):
     case_ids: Optional[List[str]] = Field(None, description="List of test case IDs to run. If None, runs all POLYGON_DATA cases.")
     include_trades: bool = Field(False, description="If True, include per-trade detail arrays in each result. Default False for compact output.")
     skip_guards: bool = Field(False, description="If True, skip entry guards for A/B comparison testing. SIM ONLY.")
+    config_overrides: Optional[dict] = Field(None, description="Engine config overrides for param sweeps (e.g. {'macd_histogram_tolerance': -0.10}). Applied to each sim engine before replay.")
+    monitor_overrides: Optional[dict] = Field(None, description="Monitor settings overrides for param sweeps (e.g. {'max_reentry_after_loss': 5}). Applied to each sim engine's monitor.settings before replay.")
 
 
 @sim_router.post("/sim/run_batch")
@@ -1426,6 +1428,21 @@ async def run_batch_tests(request: BatchTestRequest = BatchTestRequest()):
             try:
                 # Step 1: Load test case (resets broker, wires callbacks, sets clock)
                 load_result = await load_historical_test_case(case_id)
+                
+                # Apply config overrides for parameter sweep testing
+                # This sets engine config AFTER load_historical_test_case (which resets sim_only=True)
+                if request.config_overrides:
+                    for key, value in request.config_overrides.items():
+                        if hasattr(engine.config, key):
+                            setattr(engine.config, key, value)
+                            print(f"[Batch Runner] Override: engine.config.{key} = {value}")
+                
+                # Apply monitor overrides for parameter sweep testing
+                if request.monitor_overrides and engine.monitor:
+                    for key, value in request.monitor_overrides.items():
+                        if hasattr(engine.monitor.settings, key):
+                            setattr(engine.monitor.settings, key, value)
+                            print(f"[Batch Runner] Override: monitor.settings.{key} = {value}")
                 bar_count = load_result.get("bar_count", 0)
                 
 
@@ -1640,7 +1657,12 @@ async def run_batch_concurrent_endpoint(request: BatchTestRequest = BatchTestReq
 
     # Run concurrently
     from nexus2.adapters.simulation.sim_context import run_batch_concurrent
-    results = await run_batch_concurrent(cases, yaml_data, skip_guards=request.skip_guards)
+    results = await run_batch_concurrent(
+        cases, yaml_data,
+        skip_guards=request.skip_guards,
+        config_overrides=request.config_overrides,
+        monitor_overrides=request.monitor_overrides,
+    )
 
     # Conditionally strip trade details for compact output
     if not request.include_trades:

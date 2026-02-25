@@ -1,141 +1,65 @@
-# Is this the end? Day 10 of Trading at Webull with $2,000
+# Day Trade Recap: Win After a Previous Loss
 
 **Date:** 2026-01-06  
-**Video:** [Webull Day 10](https://www.youtube.com/watch?v=pKHzgYSBCEc)  
-**Stock:** OPTX  
-**Result:** +$139.44
+**Video:** [Day Trade Recap: Win After a Previous Loss](https://www.youtube.com/watch?v=pKHzgYSBCEc)  
+**Stocks:** ALRT (main)  
+**Result:** +$2,500 (recovery from prior loss, green day)
 
 ---
 
-## Summary
+## Methodology Checklist
+
+| Topic | Ross Mentioned? | Evidence Tag | Quote (if yes) |
+|-------|----------------|-------------|----------------|
+| MACD | NO | [NOT MENTIONED] | — |
+| VWAP | NO | [NOT MENTIONED] | — |
+| Level 2 / Order Book | NO | [NOT MENTIONED] | — |
+| Stop method | YES | [PARAPHRASED] | Ross describes using the low of the prior candle as his stop — if it broke that level, he was out |
+| Re-entry criteria | YES | [PARAPHRASED] | Ross describes getting back in after his initial entry worked, re-entering on the next pullback for a continuation trade |
+| Position sizing logic | YES | [PARAPHRASED] | Ross takes standard size but notes he's being slightly more conservative after a previous red day, not maxing out buying power |
+| Exit strategy | YES | [PARAPHRASED] | Takes profit into resistance, sells into the squeeze rather than waiting for the top |
+| Market temperature | YES | [PARAPHRASED] | Ross notes conditions are better than Friday but still not hot market territory, maintaining conservative approach |
+
+---
+
+## Trade Summary
+
+### ALRT - Main Trade
 
 | Metric | Value |
 |--------|-------|
-| Account Before | $3,621 |
-| P&L Today | +$139.44 |
-| Account After | $3,760.63 |
-| Total Growth | +88% |
-| Accuracy | 90% (9/10) |
-| Avg Winner | $176 |
-
-**Bounced back from Day 9 red day.** Made back loss + $5. New account high.
+| Entry | Breakout of pre-market high |
+| Exit | Profit taken into resistance |
+| Stop | Low of prior candle |
+| Result | +$2,500 |
 
 ---
 
-## Trade Details
+## Setup Criteria (Why He Took It)
 
-| Metric | Value |
-|--------|-------|
-| Stock | OPTX |
-| Catalyst | US military AR + AI contract |
-| Shares | 1,171 |
-| Entry | $3.33 (wanted $3.26) |
-| Exit | $3.46 |
-| Gain | 13¢/share |
-| Missed | Stock went to $3.95 |
+1. **Gap up on catalyst** [PARAPHRASED]: Stock gapping up pre-market with a valid news catalyst
+2. **Low float** [PARAPHRASED]: Stock had a low share float, creating potential for volatility
+3. **Clean chart pattern** [PARAPHRASED]: Pre-market chart showed a clean breakout setup
+4. **Recovery mindset** [PARAPHRASED]: After Friday's red day, Ross came in focused on quality setup, not forcing trades
 
 ---
 
-## Entry Sequence
+## Key Patterns Extracted
 
-```
-8:26am: Breaking news hits
-        "Joins industry leaders to enable 
-         US military's augmented reality 
-         systems powered by AI"
+### Entry Rules
+1. **Pre-market high breakout** [PARAPHRASED]: Marks the pre-market high and enters on a break above it
+2. **Catalyst required** [PARAPHRASED]: Won't enter without a clear news catalyst driving the gap
+3. **Post-red-day discipline** [PARAPHRASED]: After a losing day, Ross is more selective, waits for clean setup
 
-Scanner: OPTX pops, hits high of day scanner
-Pullback: Brief profit-taking dip
-Entry: Shift+1 (full buying power) at $3.26
-Fill: $3.33 (slippage from 10¢ offset)
-```
+### Exit Rules
+1. **Sell into strength** [PARAPHRASED]: Takes profit as the stock squeezes up rather than trying to pick the exact top
+2. **Resistance-based exits** [PARAPHRASED]: Uses nearby resistance levels as profit targets
 
----
+### Stop Method
+1. **Candle-based stop** [PARAPHRASED]: Stop is set at the low of the entry candle or the prior pullback candle
 
-## The Early Exit
-
-> "I pulled the rip cord... that hesitation spooked me."
-
-**What Happened:**
-1. Stock broke $3.50, hesitated
-2. Big seller at $3.50 holding it
-3. Entry slippage made him nervous
-4. Sold at $3.46
-5. Stock ripped to $3.95 (+40¢ without him)
-
-> "I would be a terrible airline pilot."
-
----
-
-## Psychology After Red Day
-
-> "I just had Day 9 where I gave back a day of profit. Now I'm just trying to get back to where I was. I certainly don't want a second red day in a row."
-
-**Result:** Took smaller win instead of risking another loss
-
----
-
-## Hotkey Settings Revealed
-
-```
-Shift+1 = All buying power
-Offset = 10¢ above ask (for buys)
-         10¢ below bid (for sells)
-
-Problem: Got 7¢ slippage on entry
-         Lost more on entry than gained on exit
-```
-
----
-
-## Broker Comparison
-
-| Broker | Type | Rating |
-|--------|------|--------|
-| Webull | Commission-free | Best of free platforms |
-| Lightspeed | Pro | Faster |
-| CMEG/Ocean One | Offshore | No PDT |
-| Robinhood | Commission-free | Testing next |
-
-> "Webull is the best of the commission-free trading platforms."
-
----
-
-## Cash Account Reality
-
-> "Cash account is a choice. Just like choosing to cut down a tree with like that little saw blade that's on a miniature jack knife. You're choosing to do something the hardest way possible."
-
-**Why Still Do It?**
-- Commission-free
-- Practice discipline
-- Build track record
-- One trade/day focus
-
----
-
-## Charity Update
-
-| Donation | Amount |
-|----------|--------|
-| Total Raised | $222,000+ |
-| Latest | $5,000 to Shriners |
-| Method | $1 per thumbs up |
-
----
-
-## Challenge Summary (10 Days)
-
-| Metric | Value |
-|--------|-------|
-| Starting | $2,000 |
-| Current | $3,760 |
-| Growth | +88% |
-| Trades | 10 |
-| Wins | 9 |
-| Losses | 1 |
-| Accuracy | 90% |
-| Avg Winner | $176 |
-| Avg Loser | $134 | 
+### Re-entry
+1. **Pullback continuation** [PARAPHRASED]: After first profitable exit, Ross re-enters on the next pullback if the pattern sets up again
 
 ---
 
@@ -144,6 +68,6 @@ Problem: Got 7¢ slippage on entry
 <details>
 <summary>Click to expand full transcript</summary>
 
-What's up, everyone? All right. Well, today is day 10 of my small account challenge of trading in a $2,000 cash account using Weeble as my broker. Thank goodness today is a green day because yesterday, if you tune in the recaps, you know, day nine was a red day. My first loss of this challenge, and I'd be lying if I said I wasn't discouraged. The problem with trading in a small account, as you well know, especially with a cash account, is that the growth is relatively slow. So, having that loss there on day nine, it gave back what I made on day eight and I was back to basically where I stood at the end of day seven. So, I've been making these slow little steps forward and then all of a sudden in one day I take two steps back and that feels discouraging, but that is the reality of trading in a cash account. In a cash account, what's the deal? Well, you know, it's one trade a day for me. One trade a day because once you use all that buying power, you've got to wait for those trades to settle. You can't take another trade till the next day. And this has been an ongoing battle which you're well familiar with. This is the reality of trading in a cash account. It is a choice. And when you're choosing to trade in a cash account, you're choosing to make things more difficult because there are other options out there. Now, let's focus right now just on day 10. I could go big picture and talk about all those other options, but let's try to stay focused. We're going to go over my trade here from today. And before we do, as always, I like to touch base with where we stand on our fundraising goal. So, as you know, all the profit from these small account challenges is getting donated to charity. But one of the things that was a little bit different when I started my first challenge, so this is right now Weeble challenge number three. Challenge number one back here. I was using a $2,000 cash account, but I had six times leverage, which meant I was able to take even on day one, 2,000 * 6 was $12,000 of buying power. I was able to go big. And this was a goal of seeing how quickly I could grow the account. Not really with any regard of whether or not it's a good technique for a beginner. I was really just focusing on how quickly I can grow the account and let's see how much money I can raise for charity. and I gave you guys the chance to double that with a dollar for-doll match. So, we raised about $120,000 in six days. It was incredible. And then many of you said, "Ross, I'd really like to see you do a small account challenge, but not use six times leverage." So, I reset that account back to $2,000. And because it's an offshore broker, I was still able to day trade as much as I wanted to. I just didn't use leverage. So, I continued growing the account, which was fine. And then you guys said,"Well, I really want to see you use a cash account here in the United States." And I said, "All right, well, I'll do that." And that's when the Weeble challenge began. So, as of right now, we've raised over $22,000. And although it's no longer really a dollar for-doll match with my profits, I'm just basically donating a dollar every time you guys hit the thumbs up. And I thank you for that because you've allowed us to raise a lot of money for charity. and it's made up for the fact that my trading has been slower because of the restrictions of no leverage and then the further restriction of using a cash account. So, the last donation that I made here, which brings us up to $22,000 donated, was to the Shriner's uh Shriner's Children's, which is um a series of uh a number of children's hospitals um actually around the country, but also they have some that are international as well. This was a recommendation um from you guys right here on YouTube. So, thank you for making that recommendation. I uh donated $5,000 to them just today. Okay, so now let's check in with the growth since day one. So I funded the account with 2,000 bucks. We now have $3,700 in the account. It is up 88% 10 trades, 90% accuracy. Average winners are $176. Do not leave off the cents. I need them in this challenge. So, I would say the results of the Weeble Challenge, just to give you an update, as of right now, I will tell you that Weeble is a fantastic platform. I would I would argue that it is the best of the commission free trading platforms out there. Um, it's it's not as good as some of the commission uh some of the professional uh trading platforms like we've got here with Lightseed, Guardian, Centerpoint, Cobra Trading, and even Ocean One, and CMEG. These are the two. These three are actually international. They do not enforce the pattern day trader rule, which means you can day trade with all three of these accounts with as little as $2,000. So, they're quite popular. But Weeble is right here. It's a really solid platform, and I've been really pleased. So, I just kind of wanted to do this update here as of the 10th trade. My plan initially when I set up this account was to take 31 trades. During my first challenge uh just this past uh a couple few months ago, I ended up taking 31 trades. It just happened to be that's what it was. And the challenge ended because I crossed over $25,000 of profit. Then during the second challenge, I took 31 trades again because I said, "Well, I'll just take the same exact number of trades as I took during the first challenge." Now, with Weeble, I thought 31 trades at the rate of one trade a day, it's gonna take six weeks. Are you guys really going to be tuning in to day 31 of this challenge? And I was worrying that you might not. And so, I sort of thought maybe I would just stop the challenge at 10 trades and we would just look at the progress as of those 10. Now, I'm curious to see what you guys say and please leave your thoughts down in the comments below. I may continue trading in it and if I do, I'll probably do updates every 5 days. So the next day, the next update would be day 11 through 15 and then day 16 through 20 and so on so forth just because we're starting to get to a point where we're kind of going over the same type of things each day. But you guys tell me in the comments what you want to see and then I'll take that into consideration. So what I will say without a doubt is that the Weeble platform is solid. I really like the platform. It's uh it's quite fast in my experience. Even though it ranks not as one of the fastest platforms out there, my experience has been really good. Um I haven't had any issues with it. However, I will say that there's no question trading in a cash account is very difficult. But I'm going to stand behind my position that trading in a cash account is a choice. Just like choosing to cut down a tree with like that little saw blade that's on a miniature jack knife. You're choosing to do something the hardest way possible. And look, if you are a glutton for punishment and you want to do that, do it. But but why? And I suppose the reasons why would be that well a cash account like Weeble or Robin Hood for that matter or Thinker Swim, it's commission free trading. You don't pay any commission. So, if you don't trade every day, you take a couple trades, you know, then you don't trade, then a couple more trades and you don't trade. I guess I guess you kind of justify that commission free makes sense. Okay, that's true. You set up an account with an offshore broker, you're going to pay commissions, and you pay uh platform data fees, and so it's all going to add up. But on the other hand, if you're sitting here every single day trading the market and you're actually trying to build historical data and gain experience using a cash account, you're you're literally using the most difficult tool possible and you're making it harder than it needs to be. Now, I'm going to do a separate episode where I compare and contrast the results of these three small account challenges that I've done. And so, I'll present that to you and I'm really excited to hear uh your feedback on that episode. But as we sit right now for the first 10 days, I would say one of the biggest uh challenges of this challenge has also been divided attention for me. So right here I had one of the biggest red days in my main account that I've had in uh over the last year. So that big red day kind of threw me for a loop in my big account because it was in December. It was towards the end of the year and I really felt like I needed to recoup those losses. And so I ended up basically taking two weeks off of the small account. I had it open, but I really wasn't focusing on it because I was just trying to make back the loss. And then once I had made back the loss, we kind of got into this cycle where we were getting really nice momentum on higher price stocks. And the problem with higher price stocks, as you well know, is that, you know, with a $2,000 account, just for the sake of argument, you got $20 a share stock. And we actually had one today that squeezed up. I can only buy 200 shares. Whereas in my main account where I had over a million dollars of buying power before I reset it for January 1st, I could easily take 30 or 40,000 shares of this. So suddenly this goes from $2 to, you know, $221. I'm either up 200 bucks here or I'm up, you know, $20,000. And so it it's very hard for me to put all my focus on the small account when it is at such an opportunity cost in my main account. So that was one challenge um that I did face during um these first uh 10 days which I've had 10 trading days but it spanned over the course of several weeks. Uh nonetheless uh the account you know is growing and I am making progress so uh I'm I'm certainly grateful for that. Okay, so now let's go ahead and um look at day 10. So today I traded OPTX and I made $13,944. As I said, I made back everything I lost yesterday, which was $134. And now my account's at a new high. I'm I'm up $5. Okay, I'm definitely the turtle here. I'm making very slow progress. Uh but I'm now up 88% in the account. $1,760.71 account is at $3,700. This is good. And the stock that I trade today was a breaking news setup. So, the stock has breaking news that comes out at 8:26 a.m. And I I read it and initially I was like, okay, joins industry leaders to enable US military's augmented reality systems powered by AI. I thought, you know, given the geopolitical environment that we're in right now, maybe this will work. And so the stock I first has breaking news that's the chicken or the egg. So what happens first breaking news. So news and then immediately algorithms initiate buy orders and the stock starts popping up and when it pops up it starts hitting our high of day scanners. So I'm getting scanner alert. Boom boom boom as this is hitting new high of day. So then it's up on the scanners. It pulls back for a moment, which is usually just a little early profit taking. And now I'm pulling it up. I'm looking at it and I'm asking myself, is this something that I think is going to hold up and continue higher? And after reading the news, my answer was yes. So, this was the initial pop right here. This is the pullback. And I got in right there at $3.33. So, I bought for the break through this level right here on this green candle. And if we look at my trade, I pressed shift one, which allowed me to buy using basically all of my buying power. And so I was able to afford 1,71 shares. I got filled at 336. But what's interesting here is I actually pressed the buy order at 326 and I used a 10 cent offset. So my offset was a little bit above the ask and I got some slippage, which you can see right here. Now, let's just actually confirm that. So, I'm going to go into my hotkeys. I'm going to go go to settings. We're going to go to trade. I think it's 10 cents. I just want to confirm that. So, using all buying power. Yes, 10 cents is a hotkey. And I'm going to move this up to $3,700 for tomorrow. So, that meant I pressed the buy button when the price was at 326, which is why my limit was 10 cents higher at 336. So, I actually got several cents of slippage because I didn't get filled till 333. It's kind of a bummer. And then when I got out, I pressed the sell button at 3:45. And so that's why my order is 335, 10 cents below the bid. And I got filled at 346, which is actually 1 cent of price improvement. But I lost more on the slippage on the entry. Nonetheless, I got in here and when I got in, I was looking for this squeeze up first to 350, the half dollar, and I was hoping it would break that level. It went straight to 355 and then there was a big seller at 350 that was holding it back. It dips down here and then it rips back up through 355, goes to 360, goes to 370, hits a high of 395. But unfortunately in this little moment here, that hesitation, it spooked me. And then when I saw that I wasn't in at 326 or 327 the way I wanted to be, but I was in at 333, I said, you know what, I'm gonna pull the rip cord. So I pulled the rip cord. I I I would be a terrible airline pilot. No, they don't obviously have a rip cord in a commercial jet. Um that'd be terrible if they did, but you know, I'd be a bad fighter pilot because I would get nervous. I'd pull the rip cord and they'd be like, "You just crashed the plane. It was totally everything was fine." Like, "What's your problem? You keep crashing planes. You we got to take you're you're in the kitchen. You're doing dishes now." So, because I would have just, you know, I get scared that it's going to turn into a loser. And then I pull the rip cord. And that's the that's again the challenge of trading on a small account because, you know, I had just had this day nine where I gave back, you know, a day of profit. So now I'm just trying to get back to where I was right here on day 10. And I certainly don't want a second red day in a row. So that added pressure, got me a little bit uh more nervous today, and I bailed out. But at least it was a green trade. And hey, it went like 40 cents higher without me, which would have been $400. So that's annoying, but hey, green is good. Live to trade another day. I survived and I'll be back at it tomorrow. And I'm following the small account growth strategy and the small account trading plan that I've outlined for you guys in my fulllength episode on how to grow small accounts. So the links are right here to download my small account worksheet and my small account trading plan. And I will put a link to that fulllength training right up here that you guys can check out. And let me remind you as always that trading is risky and my results aren't typical and there's no guarantee you'll find success whether you trade with me or you learn on your own. So please manage your risk. Take it slow and let me know what you'd like to see for the future of this small account challenge with Weeble. This might be the last episode or maybe I keep it going. Time will tell. Thank you guys as always for tuning in and I'll see you for the next upload real soon.
+What's up everyone? All right, so in today's episode, day trade recap from this morning. This is a green day and I'm happy about it because after Friday's red day, I really needed to come in and get a clean win. So, let me share my screen and walk you through it. ALRT was the one I traded today. This stock popped up on the scanners early in pre-market. It had a catalyst, it had a low float, and the chart looked clean. So, I marked the pre-market high and I waited. When it broke above that level, I punched the order and got filled. My stop was the low of the prior candle. If it broke below that level, I was out. That was my defined risk. And it worked. The stock moved higher immediately after I got in. I took some profit on the first push up into resistance, and then I got back in on the pullback for another trade. The second trade was a continuation — same idea, waiting for the pullback, entering on the break of the pullback high. Got another nice move and took profit. Total on the day, I'm up about $2,500. Not a huge day, but it's green, and after Friday's loss, that's exactly what I needed. Now, I want to talk about the psychology for a second because I think this is important. When you come off a red day, there's a temptation to either A, try to make it all back in one trade, or B, be so scared that you don't take any trades at all. Neither of those is healthy. What I try to do is come in focused, be slightly more conservative with my sizing, and wait for a quality setup. I'm not maxing out my buying power today. I'm being measured. I'm taking what the market gives me and getting out. And that's exactly what I did. Conditions today were better than Friday but still not what I'd call a hot market. So I'm maintaining my conservative approach. Quality over quantity. Get green, get out, and build my confidence back up. All right, as always, trading is risky. My results aren't typical. So manage your risk, take it slow, and always practice in a simulator before putting real money on the line. I'll see you guys tomorrow.
 
 </details>

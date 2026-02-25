@@ -2,22 +2,28 @@
 
 **Date:** 2026-01-12  
 **Video:** [Did we just have a 600% Short Squeeze??? YUP!!!](https://www.youtube.com/watch?v=EbsPz8WfNAY)  
-**Stocks:** EVTV (missed - too cheap), OM (small win), SOGP (close call)  
+**Stocks:** OM (small win), SOGP (close call)  
+**Missed:** EVTV (600% squeeze — too cheap)  
 **Result:** +$1,600 (small green day after Friday red)
 
 ---
 
+## Methodology Checklist
+
+| Topic | Ross Mentioned? | Evidence Tag | Quote (if yes) |
+|-------|----------------|-------------|----------------|
+| MACD | NO | [NOT MENTIONED] | — |
+| VWAP | NO | [NOT MENTIONED] | — |
+| Level 2 / Order Book | NO | [NOT MENTIONED] | — |
+| Stop method | NO | [NOT MENTIONED] | — |
+| Re-entry criteria | YES | [PARAPHRASED] | Ross describes doing a second dip buy trade on OM at $6.57 after his first profitable exit at $6.80, demonstrating re-entry on the same stock |
+| Position sizing logic | YES | [PARAPHRASED] | Ross mentions keeping size conservative because he never built enough cushion on the day to take risk, relating to the "build cushion then take risk" philosophy |
+| Exit strategy | YES | [DIRECT QUOTE] | "Don't overstay your welcome" — Ross on exiting SOGP quickly after it almost became a loss |
+| Market temperature | YES | [DIRECT QUOTE] | "The goal here today was to build my cushion, get in, get green, and then if I had a cushion, then I could take some risk. I never was able to really build the cushion." |
+
+---
+
 ## Trade Summary
-
-### EVTV - The 600% Squeeze He Missed
-
-| Metric | Value |
-|--------|-------|
-| Entry | N/A - Did not trade |
-| Peak | $3.20 (up 600%+ from <$0.50) |
-| Catalyst | Unknown |
-| Volume | 750 MILLION shares |
-| Reason Avoided | Too cheap (penny stock), was teaching classes |
 
 ### OM - First Trade of the Day
 
@@ -38,20 +44,29 @@
 | Result | +$690.37 (almost was a loss) |
 | Warning | Higher price, light volume, weak headline |
 
+### EVTV - The 600% Squeeze He Missed
+
+| Metric | Value |
+|--------|-------|
+| Entry | N/A - Did not trade |
+| Peak | $3.20 (up 600%+ from <$0.50) |
+| Volume | 750 MILLION shares |
+| Reason Avoided | Too cheap [DIRECT QUOTE]: "not how I trade" |
+
 ---
 
 ## Setup Criteria (Why He Took It)
 
 ### OM
-1. Squeezed up to $6.50 after multiple dip/pop cycles
-2. Micro pullback entry pattern
-3. Clean price action
+1. Squeezed up to $6.50 after multiple dip/pop cycles [PARAPHRASED]
+2. Micro pullback entry pattern [PARAPHRASED]
+3. Clean price action [PARAPHRASED]
 
-### SOGP
-1. Curled back up after pullback
-2. Squeeze play to $20
-3. **Warning**: Light volume, weak headline ("letter to shareholders")
-4. Got in from anxiety about low trade count
+### SOGP  
+1. Curled back up after pullback [PARAPHRASED]
+2. Squeeze play to $20 [PARAPHRASED]
+3. **Warning**: Light volume, weak headline ("letter to shareholders") [DIRECT QUOTE]: "the headline, a letter to shareholders. These don't usually work super well"
+4. Got in from anxiety about low trade count [DIRECT QUOTE]: "a little bit of just a little bit of anxiety about the fact that it was like 9:00 AM and I'd only taken two trades so far"
 
 ---
 
@@ -66,7 +81,7 @@ Entry: Micro pullback after squeeze to $6.50
   → Got in on pullback
   → Hoped for squeeze to $7.00
   → Hit $6.80, took profit
-  
+
 Second trade: Dip buy at $6.57
   → Quick exit at $6.67
 ```
@@ -77,151 +92,60 @@ Stock pops up, drops down, curls back up
 Entry: ~$19 looking for squeeze to $20
   → Got in a little high
   → Stock dipped immediately
-  → Was almost taking a "good-sized loss"
-  → "That was not a good idea"
-  
+  → Was almost taking a "good-sized loss" [DIRECT QUOTE]
+  → "That was not a good idea" [DIRECT QUOTE]
+
 Stock then rips to $20
   → Got out for small profit
-  → "Could have been a loss"
+  → "Could have been a loss" [PARAPHRASED]
 ```
-
-### EVTV (Missed)
-```
-Started: Under $0.50
-Squeezed: To $3.20 (600%+)
-Why missed:
-  1. Too cheap - "not how I trade"
-  2. Was teaching classes from 10am to 5pm
-  3. "This move just happened without me"
-```
-
----
-
-## Scaling Pattern (Adds & Exits)
-
-### OM
-| Action | Price | Trigger |
-|--------|-------|---------|
-| Entry | ~$6.50 | Micro pullback after squeeze |
-| Exit | ~$6.80 | Squeeze stalled before $7 |
-| Dip buy | $6.57 | Pullback after move |
-| Exit | $6.67 | Quick scalp |
-
-### SOGP
-| Action | Price | Trigger |
-|--------|-------|---------|
-| Entry | ~$19.00 | Squeeze play |
-| Almost stopped | dip | Was red unrealized |
-| Exit | ~$19.50 | Squeeze to $20, took profit early |
-
----
-
-## Exit Criteria
-
-### Why He Exited OM
-- Target was $7, didn't hit
-- Took profit at $6.80
-- Second trade was quick scalp
-
-### Why He Exited SOGP Quickly
-- "That was not a good idea"
-- Light volume, higher price stock
-- Weak catalyst (letter to shareholders)
-- Close call - was unrealized red
-- "Don't overstay your welcome"
-
----
-
-## Disqualifiers (What He Avoided)
-
-| Stock | Reason |
-|-------|--------|
-| EVTV | Too cheap (started <$0.50) - penny stock |
-| BDSX | Easy to borrow (unusual for low float), 200 EMA resistance at $10 |
-| NCEL | Popped up and immediately reversed - round trip |
-| Lower priced names | "I know I don't trade well in that price range" |
-| SIBE | High price stock traded Friday, lost $5k (wrong timing) |
 
 ---
 
 ## Key Patterns Extracted
 
 ### Entry Rules
-1. Micro pullback after squeeze = preferred entry
-2. Wait for curl back up after pullback
-3. Don't trade from anxiety or boredom
-4. **Range matters**: $5-$10 starting price is ideal
-
-### Add Rules
-1. Build cushion first before taking risk
-2. Dip buys only after initial profitable trade
-3. Reduce size when confident is low
+1. **Micro pullback after squeeze = preferred entry** [PARAPHRASED]
+2. **Wait for curl back up after pullback** [PARAPHRASED]
+3. **Don't trade from anxiety or boredom** [DIRECT QUOTE]: Ross admits SOGP entry was driven by anxiety about low trade count
+4. **Price range matters: $5-$10 starting price is ideal** [PARAPHRASED]
 
 ### Exit Rules
-1. Don't wait for perfect target - take profit early in cold market
-2. If it dips immediately after entry, evaluate quickly
-3. "Don't overstay your welcome"
+1. **Don't wait for perfect target — take profit early in cold market** [PARAPHRASED]: Target was $7 but took profit at $6.80
+2. **"Don't overstay your welcome"** [DIRECT QUOTE]
+3. **If it dips immediately after entry, evaluate quickly** [PARAPHRASED]
 
 ### Avoid Rules
-1. **Too cheap (<$1)** - Creates FOMO, hard to trade well
-2. **Easy to borrow on low float** - Unusual, be cautious
-3. **Weak catalysts** - "Letter to shareholders" doesn't work well
-4. **Higher price + light volume** - Dangerous combo
-5. **FOMO after big penny stock move** - Next day will have distracted traders
+1. **Too cheap (<$1)** — Creates FOMO [DIRECT QUOTE]: "not how I trade"
+2. **Easy to borrow on low float** — Unusual, be cautious [PARAPHRASED]: BDSX was easy to borrow which is unusual for low float
+3. **Weak catalysts** — "letter to shareholders" doesn't work well [DIRECT QUOTE]
+4. **Higher price + light volume** — Dangerous combo [PARAPHRASED]
 
 ---
 
-## Cold Market Philosophy (CRITICAL INSIGHT)
+## Cold Market Philosophy [DIRECT QUOTE]
 
-### Ross's Mindset
 > "The goal here today was to build my cushion, get in, get green, and then if I had a cushion, then I could take some risk. I never was able to really build the cushion."
 
-### Cold Market Strategy
-- **Daily goal**: $20k hot market, $5k cold market
-- **Today**: +$1,600 = "a third of my cold market goal, but I'm grateful"
-- **Don't push**: "This just isn't the time to dig deep and try to do anything crazy"
-- **Autopilot mode**: "Put it on a little bit of autopilot"
-
-### Equity Curve Philosophy
+### Equity Curve Philosophy [DIRECT QUOTE]
 > "Which equity curve do you want?"
 
-**Option A (Bad):**
-```
-Rally → Big drawdown → Rally (first half just recouping losses)
-```
+**Option A (Bad):** Rally → Big drawdown → Rally (first half just recouping losses)
 
-**Option B (Good):**
-```
-Rally → Sideways/small gains → Rally → Sideways/small gains
-```
+**Option B (Good):** Rally → Sideways/small gains → Rally → Sideways/small gains
 
-Key insight: During cold periods, "I'm still making decent money, but then when things heat back up, I'm not digging out of a hole."
-
-### What Creates Cold Markets
-- Attention dispersed to penny stocks (EVTV 600% move)
-- Creates FOMO for "next penny stock lottery ticket"
-- Better setups don't appear because volume is elsewhere
-- "Tomorrow we may see attention continue on lower price names"
+Key insight [PARAPHRASED]: During cold periods, "I'm still making decent money, but then when things heat back up, I'm not digging out of a hole."
 
 ---
 
-## Account Context
+## Disqualifiers (What He Avoided)
 
-- **Friday**: Lost $5,000 on higher-price stock (SIBE to $100)
-- **Today**: +$1,600 (recovering 1/3 of Friday's loss)
-- **Strategy**: Quality over quantity after red day
-- **Goal**: "Build cushion, then take risk" - never built cushion today
-
----
-
-## Actionable Takeaways for Nexus
-
-1. **Price Range Filter**: Flag stocks <$1 as "penny stock" (avoid for Ross style)
-2. **Easy Borrow Warning**: If low float but easy to borrow = unusual, be cautious
-3. **Volume Dispersion Metric**: When penny stock gets 750M+ volume, expect distracted market
-4. **Cushion Tracking**: Track session P/L and adjust risk tolerance
-5. **Cold Market Mode**: Reduce targets when recent days are small green/red
-6. **FOMO Alert**: After big penny stock move, flag next day as "FOMO risk" 
+| Stock | Reason | Evidence Tag |
+|-------|--------|-------------|
+| EVTV | Too cheap (started <$0.50) | [DIRECT QUOTE] "not how I trade" |
+| BDSX | Easy to borrow (unusual for low float), 200 EMA resistance at $10 | [PARAPHRASED] |
+| NCEL | Popped up and immediately reversed - round trip | [PARAPHRASED] |
+| SIBE | High price stock traded Friday, lost $5k | [PARAPHRASED] |
 
 ---
 
