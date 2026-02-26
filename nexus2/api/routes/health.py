@@ -4,6 +4,7 @@ Health Routes
 
 import os
 import shutil
+import subprocess
 import psutil
 from datetime import datetime
 from fastapi import APIRouter
@@ -16,6 +17,20 @@ router = APIRouter(tags=["health"])
 
 # Track server start time for uptime calculation
 _server_start_time = now_et()
+
+# Compute version with git hash at import time
+def _get_version() -> str:
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return f"0.2.0-{commit}"
+    except Exception:
+        return "0.2.0-unknown"
+
+_VERSION = _get_version()
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -56,7 +71,7 @@ async def health_check():
     
     return HealthResponse(
         status="healthy",
-        version="0.1.15",
+        version=_VERSION,
         mode=mode,
         timestamp=format_et(),  # Using centralized time utility
         uptime_seconds=uptime_seconds,
