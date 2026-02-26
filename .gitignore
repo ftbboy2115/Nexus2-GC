@@ -37,3 +37,6 @@ nexus2/scripts/_*
 
 # Gravity Claw (separate project, shares workspace for dev convenience)
 gravity-claw/
+
+# Large JSON diagnostics files (too big for GitHub)
+nexus2/reports/gc_diagnostics/*.json

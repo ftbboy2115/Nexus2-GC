@@ -151,8 +151,15 @@ def print_results(data: dict):
     winners = summary.get("cases_profitable", 0) or 0
     capture = (total_bot / total_ross * 100) if total_ross else 0
 
+    # Methodology Fidelity: only cases where Ross traded AND profited (how well bot replicates Ross's winners)
+    rt_bot = sum((r.get("total_pnl", r.get("bot_pnl", 0)) or 0) for r in results if (r.get("ross_pnl", 0) or 0) > 0)
+    rt_ross = sum((r.get("ross_pnl", 0) or 0) for r in results if (r.get("ross_pnl", 0) or 0) > 0)
+    fidelity = (rt_bot / rt_ross * 100) if rt_ross else 0
+    rt_count = sum(1 for r in results if (r.get("ross_pnl", 0) or 0) > 0)
+
     print(f"  {'-'*18}-+-{'-'*14}-+-{'-'*14}-+-{'-'*14}-+-{'-'*5}-+-{'-'*20}")
     print(f"  {'TOTAL':<18s} | Bot: ${total_bot:>10,.2f} | Ross: ${total_ross:>10,.2f} | Delta: ${total_delta:>10,.2f} | {winners}W   | {capture:.1f}% capture")
+    print(f"  {'Fidelity':<18s} | Bot: ${rt_bot:>10,.2f} | Ross: ${rt_ross:>10,.2f} | {'':>16s} | {rt_count}    | {fidelity:.1f}% fidelity")
     print(f"{'='*96}\n")
 
 
@@ -210,9 +217,13 @@ def diff_results(current: dict, baseline: dict):
     print(f"  Improved:  {improved}/{total}")
     print(f"  Regressed: {regressed}/{total}")
     print(f"  Unchanged: {unchanged}/{total}")
+    # Methodology Fidelity (how well bot replicates Ross's winning trades)
+    rt_bot = sum((r.get("total_pnl", r.get("bot_pnl", 0)) or 0) for r in current.get("results", []) if (r.get("ross_pnl", 0) or 0) > 0)
+    rt_ross = sum((r.get("ross_pnl", 0) or 0) for r in current.get("results", []) if (r.get("ross_pnl", 0) or 0) > 0)
+    fidelity = (rt_bot / rt_ross * 100) if rt_ross else 0
     print(f"  Net change:  ${total_change:>+,.2f}")
     print(f"  New total P&L: ${new_total_pnl:>,.2f}  (Ross: ${new_total_ross:>,.2f})")
-    print(f"  Capture: {capture:.1f}%")
+    print(f"  Capture: {capture:.1f}%  (Fidelity: {fidelity:.1f}%)")
     runtime_str = f"  Runtime: {current_runtime}s"
     if baseline_runtime:
         runtime_str += f"  (baseline: {baseline_runtime}s, delta: {runtime_delta:+.1f}s)"

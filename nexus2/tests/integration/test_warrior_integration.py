@@ -96,7 +96,7 @@ class TestWarriorMonitorIntegration:
         
         assert settings.mental_stop_cents == Decimal("50")
         assert settings.profit_target_r == 2.0
-        assert settings.partial_exit_fraction == 0.5
+        assert settings.partial_exit_fraction == 0.25  # Updated from 0.5 per param sweep optimization
         assert settings.enable_candle_under_candle is True
         assert settings.enable_topping_tail is True
     

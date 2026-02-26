@@ -68,7 +68,7 @@ class TestWarriorMonitorSettings:
         assert s.mental_stop_cents == Decimal("50")
         assert s.use_technical_stop == True
         assert s.profit_target_r == 2.0
-        assert s.partial_exit_fraction == 0.5
+        assert s.partial_exit_fraction == 0.25  # Updated from 0.5 per param sweep optimization
         assert s.enable_candle_under_candle == True
         assert s.enable_topping_tail == True
         assert s.check_interval_seconds == 2  # Fast polling
@@ -260,7 +260,7 @@ class TestProfitTarget:
         
         assert signal is not None
         assert signal.reason == WarriorExitReason.PARTIAL_EXIT
-        assert signal.shares_to_exit == 50  # 50% of 100
+        assert signal.shares_to_exit == 25  # 25% of 100 (partial_exit_fraction=0.25)
     
     def test_partial_taken_no_repeat(self, monitor, mock_trading_hours):
         """Partial already taken does not trigger again in home_run mode."""

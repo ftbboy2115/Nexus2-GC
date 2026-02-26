@@ -111,6 +111,16 @@ class WarriorMonitorSettings:
     allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
     move_stop_to_breakeven_after_scale: bool = False  # Keep technical stop after scale (Ross Cameron)
     
+    # Scaling v2: Ross Cameron Level-Break Methodology
+    # Replaces accidental pullback scaling with structural level breaks ($X.00, $X.50)
+    # A/B testable: enable_level_break_scaling=True (new) vs False (accidental legacy)
+    # Feb 26 2026: Disabled after A/B test showed -$91K regression (too aggressive on reversals)
+    enable_level_break_scaling: bool = False  # Level-break disabled; structural exits enabled
+    level_break_increment: float = 0.50       # $0.50 = whole + half dollar levels
+    level_break_min_distance_cents: int = 10  # Skip levels closer than 10¢ from reference
+    level_break_macd_gate: bool = True        # MACD negative blocks scaling (fail-closed)
+    level_break_macd_tolerance: float = -0.02 # MACD histogram tolerance (matches entry gate)
+    
     # Guard Toggles (for GC param sweep A/B testing)
     enable_profit_check_guard: bool = False  # Block adds when position >25% gain (not Ross methodology, for A/B testing)
     
@@ -145,7 +155,7 @@ class WarriorMonitorSettings:
     # Structural Profit Levels (Fix 3: A/B testable)
     # When enabled, replaces flat +18¢ fallback with next structural price level
     # Ross Cameron exits at whole/half dollar levels ($5, $5.50, $6, etc.)
-    enable_structural_levels: bool = False  # Fix 3: REJECTED — neutral P&L, fewer winners
+    enable_structural_levels: bool = True  # Scaling v2: enabled for structural level exits
     structural_level_increment: float = 0.50  # $0.50 = whole + half dollars
     structural_level_min_distance_cents: int = 10  # Skip levels closer than 10¢
     
@@ -213,6 +223,7 @@ class WarriorPosition:
     last_scale_attempt: Optional[datetime] = None  # Track last scale attempt for cooldown
     last_momentum_add_price: Optional[Decimal] = None  # Track price of last momentum add
     momentum_add_count: int = 0                         # Number of momentum adds taken
+    last_level_break_price: Optional[Decimal] = None    # Scaling v2: price of last level-break scale-in
     recovered_at: Optional[datetime] = None  # When position was recovered from broker sync (grace period)
     
     # Intraday candle tracking (for pattern exits)

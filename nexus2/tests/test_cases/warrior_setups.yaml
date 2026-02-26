@@ -1255,6 +1255,31 @@ test_cases:
       stop_near: 4.00
     notes: "Speculative trade, 2500 shares. Ross was 60/40 expecting a loss. Chinese stock popping $3.50→$5.50, dip-bought, bounced only 200 shares, stopped out. Went red on the day afterward. Transcript: 2026-02-20_transcript_K1Zvoes1SNQ.md"
 
+  - id: ross_aidx_20260225
+    symbol: AIDX
+    setup_type: first_daily_new_high
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$546 - First Daily Candle New High, 1K shares cold market"
+    trade_date: "2026-02-25"
+    intraday_file: "intraday/ross_aidx_20260225.json"
+    ross_pnl: 546.10
+    ross_entry_time: "~09:04"  # Massive spike bar 09:04 ($8.82→$10.91, 50K vol). Ross said "top of the hour"
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry price $9.99 confirmed, time approximate, chart timeframe not stated
+    premarket_data:
+      gap_percent: -8.4  # From Polygon data
+      premarket_high: 10.91  # From Polygon — spike at 09:04
+      previous_close: null  # Not available from Polygon fetch
+      float_shares: null
+      catalyst: "news"
+    expected:
+      entry_near: 9.99  # Ross stated: "$9.99 by 10... Shift one. 1,000 shares."
+      stop_near: 9.50  # Implied from entry level
+    notes: "Cold market, small size (1,000 shares). Broke 2-day no-trade streak. Ross's smallest green day in over a year. Entry $9.99 during 09:04 spike ($8.82→$10.91), sold ~3/4 at $10.78, rest at $9.82. Stock sold off to $7.20 by 09:12, then further to ~$6.50 at open. Traded in wrong account (taxable instead of IRA). Transcript: 2026-02-25_transcript_BiCYyGaTteE.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1263,7 +1288,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               34 (+ SNSE from 2026-02-18)
+# POLYGON_DATA:               35 (+ AIDX from 2026-02-25)
 # ==========================================================================
 
 

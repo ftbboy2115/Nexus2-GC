@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional, Dict
 
 from nexus2.utils.time_utils import now_et
 from nexus2.domain.automation.warrior_types import WarriorPosition
+from nexus2.domain.automation.warrior_monitor_exit import _compute_structural_target
 
 if TYPE_CHECKING:
     from nexus2.domain.automation.warrior_monitor import WarriorMonitor
@@ -34,13 +35,13 @@ async def check_scale_opportunity(
     current_price: Decimal,
 ) -> Optional[Dict]:
     """
-    Check if position qualifies for scaling in (Ross Cameron methodology).
+    Check if position qualifies for scaling in.
     
-    Criteria:
-    1. Scaling enabled and position not at max scale count
-    2. RVOL strong enough (volume confirmation)
-    3. Price at support zone (pullback, can be below entry)
-    4. Support holding (not breaking down)
+    Routes between two strategies:
+    - enable_level_break_scaling=True: Ross Cameron level-break scaling
+      (adds at $X.00/$X.50 structural levels with MACD gate)
+    - enable_level_break_scaling=False: Legacy accidental scaling
+      (always-true pullback zone, produces one scale per trade)
     
     Returns dict with scale signal details if opportunity detected, else None.
     """
@@ -52,82 +53,246 @@ async def check_scale_opportunity(
     if position.scale_count >= s.max_scale_count:
         return None
     
-    # Check if price is at support (technical stop is our support level)
-    # Allow scaling if price is near or at support but not below it
+    # Route to level-break or legacy based on setting
+    if s.enable_level_break_scaling:
+        return await _check_level_break_scale(monitor, position, current_price)
+    else:
+        return await _check_legacy_scale(monitor, position, current_price)
+
+
+async def _check_level_break_scale(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+) -> Optional[Dict]:
+    """
+    Ross Cameron Level-Break Scaling.
+    
+    Triggers when price breaks through structural levels ($X.00, $X.50).
+    Each successful add advances the reference price so the next level is higher.
+    
+    MACD gate is fail-closed: no MACD data = no scaling.
+    """
+    s = monitor.settings
+    symbol = position.symbol
+    
+    # SAFETY: Skip if position is pending exit
+    if monitor._is_pending_exit(symbol):
+        logger.debug(f"[Warrior Scale] {symbol}: Level-break skipped - pending exit")
+        return None
+    
+    # SAFETY: Skip if price is too close to stop (<1% buffer)
+    support = position.technical_stop or position.mental_stop
+    if support and support > 0:
+        stop_buffer_pct = (current_price - support) / current_price * 100 if current_price > 0 else 0
+        if stop_buffer_pct < 1.0:
+            logger.debug(f"[Warrior Scale] {symbol}: Level-break skipped - too close to stop ({stop_buffer_pct:.1f}%)")
+            return None
+    
+    # SAFETY: Cooldown (sim mode bypasses wall-clock cooldown)
+    if position.last_scale_attempt and not monitor.sim_mode:
+        cooldown_seconds = 60
+        elapsed = (now_et() - position.last_scale_attempt).total_seconds()
+        if elapsed < cooldown_seconds:
+            logger.debug(f"[Warrior Scale] {symbol}: Level-break cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
+            return None
+    
+    # Price must be above entry (Ross only adds on strength)
+    if current_price <= position.entry_price:
+        return None
+    
+    # --- LEVEL-BREAK DETECTION ---
+    # Reference price = last level-break price (if any adds done), else entry price
+    reference_price = position.last_level_break_price or position.entry_price
+    
+    # Compute next structural level above reference
+    next_level = _compute_structural_target(
+        entry_price=reference_price,
+        increment=s.level_break_increment,
+        min_distance_cents=s.level_break_min_distance_cents,
+    )
+    
+    # Check if price has broken through the level
+    if current_price < next_level:
+        return None  # Not at level yet
+    
+    logger.info(
+        f"[Warrior Scale] {symbol}: LEVEL BREAK detected - "
+        f"price=${current_price:.2f} >= level=${next_level:.2f} "
+        f"(ref=${reference_price:.2f}, increment=${s.level_break_increment})"
+    )
+    
+    # --- MACD GATE (fail-closed) ---
+    if s.level_break_macd_gate:
+        macd_ok = await _check_scaling_macd_gate(
+            monitor, symbol, current_price, s.level_break_macd_tolerance
+        )
+        if not macd_ok:
+            return None  # MACD blocked scaling
+    
+    # Calculate add size
+    add_shares = int(position.original_shares * s.scale_size_pct / 100)
+    if add_shares < 1:
+        add_shares = 1
+    
+    logger.info(
+        f"[Warrior Scale] {symbol}: Level-break scale opportunity - "
+        f"level=${next_level:.2f}, add_shares={add_shares}, "
+        f"scale #{position.scale_count + 1}"
+    )
+    
+    return {
+        "position_id": position.position_id,
+        "symbol": symbol,
+        "add_shares": add_shares,
+        "price": float(current_price),
+        "support": float(support) if support else 0.0,
+        "scale_count": position.scale_count + 1,
+        "trigger": "level_break",
+        "level_price": float(next_level),  # Track which level triggered
+    }
+
+
+async def _check_scaling_macd_gate(
+    monitor: "WarriorMonitor",
+    symbol: str,
+    current_price: Decimal,
+    tolerance: float,
+) -> bool:
+    """
+    MACD gate for scaling — fail-closed (no data = no scaling).
+    
+    Uses monitor's candle callback to fetch bars, then checks MACD histogram.
+    MACD is checked AFTER level break is confirmed (performance: avoid unnecessary API calls).
+    
+    Returns True if MACD is OK for scaling, False if blocked.
+    """
+    if not monitor._get_intraday_candles:
+        logger.warning(
+            f"[Warrior Scale MACD] {symbol}: FAIL-CLOSED - no candle callback. "
+            f"Cannot verify MACD for scaling."
+        )
+        return False
+    
+    try:
+        candles = await monitor._get_intraday_candles(symbol, "1min", limit=50)
+        
+        if not candles or len(candles) < 10:
+            bar_count = len(candles) if candles else 0
+            logger.warning(
+                f"[Warrior Scale MACD] {symbol}: FAIL-CLOSED - insufficient bars "
+                f"({bar_count}, need 10+). Cannot verify MACD for scaling."
+            )
+            return False
+        
+        from nexus2.domain.indicators import get_technical_service
+        tech = get_technical_service()
+        candle_dicts = [
+            {"high": c.high, "low": c.low, "close": c.close, "volume": c.volume}
+            for c in candles
+        ]
+        snapshot = tech.get_snapshot(symbol, candle_dicts, current_price)
+        
+        histogram = snapshot.macd_histogram or 0
+        
+        if histogram < tolerance and snapshot.macd_crossover != "bullish":
+            logger.info(
+                f"[Warrior Scale MACD] {symbol}: BLOCKED - MACD too negative "
+                f"(histogram={histogram:.4f} < tolerance={tolerance}, "
+                f"crossover={snapshot.macd_crossover})"
+            )
+            return False
+        
+        if histogram < 0:
+            logger.info(
+                f"[Warrior Scale MACD] {symbol}: MACD slightly negative but within tolerance "
+                f"(histogram={histogram:.4f}, tolerance={tolerance}) - allowing scale"
+            )
+        else:
+            logger.info(
+                f"[Warrior Scale MACD] {symbol}: MACD OK for scaling "
+                f"(histogram={histogram:.4f})"
+            )
+        
+        return True
+        
+    except Exception as e:
+        logger.warning(
+            f"[Warrior Scale MACD] {symbol}: FAIL-CLOSED - MACD check failed: {e}. "
+            f"Cannot verify momentum for scaling."
+        )
+        return False
+
+
+async def _check_legacy_scale(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+) -> Optional[Dict]:
+    """
+    Legacy "accidental" scaling (for A/B testing against level-break).
+    
+    This is the original behavior where the pullback zone check always evaluates
+    to True due to allow_scale_below_entry=True, producing one scale per trade.
+    Kept for backwards compatibility and A/B comparison.
+    """
+    s = monitor.settings
+    symbol = position.symbol
+    
     support = position.technical_stop or position.mental_stop
     
     if not support or support <= 0:
         return None
     
-    # SAFETY: Skip scaling if position is pending exit (prevents wash trade errors)
-    symbol = position.symbol
+    # SAFETY: Skip if pending exit
     if monitor._is_pending_exit(symbol):
-        logger.debug(f"[Warrior Scale] {symbol}: Skipping - pending exit in progress")
+        logger.debug(f"[Warrior Scale] {symbol}: Legacy skipped - pending exit")
         return None
     
-    # SAFETY: Skip scaling if price is too close to stop (< 1% buffer)
-    # This prevents submitting buy orders right before stop is hit
+    # SAFETY: Stop buffer
     stop_buffer_pct = (current_price - support) / current_price * 100 if current_price > 0 else 0
     if stop_buffer_pct < 1.0:
-        logger.debug(f"[Warrior Scale] {symbol}: Skipping - price too close to stop ({stop_buffer_pct:.1f}% buffer)")
+        logger.debug(f"[Warrior Scale] {symbol}: Legacy skipped - too close to stop ({stop_buffer_pct:.1f}%)")
         return None
     
-    # SAFETY: Skip scaling if we recently attempted (60-second cooldown to prevent spam)
-    # Fix 5A: Skip wall-clock cooldown in sim mode (all bars process in ~1s, cooldown blocks everything)
+    # SAFETY: Cooldown
     if position.last_scale_attempt and not (s.enable_improved_scaling and monitor.sim_mode):
         cooldown_seconds = 60
         elapsed = (now_et() - position.last_scale_attempt).total_seconds()
         if elapsed < cooldown_seconds:
-            logger.debug(f"[Warrior Scale] {symbol}: Skipping - cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
+            logger.debug(f"[Warrior Scale] {symbol}: Legacy cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
             return None
     
-    # SAFETY: Skip scaling if position was recently recovered from broker sync
-    # This prevents wash trade errors when orphan cleanup and scale race during restart
-    # Fix 5A: Skip recovery grace in sim mode (no broker sync race in sim)
+    # SAFETY: Recovery grace period
     if position.recovered_at and not (s.enable_improved_scaling and monitor.sim_mode):
-        recovery_grace_seconds = 10  # Align with Ross's 10-second chart
+        recovery_grace_seconds = 10
         elapsed = (now_et() - position.recovered_at).total_seconds()
         if elapsed < recovery_grace_seconds:
-            logger.debug(f"[Warrior Scale] {symbol}: Skipping - recovery grace period ({recovery_grace_seconds - elapsed:.0f}s remaining)")
+            logger.debug(f"[Warrior Scale] {symbol}: Legacy recovery grace ({recovery_grace_seconds - elapsed:.0f}s remaining)")
             return None
     
-    # Price must be above support (not breaking down)
+    # Price must be above support
     if current_price < support:
         return None
     
-    # === TRACE LOGGING: Full state snapshot before pullback zone check ===
+    # === TRACE LOGGING ===
     exit_mode = getattr(position, 'exit_mode_override', None)
     partial = getattr(position, 'partial_taken', False)
     logger.info(
-        f"[Warrior Scale TRACE] {symbol}: CHECKPOINT — "
+        f"[Warrior Scale TRACE] {symbol}: CHECKPOINT (legacy) — "
         f"price=${current_price}, entry=${position.entry_price}, support=${support}, "
-        f"shares={position.shares}, original_shares={getattr(position, 'original_shares', '?')}, "
-        f"scale_count={position.scale_count}, partial_taken={partial}, "
-        f"exit_mode_override={exit_mode}, "
-        f"high_since_entry=${getattr(position, 'high_since_entry', '?')}, "
-        f"current_stop=${position.current_stop}, "
-        f"candle_trail_stop={getattr(position, 'candle_trail_stop', None)}"
+        f"shares={position.shares}, scale_count={position.scale_count}, "
+        f"partial_taken={partial}, exit_mode_override={exit_mode}"
     )
     
-    # Check if this is a pullback opportunity
-    # Fix 5B: Proper pullback zone logic (Ross scales on pullbacks to support,
-    # not at any price). Price must have pulled back toward support.
+    # Pullback zone check (legacy: always True when allow_scale_below_entry=True)
     if s.enable_improved_scaling:
-        # Pullback zone = within 50% of entry-to-support range, measured from entry down.
-        # E.g., entry=$3.22, support=$2.72 (50¢ range) → scale zone = $2.97 and below
-        # (pulled back at least 25¢ from entry, but still above support)
         support_distance = position.entry_price - support
         if support_distance > 0:
             pullback_threshold = position.entry_price - (support_distance * Decimal("0.5"))
             is_pullback_zone = current_price <= pullback_threshold and current_price > support
         else:
             is_pullback_zone = False
-        logger.info(
-            f"[Warrior Scale TRACE] {symbol}: PULLBACK CHECK — "
-            f"support_distance=${support_distance:.4f}, "
-            f"pullback_threshold=${pullback_threshold if support_distance > 0 else 'N/A'}, "
-            f"is_pullback_zone={is_pullback_zone}"
-        )
     else:
         # Original (broken) logic: always True when allow_scale_below_entry=True
         is_pullback_zone = current_price <= position.entry_price or s.allow_scale_below_entry
@@ -141,18 +306,18 @@ async def check_scale_opportunity(
         add_shares = 1
     
     logger.info(
-        f"[Warrior Scale] {position.symbol}: Scale opportunity detected - "
+        f"[Warrior Scale] {symbol}: Legacy scale opportunity - "
         f"price=${current_price}, support=${support}, add_shares={add_shares}"
     )
     
     return {
         "position_id": position.position_id,
-        "symbol": position.symbol,
+        "symbol": symbol,
         "add_shares": add_shares,
         "price": float(current_price),
         "support": float(support),
         "scale_count": position.scale_count + 1,
-        "trigger": "pullback",  # Distinguish from momentum adds
+        "trigger": "pullback",  # Legacy trigger type
     }
 
 
@@ -456,6 +621,15 @@ async def execute_scale_in(
             logger.info(
                 f"[Warrior Momentum] {symbol}: Momentum add #{position.momentum_add_count} tracked "
                 f"at ${price:.2f}"
+            )
+        
+        # Update level-break tracking if this was a level-break add
+        if scale_signal.get("trigger") == "level_break":
+            level_price = Decimal(str(scale_signal.get("level_price", float(price))))
+            position.last_level_break_price = level_price
+            logger.info(
+                f"[Warrior Scale] {symbol}: Level-break tracked at ${level_price:.2f} "
+                f"(next level will be computed from this reference)"
             )
         
         return True

@@ -118,6 +118,17 @@ def apply_monitor_settings(monitor_settings_obj, settings: dict) -> None:
     # Fix 5: Improved scaling
     if "enable_improved_scaling" in settings:
         monitor_settings_obj.enable_improved_scaling = settings["enable_improved_scaling"]
+    # Scaling v2: Level-break scaling
+    if "enable_level_break_scaling" in settings:
+        monitor_settings_obj.enable_level_break_scaling = settings["enable_level_break_scaling"]
+    if "level_break_increment" in settings:
+        monitor_settings_obj.level_break_increment = settings["level_break_increment"]
+    if "level_break_min_distance_cents" in settings:
+        monitor_settings_obj.level_break_min_distance_cents = settings["level_break_min_distance_cents"]
+    if "level_break_macd_gate" in settings:
+        monitor_settings_obj.level_break_macd_gate = settings["level_break_macd_gate"]
+    if "level_break_macd_tolerance" in settings:
+        monitor_settings_obj.level_break_macd_tolerance = settings["level_break_macd_tolerance"]
     # Fix 6: Re-entry quality gate
     if "block_reentry_after_loss" in settings:
         monitor_settings_obj.block_reentry_after_loss = settings["block_reentry_after_loss"]
@@ -168,6 +179,12 @@ def get_monitor_settings_dict(monitor_settings_obj) -> dict:
         "home_run_candle_trail_lookback": monitor_settings_obj.home_run_candle_trail_lookback,
         # Fix 5: Improved scaling
         "enable_improved_scaling": monitor_settings_obj.enable_improved_scaling,
+        # Scaling v2: Level-break scaling
+        "enable_level_break_scaling": monitor_settings_obj.enable_level_break_scaling,
+        "level_break_increment": monitor_settings_obj.level_break_increment,
+        "level_break_min_distance_cents": monitor_settings_obj.level_break_min_distance_cents,
+        "level_break_macd_gate": monitor_settings_obj.level_break_macd_gate,
+        "level_break_macd_tolerance": monitor_settings_obj.level_break_macd_tolerance,
         # Fix 6: Re-entry quality gate
         "block_reentry_after_loss": monitor_settings_obj.block_reentry_after_loss,
         "max_reentry_count": monitor_settings_obj.max_reentry_count,
