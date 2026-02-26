@@ -67,7 +67,7 @@ class WarriorMonitorSettings:
     # Profit Targets (Ross-style: can use fixed cents OR R-multiple)
     profit_target_cents: Decimal = Decimal("0")  # If > 0, use fixed cents (e.g., 20 = +20¢)
     profit_target_r: float = 2.0  # 2:1 R target (used if profit_target_cents = 0)
-    partial_exit_fraction: float = 0.5  # Sell 50% at target
+    partial_exit_fraction: float = 0.25  # Sell 25% at target (sweep: 0%=$356K, 25%=$299K, 50%=$233K)
     # NOTE: move_stop_to_breakeven REMOVED - this is KK methodology, not Ross Cameron
     # Ross does not explicitly advocate moving stop to breakeven after partials
 
