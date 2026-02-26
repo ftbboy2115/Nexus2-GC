@@ -59,6 +59,11 @@ async def restart_server(request: RestartRequest):
                     count += 1
             print(f"[Admin] Cleared {count} __pycache__ directories")
             cache_cleared = True
+            # Record the cache clear timestamp
+            from nexus2.utils.time_utils import now_et
+            config = _load_config()
+            config["pycache_cleared_at"] = now_et().strftime("%Y-%m-%d %H:%M:%S ET")
+            _save_config(config)
         except Exception as e:
             print(f"[Admin] Cache clear error (continuing): {e}")
     

@@ -83,16 +83,20 @@ async def health_check():
         disk_total_gb = None
         disk_percent = None
     
-    # Check if __pycache__ dirs exist (none = recently cleared)
+    # Check if pycache was cleared on last restart (from admin config marker)
     try:
-        nexus2_dir = os.path.join(os.path.dirname(__file__), "..", "..")
-        pycache_dirs = []
-        for root, dirs, files in os.walk(nexus2_dir):
-            if '__pycache__' in dirs:
-                pycache_dirs.append(root)
-            if len(pycache_dirs) > 0:
-                break  # Found at least one, no need to keep walking
-        pycache_cleared = len(pycache_dirs) == 0
+        import json as _json
+        admin_config_path = os.path.join(os.path.expanduser("~/Nexus2/data"), "admin_config.json")
+        if not os.path.exists(admin_config_path):
+            admin_config_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "admin_config.json")
+        if os.path.exists(admin_config_path):
+            with open(admin_config_path) as f:
+                admin_config = _json.load(f)
+            pycache_cleared_at = admin_config.get("pycache_cleared_at")
+            # Compare with server start time — only counts if cleared BEFORE this boot
+            pycache_cleared = pycache_cleared_at is not None
+        else:
+            pycache_cleared = False
     except Exception:
         pycache_cleared = None
     
