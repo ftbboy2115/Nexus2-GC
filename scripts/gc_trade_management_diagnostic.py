@@ -379,12 +379,23 @@ def format_case_report(wb: dict, ross_case: dict, ross_notes: dict) -> str:
     if ross_notes.get("ross_added"):
         lines.append(f"  **Ross Added**: Yes (bot {'did' if len(trades) > 1 else 'did NOT'} scale in)")
 
-    # Guard blocks
+    # Guard blocks (deduplicated)
     guard_count = wb.get("guard_block_count", 0)
     if guard_count > 0:
         lines.append(f"  **Guard Blocks**: {guard_count}")
+        # Deduplicate: group by guard type + truncated reason
+        from collections import Counter
+        block_counter = Counter()
         for gb in wb.get("guard_blocks", []):
-            lines.append(f"    - {gb.get('guard', '?')}: {gb.get('reason', '')[:60]}")
+            key = f"{gb.get('guard', '?')}: {gb.get('reason', '')[:60]}"
+            block_counter[key] += 1
+        # Show unique blocks with counts, capped at 15
+        for block_msg, count in block_counter.most_common(15):
+            suffix = f" (×{count})" if count > 1 else ""
+            lines.append(f"    - {block_msg}{suffix}")
+        remaining_types = len(block_counter) - 15
+        if remaining_types > 0:
+            lines.append(f"    ... and {remaining_types} more unique block types")
 
     # Notes confidence
     conf = ross_notes.get("confidence", "LOW")

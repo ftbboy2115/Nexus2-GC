@@ -52,7 +52,7 @@ ENGINE_CONFIG_FIELDS = {
     "vwap_break_enabled", "inverted_hs_enabled", "abcd_enabled", "cup_handle_enabled",
     "whole_half_anticipatory_enabled", "hod_break_enabled", "top_x_picks",
     "min_entry_score", "max_entry_spread_percent",
-    "static_blacklist",
+    "static_blacklist", "max_stop_pct",
 }
 
 

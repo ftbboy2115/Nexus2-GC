@@ -18,8 +18,6 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 
 | ❌ Do NOT Use | ✅ Use Instead |
 |--------------|---------------|
-| `grep` | `Select-String -Path "file" -Pattern "pattern"` |
-| `grep -rn` | `Select-String -Path "dir\*" -Pattern "pattern" -Recurse` |
 | `cat` | `Get-Content` |
 | `curl` | `Invoke-RestMethod` or `Invoke-WebRequest` |
 | `&&` (chaining) | `;` or separate commands |
@@ -27,19 +25,21 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 
 ---
 
-## 🔍 Search Tool Limitation (Path with Spaces)
+## 🔍 Search Tools — Use Symlink Paths
 
-> [!WARNING]
-> The project path contains spaces and parentheses: `Documents (sync'd)`
-> The built-in `grep_search` / `codebase_search` tools may return **0 results even when matches exist** due to path encoding issues.
+> [!IMPORTANT]
+> The actual project path contains spaces and parentheses (`Documents (sync'd)`) which breaks `grep_search` / `codebase_search`.
+> **Always use the symlink paths for search tools:**
 
-**Workarounds (use these FIRST before concluding code doesn't exist):**
-1. Use `view_file` to inspect specific files at known line numbers
-2. Use `Select-String` via `run_command` with properly quoted paths:
-   ```powershell
-   Select-String -Path "nexus2\db\warrior_db.py" -Pattern "partial_exit_prices"
-   ```
-3. Use `view_code_item` or `view_file_outline` for structural exploration
+| Project | Symlink Path | Actual Path |
+|---------|-------------|-------------|
+| Nexus | `C:\Dev\Nexus` | `C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus` |
+| Gravity Claw | `C:\Dev\gravity-claw` | `C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\gravity-claw` |
+
+**Rules:**
+1. Use `C:\Dev\Nexus\...` for `grep_search`, `find_by_name`, and `codebase_search`
+2. Both the symlink and actual paths work for `view_file`, `run_command`, etc.
+3. If a search returns 0 results, verify with `view_file` before concluding code is missing
 
 > [!CAUTION]
 > **Do NOT conclude that code is missing based solely on grep_search returning 0 results.**

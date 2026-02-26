@@ -89,6 +89,7 @@ class WarriorEngineConfig:
     max_positions: int = 10  # Higher default for testing
     max_daily_loss: Decimal = Decimal("999999")  # Disabled for testing
     max_capital: Decimal = Decimal("5000")  # Max capital per trade
+    max_stop_pct: float = 0.10  # Max stop distance as % of entry price (10% = conservative; sweep showed 5%=$354K, 10%=$233K, 25%=$160K)
     
     # Position Sizing Limits (for testing with small positions)
     max_shares_per_trade: Optional[int] = 1  # Hard cap on shares (e.g., 1 for testing)

@@ -68,6 +68,19 @@ async def calculate_stop_price(
             mental_stop = consolidation_low - Decimal("0.02")
             stop_method = "consolidation_low"
             
+            # Cap stop distance if it exceeds max_stop_pct
+            stop_distance_pct = (entry_price - mental_stop) / entry_price
+            max_pct = Decimal(str(engine.config.max_stop_pct))
+            if stop_distance_pct > max_pct:
+                original_stop = mental_stop
+                mental_stop = (entry_price * (1 - max_pct)).quantize(Decimal("0.01"))
+                stop_method = "consolidation_low_capped"
+                logger.warning(
+                    f"[Warrior Entry] {symbol}: WIDE STOP CAPPED "
+                    f"${original_stop:.2f} → ${mental_stop:.2f} "
+                    f"({stop_distance_pct:.1%} → {max_pct:.1%})"
+                )
+            
             logger.info(
                 f"[Warrior Entry] {symbol}: Stop ${mental_stop:.2f} via {stop_method} "
                 f"(5-bar low=${consolidation_low:.2f}, entry bar=${entry_candle_low:.2f})"
