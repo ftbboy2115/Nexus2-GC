@@ -105,7 +105,7 @@ class WarriorMonitorSettings:
     # This is NOT intentional but IS profitable. Keeping until proper Ross scaling is built.
     # See: reports/2026-02-16/research_ross_add_methodology.md for redesign plan.
     enable_scaling: bool = True  # Ross adds on strength - enabled by default
-    max_scale_count: int = 2  # Starter position + 1-2 adds
+    max_scale_count: int = 4  # Starter position + up to 3 adds (sweep: 2=$233K, 4=$278K, 5=$278K)
     scale_size_pct: int = 50  # Add 50% of original size
     min_rvol_for_scale: float = 2.0  # Volume confirmation (2x relative volume)
     allow_scale_below_entry: bool = True  # Allow scaling on pullback to support below entry
