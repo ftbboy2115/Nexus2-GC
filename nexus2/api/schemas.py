@@ -171,9 +171,13 @@ class HealthResponse(BaseModel):
     uptime_seconds: Optional[int] = None
     started_at: Optional[str] = None  # Server start timestamp (ET)
     memory_mb: Optional[float] = None  # RSS memory usage
+    memory_total_mb: Optional[float] = None  # Total system memory
     disk_used_gb: Optional[float] = None  # Disk storage used
     disk_total_gb: Optional[float] = None  # Disk storage total
     disk_percent: Optional[float] = None  # Disk usage percentage
+    commit_date: Optional[str] = None  # Git commit timestamp
+    pycache_cleared: Optional[bool] = None  # Whether __pycache__ dirs exist
+    settings_modified_at: Optional[str] = None  # Last modified time of settings file
 
 
 # ============================================================================

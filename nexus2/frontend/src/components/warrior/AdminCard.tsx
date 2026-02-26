@@ -14,9 +14,13 @@ interface AdminStatus {
     mode: string
     uptime_seconds: number
     memory_mb: number
+    memory_total_mb?: number
     disk_used_gb?: number
     disk_total_gb?: number
     disk_percent?: number
+    commit_date?: string
+    pycache_cleared?: boolean
+    settings_modified_at?: string
 }
 
 export function AdminCard() {
@@ -140,7 +144,10 @@ export function AdminCard() {
                         {/* Copy button */}
                         <button
                             onClick={() => {
-                                const text = `Uptime: ${Math.floor(adminStatus.uptime_seconds / 3600)}h ${Math.floor((adminStatus.uptime_seconds % 3600) / 60)}m | Memory: ${adminStatus.memory_mb} MB | Storage: ${adminStatus.disk_used_gb ?? '?'}/${adminStatus.disk_total_gb ?? '?'} GB | Mode: ${adminStatus.mode?.replace('alpaca_', '').toUpperCase()}`
+                                const pycacheStatus = adminStatus.pycache_cleared === true ? 'Pycache: cleared ✅' : adminStatus.pycache_cleared === false ? 'Pycache: present ⚠️' : 'Pycache: unknown'
+                                const settingsInfo = adminStatus.settings_modified_at ? `Settings: ${adminStatus.settings_modified_at}` : 'Settings: no file'
+                                const commitInfo = adminStatus.commit_date ? `Commit: ${adminStatus.version} (${adminStatus.commit_date})` : `Version: ${adminStatus.version}`
+                                const text = `${commitInfo} | Uptime: ${Math.floor(adminStatus.uptime_seconds / 3600)}h ${Math.floor((adminStatus.uptime_seconds % 3600) / 60)}m | Memory: ${adminStatus.memory_mb}/${adminStatus.memory_total_mb ?? '?'} MB | Storage: ${adminStatus.disk_used_gb ?? '?'}/${adminStatus.disk_total_gb ?? '?'} GB | Mode: ${adminStatus.mode?.replace('alpaca_', '').toUpperCase()} | ${pycacheStatus} | ${settingsInfo}`
                                 // Fallback for non-HTTPS (clipboard API requires secure context)
                                 if (navigator.clipboard && window.isSecureContext) {
                                     navigator.clipboard.writeText(text)
@@ -171,6 +178,25 @@ export function AdminCard() {
                             📋
                         </button>
 
+                        {/* Row 1: Version / Deploy info */}
+                        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '4px' }}>
+                            <div>
+                                <span style={{ fontSize: '11px', color: '#888' }}>Version: </span>
+                                <span style={{ fontWeight: 'bold', color: '#60a5fa', fontFamily: 'monospace', fontSize: '12px' }}>{adminStatus.version}</span>
+                            </div>
+                            {adminStatus.commit_date && (
+                                <div>
+                                    <span style={{ fontSize: '11px', color: '#888' }}>Deployed: </span>
+                                    <span style={{ fontSize: '12px', color: '#60a5fa' }}>{new Date(adminStatus.commit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '11px', color: adminStatus.pycache_cleared ? '#4ade80' : '#fbbf24' }}>
+                                    {adminStatus.pycache_cleared ? '✅ Cache clear' : '⚠️ Cache present'}
+                                </span>
+                            </div>
+                        </div>
+                        {/* Row 2: Stats */}
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Uptime</div>
                             <div style={{ fontWeight: 'bold', color: '#4ade80' }}>
@@ -179,7 +205,7 @@ export function AdminCard() {
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Memory</div>
-                            <div style={{ fontWeight: 'bold', color: '#4ade80' }}>{adminStatus.memory_mb} MB</div>
+                            <div style={{ fontWeight: 'bold', color: '#4ade80' }}>{adminStatus.memory_mb} / {adminStatus.memory_total_mb ?? '?'} MB</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '11px', color: '#888' }}>Storage</div>
@@ -196,6 +222,15 @@ export function AdminCard() {
                                 {adminStatus.mode?.replace('alpaca_', '').toUpperCase()}
                             </div>
                         </div>
+                        {/* Row 3: Settings sync */}
+                        {adminStatus.settings_modified_at && (
+                            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px', marginTop: '4px' }}>
+                                <span style={{ fontSize: '11px', color: '#888' }}>Settings last modified: </span>
+                                <span style={{ fontSize: '12px', color: adminStatus.settings_modified_at === 'no file' ? '#f87171' : '#4ade80' }}>
+                                    {adminStatus.settings_modified_at}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
 
