@@ -114,12 +114,18 @@ class WarriorMonitorSettings:
     # Scaling v2: Ross Cameron Level-Break Methodology
     # Replaces accidental pullback scaling with structural level breaks ($X.00, $X.50)
     # A/B testable: enable_level_break_scaling=True (new) vs False (accidental legacy)
-    # Feb 26 2026: Disabled after A/B test showed -$91K regression (too aggressive on reversals)
+    # Feb 27 2026: Redesigned as "Take Profit → Add Back" (Ross §3.1)
+    # Level-break scaling now REQUIRES a prior partial exit before adding back.
+    # This prevents naked pyramiding (v2 regression: -$91K). Ross's cycle:
+    #   sell partial at $7 → stock holds → add back at $7.01 → sell at $7.50 → repeat
     enable_level_break_scaling: bool = False  # Level-break disabled; structural exits enabled
     level_break_increment: float = 0.50       # $0.50 = whole + half dollar levels
     level_break_min_distance_cents: int = 10  # Skip levels closer than 10¢ from reference
     level_break_macd_gate: bool = True        # MACD negative blocks scaling (fail-closed)
     level_break_macd_tolerance: float = -0.02 # MACD histogram tolerance (matches entry gate)
+    level_break_max_add_backs: int = 10       # Max add-back cycles (effectively unlimited; Ross keeps going until stock stops holding)
+    level_break_hold_bars: int = 2            # Stock must hold above partial level for N bars before add-back
+    level_break_require_partial: bool = True  # MUST have taken partial profit before add-back (Ross methodology)
     
     # Guard Toggles (for GC param sweep A/B testing)
     enable_profit_check_guard: bool = False  # Block adds when position >25% gain (not Ross methodology, for A/B testing)
@@ -225,6 +231,13 @@ class WarriorPosition:
     momentum_add_count: int = 0                         # Number of momentum adds taken
     last_level_break_price: Optional[Decimal] = None    # Scaling v2: price of last level-break scale-in
     recovered_at: Optional[datetime] = None  # When position was recovered from broker sync (grace period)
+    
+    # Take Profit → Add Back tracking (Ross §3.1: sell at level → add back if holds)
+    partial_profit_locked: bool = False                  # True after structural partial exit (ready for add-back)
+    last_partial_level: Optional[Decimal] = None         # Price level where partial was taken
+    last_partial_shares: int = 0                         # How many shares were sold in partial (add-back size)
+    add_back_count: int = 0                              # How many add-back cycles completed
+    bars_since_partial: int = 0                          # Bars elapsed since partial exit (for hold confirmation)
     
     # Intraday candle tracking (for pattern exits)
     last_candle_low: Decimal = Decimal("0")

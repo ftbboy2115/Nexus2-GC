@@ -31,6 +31,31 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _set_add_back_tracking(
+    position: WarriorPosition,
+    exit_price: Decimal,
+    shares_sold: int,
+) -> None:
+    """
+    Mark position as ready for an add-back after a partial profit exit.
+    
+    Ross Cameron §3.1: After taking partial profit at a structural level,
+    if the stock holds that level, add back. This sets the tracking fields
+    that _check_level_break_scale() gates on.
+    
+    Called from all partial exit paths (R-target, candle trail, structural, home run).
+    """
+    position.partial_profit_locked = True
+    position.last_partial_level = exit_price
+    position.last_partial_shares = shares_sold
+    position.bars_since_partial = 0  # Reset bar counter; candle tick increments this
+    logger.info(
+        f"[Warrior AddBack] {position.symbol}: Partial exit tracked — "
+        f"level=${exit_price:.2f}, shares_sold={shares_sold}, "
+        f"add-back armed (waiting for {position.add_back_count + 1} hold bars)"
+    )
+
+
 # =============================================================================
 # EXIT MODE HELPERS
 # =============================================================================
@@ -663,6 +688,9 @@ async def _check_profit_target(
     position.partial_taken = True
     position.shares -= shares_to_exit
     
+    # Track for add-back cycle (Ross §3.1: sell → add back if holds)
+    _set_add_back_tracking(position, current_price, shares_to_exit)
+    
     # NOTE: move_stop_to_breakeven logic REMOVED - this is KK methodology, not Ross Cameron
     # Ross trails with candle lows, not automatic breakeven after partials
 
@@ -820,6 +848,9 @@ async def _check_base_hit_target(
                     position.partial_taken = True
                     position.shares -= shares_to_exit
                     
+                    # Track for add-back cycle (Ross §3.1)
+                    _set_add_back_tracking(position, current_price, shares_to_exit)
+                    
                     # Switch to home_run mode for remainder
                     position.exit_mode_override = "home_run"
                     
@@ -914,8 +945,13 @@ async def _check_base_hit_target(
     # ---- FALLBACK: Flat target (when trail disabled or no bars) ----
     if getattr(s, 'enable_structural_levels', False):
         # Fix 3: Structural profit levels — target next whole/half dollar
+        # After a level-break add-back, advance the reference past the add-back level
+        # to prevent churn (entry $5.30 → target $5.50 → immediate fire at $7.00+)
+        structural_ref = position.entry_price
+        if position.last_level_break_price and position.last_level_break_price > structural_ref:
+            structural_ref = position.last_level_break_price
         target_price = _compute_structural_target(
-            entry_price=position.entry_price,
+            entry_price=structural_ref,
             increment=getattr(s, 'structural_level_increment', 0.50),
             min_distance_cents=getattr(s, 'structural_level_min_distance_cents', 10),
         )
@@ -970,6 +1006,9 @@ async def _check_base_hit_target(
         # Mark partial and decrement shares
         position.partial_taken = True
         position.shares -= shares_to_exit
+        
+        # Track for add-back cycle (Ross §3.1)
+        _set_add_back_tracking(position, current_price, shares_to_exit)
         
         # Switch to home_run mode for remainder
         position.exit_mode_override = "home_run"
@@ -1151,6 +1190,9 @@ async def _check_home_run_exit(
         position.partial_taken = True
         position.shares -= shares_to_exit
         
+        # Track for add-back cycle (Ross §3.1)
+        _set_add_back_tracking(position, current_price, shares_to_exit)
+        
         # Move stop to breakeven
         if s.home_run_move_to_be:
             position.current_stop = position.entry_price
@@ -1236,6 +1278,14 @@ async def evaluate_position(
     
     # Track bar count (each evaluate_position call = 1 bar in replay)
     position.candles_since_entry += 1
+    
+    # Track bars since partial exit (for add-back hold confirmation)
+    if position.partial_profit_locked and position.last_partial_level:
+        if current_price >= position.last_partial_level:
+            position.bars_since_partial += 1
+        else:
+            # Price fell below partial level — reset counter (stock didn't hold)
+            position.bars_since_partial = 0
     
     # Calculate current R
     if position.risk_per_share > 0:

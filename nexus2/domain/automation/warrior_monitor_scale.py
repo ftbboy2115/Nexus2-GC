@@ -50,13 +50,21 @@ async def check_scale_opportunity(
     if not s.enable_scaling:
         return None
     
-    if position.scale_count >= s.max_scale_count:
-        return None
-    
-    # Route to level-break or legacy based on setting
+    # Route scaling strategy
     if s.enable_level_break_scaling:
+        # ADDITIVE: Try legacy first (gets the early one-add),
+        # then try level-break add-backs (gated by require-partial + hold bars).
+        # Legacy has its own max_scale_count check; level-break uses add_back_count.
+        if position.scale_count < s.max_scale_count:
+            legacy_signal = await _check_legacy_scale(monitor, position, current_price)
+            if legacy_signal:
+                return legacy_signal
+        # Legacy didn't fire or maxed out — try level-break add-back
+        # (has its own add_back_count limit, independent of scale_count)
         return await _check_level_break_scale(monitor, position, current_price)
     else:
+        if position.scale_count >= s.max_scale_count:
+            return None
         return await _check_legacy_scale(monitor, position, current_price)
 
 
@@ -66,19 +74,46 @@ async def _check_level_break_scale(
     current_price: Decimal,
 ) -> Optional[Dict]:
     """
-    Ross Cameron Level-Break Scaling.
+    Ross Cameron Level-Break Scaling (v3: Take Profit → Add Back).
     
-    Triggers when price breaks through structural levels ($X.00, $X.50).
-    Each successful add advances the reference price so the next level is higher.
+    Ross's signature cycle (§3.1):
+      sell partial at $7 → stock holds → add back at $7.01 → sell at $7.50 → repeat
+    
+    This REQUIRES a prior partial exit before allowing an add-back.
+    Without a partial, no add-back fires. This prevents naked pyramiding
+    (v2 regression: -$91K from unlimited adds without profit-taking).
     
     MACD gate is fail-closed: no MACD data = no scaling.
     """
     s = monitor.settings
     symbol = position.symbol
     
+    # GATE 1: Max add-back cycles reached
+    if position.add_back_count >= s.level_break_max_add_backs:
+        logger.debug(f"[Warrior Scale] {symbol}: Add-back skipped - max cycles reached ({position.add_back_count}/{s.level_break_max_add_backs})")
+        return None
+    
+    # GATE 2: Require prior partial profit exit (Ross §3.1)
+    if s.level_break_require_partial and not position.partial_profit_locked:
+        # No partial taken yet — don't add. Wait for structural exit to fire.
+        return None
+    
+    # GATE 3: Stock must hold above last partial level for N bars
+    if position.last_partial_level and position.bars_since_partial < s.level_break_hold_bars:
+        logger.debug(
+            f"[Warrior Scale] {symbol}: Add-back waiting for hold confirmation "
+            f"({position.bars_since_partial}/{s.level_break_hold_bars} bars above ${position.last_partial_level})"
+        )
+        return None
+    
+    # GATE 4: Price must still be above the partial level (stock held)
+    if position.last_partial_level and current_price < position.last_partial_level:
+        logger.debug(f"[Warrior Scale] {symbol}: Add-back skipped - price ${current_price} fell below partial level ${position.last_partial_level}")
+        return None
+    
     # SAFETY: Skip if position is pending exit
     if monitor._is_pending_exit(symbol):
-        logger.debug(f"[Warrior Scale] {symbol}: Level-break skipped - pending exit")
+        logger.debug(f"[Warrior Scale] {symbol}: Add-back skipped - pending exit")
         return None
     
     # SAFETY: Skip if price is too close to stop (<1% buffer)
@@ -86,7 +121,7 @@ async def _check_level_break_scale(
     if support and support > 0:
         stop_buffer_pct = (current_price - support) / current_price * 100 if current_price > 0 else 0
         if stop_buffer_pct < 1.0:
-            logger.debug(f"[Warrior Scale] {symbol}: Level-break skipped - too close to stop ({stop_buffer_pct:.1f}%)")
+            logger.debug(f"[Warrior Scale] {symbol}: Add-back skipped - too close to stop ({stop_buffer_pct:.1f}%)")
             return None
     
     # SAFETY: Cooldown (sim mode bypasses wall-clock cooldown)
@@ -94,7 +129,7 @@ async def _check_level_break_scale(
         cooldown_seconds = 60
         elapsed = (now_et() - position.last_scale_attempt).total_seconds()
         if elapsed < cooldown_seconds:
-            logger.debug(f"[Warrior Scale] {symbol}: Level-break cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
+            logger.debug(f"[Warrior Scale] {symbol}: Add-back cooldown ({cooldown_seconds - elapsed:.0f}s remaining)")
             return None
     
     # Price must be above entry (Ross only adds on strength)
@@ -102,24 +137,22 @@ async def _check_level_break_scale(
         return None
     
     # --- LEVEL-BREAK DETECTION ---
-    # Reference price = last level-break price (if any adds done), else entry price
     reference_price = position.last_level_break_price or position.entry_price
     
-    # Compute next structural level above reference
     next_level = _compute_structural_target(
         entry_price=reference_price,
         increment=s.level_break_increment,
         min_distance_cents=s.level_break_min_distance_cents,
     )
     
-    # Check if price has broken through the level
     if current_price < next_level:
         return None  # Not at level yet
     
     logger.info(
-        f"[Warrior Scale] {symbol}: LEVEL BREAK detected - "
+        f"[Warrior Scale] {symbol}: LEVEL BREAK + ADD-BACK detected - "
         f"price=${current_price:.2f} >= level=${next_level:.2f} "
-        f"(ref=${reference_price:.2f}, increment=${s.level_break_increment})"
+        f"(ref=${reference_price:.2f}, partial_level=${position.last_partial_level}, "
+        f"hold_bars={position.bars_since_partial}/{s.level_break_hold_bars})"
     )
     
     # --- MACD GATE (fail-closed) ---
@@ -130,15 +163,19 @@ async def _check_level_break_scale(
         if not macd_ok:
             return None  # MACD blocked scaling
     
-    # Calculate add size
-    add_shares = int(position.original_shares * s.scale_size_pct / 100)
+    # Calculate add-back size: match what was sold in the partial exit
+    if position.last_partial_shares > 0:
+        add_shares = position.last_partial_shares
+    else:
+        # Fallback: use scale_size_pct if no partial tracking (shouldn't happen)
+        add_shares = int(position.original_shares * s.scale_size_pct / 100)
     if add_shares < 1:
         add_shares = 1
     
     logger.info(
-        f"[Warrior Scale] {symbol}: Level-break scale opportunity - "
-        f"level=${next_level:.2f}, add_shares={add_shares}, "
-        f"scale #{position.scale_count + 1}"
+        f"[Warrior Scale] {symbol}: Add-back opportunity - "
+        f"level=${next_level:.2f}, add_shares={add_shares} (partial sold={position.last_partial_shares}), "
+        f"add-back #{position.add_back_count + 1}/{s.level_break_max_add_backs}"
     )
     
     return {
@@ -149,7 +186,7 @@ async def _check_level_break_scale(
         "support": float(support) if support else 0.0,
         "scale_count": position.scale_count + 1,
         "trigger": "level_break",
-        "level_price": float(next_level),  # Track which level triggered
+        "level_price": float(next_level),
     }
 
 
@@ -627,9 +664,29 @@ async def execute_scale_in(
         if scale_signal.get("trigger") == "level_break":
             level_price = Decimal(str(scale_signal.get("level_price", float(price))))
             position.last_level_break_price = level_price
+            
+            # Reset add-back cycle: partial was consumed, wait for next partial exit
+            position.partial_profit_locked = False
+            position.last_partial_level = None
+            position.last_partial_shares = 0
+            position.bars_since_partial = 0
+            position.add_back_count += 1
+            
+            # CRITICAL: Reset partial_taken so the next structural exit can fire
+            # Without this, partial_taken=True blocks ALL future partials → position
+            # grows without profit-taking → massive losses on reversal (-$202K regression)
+            position.partial_taken = False
+            
+            # Reset exit mode override (partial-then-ride sets this to "home_run")
+            # After add-back, we restart the base_hit cycle from scratch
+            position.exit_mode_override = None
+            
+            # Reset candle trail so it can re-activate at the new, higher price
+            position.candle_trail_stop = None
+            
             logger.info(
-                f"[Warrior Scale] {symbol}: Level-break tracked at ${level_price:.2f} "
-                f"(next level will be computed from this reference)"
+                f"[Warrior Scale] {symbol}: Add-back cycle #{position.add_back_count} complete at ${level_price:.2f} "
+                f"(partial_taken/exit_mode/trail RESET — ready for next sell→add-back cycle)"
             )
         
         return True
