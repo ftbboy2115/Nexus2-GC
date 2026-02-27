@@ -176,6 +176,13 @@ class SchwabL2Streamer:
             "expires_at": time.time() + expires_in,
         }
 
+        # Diagnostic logging (mask tokens for security)
+        at_masked = f"{access_token[:8]}...{access_token[-4:]}" if len(access_token) > 12 else "***"
+        logger.info(
+            "[L2] Token bridge: access=%s, expires_in=%ds, expiry_str=%s, creation_ts=%s",
+            at_masked, expires_in, expiry_str, rt_obtained_str,
+        )
+
         # schwab-py expects {creation_timestamp, token}
         return {
             "creation_timestamp": creation_ts,
@@ -267,6 +274,42 @@ class SchwabL2Streamer:
 
         logger.info("[L2] Created schwab-py async client")
 
+        # Pre-flight: verify token works before attempting stream setup
+        await self._preflight_check()
+
+    async def _preflight_check(self):
+        """
+        Verify the token by making a lightweight API call.
+
+        If the token is invalid (401), we let authlib's built-in refresh
+        handle it. If that also fails, we raise immediately rather than
+        waiting for the streaming login to fail with an opaque error.
+        """
+        import httpx
+
+        try:
+            resp = await self._client.get_account_numbers()
+            if resp.status_code == httpx.codes.OK:
+                logger.info("[L2] Pre-flight token check passed")
+                return
+
+            logger.warning(
+                "[L2] Pre-flight check returned status %d, "
+                "attempting to proceed anyway",
+                resp.status_code,
+            )
+        except Exception as e:
+            # 401 here means the token is genuinely invalid.
+            # authlib's ensure_active_token should have tried a refresh.
+            # If we're still failing, the refresh token may also be bad.
+            logger.error(
+                "[L2] Pre-flight token check failed: %s. "
+                "This likely means the access token is invalid and "
+                "auto-refresh also failed. Re-authenticate via schwab_auth.py",
+                e,
+            )
+            raise
+
     async def _create_stream_client(self):
         """Create StreamClient and login to WebSocket."""
         from schwab.streaming import StreamClient
@@ -287,7 +330,10 @@ class SchwabL2Streamer:
     async def start(self):
         """
         Start the L2 streamer: create client, connect, start message loop.
-        
+
+        Includes retry logic: if the first attempt fails with a 401
+        (likely stale token), we tear down, re-read tokens, and retry once.
+
         Call subscribe() after start() to begin receiving L2 data.
         """
         if self._running:
@@ -295,22 +341,44 @@ class SchwabL2Streamer:
             return
 
         self._running = True
+        last_error = None
 
-        try:
-            await self._create_client()
-            await self._create_stream_client()
+        for attempt in range(1, 3):  # max 2 attempts
+            try:
+                await self._create_client()
+                await self._create_stream_client()
 
-            # Start the message processing loop
-            self._message_loop_task = asyncio.create_task(
-                self._message_loop(), name="l2_message_loop"
-            )
-            logger.info("[L2] Streamer started successfully")
+                # Start the message processing loop
+                self._message_loop_task = asyncio.create_task(
+                    self._message_loop(), name="l2_message_loop"
+                )
+                logger.info("[L2] Streamer started successfully (attempt %d)", attempt)
+                return  # success
 
-        except Exception as e:
-            self._running = False
-            self._connected = False
-            logger.error("[L2] Failed to start streamer: %s", e, exc_info=True)
-            raise
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                is_auth_error = "401" in err_str or "Unauthorized" in err_str
+
+                if attempt == 1 and is_auth_error:
+                    logger.warning(
+                        "[L2] Attempt %d failed with auth error: %s. "
+                        "Retrying with fresh token...",
+                        attempt, e,
+                    )
+                    # Clean up for retry
+                    self._client = None
+                    self._stream_client = None
+                    await asyncio.sleep(1)  # brief pause before retry
+                    continue
+                else:
+                    break
+
+        # All attempts exhausted
+        self._running = False
+        self._connected = False
+        logger.error("[L2] Failed to start streamer: %s", last_error, exc_info=True)
+        raise last_error
 
     async def stop(self):
         """Stop the L2 streamer and clean up resources."""
