@@ -281,9 +281,11 @@ class SchwabL2Streamer:
         """
         Verify the token by making a lightweight API call.
 
-        If the token is invalid (401), we let authlib's built-in refresh
-        handle it. If that also fails, we raise immediately rather than
-        waiting for the streaming login to fail with an opaque error.
+        If the pre-flight returns 401, force a token refresh through authlib.
+        The common scenario: the REST adapter refreshed the token in memory
+        but Schwab already invalidated the on-disk copy. Since authlib only
+        checks expires_at (which may still be in the future), we must
+        manually trigger a refresh when we know the token is rejected.
         """
         import httpx
 
@@ -293,22 +295,95 @@ class SchwabL2Streamer:
                 logger.info("[L2] Pre-flight token check passed")
                 return
 
+            if resp.status_code == 401:
+                logger.warning(
+                    "[L2] Pre-flight got 401 — token is stale. "
+                    "Forcing token refresh via authlib..."
+                )
+                await self._force_token_refresh()
+
+                # Retry the pre-flight after refresh
+                resp2 = await self._client.get_account_numbers()
+                if resp2.status_code == httpx.codes.OK:
+                    logger.info(
+                        "[L2] Pre-flight passed after forced token refresh"
+                    )
+                    return
+
+                logger.error(
+                    "[L2] Pre-flight still failing after refresh (status %d). "
+                    "The refresh token may be expired — re-authenticate "
+                    "via schwab_auth.py",
+                    resp2.status_code,
+                )
+                raise RuntimeError(
+                    f"L2 token refresh failed — pre-flight returned "
+                    f"{resp2.status_code} after refresh"
+                )
+
             logger.warning(
                 "[L2] Pre-flight check returned status %d, "
                 "attempting to proceed anyway",
                 resp.status_code,
             )
+        except RuntimeError:
+            raise
         except Exception as e:
-            # 401 here means the token is genuinely invalid.
-            # authlib's ensure_active_token should have tried a refresh.
-            # If we're still failing, the refresh token may also be bad.
             logger.error(
                 "[L2] Pre-flight token check failed: %s. "
-                "This likely means the access token is invalid and "
-                "auto-refresh also failed. Re-authenticate via schwab_auth.py",
+                "Attempting forced refresh...",
                 e,
             )
-            raise
+            # Try forced refresh as last resort
+            try:
+                await self._force_token_refresh()
+                logger.info("[L2] Forced token refresh succeeded after exception")
+            except Exception as refresh_err:
+                logger.error(
+                    "[L2] Forced token refresh also failed: %s. "
+                    "Re-authenticate via schwab_auth.py",
+                    refresh_err,
+                )
+                raise
+
+    async def _force_token_refresh(self):
+        """
+        Force authlib to refresh the token regardless of expires_at.
+
+        authlib only auto-refreshes when is_expired(leeway) returns True.
+        When Schwab invalidates a token early (e.g., due to a concurrent
+        refresh from the REST adapter), the on-disk expires_at is still
+        in the future. We fix this by setting expires_at to 0, which
+        makes is_expired() return True, then calling ensure_active_token.
+        """
+        # self._client is schwab-py's AsyncClient
+        # self._client.session is authlib's AsyncOAuth2Client
+        session = self._client.session
+        token = session.token
+        if not token:
+            raise RuntimeError("No token available to refresh")
+
+        old_expires_at = token.get("expires_at", "unknown")
+        logger.info(
+            "[L2] Forcing refresh: setting expires_at=0 (was %s)",
+            old_expires_at,
+        )
+
+        # Mark token as expired so authlib will refresh it
+        token["expires_at"] = 0
+
+        # This will now see the token as expired and use the refresh_token
+        # to get a new access token from Schwab's token endpoint
+        await session.ensure_active_token(token)
+
+        # Log the new token (masked)
+        new_token = session.token
+        if new_token and new_token.get("access_token"):
+            at = new_token["access_token"]
+            at_masked = f"{at[:8]}...{at[-4:]}" if len(at) > 12 else "***"
+            logger.info("[L2] Token refreshed successfully: access=%s", at_masked)
+        else:
+            logger.warning("[L2] Token refresh returned empty token")
 
     async def _create_stream_client(self):
         """Create StreamClient and login to WebSocket."""
