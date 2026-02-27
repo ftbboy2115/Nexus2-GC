@@ -1280,6 +1280,31 @@ test_cases:
       stop_near: 9.50  # Implied from entry level
     notes: "Cold market, small size (1,000 shares). Broke 2-day no-trade streak. Ross's smallest green day in over a year. Entry $9.99 during 09:04 spike ($8.82→$10.91), sold ~3/4 at $10.78, rest at $9.82. Stock sold off to $7.20 by 09:12, then further to ~$6.50 at open. Traded in wrong account (taxable instead of IRA). Transcript: 2026-02-25_transcript_BiCYyGaTteE.md"
 
+  - id: ross_ndra_20260226
+    symbol: NDRA
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$13.15 gross - Gap-and-Go PMH Break, Sub-1M Float (net red after fees)"
+    trade_date: "2026-02-26"
+    intraday_file: "intraday/ross_ndra_20260226.json"
+    ross_pnl: 13.15  # Gross profit only — net red after commissions. Day total ~$62 gross (ALBT +$48.76, NDRA +$13.15)
+    ross_entry_time: "~09:38"  # After opening bell, PMH break. Exact time not stated, estimated from bar data (~$4.58 entry matches 09:38 bar)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry ~$4.58 confirmed, exact time not stated. P&L $13.15 stated mid-recap, may not be final
+    premarket_data:
+      gap_percent: 2.4
+      premarket_high: 4.58
+      previous_close: null  # Not stated in transcript
+      float_shares: 900000  # "sub 1 million share float" per Ross
+      catalyst: "news"  # 8am headline, healthcare/medical diagnostics
+    expected:
+      entry_near: 4.58  # Ross: "pretty decent entry right down here at about um 458ish"
+      stop_near: 4.30  # Below PMH support, estimated
+    notes: "Cold market day — Ross's 'mistake' day. NDRA had 8am news, sub-1M float, healthcare sector, 300x relative volume, room to 200 MA. Ross entered ~$4.58 (PMH break), squeezed into halt at $4.95. After resume, got stubborn adding into sellers. Gave back profit on pullback. Also traded ALBT (+$48.76 gross on sub-$1 penny stock, net red after fees). Ross cautioned about emotional/stubborn trading. Video: 'I made a mistake today…'. Transcript: 2026-02-26_transcript_3ovOiVIJ_aM.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1288,7 +1313,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               35 (+ AIDX from 2026-02-25)
+# POLYGON_DATA:               36 (+ NDRA from 2026-02-26)
 # ==========================================================================
 
 
