@@ -542,6 +542,33 @@ async def complete_entry(
             technical_context=tech_context,
             exit_mode=exit_mode,
         )
+        
+        # L2 BOOK CONTEXT (logging only — does NOT affect entry decision)
+        try:
+            if getattr(engine, '_l2_streamer', None):
+                from nexus2.domain.market_data.l2_signals import get_book_summary
+                l2_snapshot = engine._l2_streamer.get_snapshot(symbol)
+                if l2_snapshot:
+                    l2 = get_book_summary(l2_snapshot)
+                    bid_wall_str = (
+                        f"${l2.bid_wall.price}x{l2.bid_wall.volume:,}"
+                        if l2.bid_wall else "none"
+                    )
+                    ask_wall_str = (
+                        f"${l2.ask_wall.price}x{l2.ask_wall.volume:,}"
+                        if l2.ask_wall else "none"
+                    )
+                    logger.info(
+                        f"[L2 Context] {symbol}: "
+                        f"spread={l2.spread_quality.spread_bps:.1f}bps "
+                        f"({l2.spread_quality.quality}), "
+                        f"bid_wall={bid_wall_str}, "
+                        f"ask_wall={ask_wall_str}, "
+                        f"thin_ask={'yes' if l2.thin_ask else 'no'}, "
+                        f"imbalance={l2.spread_quality.imbalance:+.2f}"
+                    )
+        except Exception as l2_err:
+            logger.debug(f"[L2 Context] {symbol}: L2 logging failed: {l2_err}")
     except Exception as e:
         logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
     

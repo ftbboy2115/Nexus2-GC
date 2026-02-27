@@ -1344,6 +1344,38 @@ async def enter_position(
                 logger.warning(f"[Warrior Entry] {symbol}: DB intent log failed: {e}")
             
             # =================================================================
+            # L2 BOOK CONTEXT (logging only — does NOT affect entry decision)
+            # Captures order-book conditions at entry time for correlation analysis
+            # =================================================================
+            try:
+                if getattr(engine, '_l2_streamer', None):
+                    from nexus2.domain.market_data.l2_signals import get_book_summary
+                    l2_snapshot = engine._l2_streamer.get_snapshot(symbol)
+                    if l2_snapshot:
+                        l2 = get_book_summary(l2_snapshot)
+                        bid_wall_str = (
+                            f"${l2.bid_wall.price}x{l2.bid_wall.volume:,}"
+                            if l2.bid_wall else "none"
+                        )
+                        ask_wall_str = (
+                            f"${l2.ask_wall.price}x{l2.ask_wall.volume:,}"
+                            if l2.ask_wall else "none"
+                        )
+                        logger.info(
+                            f"[L2 Context] {symbol}: "
+                            f"spread={l2.spread_quality.spread_bps:.1f}bps "
+                            f"({l2.spread_quality.quality}), "
+                            f"bid_wall={bid_wall_str}, "
+                            f"ask_wall={ask_wall_str}, "
+                            f"thin_ask={'yes' if l2.thin_ask else 'no'}, "
+                            f"imbalance={l2.spread_quality.imbalance:+.2f}"
+                        )
+                    else:
+                        logger.debug(f"[L2 Context] {symbol}: No L2 snapshot available")
+            except Exception as l2_err:
+                logger.debug(f"[L2 Context] {symbol}: L2 logging failed: {l2_err}")
+            
+            # =================================================================
             # FILL CONFIRMATION: Poll for actual fill price before proceeding
             # Most orders fill quickly but response has status="accepted" not "filled"
             # =================================================================
