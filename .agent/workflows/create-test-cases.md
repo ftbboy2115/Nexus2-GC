@@ -119,14 +119,25 @@ Edit `nexus2/tests/test_cases/warrior_setups.yaml`:
    - [ ] Gap percent shows correctly
    - [ ] Bars advance properly with Step/Play
 
-### 6. Commit Changes
+### 6. Scanner Pulse Check
+// turbo
+```bash
+python scripts/scanner_pulse_check.py SYMBOL YYYY-MM-DD
+```
+
+Verify the VPS scanner detected this ticker on the trade date:
+- **PASS**: Note quality score in YAML `notes`
+- **FAIL**: Note rejection reason — this is a scanner gap to investigate
+- **NOT_IN_DB**: Scanner may not have been running; note in YAML
+
+### 7. Commit Changes
 ```bash
 git add nexus2/tests/test_cases/
 git commit -m "test: Add Ross SYMBOL trade from YYYY-MM-DD"
 git push
 ```
 
-### 7. Deploy to VPS
+### 8. Deploy to VPS
 > [!CAUTION]
 > Test cases live in the git repo. The VPS won't see new cases until you pull.
 
