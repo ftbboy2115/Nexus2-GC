@@ -1,6 +1,6 @@
 # WB Performance Metrics — Definitions
 
-> **Version:** 2026-02-26  
+> **Version:** 2026-02-27  
 > **Authority:** Clay (product owner) + Coordinator
 
 ---
@@ -11,7 +11,7 @@
 **Formula:** `Bot Total P&L / Ross Total P&L × 100`  
 **Scope:** All test cases in the batch (same universe for both)  
 **What it measures:** Overall portfolio-level performance vs Ross  
-**Current baseline (36 cases):** 82.4% ($357K / $434K)
+**Current baseline (37 cases):** 85.9% ($383K / $446K)
 
 > Cases where Ross didn't trade (P&L = $0) or lost are included in Ross's total.
 > If the bot profits on those cases, that's genuine alpha.
@@ -22,7 +22,7 @@
 **Formula:** `Bot P&L on Ross-win cases / Ross P&L on Ross-win cases × 100`  
 **Scope:** Only cases where `ross_pnl > 0` (Ross traded AND profited)  
 **What it measures:** How well the bot replicates Ross's winning methodology  
-**Current baseline (26 cases):** 41.9% ($196K / $467K)
+**Current baseline:** ⚠️ Needs recomputation (was 41.9% on 26 cases — stale after ENVB P&L fix and +2 cases)
 
 > This reveals how much of Ross's winning trades the bot captures.
 > High capture + low fidelity = bot finds its own alpha but poorly replicates Ross.
@@ -32,7 +32,7 @@
 ### Win Rate (%)
 **Formula:** `Bot profitable cases / total cases × 100`  
 **Scope:** All test cases  
-**Current baseline:** 80.6% (29/36)
+**Current baseline:** 73.0% (27/37)
 
 ---
 
