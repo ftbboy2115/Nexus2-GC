@@ -66,6 +66,11 @@ ALPHA_VANTAGE_API_KEY = get_env("ALPHA_VANTAGE_API_KEY") or get_env("ALPHAVANTAG
 # Polygon.io (real-time quotes and streaming)
 POLYGON_API_KEY = get_env("POLYGON_API_KEY")
 
+# L2 (Level 2 / Order Book Depth) Streaming
+L2_ENABLED = get_env("L2_ENABLED", "false").lower() == "true"
+L2_MAX_SYMBOLS = int(get_env("L2_MAX_SYMBOLS", "5"))
+L2_SAMPLE_RATE_SECONDS = int(get_env("L2_SAMPLE_RATE_SECONDS", "1"))
+
 # Validate on import
 if not FMP_API_KEY:
     print("[Config] WARNING: FMP_API_KEY not set")
