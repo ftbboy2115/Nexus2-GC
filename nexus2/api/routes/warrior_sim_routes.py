@@ -1329,6 +1329,7 @@ class BatchTestRequest(BaseModel):
     """Request body for batch test runner."""
     case_ids: Optional[List[str]] = Field(None, description="List of test case IDs to run. If None, runs all POLYGON_DATA cases.")
     include_trades: bool = Field(False, description="If True, include per-trade detail arrays in each result. Default False for compact output.")
+    include_guard_analysis: bool = Field(False, description="If True, include per-block guard counterfactual analysis in each result. Default False to avoid massive output.")
     skip_guards: bool = Field(False, description="If True, skip entry guards for A/B comparison testing. SIM ONLY.")
     config_overrides: Optional[dict] = Field(None, description="Engine config overrides for param sweeps (e.g. {'macd_histogram_tolerance': -0.10}). Applied to each sim engine before replay.")
     monitor_overrides: Optional[dict] = Field(None, description="Monitor settings overrides for param sweeps (e.g. {'max_reentry_after_loss': 5}). Applied to each sim engine's monitor.settings before replay.")
@@ -1668,6 +1669,13 @@ async def run_batch_concurrent_endpoint(request: BatchTestRequest = BatchTestReq
     if not request.include_trades:
         for r in results:
             r.pop("trades", None)
+
+    # Conditionally strip guard analysis for compact output (DEFAULT: stripped)
+    if not request.include_guard_analysis:
+        for r in results:
+            r.pop("guard_analysis", None)
+            r.pop("guard_blocks", None)
+            # Keep guard_block_count as a compact summary
 
     # Build summary (same format as run_batch_tests)
     total_runtime = round(time.time() - start_time, 2)

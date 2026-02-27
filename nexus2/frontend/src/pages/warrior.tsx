@@ -32,6 +32,7 @@ import {
     CatalystSearchCard,
     AdminCard,
     TradingNotesCalendarCard,
+    L2DepthCard,
 } from '@/components/warrior'
 
 // ============================================================================
@@ -39,7 +40,7 @@ import {
 // ============================================================================
 
 const CARD_IDS = [
-    'engine-control', 'watchlist', 'open-positions', 'trade-events',
+    'engine-control', 'watchlist', 'l2-depth', 'open-positions', 'trade-events',
     'trade-history', 'event-log', 'engine-scan', 'scanner',
     'trading-mode', 'mock-market', 'exit-rules', 'settings',
     'catalyst-search', 'admin', 'trading-calendar',
@@ -48,6 +49,7 @@ const CARD_IDS = [
 const CARD_LABELS: Record<string, string> = {
     'engine-control': 'Engine Control',
     'watchlist': 'Watchlist',
+    'l2-depth': 'L2 Order Book',
     'open-positions': 'Open Positions',
     'trade-events': 'Trade Events',
     'trade-history': 'Trade History',
@@ -607,6 +609,11 @@ export default function Warrior() {
                                     setWatchlistSort={setWatchlistSort}
                                     openChart={openChart}
                                 />
+                            )}
+
+                            {/* 2b. L2 Order Book */}
+                            {isCardVisible('l2-depth') && (
+                                <L2DepthCard />
                             )}
                         </div>
 

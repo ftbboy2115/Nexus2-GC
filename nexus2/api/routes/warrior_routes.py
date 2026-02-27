@@ -1144,6 +1144,162 @@ async def save_mock_market_notes(request: MockMarketNotesRequest):
 
 
 # =============================================================================
+# L2 ORDER BOOK ROUTES
+# =============================================================================
+
+
+@router.get("/l2/status")
+async def get_l2_status():
+    """
+    Get L2 subsystem status.
+
+    Returns whether L2 is enabled, connected, active subscriptions,
+    and snapshot count.
+    """
+    from nexus2 import config as app_config
+
+    if not app_config.L2_ENABLED:
+        return {
+            "enabled": False,
+            "connected": False,
+            "subscriptions": [],
+            "snapshot_count": 0,
+        }
+
+    engine = get_engine()
+    streamer = getattr(engine, "_l2_streamer", None)
+    sub_manager = getattr(engine, "_l2_sub_manager", None)
+
+    if streamer is None:
+        return {
+            "enabled": True,
+            "connected": False,
+            "subscriptions": [],
+            "snapshot_count": 0,
+        }
+
+    streamer_status = streamer.get_status()
+    subscriptions = (
+        sub_manager.get_active_subscriptions()
+        if sub_manager is not None
+        else streamer_status.get("subscribed_symbols", [])
+    )
+
+    return {
+        "enabled": True,
+        "connected": streamer_status.get("connected", False),
+        "subscriptions": sorted(subscriptions),
+        "snapshot_count": len(streamer_status.get("cached_books", [])),
+    }
+
+
+@router.get("/l2/{symbol}")
+async def get_l2_book(symbol: str):
+    """
+    Get current L2 book snapshot and signals for a specific symbol.
+
+    Returns top 10 bid/ask levels plus signal analysis (walls, thin ask,
+    spread quality). All Decimal values converted to float for JSON safety.
+    """
+    from nexus2 import config as app_config
+
+    if not app_config.L2_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="L2 subsystem is disabled. Set L2_ENABLED=true in .env",
+        )
+
+    engine = get_engine()
+    streamer = getattr(engine, "_l2_streamer", None)
+
+    if streamer is None:
+        raise HTTPException(
+            status_code=503,
+            detail="L2 streamer not initialized",
+        )
+
+    snapshot = streamer.get_snapshot(symbol.upper())
+    if snapshot is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No L2 data for {symbol.upper()}. Symbol may not be subscribed.",
+        )
+
+    # Build signals via get_book_summary
+    from nexus2.domain.market_data.l2_signals import get_book_summary
+
+    summary = get_book_summary(snapshot)
+
+    # Helper: convert Decimal to float, None stays None
+    def _dec(v):
+        return float(v) if v is not None else None
+
+    # Limit to top 10 levels each
+    top_bids = snapshot.bids[:10]
+    top_asks = snapshot.asks[:10]
+
+    return {
+        "symbol": snapshot.symbol,
+        "timestamp": snapshot.timestamp.isoformat() if snapshot.timestamp else None,
+        "best_bid": _dec(summary.best_bid),
+        "best_ask": _dec(summary.best_ask),
+        "spread": _dec(summary.spread),
+        "bids": [
+            {
+                "price": float(level.price),
+                "volume": level.total_volume,
+                "num_entries": level.num_entries,
+            }
+            for level in top_bids
+        ],
+        "asks": [
+            {
+                "price": float(level.price),
+                "volume": level.total_volume,
+                "num_entries": level.num_entries,
+            }
+            for level in top_asks
+        ],
+        "signals": {
+            "bid_wall": (
+                {
+                    "price": float(summary.bid_wall.price),
+                    "volume": summary.bid_wall.volume,
+                    "side": summary.bid_wall.side,
+                }
+                if summary.bid_wall
+                else None
+            ),
+            "ask_wall": (
+                {
+                    "price": float(summary.ask_wall.price),
+                    "volume": summary.ask_wall.volume,
+                    "side": summary.ask_wall.side,
+                }
+                if summary.ask_wall
+                else None
+            ),
+            "thin_ask": (
+                {
+                    "levels_count": summary.thin_ask.levels_count,
+                    "total_volume": summary.thin_ask.total_volume,
+                    "price_range": float(summary.thin_ask.price_range),
+                }
+                if summary.thin_ask
+                else None
+            ),
+            "spread_quality": {
+                "spread_bps": summary.spread_quality.spread_bps,
+                "quality": summary.spread_quality.quality,
+                "bid_depth": summary.spread_quality.bid_depth,
+                "ask_depth": summary.spread_quality.ask_depth,
+                "imbalance": summary.spread_quality.imbalance,
+            },
+        },
+    }
+
+
+# =============================================================================
 # INCLUDE SUB-ROUTERS
 # =============================================================================
 

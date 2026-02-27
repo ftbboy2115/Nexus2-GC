@@ -185,13 +185,28 @@ I've flagged this case as NEEDS_VIDEO_CHECK in the YAML.
 After adding the test case to YAML, verify it runs via API (server must be running on port 8000):
 
 ```powershell
+# DEFAULT (compact output — guard analysis stripped):
 Invoke-RestMethod -Method POST -Uri "http://localhost:8000/warrior/sim/run_batch_concurrent" -ContentType "application/json" -Body '{"case_ids": ["ross_SYMBOL_YYYYMMDD"]}' | ConvertTo-Json -Depth 10
+
+# WITH per-trade details:
+Invoke-RestMethod ... -Body '{"case_ids": ["ross_SYMBOL_YYYYMMDD"], "include_trades": true}' | ConvertTo-Json -Depth 10
+
+# WITH guard analysis (verbose — per-block counterfactual outcomes):
+Invoke-RestMethod ... -Body '{"case_ids": ["ross_SYMBOL_YYYYMMDD"], "include_guard_analysis": true}' | ConvertTo-Json -Depth 10
 ```
+
+> [!TIP]
+> **Save to log file** to avoid truncation in PowerShell:
+> ```powershell
+> Invoke-RestMethod -Method POST -Uri "http://localhost:8000/warrior/sim/run_batch_concurrent" -ContentType "application/json" -Body '{"case_ids": ["ross_SYMBOL_YYYYMMDD"]}' | ConvertTo-Json -Depth 10 | Out-File -FilePath "nexus2/reports/batch_SYMBOL.json"
+> ```
 
 Key endpoints (all under `/warrior` prefix):
 - `POST /warrior/sim/run_batch_concurrent` — Concurrent batch test (fast, isolated contexts)
 - `POST /warrior/sim/run_batch` — Sequential batch test (uses shared engine)
 - Both accept `{"case_ids": [...]}` to filter, or empty body for all `POLYGON_DATA` cases
+- `include_trades` (default `false`) — Include per-trade detail arrays
+- `include_guard_analysis` (default `false`) — Include per-block guard counterfactual analysis
 
 ### Benchmark Tracker (MANDATORY)
 

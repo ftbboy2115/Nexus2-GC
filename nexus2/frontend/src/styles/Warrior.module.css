@@ -1559,3 +1559,241 @@
 .cardVisibilityItem input[type="checkbox"] {
     accent-color: #6366f1;
 }
+
+/* ============================================================================
+   L2 Order Book Depth Card
+   ============================================================================ */
+
+.l2SymbolSelector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.l2InfoRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #ccc;
+    margin-bottom: 0.75rem;
+}
+
+.l2InfoRow strong {
+    color: #fff;
+}
+
+/* Imbalance Bar */
+.l2ImbalanceContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.l2ImbalanceLabel {
+    color: #888;
+    white-space: nowrap;
+    min-width: 65px;
+}
+
+.l2ImbalanceBar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.l2ImbalanceFill {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease, margin-left 0.3s ease;
+}
+
+.l2ImbalanceCenter {
+    position: absolute;
+    left: 50%;
+    top: -1px;
+    width: 2px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+}
+
+.l2ImbalanceValue {
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.75rem;
+    min-width: 90px;
+    text-align: right;
+}
+
+/* Depth Ladder */
+.l2DepthLadder {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.l2LadderHeader {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 60px;
+    gap: 4px;
+    padding: 0.25rem 0.5rem 0.5rem;
+    font-size: 0.7rem;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.l2LadderHeader span:nth-child(2) {
+    text-align: right;
+}
+
+.l2LadderHeader span:nth-child(3) {
+    text-align: left;
+}
+
+.l2Row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    min-height: 26px;
+}
+
+.l2BidSide,
+.l2AskSide {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background 0.15s;
+}
+
+.l2BidSide:hover,
+.l2AskSide:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.l2WallHighlight {
+    background: rgba(255, 193, 7, 0.08) !important;
+    border: 1px solid rgba(255, 193, 7, 0.15);
+}
+
+.l2Volume {
+    font-size: 0.75rem;
+    color: #aaa;
+    min-width: 45px;
+    font-variant-numeric: tabular-nums;
+}
+
+.l2BidSide .l2Volume {
+    text-align: left;
+}
+
+.l2AskSide .l2Volume {
+    text-align: right;
+}
+
+.l2BarContainer {
+    flex: 1;
+    height: 16px;
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.l2BidSide .l2BarContainer {
+    direction: rtl;
+}
+
+.l2BidBar {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(40, 167, 69, 0.15), rgba(40, 167, 69, 0.45));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+}
+
+.l2AskBar {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0.45), rgba(220, 53, 69, 0.15));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+}
+
+.l2Price {
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 65px;
+    font-variant-numeric: tabular-nums;
+}
+
+.l2BidSide .l2Price {
+    text-align: right;
+}
+
+.l2AskSide .l2Price {
+    text-align: left;
+}
+
+.l2Empty {
+    color: #444;
+    font-size: 0.75rem;
+    width: 100%;
+    text-align: center;
+}
+
+/* Signal Badges */
+.l2SignalBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.l2SignalBadge {
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.l2BadgeBid {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.25);
+}
+
+.l2BadgeAsk {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.25);
+}
+
+.l2BadgeWarn {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.25);
+}
+
+.l2BadgeOk {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}

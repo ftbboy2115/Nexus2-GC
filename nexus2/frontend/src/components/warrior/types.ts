@@ -209,3 +209,53 @@ export interface LoadedTestCase {
     symbol: string
     price: number
 }
+
+// L2 Order Book Types
+export interface L2Level {
+    price: number
+    volume: number
+    num_entries: number
+}
+
+export interface L2WallSignal {
+    price: number
+    volume: number
+    side: 'bid' | 'ask'
+}
+
+export interface L2ThinAskSignal {
+    levels_count: number
+    total_volume: number
+}
+
+export interface L2SpreadQuality {
+    spread_bps: number
+    quality: 'tight' | 'normal' | 'wide'
+    bid_depth: number
+    ask_depth: number
+    imbalance: number
+}
+
+export interface L2Signals {
+    bid_wall: L2WallSignal | null
+    ask_wall: L2WallSignal | null
+    thin_ask: L2ThinAskSignal | null
+    spread_quality: L2SpreadQuality
+}
+
+export interface L2BookSnapshot {
+    symbol: string
+    timestamp: string
+    best_bid: number
+    best_ask: number
+    spread: number
+    bids: L2Level[]
+    asks: L2Level[]
+    signals: L2Signals
+}
+
+export interface L2Status {
+    enabled: boolean
+    connected: boolean
+    subscriptions: string[]
+}
