@@ -107,6 +107,14 @@ class SchwabL2Streamer:
         """Get all cached L2 snapshots."""
         return dict(self._snapshots)
 
+    def get_status(self) -> dict:
+        """Status dict for API/engine status endpoints."""
+        return {
+            "connected": self._connected,
+            "subscribed_symbols": sorted(self._subscribed_symbols),
+            "cached_books": sorted(self._snapshots.keys()),
+        }
+
     # ---------------------------------------------------------------
     # Token Bridge
     # ---------------------------------------------------------------
@@ -646,12 +654,16 @@ class SchwabL2Streamer:
 
         logger.info("[L2] Message loop ended")
 
-    def _handle_book_message(self, msg: dict):
+    async def _handle_book_message(self, msg: dict):
         """
         Handler for both NYSE and NASDAQ book updates.
         
         Registered with StreamClient via add_*_book_handler().
         Parses the message, caches the snapshot, and dispatches to callbacks.
+        
+        Must be async because schwab-py awaits handler return values.
+        Callback dispatch checks iscoroutinefunction so sync callbacks
+        (e.g. recorder.record via queue.put) are called without await.
         """
         try:
             result = parse_schwab_book_message(msg)
@@ -667,10 +679,13 @@ class SchwabL2Streamer:
                 self._messages_received += 1
                 self._last_message_time = time.time()
 
-                # Dispatch to callback
+                # Dispatch to callback — check if async before awaiting
                 if self._on_update:
                     try:
-                        self._on_update(snapshot)
+                        if asyncio.iscoroutinefunction(self._on_update):
+                            await self._on_update(snapshot)
+                        else:
+                            self._on_update(snapshot)
                     except Exception as cb_err:
                         logger.debug(
                             "[L2] Callback error for %s: %s",
