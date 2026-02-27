@@ -370,7 +370,9 @@ class SchwabL2Streamer:
         )
 
         # Mark token as expired so authlib will refresh it
-        token["expires_at"] = 0
+        # NOTE: Must use 1, not 0 — `not 0` is True in Python,
+        # which makes authlib's is_expired() return None instead of True
+        token["expires_at"] = 1
 
         # This will now see the token as expired and use the refresh_token
         # to get a new access token from Schwab's token endpoint
