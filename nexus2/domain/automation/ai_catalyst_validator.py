@@ -313,8 +313,65 @@ class AIValidationResult:
     raw_response: str
 
 
-# Qullamaggie-aligned system prompt
-SYSTEM_PROMPT = """You are a trading catalyst validator for Qullamaggie-style (Kristjan Kullamägi) momentum trading.
+# =============================================================================
+# STRATEGY-SPECIFIC SYSTEM PROMPTS
+# =============================================================================
+
+# Ross Cameron (Warrior) — broad momentum catalyst definition
+WARRIOR_SYSTEM_PROMPT = """You are a trading catalyst validator for Ross Cameron-style momentum day trading.
+
+Your job: Determine if a news headline is a VALID CATALYST for a momentum day trade.
+A catalyst is any confirmed news event that could cause a significant price gap or move.
+
+VALID MOMENTUM CATALYSTS (approve these):
+- ALL earnings results — beat, miss, or neutral. The gap itself is the catalyst.
+  Examples of valid earnings headlines:
+    "[Company] Q4 2025 Earnings Call Transcript" → VALID: earnings
+    "[Company]: Q4 Earnings Snapshot" → VALID: earnings
+    "[Company] Reports Q4 Results" → VALID: earnings
+    "[Company] Reports Strong Revenue Growth" → VALID: earnings
+    "[Company] Misses Q4 Estimates" → VALID: earnings (miss still causes gap)
+- FDA approval, clinical trial results, breakthrough designation
+- Major contract wins, strategic partnerships, collaborations
+- Crypto/bitcoin treasury announcements
+- Clinical study data, feasibility study results
+- Acquisitions, mergers, takeover bids
+- Significant guidance raises
+- IPO or newly listed
+- Rebrands, asset sales, divestitures
+
+NOT VALID CATALYSTS (REJECT THESE):
+- "Earnings Scheduled For [date]" — this is a FUTURE event, not actual results
+- Analyst upgrades/downgrades alone (not fundamental)
+- Stock offerings or dilution news (negative)
+- General market commentary
+- Speculation or rumors without confirmation
+- Price target changes only
+- Technical breakouts without fundamental news
+- Dividend announcements
+- Stock splits
+
+ENTITY MATCHING RULE:
+Only validate if the headline is ABOUT the queried symbol.
+Example: "Nasdaq Gains 1%; TJX Posts Earnings" for symbol XWEL → INVALID (headline is about TJX, not XWEL)
+
+RESPONSE FORMAT:
+Respond with EXACTLY one line:
+- "VALID: [catalyst type]" if headline indicates a confirmed momentum catalyst
+- "INVALID: [reason]" if not a valid catalyst
+
+Examples:
+- "VALID: earnings"
+- "VALID: fda_approval"
+- "VALID: crypto_treasury"
+- "VALID: clinical_data"
+- "INVALID: scheduled earnings (future event)"
+- "INVALID: analyst upgrade only"
+- "INVALID: about different symbol"
+"""
+
+# Qullamaggie (KK) — stricter EP catalyst definition
+KK_SYSTEM_PROMPT = """You are a trading catalyst validator for Qullamaggie-style (Kristjan Kullamägi) momentum trading.
 
 QULLAMAGGIE VALID EP CATALYSTS:
 - Earnings beat with strong reaction (gap up on volume)
@@ -347,6 +404,9 @@ Examples:
 - "INVALID: offering/dilution"
 - "INVALID: no clear catalyst"
 """
+
+# Backward compatibility alias (used by AICatalystValidator legacy class)
+SYSTEM_PROMPT = WARRIOR_SYSTEM_PROMPT
 
 
 class AICatalystValidator:
@@ -572,8 +632,9 @@ class MultiModelValidator:
     """
     Run catalyst validation across multiple AI models for comparison.
     
-    Used to train regex patterns by comparing regex vs AI results.
-    Trading decisions still use regex only.
+    Multi-model catalyst validation with tiebreaker system.
+    Used for parallel assessment. AI can add catalysts regex missed
+    (see warrior_scanner_service.py L1517).
     """
     
     def __init__(
@@ -641,6 +702,7 @@ class MultiModelValidator:
         model_name: str,
         headline: str,
         symbol: str,
+        strategy: str = "warrior",
     ) -> ModelResult:
         """Validate headline with a specific model."""
         import time
@@ -670,16 +732,24 @@ class MultiModelValidator:
             
             start = time.perf_counter()
             
-            user_prompt = f"""Headline: "{headline}"
+            if strategy == "warrior":
+                user_prompt = f"""Headline: "{headline}"
+Symbol: {symbol}
+
+Is this a valid catalyst for a momentum day trade?"""
+            else:
+                user_prompt = f"""Headline: "{headline}"
 Symbol: {symbol}
 
 Is this a valid Qullamaggie EP catalyst?"""
+            
+            system_prompt = WARRIOR_SYSTEM_PROMPT if strategy == "warrior" else KK_SYSTEM_PROMPT
             
             response = client.models.generate_content(
                 model=config.model_id,
                 contents=user_prompt,
                 config={
-                    "system_instruction": SYSTEM_PROMPT,
+                    "system_instruction": system_prompt,
                     "temperature": 0.0,
                     "max_output_tokens": 50,
                 },
@@ -852,6 +922,7 @@ Is this a valid Qullamaggie EP catalyst?"""
         regex_passed: bool,
         regex_type: Optional[str] = None,
         article_url: Optional[str] = None,
+        strategy: str = "warrior",
     ) -> Tuple[bool, Optional[str], bool, Optional[bool], str]:
         """
         Synchronous dual validation: Regex + Flash-Lite → Pro tiebreaker if disagree.
@@ -892,7 +963,7 @@ Is this a valid Qullamaggie EP catalyst?"""
                 logger.warning(f"Failed to write regex_only catalyst audit: {e}")
             return (regex_passed, regex_type, regex_passed, None, "regex_only")
         
-        flash_result = self._validate_with_model("flash_lite", headline, symbol)
+        flash_result = self._validate_with_model("flash_lite", headline, symbol, strategy=strategy)
         flash_passed = flash_result.is_valid
         
         # Step 2: Compare regex vs flash
@@ -909,7 +980,7 @@ Is this a valid Qullamaggie EP catalyst?"""
             # Disagreement - need tiebreaker
             model_results = {"flash_lite": flash_result}
             if "pro" in self.models and self._can_call_model("pro"):
-                pro_result = self._validate_with_model("pro", headline, symbol)
+                pro_result = self._validate_with_model("pro", headline, symbol, strategy=strategy)
                 model_results["pro"] = pro_result  # Include Pro in model_results
                 final_valid = pro_result.is_valid
                 final_type = pro_result.catalyst_type if pro_result.is_valid else None

@@ -1500,6 +1500,7 @@ class WarriorScannerService:
                         regex_passed=regex_valid,
                         regex_type=regex_type_h,
                         article_url=article_url,
+                        strategy="warrior",
                     )
                     
                     # Don't cache regex_only results — retry after rate limit resets

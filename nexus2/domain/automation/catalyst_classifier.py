@@ -114,7 +114,7 @@ class CatalystClassifier:
         # Positive catalyst patterns (KK-aligned)
         self.positive_patterns = {
             "earnings": re.compile(
-                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter|preliminary\s+(fourth|first|second|third)\s+quarter|full[- ]year\s+results?|(first|second|third|fourth)\s+quarter\s+\d{4}\s+(financial\s+)?results?)\b",
+                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter|preliminary\s+(fourth|first|second|third)\s+quarter|full[- ]year\s+results?|(first|second|third|fourth)\s+quarter\s+\d{4}\s+(financial\s+)?results?|exceeds\s+expectations?)\b",
                 re.IGNORECASE,
             ),
             "fda": re.compile(
@@ -130,7 +130,7 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "acquisition": re.compile(
-                r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement|takes?\s+control|major\s+investor|activist\s+investor|significant\s+stake|controlling\s+(interest|stake)|board\s+seats?|proxy\s+(fight|battle|contest)|new\s+ownership|change\s+of\s+control)\b",
+                r"\b(acquires?|acquisition|acquired|merger|takeover|buyout|buys?\s+\d+%|agree\s+to\s+(buy|acquire)|definitive\s+agreement|takes?\s+control|major\s+investor|activist\s+investor|significant\s+stake|controlling\s+(interest|stake)|board\s+seats?|proxy\s+(fight|battle|contest)|new\s+ownership|change\s+of\s+control|asset\s+sale|divestiture)\b",
                 re.IGNORECASE,
             ),
             "ipo": re.compile(
@@ -155,6 +155,11 @@ class CatalystClassifier:
             # Clinical study/device data (broader than clinical_advance which requires phase X)
             "clinical_data": re.compile(
                 r"\b(clinical\s+study|feasibility\s+study|demonstrates?\s+\w+\s+in\s+clinical|device\s+demonstrates?|mri[- ]level|biomarker|clinical\s+thresholds?|clinical\s+consistency|point[- ]of[- ]care)\b",
+                re.IGNORECASE,
+            ),
+            # Corporate actions (rebrand, name change)
+            "corporate_action": re.compile(
+                r"\b(rebrands?|rebrand(s|ed|ing)?)\b",
                 re.IGNORECASE,
             ),
         }
@@ -198,6 +203,14 @@ class CatalystClassifier:
             r"\b(sinks?|plunges?|drops?|falls?|crashes?|tumbles?|slides?)\b",
             re.IGNORECASE,
         )
+        
+        # Exclusion patterns — checked BEFORE positive patterns to prevent false positives
+        self.exclusion_patterns = {
+            "earnings_scheduled": re.compile(
+                r"\bearnings\s+scheduled\s+for\b",
+                re.IGNORECASE,
+            ),
+        }
     
     def classify(self, headline: str) -> CatalystMatch:
         """
@@ -223,6 +236,16 @@ class CatalystClassifier:
                     headline=h,
                     catalyst_type=ctype,
                     confidence=0.9,
+                    is_positive=False,
+                )
+        
+        # Check exclusion patterns (reject before positive patterns match)
+        for exc_name, exc_pattern in self.exclusion_patterns.items():
+            if exc_pattern.search(h):
+                return CatalystMatch(
+                    headline=h,
+                    catalyst_type=None,
+                    confidence=0.0,
                     is_positive=False,
                 )
         
