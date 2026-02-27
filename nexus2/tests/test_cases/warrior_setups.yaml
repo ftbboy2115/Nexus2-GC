@@ -1305,6 +1305,31 @@ test_cases:
       stop_near: 4.30  # Below PMH support, estimated
     notes: "Cold market day — Ross's 'mistake' day. NDRA had 8am news, sub-1M float, healthcare sector, 300x relative volume, room to 200 MA. Ross entered ~$4.58 (PMH break), squeezed into halt at $4.95. After resume, got stubborn adding into sellers. Gave back profit on pullback. Also traded ALBT (+$48.76 gross on sub-$1 penny stock, net red after fees). Ross cautioned about emotional/stubborn trading. Video: 'I made a mistake today…'. Transcript: 2026-02-26_transcript_3ovOiVIJ_aM.md"
 
+  - id: ross_batl_20260227
+    symbol: BATL
+    setup_type: dip_buy
+    outcome: loser
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron -$6,700 - Max Loss Red Day, Over-Sized Dip Buy"
+    trade_date: "2026-02-27"
+    intraday_file: "intraday/ross_batl_20260227.json"
+    ross_pnl: -6700.00
+    ross_entry_time: "~09:42"  # Estimated from bar data — $5.85 entry matches 09:42 bar (high $5.90)
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry $5.85 confirmed, exact time estimated from bars
+    premarket_data:
+      gap_percent: 22.8
+      premarket_high: 6.13
+      previous_close: null  # Not stated in transcript
+      float_shares: null  # Not stated
+      catalyst: "news"  # Oil / global events, up 36%
+    expected:
+      entry_near: 5.85  # Ross: "I bought this dip right here at 5.85"
+      stop_near: 5.60  # Actual stops at $5.63 / $5.59
+    notes: "Max loss red day. BATL (Battalion Oil) up 36% on oil/global events. Ross entered dip at $5.85 in retirement account (first trade was in wrong taxable account — small winner). Over-sized at 30k shares (should have been capped at 10k — forgot to save settings). Held waiting for first 1-min candle to make new high, never came. Stopped out $5.63/$5.59. Also avoided CDIO (rvol 1.43 vs 5 minimum, day 7 of squeeze). Set 10k share cap for next week. Transcript: 2026-02-27_transcript_Ch8J7gwrrJg.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1313,7 +1338,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               36 (+ NDRA from 2026-02-26)
+# POLYGON_DATA:               37 (+ BATL from 2026-02-27)
 # ==========================================================================
 
 
