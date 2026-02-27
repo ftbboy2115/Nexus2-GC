@@ -20,7 +20,8 @@ PIPELINE ROLE:
 
 PATTERN CATEGORIES:
   Tier 1 (Primary - 0.9 confidence):
-    - earnings, fda, contract, guidance_raise, acquisition, ipo, clinical_advance
+    - earnings, fda, contract, guidance_raise, acquisition, ipo, clinical_advance,
+      crypto_catalyst, clinical_data, significant_value
   Tier 2 (Supportive - 0.5 confidence, below threshold):
     - analyst_valuation (not standalone per Ross methodology)
   Negative (Avoid - 0.9 confidence):
@@ -113,7 +114,7 @@ class CatalystClassifier:
         # Positive catalyst patterns (KK-aligned)
         self.positive_patterns = {
             "earnings": re.compile(
-                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter|preliminary\s+(fourth|first|second|third)\s+quarter|full[- ]year\s+results?)\b",
+                r"\b(earnings|q[1-4]\s+results|eps|revenue|beats?\s+estimates?|raises?\s+guidance|strong\s+quarter|preliminary\s+(fourth|first|second|third)\s+quarter|full[- ]year\s+results?|(first|second|third|fourth)\s+quarter\s+\d{4}\s+(financial\s+)?results?)\b",
                 re.IGNORECASE,
             ),
             "fda": re.compile(
@@ -144,6 +145,16 @@ class CatalystClassifier:
             # Significant monetary valuations (HIND: "USD 1 Billion")
             "significant_value": re.compile(
                 r"\b(?:\$|USD|EUR|GBP)\s*[\d.]+\s*(?:billion|bn|b)\b|\b[\d.]+\s*(?:billion|bn)\s*(?:dollar|usd|valuation|deal|agreement|contract)\b",
+                re.IGNORECASE,
+            ),
+            # Crypto/blockchain catalyst (Ross: "crypto treasury" is a valued catalyst)
+            "crypto_catalyst": re.compile(
+                r"\b(crypto|bitcoin|btc|blockchain|digital\s+asset|staking|defi|token\s+holdings?|crypto\s+treasury|bitcoin\s+treasury)\b",
+                re.IGNORECASE,
+            ),
+            # Clinical study/device data (broader than clinical_advance which requires phase X)
+            "clinical_data": re.compile(
+                r"\b(clinical\s+study|feasibility\s+study|demonstrates?\s+\w+\s+in\s+clinical|device\s+demonstrates?|mri[- ]level|biomarker|clinical\s+thresholds?|clinical\s+consistency|point[- ]of[- ]care)\b",
                 re.IGNORECASE,
             ),
         }
