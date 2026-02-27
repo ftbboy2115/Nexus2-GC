@@ -15,7 +15,8 @@
 | Feb 21 | 3eaacd9 | +5 test cases, trigger rejection logging | 35 | 23 (66%) | $120,889 | $433,000 | 27.9% | 93s | HIND $0→$14K; BCTX 96.7% capture |
 | Feb 22 | 654b3f3 | RVOL slider, scanner persistence fix | 35 | 22 (63%) | $119,105 | $433,000 | 27.5% | 322s | BCTX flipped -$156; runtime 3.5x regression |
 | Feb 23 | — | GC batch run | 35 | 22 (63%) | $118,983 | $433,000 | 27.5% | 291s | Auto-tracked by GC |
-| **Feb 27** | **2f3bc93** | **ENVB P&L fix, +2 cases, scaling/exit improvements** | **37** | **27 (73%)** | **$383,378** | **$446,275** | **85.9%** | **58s** | **🚀 3x P&L jump; ENVB P&L corrected $0→$12.7K** |
+| Feb 27a | 2f3bc93 | ENVB P&L fix, +2 cases, scaling/exit improvements | 37 | 27 (73%) | $383,378 | $446,275 | 85.9% | 58s | 🚀 3x P&L jump; ENVB P&L corrected $0→$12.7K |
+| **Feb 27b** | **2770fb3** | **+1 case (BATL red day), catalyst AI fix deployed** | **38** | **28 (73.7%)** | **$391,215** | **$439,575** | **89.0%** | **78s** | **New baseline; +$7.8K bot P&L from new case** |
 
 
 ---
@@ -23,10 +24,10 @@
 ## Key Metrics Over Time
 
 ```
-Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5% → 85.9% 🚀
-Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K → $383.4K 🚀
-Win Rate:      52% → 66% → 60% → 66% → 63% → 73%
-Runtime:       43s → 35s → 155s → 93s → 322s → 58s ✅
+Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5% → 85.9% → 89.0% 🚀
+Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K → $383.4K → $391.2K 🚀
+Win Rate:      52% → 66% → 60% → 66% → 63% → 73% → 73.7%
+Runtime:       43s → 35s → 155s → 93s → 322s → 58s → 78s ✅
 ```
 
 ---
@@ -107,8 +108,5 @@ Cases that have changed direction or significantly shifted P&L between runs:
 | Feb 21 | 35 | 93s | 2.7s | Improved vs Feb 18 |
 | Feb 22 | 35 | 322s | 9.2s | ⚠️ Investigate regression |
 | Feb 23 | 35 | 291s | 8.3s | ⚠️ Needs investigation |
-| **Feb 27** | **37** | **58s** | **1.6s** | ✅ Resolved — back to baseline |
-
-
-> [!WARNING]
-> Runtime has regressed from ~35s to 322s over 2 weeks. Needs profiling investigation.
+| Feb 27a | 37 | 58s | 1.6s | ✅ Resolved — back to baseline |
+| **Feb 27b** | **38** | **78s** | **2.1s** | ✅ Stable |
