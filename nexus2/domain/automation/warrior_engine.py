@@ -120,6 +120,11 @@ class WarriorEngine:
         self._check_pending_fill: Optional[Callable] = None  # Check for pending buy orders
         self._create_pending_position: Optional[Callable] = None  # Create PENDING_FILL position
         self._get_order_status: Optional[Callable] = None  # Poll order for actual fill price
+        
+        # L2 streaming (Phase 2)
+        self._l2_streamer = None
+        self._l2_recorder = None
+        self._l2_sub_manager = None
     
     def set_callbacks(
         self,
@@ -333,6 +338,11 @@ class WarriorEngine:
         # Start monitor
         await self.monitor.start()
         
+        # Start L2 streaming if enabled
+        from nexus2 import config as app_config
+        if app_config.L2_ENABLED:
+            await self._start_l2()
+        
         logger.info(f"[Warrior Engine] Started in {self.state.value} mode")
         return {
             "status": "started",
@@ -359,6 +369,10 @@ class WarriorEngine:
         # Stop monitor
         await self.monitor.stop()
         
+        # Stop L2 streaming
+        if self._l2_streamer:
+            await self._stop_l2()
+        
         # Clear watchlist
         self._watchlist.clear()
         
@@ -382,6 +396,78 @@ class WarriorEngine:
         self.state = WarriorEngineState.RUNNING
         logger.info("[Warrior Engine] Resumed")
         return {"status": "resumed"}
+    
+    # =========================================================================
+    # L2 STREAMING
+    # =========================================================================
+    
+    async def _start_l2(self):
+        """Start L2 streaming components (behind L2_ENABLED flag)."""
+        try:
+            from nexus2 import config as app_config
+            from nexus2.adapters.market_data.schwab_l2_streamer import SchwabL2Streamer
+            from nexus2.domain.market_data.l2_recorder import L2Recorder
+            from nexus2.domain.market_data.l2_subscription_manager import L2SubscriptionManager
+            
+            # Instantiate components
+            self._l2_recorder = L2Recorder(
+                sample_rate_seconds=app_config.L2_SAMPLE_RATE_SECONDS,
+            )
+            self._l2_streamer = SchwabL2Streamer(
+                max_symbols=app_config.L2_MAX_SYMBOLS,
+                on_update=self._l2_recorder.record,
+            )
+            self._l2_sub_manager = L2SubscriptionManager(
+                streamer=self._l2_streamer,
+                max_symbols=app_config.L2_MAX_SYMBOLS,
+            )
+            
+            # Start streamer (connects WebSocket) and recorder (background thread)
+            await self._l2_streamer.start()
+            self._l2_recorder.start()
+            
+            logger.info("[Warrior Engine] L2 streaming started")
+        except Exception as e:
+            logger.error(f"[Warrior Engine] Failed to start L2 streaming: {e}")
+            # Non-fatal — engine continues without L2
+            self._l2_streamer = None
+            self._l2_recorder = None
+            self._l2_sub_manager = None
+    
+    async def _stop_l2(self):
+        """Stop L2 streaming components."""
+        try:
+            if self._l2_recorder:
+                self._l2_recorder.stop()
+            if self._l2_streamer:
+                await self._l2_streamer.stop()
+            logger.info("[Warrior Engine] L2 streaming stopped")
+        except Exception as e:
+            logger.error(f"[Warrior Engine] Error stopping L2 streaming: {e}")
+        finally:
+            self._l2_streamer = None
+            self._l2_recorder = None
+            self._l2_sub_manager = None
+    
+    def _get_l2_status(self) -> Optional[dict]:
+        """Get L2 streaming status for the engine status endpoint."""
+        from nexus2 import config as app_config
+        if not app_config.L2_ENABLED:
+            return None
+        return {
+            "enabled": True,
+            "connected": self._l2_streamer.is_connected if self._l2_streamer else False,
+            "subscriptions": (
+                self._l2_sub_manager.get_active_subscriptions()
+                if self._l2_sub_manager
+                else []
+            ),
+            "manager": (
+                self._l2_sub_manager.get_status()
+                if self._l2_sub_manager
+                else None
+            ),
+        }
     
     # =========================================================================
     # SCANNING
@@ -501,6 +587,10 @@ class WarriorEngine:
         }
         
         logger.info(f"[Warrior Scan] Found {len(result.candidates)} candidates, watching {len(self._watchlist)}")
+        
+        # Update L2 subscriptions based on current watchlist
+        if self._l2_sub_manager and self._watchlist:
+            await self._l2_sub_manager.update_watchlist(self._watchlist)
         
         # Process queued multi-model comparisons (non-blocking, respects rate limits)
         try:
@@ -762,6 +852,7 @@ class WarriorEngine:
                 "last_error": self.stats.last_error,
             },
             "monitor": self.monitor.get_status(),
+            "l2": self._get_l2_status(),
             "config": {
                 "sim_only": self.config.sim_only,
                 "risk_per_trade": float(self.config.risk_per_trade),
