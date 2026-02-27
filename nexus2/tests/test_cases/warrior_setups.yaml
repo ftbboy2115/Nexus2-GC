@@ -1193,7 +1193,7 @@ test_cases:
     description: "Ross Cameron - Biotech Breaking News Squeeze, 10s Chart Timing"
     trade_date: "2026-02-19"
     intraday_file: "intraday/ross_envb_20260219.json"
-    ross_pnl: null  # Exact per-trade P&L not stated in transcript
+    ross_pnl: 12716.00  # VIDEO_VERIFIED by Clay (not stated in transcript audio)
     ross_entry_time: "08:01"  # Breaking news hit scanner just after 8am
     ross_chart_timeframe: "10s"  # Ross used 10-second chart for micro-timing
     premarket_data:

@@ -15,6 +15,7 @@
 | Feb 21 | 3eaacd9 | +5 test cases, trigger rejection logging | 35 | 23 (66%) | $120,889 | $433,000 | 27.9% | 93s | HIND $0→$14K; BCTX 96.7% capture |
 | Feb 22 | 654b3f3 | RVOL slider, scanner persistence fix | 35 | 22 (63%) | $119,105 | $433,000 | 27.5% | 322s | BCTX flipped -$156; runtime 3.5x regression |
 | Feb 23 | — | GC batch run | 35 | 22 (63%) | $118,983 | $433,000 | 27.5% | 291s | Auto-tracked by GC |
+| **Feb 27** | **2f3bc93** | **ENVB P&L fix, +2 cases, scaling/exit improvements** | **37** | **27 (73%)** | **$383,378** | **$446,275** | **85.9%** | **58s** | **🚀 3x P&L jump; ENVB P&L corrected $0→$12.7K** |
 
 
 ---
@@ -22,10 +23,10 @@
 ## Key Metrics Over Time
 
 ```
-Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5%
-Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K
-Win Rate:      52% → 66% → 60% → 66% → 63%
-Runtime:       43s → 35s → 155s → 93s → 322s ⚠️
+Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5% → 85.9% 🚀
+Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K → $383.4K 🚀
+Win Rate:      52% → 66% → 60% → 66% → 63% → 73%
+Runtime:       43s → 35s → 155s → 93s → 322s → 58s ✅
 ```
 
 ---
@@ -61,6 +62,13 @@ Runtime:       43s → 35s → 155s → 93s → 322s ⚠️
 - **Result:** Slight regression — BCTX flipped from +$4,353 to -$156; 1 fewer profitable case
 - **⚠️ Runtime regression:** 322s (was 93s) — needs investigation
 - **Open question:** Did scanner persistence or trigger rejection DB writes cause the slowdown?
+
+### Feb 27 — ENVB P&L Fix + New Baseline
+- **Changes:** ENVB ross_pnl corrected from null→$12,716 (confirmed by Clay from video). +2 test cases (AIDX, NDRA). Multiple code improvements since Feb 23 (scaling v2, exit tuning, 10s bar pipeline, entry pattern updates).
+- **Result:** 🚀 Bot P&L tripled: $119K → $383K. Capture rate 27.5% → 85.9%. Win rate 63% → 73%.
+- **Runtime:** 58s (was 291s) — massive improvement, down to 1.6s/case avg.
+- **Key insight:** Combined effect of many incremental improvements between Feb 23-27 produced a step-change in performance.
+- **Data quality audit:** All 35 POLYGON_DATA cases have ross_pnl values. 1 NEEDS_VIDEO_CHECK (VELO), 12 TRANSCRIPT_PARTIAL, 20 missing data_quality field.
 
 ---
 
@@ -99,6 +107,7 @@ Cases that have changed direction or significantly shifted P&L between runs:
 | Feb 21 | 35 | 93s | 2.7s | Improved vs Feb 18 |
 | Feb 22 | 35 | 322s | 9.2s | ⚠️ Investigate regression |
 | Feb 23 | 35 | 291s | 8.3s | ⚠️ Needs investigation |
+| **Feb 27** | **37** | **58s** | **1.6s** | ✅ Resolved — back to baseline |
 
 
 > [!WARNING]

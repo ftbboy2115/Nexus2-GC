@@ -3,7 +3,7 @@
 **Date:** 2026-02-19  
 **Video:** [A Hit or Miss Market...](https://www.youtube.com/watch?v=PPJLNKFS224)  
 **Stock:** ENVB  
-**Result:** Modest green (exact P&L not stated)
+**Result:** +$12,716 (confirmed from video by Clay)
 
 ---
 
