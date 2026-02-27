@@ -91,9 +91,24 @@ def list_cases():
     print()
 
 
+# Standardized batch test settings — ensures consistent results
+# regardless of warrior_settings.json on VPS vs local.
+# These are sim-scale settings for fair P&L comparison against Ross.
+BATCH_CONFIG_OVERRIDES = {
+    "risk_per_trade": 2500.0,
+    "max_capital": 100000.0,
+    "max_shares_per_trade": 10000,
+    "max_positions": 20,
+    "entry_bar_timeframe": "1min",
+}
+
+
 def run_cases(case_ids: list[str] | None = None, include_trades: bool = False) -> dict:
     """Run batch test for specific cases or all."""
-    body: dict = {"include_trades": include_trades}
+    body: dict = {
+        "include_trades": include_trades,
+        "config_overrides": BATCH_CONFIG_OVERRIDES,
+    }
     if case_ids:
         body["case_ids"] = case_ids
     t0 = time.time()
