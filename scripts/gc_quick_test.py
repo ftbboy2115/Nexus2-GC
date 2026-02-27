@@ -94,12 +94,15 @@ def list_cases():
 # Standardized batch test settings — ensures consistent results
 # regardless of warrior_settings.json on VPS vs local.
 # These are sim-scale settings for fair P&L comparison against Ross.
+# NOTE: Values must match WarriorEngineConfig field types exactly.
+# SimContext.create uses raw setattr, so Decimal fields need Decimal values,
+# int fields need int, etc. Otherwise TypeError from Decimal/float mixing.
 BATCH_CONFIG_OVERRIDES = {
-    "risk_per_trade": 2500.0,
-    "max_capital": 100000.0,
-    "max_shares_per_trade": 10000,
-    "max_positions": 20,
-    "entry_bar_timeframe": "1min",
+    "risk_per_trade": "2500",       # Decimal field — passed as string for safe conversion
+    "max_capital": "100000",        # Decimal field
+    "max_shares_per_trade": 10000,  # int field
+    "max_positions": 20,            # int field
+    "entry_bar_timeframe": "1min",  # str field
 }
 
 

@@ -75,8 +75,13 @@ class SimContext:
         
         # Apply config overrides from param sweep (takes precedence over saved settings)
         if config_overrides:
+            from decimal import Decimal as _D
             for key, value in config_overrides.items():
                 if hasattr(engine.config, key):
+                    # Auto-convert to Decimal if existing field is Decimal (prevents float*Decimal TypeError)
+                    current = getattr(engine.config, key)
+                    if isinstance(current, _D) and not isinstance(value, _D):
+                        value = _D(str(value))
                     setattr(engine.config, key, value)
                     log.info(f"[SimContext] Override: engine.config.{key} = {value}")
         
