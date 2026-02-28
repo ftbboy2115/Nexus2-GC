@@ -211,7 +211,7 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
                             {/* Spread & Quality info row */}
                             <div className={styles.l2InfoRow}>
                                 <span>
-                                    Spread: <strong>${book.spread.toFixed(2)}</strong>
+                                    Spread: <strong>${book.spread != null ? book.spread.toFixed(2) : 'N/A'}</strong>
                                     {book.signals?.spread_quality && (
                                         <span style={{ color: '#888' }}> ({book.signals.spread_quality.spread_bps.toFixed(1)} bps)</span>
                                     )}

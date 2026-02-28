@@ -65,10 +65,8 @@ async def check_entry_guards(
     # aren't blocked by real-time EoD cutoff
     if engine.monitor.sim_mode and hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
         et_now = engine.monitor._sim_clock.current_time
-        print(f"[DEBUG GUARD] {symbol}: Using sim clock time: {et_now}")
     else:
         et_now = engine._get_eastern_time()
-        print(f"[DEBUG GUARD] {symbol}: Using REAL clock: {et_now} (sim_mode={engine.monitor.sim_mode}, has_clock={hasattr(engine.monitor, '_sim_clock')}, clock_val={getattr(engine.monitor, '_sim_clock', 'MISSING')})")
     _btime = et_now.strftime("%H:%M") if et_now else None
     
     # =========================================================================
@@ -82,7 +80,6 @@ async def check_entry_guards(
             h, m = map(int, engine.monitor.settings.eod_entry_cutoff_time.split(":"))
             from datetime import time as dt_time
             cutoff = dt_time(h, m)
-            print(f"[DEBUG GUARD] {symbol}: current_time={current_time.strftime('%H:%M')}, cutoff={engine.monitor.settings.eod_entry_cutoff_time}, blocked={current_time >= cutoff}")
             if current_time >= cutoff:
                 reason = f"EoD entry cutoff: {current_time.strftime('%H:%M')} past {engine.monitor.settings.eod_entry_cutoff_time} ET"
                 tml.log_warrior_guard_block(symbol, "eod_cutoff", reason, _trigger, _price, _btime)
