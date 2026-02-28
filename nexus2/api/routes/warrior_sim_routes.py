@@ -53,7 +53,7 @@ def set_warrior_sim_broker(broker):
 
 class WarriorSimEnableRequest(BaseModel):
     """Request to enable Warrior simulation mode."""
-    initial_cash: float = Field(25000.0, description="Starting cash for sim account")
+    initial_cash: float = Field(100_000.0, description="Starting cash for sim account")
 
 
 class WarriorSimOrderRequest(BaseModel):
@@ -740,6 +740,7 @@ async def load_historical_test_case(case_id: str):
     
     # Reset broker state when loading new test case (clears previous orders/positions)
     broker.reset()
+    broker._cash = 100_000.0  # Ensure sufficient buying power (position sizing can need up to $100K)
     
     # Set up MockMarketData with the clock
     from nexus2.adapters.simulation import get_mock_market_data
