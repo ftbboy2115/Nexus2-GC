@@ -1047,19 +1047,21 @@ async def load_historical_test_case(case_id: str):
             exit_mode: str = None, entry_trigger: str = None, **kwargs
         ):
             """Submit order through MockBroker for historical replay."""
+            import logging
+            _log = logging.getLogger(__name__)
+            
             sim_broker = get_warrior_sim_broker()
             if sim_broker is None:
-                print(f"[Historical Replay] No MockBroker for order submission")
+                _log.warning(f"[DIAG submit] {symbol}: No MockBroker!")
                 return None
-            
-            # Debug: trace entry_trigger value
-            print(f"[Historical Replay] sim_submit_order: {symbol}, entry_trigger={entry_trigger}, exit_mode={exit_mode}")
             
             from decimal import Decimal
             from uuid import uuid4
             
             # Get sim_time for order tracking
             sim_time = clock.get_time_string() if clock and clock.current_time else None
+            broker_price = sim_broker._current_prices.get(symbol)
+            _log.warning(f"[DIAG submit] {symbol}: limit_price={limit_price}, broker_price={broker_price}, shares={shares}, sim_time={sim_time}")
             
             result = sim_broker.submit_bracket_order(
                 client_order_id=uuid4(),
@@ -1072,8 +1074,8 @@ async def load_historical_test_case(case_id: str):
                 entry_trigger=entry_trigger,  # Pass through to MockBroker
             )
             
-            if result:
-                print(f"[Historical Replay] MockBroker order: {symbol} x{shares} @ ${limit_price} ({side})")
+            result_status = getattr(result, 'status', None) if result else 'None'
+            _log.warning(f"[DIAG submit] {symbol}: result={result_status}, broker_positions={len(sim_broker._positions)}, broker_orders={len(sim_broker._orders)}")
             return result
         
         engine._submit_order = sim_submit_order_historical
