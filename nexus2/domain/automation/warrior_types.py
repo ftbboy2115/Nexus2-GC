@@ -130,6 +130,11 @@ class WarriorMonitorSettings:
     # Guard Toggles (for GC param sweep A/B testing)
     enable_profit_check_guard: bool = False  # Block adds when position >25% gain (not Ross methodology, for A/B testing)
     
+    # L2 Entry Gate (order book conditions before entry)
+    l2_gate_mode: str = "log_only"         # "log_only" | "warn" | "block"
+    l2_wall_threshold_volume: int = 10000  # Minimum volume to count as a wall
+    l2_wall_proximity_pct: float = 1.0     # Wall must be within X% above entry to trigger
+    
     # Momentum Scaling (add on strength — Ross adds at $10, $11, $12 etc.)
     # Independent from pullback scaling above — uses separate counters for A/B testing
     enable_momentum_adds: bool = False      # A/B testable: add shares on breakout continuation

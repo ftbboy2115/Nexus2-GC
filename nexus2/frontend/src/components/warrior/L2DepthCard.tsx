@@ -9,6 +9,8 @@ import type { L2BookSnapshot, L2Status } from './types'
 
 const API_BASE = ''
 const POLL_INTERVAL_MS = 2000
+const STALE_THRESHOLD_MS = 15000   // Show 'Stale' indicator after 15s (7+ missed polls)
+const VERY_STALE_THRESHOLD_MS = 60000  // Dim data after 60s
 
 interface L2DepthCardProps {
     selectedSymbol?: string
@@ -20,6 +22,8 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
     const [book, setBook] = useState<L2BookSnapshot | null>(null)
     const [internalSymbol, setInternalSymbol] = useState<string>('')
     const [error, setError] = useState<string | null>(null)
+    const [lastUpdated, setLastUpdated] = useState<number>(0)
+    const [now, setNow] = useState<number>(Date.now())
 
     // Use external symbol if provided, otherwise internal state
     const selectedSymbol = externalSymbol ?? internalSymbol
@@ -34,7 +38,13 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
                 const res = await fetch(`${API_BASE}/warrior/l2/status`)
                 if (res.ok) {
                     const data: L2Status = await res.json()
-                    setL2Status(data)
+                    setL2Status(prev => {
+                        // Only update if meaningful change (avoid flicker on transient empties)
+                        if (prev && data.subscriptions.length === 0 && prev.subscriptions.length > 0) {
+                            return prev // Keep previous subscriptions if new poll returns empty
+                        }
+                        return data
+                    })
                     // Auto-select first subscription only once on initial load
                     if (data.subscriptions.length > 0 && !hasAutoSelected.current) {
                         hasAutoSelected.current = true
@@ -44,10 +54,11 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
                 } else if (res.status === 404) {
                     setError('L2 endpoints not available')
                 } else {
-                    setError('Failed to fetch L2 status')
+                    // Don't clear status on transient failures
                 }
             } catch {
-                setError('L2 not available')
+                // Don't clear status on network errors — keep last good state
+                if (!l2Status) setError('L2 not available')
             }
         }
         fetchStatus()
@@ -63,9 +74,11 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
             if (res.ok) {
                 const data: L2BookSnapshot = await res.json()
                 setBook(data)
+                setLastUpdated(Date.now())
             }
+            // On non-200, keep previous book data (don't clear)
         } catch {
-            // Silently fail on poll — status check will surface errors
+            // Silently fail on poll — keep last good book data
         }
     }, [selectedSymbol, l2Status?.enabled])
 
@@ -73,7 +86,7 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
     useEffect(() => {
         if (pollRef.current) clearInterval(pollRef.current)
         if (!selectedSymbol || !l2Status?.enabled || !l2Status?.connected) {
-            setBook(null)
+            // Don't clear book here — let it show stale data with a visual indicator instead
             return
         }
         fetchBook()
@@ -82,6 +95,16 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
             if (pollRef.current) clearInterval(pollRef.current)
         }
     }, [selectedSymbol, l2Status?.enabled, l2Status?.connected, fetchBook])
+
+    // Tick 'now' every second so staleness re-evaluates
+    useEffect(() => {
+        const tick = setInterval(() => setNow(Date.now()), 1000)
+        return () => clearInterval(tick)
+    }, [])
+
+    const staleness = lastUpdated > 0 ? now - lastUpdated : 0
+    const isStale = staleness > STALE_THRESHOLD_MS
+    const isVeryStale = staleness > VERY_STALE_THRESHOLD_MS
 
     // ========================================================================
     // Helpers
@@ -176,14 +199,15 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
                             🔄
                         </button>
                         {book && (
-                            <span style={{ fontSize: '0.7rem', color: '#666', marginLeft: 'auto' }}>
+                            <span style={{ fontSize: '0.7rem', color: isStale ? '#dc3545' : '#666', marginLeft: 'auto' }}>
+                                {isVeryStale ? '⏳ Very Stale — ' : isStale ? '⏳ Stale — ' : ''}
                                 {new Date(book.timestamp).toLocaleTimeString()}
                             </span>
                         )}
                     </div>
 
                     {book ? (
-                        <>
+                        <div style={{ opacity: isVeryStale ? 0.5 : 1, transition: 'opacity 0.5s ease' }}>
                             {/* Spread & Quality info row */}
                             <div className={styles.l2InfoRow}>
                                 <span>
@@ -318,7 +342,7 @@ export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: 
                                     </span>
                                 )}
                             </div>
-                        </>
+                        </div>
                     ) : (
                         <p className={styles.emptyMessage}>Loading book data...</p>
                     )}

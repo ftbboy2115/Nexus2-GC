@@ -168,6 +168,12 @@ async def check_entry_guards(
         tml.log_warrior_guard_block(symbol, "spread", spread_reason, _trigger, _price, _btime)
         return False, spread_reason
     
+    # L2 ENTRY GATE — order book check (ask walls + spread quality)
+    l2_result = _check_l2_gate(engine, symbol, current_price)
+    if not l2_result[0]:
+        tml.log_warrior_guard_block(symbol, "l2_gate", l2_result[1], _trigger, _price, _btime)
+        return l2_result
+    
     return True, ""
 
 
@@ -348,6 +354,116 @@ async def _check_spread_filter(
         return False, f"Spread check error: {e}", None
     
     return True, "", current_ask
+
+
+def _check_l2_gate(
+    engine: "WarriorEngine",
+    symbol: str,
+    entry_price: Decimal,
+) -> Tuple[bool, str]:
+    """
+    L2 order book gate. Checks for ask walls and spread quality.
+    
+    FAIL-OPEN: If L2 data unavailable, ALWAYS allow entry.
+    
+    Modes (from monitor settings):
+        log_only: Log L2 conditions but never block (default)
+        warn: Log WARNING but still allow entry
+        block: Actually reject the entry
+    
+    Returns:
+        (True, "") if entry allowed
+        (False, reason) if blocked (only in 'block' mode)
+    """
+    try:
+        from nexus2 import config as app_config
+
+        # FAIL-OPEN: L2 disabled or no streamer → allow
+        if not app_config.L2_ENABLED:
+            return True, ""
+
+        streamer = getattr(engine, "_l2_streamer", None)
+        if streamer is None:
+            return True, ""
+
+        # Get snapshot — no data → allow
+        snapshot = streamer.get_snapshot(symbol)
+        if snapshot is None:
+            logger.debug(f"[L2 Gate] {symbol}: No L2 snapshot available — allowing entry")
+            return True, ""
+
+        # Read settings from monitor
+        settings = engine.monitor.settings
+        mode = getattr(settings, "l2_gate_mode", "log_only")
+        wall_threshold = getattr(settings, "l2_wall_threshold_volume", 10000)
+        proximity_pct = getattr(settings, "l2_wall_proximity_pct", 1.0)
+
+        # Lazy import signal functions
+        from nexus2.domain.market_data.l2_signals import detect_ask_wall, get_spread_quality
+
+        # Check 1: Ask wall within proximity of entry price
+        ask_wall = detect_ask_wall(snapshot, threshold_volume=wall_threshold)
+        wall_triggered = False
+        wall_msg = ""
+        if ask_wall is not None:
+            max_wall_price = entry_price * (1 + Decimal(str(proximity_pct)) / 100)
+            if ask_wall.price <= max_wall_price:
+                wall_triggered = True
+                wall_msg = (
+                    f"ask wall {ask_wall.volume:,} shares at ${float(ask_wall.price):.2f} "
+                    f"(within {proximity_pct}% of entry ${float(entry_price):.2f})"
+                )
+
+        # Check 2: Spread quality
+        spread_q = get_spread_quality(snapshot)
+        wide_spread = spread_q.quality == "wide"
+
+        # Build assessment log
+        assessment_parts = []
+        if wall_triggered:
+            assessment_parts.append(f"ASK_WALL: {wall_msg}")
+        if wide_spread:
+            assessment_parts.append(
+                f"WIDE_SPREAD: {spread_q.spread_bps:.1f} bps "
+                f"(bid_depth={spread_q.bid_depth}, ask_depth={spread_q.ask_depth})"
+            )
+        if not assessment_parts:
+            assessment_parts.append("OK")
+            if ask_wall:
+                assessment_parts.append(
+                    f"(wall at ${float(ask_wall.price):.2f} outside proximity)"
+                )
+
+        assessment = "; ".join(assessment_parts)
+        triggered = wall_triggered  # Wide spread alone doesn't block, just logged
+
+        # Mode-based behavior
+        if mode == "log_only":
+            logger.info(f"[L2 Gate] {symbol}: {assessment} [mode=log_only]")
+            return True, ""
+        elif mode == "warn":
+            if triggered:
+                logger.warning(f"[L2 Gate] {symbol}: {assessment} [mode=warn — allowing entry]")
+            else:
+                logger.info(f"[L2 Gate] {symbol}: {assessment} [mode=warn]")
+            return True, ""
+        elif mode == "block":
+            if triggered:
+                reason = f"L2 gate: {wall_msg}"
+                logger.warning(f"[L2 Gate] {symbol}: BLOCKING — {reason}")
+                return False, reason
+            else:
+                logger.info(f"[L2 Gate] {symbol}: {assessment} [mode=block — passing]")
+                return True, ""
+        else:
+            # Unknown mode — treat as log_only
+            logger.info(f"[L2 Gate] {symbol}: {assessment} [mode={mode} — unknown, treating as log_only]")
+            return True, ""
+
+    except Exception as e:
+        # FAIL-OPEN: L2 errors must never block trades
+        logger.warning(f"[L2 Gate] {symbol}: Error — {e}. Allowing entry (fail-open).")
+        return True, ""
 
 
 # =============================================================================
