@@ -56,6 +56,41 @@ def now_utc() -> datetime:
     return datetime.now(UTC)
 
 
+def sim_aware_now_utc() -> datetime:
+    """Returns sim clock time if in sim context, else real UTC.
+    
+    Use this INSTEAD of now_utc() in trading logic that must
+    respect simulated time (exit logic, grace periods, cooldowns).
+    
+    In live mode, the ContextVar is unset → falls back to now_utc().
+    In sim mode, the ContextVar is set per-case → returns sim time.
+    
+    DO NOT use this for:
+    - DB timestamps (use now_utc())
+    - API response timestamps (use now_utc())
+    - Dataclass defaults (use now_utc_factory())
+    - Logging timestamps (use now_utc())
+    """
+    from nexus2.adapters.simulation.sim_clock import _sim_clock_ctx
+    clock = _sim_clock_ctx.get()
+    if clock and clock.current_time:
+        return clock.current_time
+    return now_utc()
+
+
+def sim_aware_now_et() -> datetime:
+    """Returns sim clock time in ET if in sim context, else real ET.
+    
+    Same as sim_aware_now_utc() but returns Eastern Time.
+    Use for cases where datetime.now(ET) was used directly.
+    """
+    from nexus2.adapters.simulation.sim_clock import _sim_clock_ctx
+    clock = _sim_clock_ctx.get()
+    if clock and clock.current_time:
+        return clock.current_time.astimezone(EASTERN)
+    return now_et()
+
+
 def now_utc_factory() -> datetime:
     """
     Factory function for dataclass default_factory.

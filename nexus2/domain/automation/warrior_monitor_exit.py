@@ -18,7 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
-from nexus2.utils.time_utils import now_utc
+from nexus2.utils.time_utils import sim_aware_now_utc, sim_aware_now_et
 from nexus2.domain.automation.warrior_types import (
     WarriorExitReason,
     WarriorExitSignal,
@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from nexus2.domain.automation.warrior_monitor import WarriorMonitor
 
 logger = logging.getLogger(__name__)
+
+
 
 
 def _set_add_back_tracking(
@@ -282,7 +284,7 @@ async def _check_spread_exit(
     if entry_time.tzinfo is None:
         from datetime import timezone
         entry_time = entry_time.replace(tzinfo=timezone.utc)
-    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    seconds_since_entry = (sim_aware_now_utc() - entry_time).total_seconds()
     
     if seconds_since_entry < s.spread_grace_period_seconds:
         return None
@@ -458,7 +460,7 @@ async def _check_candle_under_candle(
     if entry_time.tzinfo is None:
         from datetime import timezone
         entry_time = entry_time.replace(tzinfo=timezone.utc)
-    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    seconds_since_entry = (sim_aware_now_utc() - entry_time).total_seconds()
     
     grace_seconds = getattr(s, 'candle_exit_grace_seconds', 60)
     if seconds_since_entry < grace_seconds:
@@ -511,9 +513,8 @@ async def _check_candle_under_candle(
     # CONFIRMATION B: Synthetic 5m candle is also red (boundary-aligned)
     synthetic_5m_red = False
     if len(candles) >= 5:
-        # Get current 5m boundary
-        from zoneinfo import ZoneInfo
-        et_now = datetime.now(ZoneInfo("America/New_York"))
+        # Get current 5m boundary (use sim clock for batch test fidelity)
+        et_now = sim_aware_now_et()
         bucket_start_minute = (et_now.minute // 5) * 5  # e.g., 9:37 → 35
         
         # Filter candles to those in the current 5m bucket
@@ -609,7 +610,7 @@ async def _check_topping_tail(
     if entry_time.tzinfo is None:
         from datetime import timezone
         entry_time = entry_time.replace(tzinfo=timezone.utc)
-    seconds_since_entry = (now_utc() - entry_time).total_seconds()
+    seconds_since_entry = (sim_aware_now_utc() - entry_time).total_seconds()
     
     grace_seconds = getattr(s, 'topping_tail_grace_seconds', 120)  # Default 2 minutes
     if seconds_since_entry < grace_seconds:
@@ -1481,7 +1482,7 @@ async def handle_exit(
     if signal.reason != WarriorExitReason.PARTIAL_EXIT:
         if order_success:
             # Track as recently exited (wall clock for live, sim clock for Mock Market)
-            monitor._recently_exited[signal.symbol] = now_utc()
+            monitor._recently_exited[signal.symbol] = sim_aware_now_utc()
             
             # SIM MODE: Also track exit in simulation time (for proper cooldown)
             if monitor.sim_mode and hasattr(monitor, '_sim_clock') and monitor._sim_clock:
@@ -1510,7 +1511,7 @@ async def handle_exit(
                     monitor._on_profit_exit(
                         symbol=signal.symbol,
                         exit_price=float(actual_exit_price),
-                        exit_time=now_utc(),
+                        exit_time=sim_aware_now_utc(),
                     )
                     logger.info(f"[Warrior] {signal.symbol}: Re-entry enabled after profit exit")
                 except Exception as e:
