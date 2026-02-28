@@ -61,7 +61,12 @@ async def check_entry_guards(
     _price = float(current_price)
     
     # Derive blocked_time (HH:MM ET) for counterfactual analysis
-    et_now = engine._get_eastern_time()
+    # In sim mode, use sim clock time (not real wall clock) so test cases
+    # aren't blocked by real-time EoD cutoff
+    if engine.monitor.sim_mode and hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+        et_now = engine.monitor._sim_clock.current_time
+    else:
+        et_now = engine._get_eastern_time()
     _btime = et_now.strftime("%H:%M") if et_now else None
     
     # =========================================================================
@@ -364,7 +369,11 @@ async def _check_spread_filter(
                 # Tighten spread requirements as post-market deepens
                 try:
                     from datetime import time as dt_time
-                    et_now = engine._get_eastern_time()
+                    # Use sim clock in sim mode (same as EoD cutoff guard)
+                    if engine.monitor.sim_mode and hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+                        et_now = engine.monitor._sim_clock.current_time
+                    else:
+                        et_now = engine._get_eastern_time()
                     current_time = et_now.time() if et_now else None
                     if current_time is not None:
                         phase2_start = dt_time(18, 0)  # 6 PM
