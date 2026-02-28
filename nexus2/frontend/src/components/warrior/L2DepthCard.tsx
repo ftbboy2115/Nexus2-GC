@@ -10,12 +10,22 @@ import type { L2BookSnapshot, L2Status } from './types'
 const API_BASE = ''
 const POLL_INTERVAL_MS = 2000
 
-export function L2DepthCard() {
+interface L2DepthCardProps {
+    selectedSymbol?: string
+    onSymbolChange?: (symbol: string) => void
+}
+
+export function L2DepthCard({ selectedSymbol: externalSymbol, onSymbolChange }: L2DepthCardProps = {}) {
     const [l2Status, setL2Status] = useState<L2Status | null>(null)
     const [book, setBook] = useState<L2BookSnapshot | null>(null)
-    const [selectedSymbol, setSelectedSymbol] = useState<string>('')
+    const [internalSymbol, setInternalSymbol] = useState<string>('')
     const [error, setError] = useState<string | null>(null)
+
+    // Use external symbol if provided, otherwise internal state
+    const selectedSymbol = externalSymbol ?? internalSymbol
+    const setSelectedSymbol = onSymbolChange ?? setInternalSymbol
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const hasAutoSelected = useRef(false)
 
     // Fetch L2 subsystem status on mount
     useEffect(() => {
@@ -25,8 +35,9 @@ export function L2DepthCard() {
                 if (res.ok) {
                     const data: L2Status = await res.json()
                     setL2Status(data)
-                    // Auto-select first subscription if none selected
-                    if (data.subscriptions.length > 0 && !selectedSymbol) {
+                    // Auto-select first subscription only once on initial load
+                    if (data.subscriptions.length > 0 && !hasAutoSelected.current) {
+                        hasAutoSelected.current = true
                         setSelectedSymbol(data.subscriptions[0])
                     }
                     setError(null)

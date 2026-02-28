@@ -118,6 +118,9 @@ export default function Warrior() {
     // Countdown timer state
     const [countdown, setCountdown] = useState<string>('')
 
+    // L2 symbol state (shared between WatchlistCard and L2DepthCard)
+    const [l2Symbol, setL2Symbol] = useState<string>('')
+
     // Trade events visibility
     const [showTradeEvents, setShowTradeEvents] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -608,12 +611,16 @@ export default function Warrior() {
                                     watchlistSort={watchlistSort}
                                     setWatchlistSort={setWatchlistSort}
                                     openChart={openChart}
+                                    onLoadL2={setL2Symbol}
                                 />
                             )}
 
                             {/* 2b. L2 Order Book */}
                             {isCardVisible('l2-depth') && (
-                                <L2DepthCard />
+                                <L2DepthCard
+                                    selectedSymbol={l2Symbol || undefined}
+                                    onSymbolChange={setL2Symbol}
+                                />
                             )}
                         </div>
 

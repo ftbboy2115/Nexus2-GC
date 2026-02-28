@@ -25,6 +25,7 @@ interface WatchlistCardProps {
     watchlistSort: SortConfig
     setWatchlistSort: React.Dispatch<React.SetStateAction<SortConfig>>
     openChart: (symbol: string) => void
+    onLoadL2?: (symbol: string) => void
 }
 
 export function WatchlistCard({
@@ -33,6 +34,7 @@ export function WatchlistCard({
     watchlistSort,
     setWatchlistSort,
     openChart,
+    onLoadL2,
 }: WatchlistCardProps) {
     return (
         <CollapsibleCard
@@ -66,6 +68,15 @@ export function WatchlistCard({
                                             >
                                                 {w.symbol}
                                             </span>
+                                            {onLoadL2 && (
+                                                <span
+                                                    className={styles.l2IconBtn}
+                                                    onClick={(e) => { e.stopPropagation(); onLoadL2(w.symbol) }}
+                                                    title="View L2 order book"
+                                                >
+                                                    📊
+                                                </span>
+                                            )}
                                         </td>
                                         <td title={w.catalyst_description || ''}>
                                             {w.catalyst_type === 'earnings' ? '📊' :

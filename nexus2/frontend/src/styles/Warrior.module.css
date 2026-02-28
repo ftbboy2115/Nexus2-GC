@@ -483,6 +483,18 @@
     text-underline-offset: 2px;
 }
 
+.l2IconBtn {
+    cursor: pointer;
+    font-size: 0.7rem;
+    margin-left: 0.35rem;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+}
+
+.l2IconBtn:hover {
+    opacity: 1;
+}
+
 .ideal {
     color: #28a745;
     font-weight: 600;
