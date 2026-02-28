@@ -345,15 +345,11 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
         engine: The WarriorEngine instance
     """
     if not engine._get_quote:
-        logger.warning(f"[DIAG] check_entry_triggers: _get_quote is None/empty, returning early")
         return
-    
-    logger.warning(f"[DIAG] check_entry_triggers: watchlist={list(engine._watchlist.keys())}, _get_quote={type(engine._get_quote).__name__}")
     
     for symbol, watched in list(engine._watchlist.items()):
         try:
             current_price = await engine._get_quote(symbol)
-            logger.warning(f"[DIAG] {symbol}: _get_quote returned {current_price} (type={type(current_price).__name__ if current_price else 'None'})")
             if not current_price:
                 continue
             
