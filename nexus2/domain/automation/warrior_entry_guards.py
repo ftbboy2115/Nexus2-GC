@@ -64,6 +64,24 @@ async def check_entry_guards(
     et_now = engine._get_eastern_time()
     _btime = et_now.strftime("%H:%M") if et_now else None
     
+    # =========================================================================
+    # EOD ENTRY CUTOFF — block ALL new entries past cutoff time (Feb 27 fix)
+    # This guard is NON-SKIPPABLE even in A/B test mode (safety critical)
+    # =========================================================================
+    current_time = et_now.time() if et_now else None
+    if current_time is not None:
+        # Hard cutoff: no entries after eod_entry_cutoff_time (default 7 PM ET)
+        try:
+            h, m = map(int, engine.monitor.settings.eod_entry_cutoff_time.split(":"))
+            from datetime import time as dt_time
+            cutoff = dt_time(h, m)
+            if current_time >= cutoff:
+                reason = f"EoD entry cutoff: {current_time.strftime('%H:%M')} past {engine.monitor.settings.eod_entry_cutoff_time} ET"
+                tml.log_warrior_guard_block(symbol, "eod_cutoff", reason, _trigger, _price, _btime)
+                return False, reason
+        except (ValueError, AttributeError) as e:
+            logger.warning(f"[Warrior Guards] Failed to parse eod_entry_cutoff_time: {e}")
+    
     # PHASE 1: Skip all guards for A/B comparison testing (SIM ONLY)
     if getattr(engine, 'skip_guards', False):
         assert engine.monitor.sim_mode, "skip_guards only allowed in simulation"
@@ -310,6 +328,10 @@ async def _check_spread_filter(
     """
     Check bid-ask spread for entry suitability.
     
+    Includes progressive EoD spread gates (Feb 27 fix):
+    - Phase 1 (4-6 PM): max eod_phase1_max_spread_pct (default 2%)
+    - Phase 2 (6-7 PM): max eod_phase2_max_spread_pct (default 1%)
+    
     Returns:
         (True, "", current_ask) if spread OK
         (False, reason, None) if blocked
@@ -329,6 +351,7 @@ async def _check_spread_filter(
                 current_ask = Decimal(str(ask))
                 spread_percent = ((ask - bid) / bid) * 100
                 
+                # Normal spread check (config.max_entry_spread_percent)
                 if spread_percent > engine.config.max_entry_spread_percent:
                     reason = (
                         f"REJECTED - spread {spread_percent:.1f}% > "
@@ -336,11 +359,39 @@ async def _check_spread_filter(
                         f"(bid=${bid:.2f}, ask=${ask:.2f})"
                     )
                     return False, reason, None
-                else:
-                    logger.debug(
-                        f"[Warrior Entry] {symbol}: Spread OK {spread_percent:.1f}% "
-                        f"(max={engine.config.max_entry_spread_percent}%)"
-                    )
+                
+                # Progressive EoD spread gates (Feb 27 fix)
+                # Tighten spread requirements as post-market deepens
+                try:
+                    from datetime import time as dt_time
+                    et_now = engine._get_eastern_time()
+                    current_time = et_now.time() if et_now else None
+                    if current_time is not None:
+                        phase2_start = dt_time(18, 0)  # 6 PM
+                        phase1_start = dt_time(16, 0)  # 4 PM
+                        
+                        eod_limit = None
+                        phase_label = ""
+                        if current_time >= phase2_start:
+                            eod_limit = engine.monitor.settings.eod_phase2_max_spread_pct
+                            phase_label = "phase2 (6-7 PM)"
+                        elif current_time >= phase1_start:
+                            eod_limit = engine.monitor.settings.eod_phase1_max_spread_pct
+                            phase_label = "phase1 (4-6 PM)"
+                        
+                        if eod_limit is not None and spread_percent > eod_limit:
+                            reason = (
+                                f"EoD spread gate ({phase_label}): spread {spread_percent:.1f}% > "
+                                f"max {eod_limit}% (bid=${bid:.2f}, ask=${ask:.2f})"
+                            )
+                            return False, reason, None
+                except Exception as e:
+                    logger.debug(f"[Warrior Entry] {symbol}: EoD spread check skipped: {e}")
+                
+                logger.debug(
+                    f"[Warrior Entry] {symbol}: Spread OK {spread_percent:.1f}% "
+                    f"(max={engine.config.max_entry_spread_percent}%)"
+                )
             elif bid <= 0 or ask <= 0:
                 # FAIL-CLOSED (Phase 11 A1 fix): block entry on invalid bid/ask
                 logger.warning(

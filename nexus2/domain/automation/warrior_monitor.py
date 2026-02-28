@@ -516,16 +516,26 @@ class WarriorMonitor:
             try:
                 # Skip on non-market days (weekends, holidays) and outside extended hours
                 # BUT: bypass in sim_mode for Mock Market testing anytime
+                # CRITICAL FIX (Feb 27): If we HAVE positions, keep ticking even outside
+                # extended hours — the after-hours exit logic NEEDS the monitor to be running
+                # to force-exit before overnight. Stopping the monitor too early = overnight holds.
                 if not self.sim_mode:
                     from nexus2.adapters.market_data.market_calendar import get_market_calendar
                     calendar = get_market_calendar(paper=True)
                     if not calendar.is_extended_hours_active():
-                        status = calendar.get_market_status()
-                        reason = status.reason or "off_hours"
-                        next_open = status.next_open.strftime('%Y-%m-%d %H:%M ET') if status.next_open else 'unknown'
-                        logger.info(f"[Warrior Monitor] Market closed ({reason}) - next open: {next_open}")
-                        await asyncio.sleep(60)  # Check again in 1 minute
-                        continue
+                        if self._positions:
+                            # KEEP TICKING — we have positions that need after-hours exit checks
+                            logger.info(
+                                f"[Warrior Monitor] Market closed but {len(self._positions)} position(s) held — "
+                                f"continuing monitor for after-hours exit checks"
+                            )
+                        else:
+                            status = calendar.get_market_status()
+                            reason = status.reason or "off_hours"
+                            next_open = status.next_open.strftime('%Y-%m-%d %H:%M ET') if status.next_open else 'unknown'
+                            logger.info(f"[Warrior Monitor] Market closed ({reason}) - next open: {next_open}")
+                            await asyncio.sleep(60)  # Check again in 1 minute
+                            continue
                 
                 await self._check_all_positions()
                 await asyncio.sleep(self.settings.check_interval_seconds)

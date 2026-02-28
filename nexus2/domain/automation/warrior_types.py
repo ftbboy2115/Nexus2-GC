@@ -91,6 +91,12 @@ class WarriorMonitorSettings:
     tighten_stop_time_et: str = "18:00"  # 6 PM ET - tighten stops to breakeven
     force_exit_time_et: str = "19:30"  # 7:30 PM ET - force exit all positions
     
+    # EoD Entry Cutoff & Progressive Spread Gates (Feb 27 fix)
+    # Prevents new entries in late post-market; tightens spread requirements after hours
+    eod_entry_cutoff_time: str = "19:00"  # Block ALL new entries after 7 PM ET
+    eod_phase1_max_spread_pct: float = 2.0  # Post-market (4-6 PM): max 2% spread
+    eod_phase2_max_spread_pct: float = 1.0  # Late post-market (6-7 PM): max 1% spread
+    
     # Spread Exit (liquidity protection)
     enable_spread_exit: bool = True
     max_spread_percent: float = 3.0  # Exit if spread exceeds 3%
