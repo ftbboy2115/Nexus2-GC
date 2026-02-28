@@ -57,23 +57,30 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
     // Preset state (loaded from localStorage)
     const [presets, setPresets] = useState(loadPresets)
 
+    // Track active mode independently (not derived from values)
+    const [isRossMode, setIsRossMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('warrior-settings-mode') === 'ross'
+        }
+        return false
+    })
+
     // Notes state
     const [showNotes, setShowNotes] = useState(false)
     const [notesText, setNotesText] = useState('')
     const [notesLoading, setNotesLoading] = useState(false)
 
-    // Detect if currently in Ross mode (all three values match saved Ross preset)
-    const isRossMode =
-        config?.risk_per_trade === presets.ross.risk_per_trade &&
-        config?.max_capital === presets.ross.max_capital &&
-        config?.max_shares_per_trade === presets.ross.max_shares_per_trade
-
     // Toggle between presets
     const togglePreset = () => {
-        const preset = isRossMode ? presets.conservative : presets.ross
+        const goingToRoss = !isRossMode
+        const preset = goingToRoss ? presets.ross : presets.conservative
         updateConfig('risk_per_trade', preset.risk_per_trade)
         updateConfig('max_capital', preset.max_capital)
         updateConfig('max_shares_per_trade', preset.max_shares_per_trade)
+        setIsRossMode(goingToRoss)
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('warrior-settings-mode', goingToRoss ? 'ross' : 'conservative')
+        }
     }
 
     // Save current values as the default for the active mode
