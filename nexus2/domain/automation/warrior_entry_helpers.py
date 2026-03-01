@@ -353,7 +353,8 @@ async def update_candidate_technicals(
         if snapshot.ema_9:
             watched.current_ema_9 = Decimal(str(snapshot.ema_9))
             watched.is_above_ema_9 = current_price > watched.current_ema_9
-        watched.trend_updated_at = datetime.now(timezone.utc)
+        from nexus2.utils.time_utils import sim_aware_now_utc
+        watched.trend_updated_at = sim_aware_now_utc()
         
         # Calculate VWAP separately from today's bars only
         if len(today_candle_dicts) >= 5:

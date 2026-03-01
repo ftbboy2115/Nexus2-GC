@@ -395,11 +395,12 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
             # UPDATE VWAP/EMA TRACKING for dynamic_score (TOP_PICK_ONLY uses this)
             # Throttled to 60s intervals: with 10s stepping, technicals recompute 6x/min.
             # MACD/EMA/VWAP don't meaningfully change in 10 seconds.
-            import time as _time
+            from nexus2.utils.time_utils import sim_aware_now_utc
             _last = getattr(watched, '_last_tech_update_ts', 0)
-            if _time.time() - _last >= 60:
+            _now = sim_aware_now_utc().timestamp()
+            if _now - _last >= 60:
                 await update_candidate_technicals(engine, watched, current_price)
-                watched._last_tech_update_ts = _time.time()
+                watched._last_tech_update_ts = _now
             
             # EXTENDED STOCK DETECTION: Use micro-pullback for stocks already up >100%
             # Ross methodology: Don't wait for PMH break on highly extended stocks

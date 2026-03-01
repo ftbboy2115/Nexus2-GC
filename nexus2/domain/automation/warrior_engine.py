@@ -289,9 +289,9 @@ class WarriorEngine:
         return self.state in (WarriorEngineState.RUNNING, WarriorEngineState.PREMARKET)
     
     def _get_eastern_time(self) -> datetime:
-        """Get current time in Eastern timezone."""
-        from zoneinfo import ZoneInfo
-        return datetime.now(ZoneInfo("America/New_York"))
+        """Get current time in Eastern timezone (sim-aware)."""
+        from nexus2.utils.time_utils import sim_aware_now_et
+        return sim_aware_now_et()
     
     def is_trading_window(self) -> bool:
         """Check if within 9:30 AM - 11:30 AM trading window."""
