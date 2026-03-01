@@ -1,5 +1,7 @@
 /**
  * SettingsCard - Config settings with numeric controls, toggles, and preset modes
+ * Includes batch baseline comparison: shows a badge when a setting differs from
+ * the committed batch test baseline (fetched from GET /warrior/batch-settings).
  */
 import { useState, useEffect, useCallback } from 'react'
 import styles from '@/styles/Warrior.module.css'
@@ -53,9 +55,24 @@ function savePresets(presets: { ross: Preset; conservative: Preset }) {
     }
 }
 
+// Format a setting value for display in the batch badge
+function formatBatchValue(key: string, value: unknown): string {
+    if (value == null) return ''
+    if (key === 'risk_per_trade' || key === 'max_capital') {
+        return `$${Number(value).toLocaleString()}`
+    }
+    if (key === 'max_shares_per_trade' || key === 'max_positions' || key === 'max_candidates') {
+        return Number(value).toLocaleString()
+    }
+    return String(value)
+}
+
 export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
     // Preset state (loaded from localStorage)
     const [presets, setPresets] = useState(loadPresets)
+
+    // Batch baseline settings (fetched once on mount)
+    const [batchSettings, setBatchSettings] = useState<WarriorConfig | null>(null)
 
     // Track active mode independently (not derived from values)
     const [isRossMode, setIsRossMode] = useState(() => {
@@ -105,6 +122,45 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
             setPresets(updated)
             savePresets(updated)
         }
+    }
+
+    // Fetch batch baseline settings once on mount
+    useEffect(() => {
+        const fetchBatchSettings = async () => {
+            try {
+                const res = await fetch('/warrior/batch-settings')
+                if (res.ok) {
+                    const data = await res.json()
+                    setBatchSettings(data)
+                }
+                // Silently ignore 404/errors — endpoint may not exist yet
+            } catch {
+                // Graceful degradation: no badges shown
+            }
+        }
+        fetchBatchSettings()
+    }, [])
+
+    // Check if a setting differs from the batch baseline
+    const getBatchDiff = (key: keyof WarriorConfig): string | null => {
+        if (!batchSettings || !config) return null
+        const current = config[key]
+        const batch = batchSettings[key]
+        if (batch == null || current == null) return null
+        // Normalize for comparison (string vs string, number vs number)
+        if (String(current) === String(batch)) return null
+        return formatBatchValue(key, batch)
+    }
+
+    // Render the batch badge inline (only when value differs)
+    const BatchBadge = ({ settingKey }: { settingKey: keyof WarriorConfig }) => {
+        const diff = getBatchDiff(settingKey)
+        if (!diff) return null
+        return (
+            <span className={styles.batchBadge} title="Committed batch test baseline value">
+                📊 Batch: {diff}
+            </span>
+        )
     }
 
     // Load notes from API
@@ -199,7 +255,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
 
                 <div className={styles.settingsGrid}>
                     <div className={styles.settingItem}>
-                        <label>Max Candidates</label>
+                        <label>Max Candidates <BatchBadge settingKey="max_candidates" /></label>
                         <div className={styles.settingControl}>
                             <button
                                 onClick={() => updateConfig('max_candidates', Math.max(1, (config?.max_candidates || 5) - 1))}
@@ -227,7 +283,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         </div>
                     </div>
                     <div className={styles.settingItem}>
-                        <label>Risk/Trade ($)</label>
+                        <label>Risk/Trade ($) <BatchBadge settingKey="risk_per_trade" /></label>
                         <div className={styles.settingControl}>
                             <button
                                 onClick={() => updateConfig('risk_per_trade', Math.max(10, (config?.risk_per_trade || 100) - 25))}
@@ -253,7 +309,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         </div>
                     </div>
                     <div className={styles.settingItem}>
-                        <label>Max Positions</label>
+                        <label>Max Positions <BatchBadge settingKey="max_positions" /></label>
                         <div className={styles.settingControl}>
                             <button
                                 onClick={() => updateConfig('max_positions', Math.max(1, (config?.max_positions || 3) - 1))}
@@ -267,7 +323,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         </div>
                     </div>
                     <div className={styles.settingItem}>
-                        <label>Max Shares/Trade</label>
+                        <label>Max Shares/Trade <BatchBadge settingKey="max_shares_per_trade" /></label>
                         <div className={styles.settingControl}>
                             <button
                                 onClick={() => updateConfig('max_shares_per_trade', Math.max(10, (config?.max_shares_per_trade || 100) - 10))}
@@ -293,7 +349,7 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         </div>
                     </div>
                     <div className={styles.settingItem}>
-                        <label>Max Capital/Trade ($)</label>
+                        <label>Max Capital/Trade ($) <BatchBadge settingKey="max_capital" /></label>
                         <div className={styles.settingControl}>
                             <button
                                 onClick={() => updateConfig('max_capital', Math.max(1000, (config?.max_capital || 5000) - 1000))}
@@ -344,6 +400,11 @@ export function SettingsCard({ config, updateConfig }: SettingsCardProps) {
                         title="Entry bar timeframe: 10s for faster entry, 1min for standard"
                     >
                         {config?.entry_bar_timeframe === '10s' ? '⚡' : '📊'} {config?.entry_bar_timeframe === '10s' ? '10s Bars' : '1min Bars'}
+                        {getBatchDiff('entry_bar_timeframe') && (
+                            <span className={styles.batchBadge} style={{ marginLeft: '0.35rem' }}>
+                                📊 Batch: {getBatchDiff('entry_bar_timeframe')}
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => updateConfig('always_run_ai_comparison', !(config?.always_run_ai_comparison ?? true))}

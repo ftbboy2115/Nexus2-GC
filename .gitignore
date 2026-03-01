@@ -5,7 +5,8 @@
 /charts_htf/
 __pycache__/
 *.log
-/data/
+/data/*
+!/data/warrior_settings_batch.json
 STOP_SNIPER
 .idea/
 /core/charts_ep/

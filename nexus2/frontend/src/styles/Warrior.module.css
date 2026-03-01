@@ -727,6 +727,18 @@
     -moz-appearance: textfield;
 }
 
+/* Batch baseline comparison badge */
+.batchBadge {
+    font-size: 0.72rem;
+    color: #e5a54b;
+    font-weight: 500;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.4rem;
+    background: rgba(229, 165, 75, 0.12);
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
 .entryModeToggles {
     display: flex;
     gap: 0.75rem;

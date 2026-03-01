@@ -61,17 +61,25 @@ class SimContext:
         )
         engine._pending_entries_file = None  # Disable disk persistence
         
-        # Load saved engine settings so concurrent runner uses same config as sequential
-        # Without this, concurrent gets defaults (risk=$125, max_shares=1) while
-        # sequential gets saved settings (risk=$250, max_shares=3000) → P&L divergence
+        # Load BATCH settings (committed, version-controlled) — NOT the live settings
+        # This prevents divergence when Windows and VPS have different warrior_settings.json
         try:
-            from nexus2.db.warrior_settings import load_warrior_settings, apply_settings_to_config
-            saved_engine_settings = load_warrior_settings()
+            from nexus2.db.warrior_settings import apply_settings_to_config
+            import json
+            from pathlib import Path
+            batch_settings_file = Path(__file__).parent.parent.parent.parent / "data" / "warrior_settings_batch.json"
+            if batch_settings_file.exists():
+                with open(batch_settings_file, 'r') as f:
+                    saved_engine_settings = json.load(f)
+                log.info(f"[SimContext] Loaded batch settings from {batch_settings_file}")
+            else:
+                log.warning(f"[SimContext] Batch settings not found at {batch_settings_file}, using defaults")
+                saved_engine_settings = None
             if saved_engine_settings:
                 apply_settings_to_config(engine.config, saved_engine_settings)
                 engine.config.sim_only = True  # Force sim_only regardless of saved settings
         except Exception as e:
-            print(f"[SimContext] Failed to load saved engine settings, using defaults: {e}")
+            print(f"[SimContext] Failed to load batch engine settings, using defaults: {e}")
         
         # Apply config overrides from param sweep (takes precedence over saved settings)
         if config_overrides:

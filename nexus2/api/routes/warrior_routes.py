@@ -945,6 +945,31 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
 
 
 # =============================================================================
+# BATCH SETTINGS (version-controlled, used by batch runner)
+# =============================================================================
+
+@router.get("/batch-settings")
+async def get_batch_settings():
+    """Get batch test settings (committed, version-controlled).
+
+    Returns the contents of data/warrior_settings_batch.json, which is the
+    deterministic settings file used by the concurrent batch runner.
+    """
+    import json
+    from pathlib import Path
+
+    batch_settings_file = Path(__file__).parent.parent.parent.parent / "data" / "warrior_settings_batch.json"
+    if not batch_settings_file.exists():
+        raise HTTPException(status_code=404, detail="Batch settings file not found")
+
+    try:
+        with open(batch_settings_file, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read batch settings: {e}")
+
+
+# =============================================================================
 # TRADE LOG
 # =============================================================================
 
