@@ -302,19 +302,8 @@ async def detect_dip_for_level(
         return None
     
     # TIME GATE: DIP_FOR_LEVEL requires established intraday structure
-    from datetime import datetime
-    import pytz
-    et = pytz.timezone("US/Eastern")
-    now_et = datetime.now(et)
-    
-    # Get sim clock time if we're in sim mode
-    try:
-        from nexus2.adapters.simulation import get_simulation_clock
-        sim_clock = get_simulation_clock()
-        if sim_clock and sim_clock.current_time:
-            now_et = sim_clock.current_time
-    except Exception:
-        pass
+    from nexus2.utils.time_utils import sim_aware_now_et
+    now_et = sim_aware_now_et()
     
     if now_et.hour < 6:
         logger.info(
@@ -455,11 +444,11 @@ async def detect_dip_for_level(
     
     if is_reentry:
         from datetime import timedelta
-        from nexus2.utils.time_utils import now_utc
+        from nexus2.utils.time_utils import sim_aware_now_utc
         
         # Guard 1: Cooldown
         if watched.last_exit_time:
-            time_since_exit = (now_utc() - watched.last_exit_time).total_seconds() / 60
+            time_since_exit = (sim_aware_now_utc() - watched.last_exit_time).total_seconds() / 60
             if time_since_exit < reentry_cooldown_minutes:
                 logger.debug(
                     f"[Warrior Entry] {symbol}: RE-ENTRY cooldown "
@@ -584,21 +573,9 @@ async def detect_pmh_break(
     inactive_reason = ""
     
     # Get current time for premarket-aware thresholds
-    is_premarket = False
-    try:
-        from nexus2.adapters.simulation import get_simulation_clock
-        sim_clock = get_simulation_clock()
-        if sim_clock and sim_clock.current_time:
-            is_premarket = sim_clock.current_time.hour < 9 or (
-                sim_clock.current_time.hour == 9 and sim_clock.current_time.minute < 30
-            )
-        else:
-            import pytz
-            from datetime import datetime as _dt
-            _now_et = _dt.now(pytz.timezone("US/Eastern"))
-            is_premarket = _now_et.hour < 9 or (_now_et.hour == 9 and _now_et.minute < 30)
-    except Exception:
-        pass
+    from nexus2.utils.time_utils import sim_aware_now_et
+    _now_et = sim_aware_now_et()
+    is_premarket = _now_et.hour < 9 or (_now_et.hour == 9 and _now_et.minute < 30)
     
     if engine._get_intraday_bars:
         try:
@@ -811,7 +788,8 @@ async def check_micro_pullback_entry(
     # TRACK SWING HIGHS (only if not ready or first high)
     if watched.swing_high is None or current_price > watched.swing_high:
         watched.swing_high = current_price
-        watched.swing_high_time = datetime.now(timezone.utc).strftime("%H:%M")
+        from nexus2.utils.time_utils import sim_aware_now_utc
+        watched.swing_high_time = sim_aware_now_utc().strftime("%H:%M")
         watched.pullback_low = None
         watched.micro_pullback_ready = False
         logger.info(f"[Warrior Entry] {symbol}: New swing high ${watched.swing_high:.2f}")

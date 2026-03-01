@@ -969,7 +969,7 @@ async def run_batch_concurrent(cases: list, yaml_data: dict, skip_guards: bool =
     from concurrent.futures import ProcessPoolExecutor
 
     loop = asyncio.get_event_loop()
-    max_workers = max(2, min(len(cases), multiprocessing.cpu_count(), 8))  # min 2 to ensure process isolation on 1-core VPS
+    max_workers = min(len(cases), multiprocessing.cpu_count(), 8)
 
     with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futures = [

@@ -1063,7 +1063,8 @@ class TradeEventService:
         """
         # Dedup: skip if same symbol+pattern was rejected < 30s ago
         dedup_key = f"{symbol}_{best_pattern}"
-        now = time.time()
+        from nexus2.utils.time_utils import sim_aware_now_utc
+        now = sim_aware_now_utc().timestamp()
         last_ts = self._trigger_rejection_dedup.get(dedup_key, 0)
         if (now - last_ts) < 30:
             return  # Suppress duplicate within 30s window

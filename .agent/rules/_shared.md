@@ -56,6 +56,10 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 - Run your commands and **wait for output** before proceeding
 - You CAN run multiple commands in parallel — but don't mix commands with non-command tool calls
 - If a command hangs, **ask Clay for help** rather than trying to work around it
+- **Long-running commands (>2 min):** Chain `python scripts/notify.py "description"` after the command so Clay gets a Telegram alert when it finishes. Example:
+  ```powershell
+  Invoke-RestMethod -Method POST -Uri "..." | Out-File "output.json"; python scripts/notify.py "Batch test complete"
+  ```
 
 ---
 
@@ -101,3 +105,14 @@ This applies to ALL communication — handoffs, reports, AND direct conversation
 > On Feb 18 2026, the coordinator correctly stated DBeaver supports SSH for SQLite, then when
 > challenged, confidently "corrected" itself to say it doesn't — which was wrong. Both the
 > original assertion AND the correction were made without verification.
+
+---
+
+## 📄 Artifact Protection
+
+> [!IMPORTANT]
+> Before creating any `plan_*.md`, `handoff_*.md`, `walkthrough_*.md`, or `investigation_*.md` artifact,
+> read `.agent/rules/artifact-protection.md`. Key rules:
+> - Use **feature-specific naming** (e.g., `plan_data_storage.md`, NOT `implementation_plan.md`)
+> - **Never overwrite** without checking existing content first
+> - **Never rename** artifacts via PowerShell — delete and recreate instead

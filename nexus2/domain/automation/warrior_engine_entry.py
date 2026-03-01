@@ -825,7 +825,8 @@ async def check_micro_pullback_entry(
     # TRACK SWING HIGHS (only if not ready or first high)
     if watched.swing_high is None or current_price > watched.swing_high:
         watched.swing_high = current_price
-        watched.swing_high_time = datetime.now(timezone.utc).strftime("%H:%M")
+        from nexus2.utils.time_utils import sim_aware_now_utc
+        watched.swing_high_time = sim_aware_now_utc().strftime("%H:%M")
         watched.pullback_low = None
         watched.micro_pullback_ready = False
         logger.info(f"[Warrior Entry] {symbol}: New swing high ${watched.swing_high:.2f}")
