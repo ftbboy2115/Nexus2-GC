@@ -197,6 +197,12 @@ class AutomationScheduler:
             try:
                 now = now_et()
                 
+                # FAST CHECK: Skip weekends immediately (no API call needed)
+                if not self.sim_mode and now.weekday() >= 5:
+                    logger.info(f"[Scheduler] Weekend ({now.strftime('%A')}) - skipping scan cycle")
+                    await self._smart_wait_for_market_open(now)
+                    continue
+                
                 # Check if market hours (uses sim clock if sim_mode)
                 if self.is_market_hours:
                     # CRITICAL: Run EOD check FIRST (before scan) to ensure exits happen before 4PM

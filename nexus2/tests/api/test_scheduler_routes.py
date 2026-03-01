@@ -177,6 +177,46 @@ class TestForceScan:
         
         # May fail if scheduler not running, but should not crash
         assert response.status_code in [200, 400, 500]
+    
+    def test_force_scan_blocked_on_weekend(self, client):
+        """Force scan is blocked on weekends in non-sim mode."""
+        from datetime import datetime
+        import pytz
+        
+        # Mock now_et() to return a Sunday
+        sunday = datetime(2026, 3, 1, 12, 0, 0, tzinfo=pytz.timezone("America/New_York"))
+        assert sunday.weekday() == 6, "Test date must be a Sunday"
+        
+        with patch("nexus2.api.routes.scheduler_routes.now_et", return_value=sunday):
+            # Also mock scheduler settings to ensure sim_mode=false
+            mock_settings = Mock()
+            mock_settings.min_quality = 7
+            mock_settings.stop_mode = "atr"
+            mock_settings.max_stop_atr = "1.0"
+            mock_settings.max_stop_percent = "5.0"
+            mock_settings.scan_modes = "ep,breakout"
+            mock_settings.htf_frequency = "every_cycle"
+            mock_settings.sim_mode = "false"
+            mock_settings.auto_execute = "false"
+            mock_settings.preset = "relaxed"
+            mock_settings.min_price = "5.0"
+            mock_settings.min_rvol = "1.5"
+            
+            mock_repo = Mock()
+            mock_repo.get.return_value = mock_settings
+            
+            with patch("nexus2.api.routes.scheduler_routes.get_session") as mock_get_session:
+                mock_db = Mock()
+                mock_get_session.return_value.__enter__ = Mock(return_value=mock_db)
+                mock_get_session.return_value.__exit__ = Mock(return_value=False)
+                
+                with patch("nexus2.db.SchedulerSettingsRepository", return_value=mock_repo):
+                    response = client.post("/automation/scheduler/force_scan")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "blocked"
+            assert "weekend" in data["reason"].lower()
 
 
 # =============================================================================

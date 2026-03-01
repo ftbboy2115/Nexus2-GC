@@ -446,6 +446,16 @@ async def force_scheduler_scan(
         min_price = float(sched_settings.min_price) if sched_settings.min_price else 5.0
         min_rvol = float(sched_settings.min_rvol) if sched_settings.min_rvol else 1.5
     
+    # Guard: Block force_scan on non-market days in non-sim mode (saves FMP API calls)
+    if not sim_mode:
+        current_weekday = now_et().weekday()
+        if current_weekday >= 5:
+            logger.info(f"[ForceScan] Blocked on weekend ({now_et().strftime('%A')})")
+            return {
+                "status": "blocked",
+                "reason": "Market closed (weekend) - force scan skipped to avoid FMP API waste. Use sim_mode for testing.",
+            }
+    
     logger.info(f"[ForceScan] Running with sim_mode={sim_mode}, auto_execute={auto_execute}")
     
     # =============================
