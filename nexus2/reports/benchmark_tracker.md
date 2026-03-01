@@ -16,7 +16,8 @@
 | Feb 22 | 654b3f3 | RVOL slider, scanner persistence fix | 35 | 22 (63%) | $119,105 | $433,000 | 27.5% | 322s | BCTX flipped -$156; runtime 3.5x regression |
 | Feb 23 | — | GC batch run | 35 | 22 (63%) | $118,983 | $433,000 | 27.5% | 291s | Auto-tracked by GC |
 | Feb 27a | 2f3bc93 | ENVB P&L fix, +2 cases, scaling/exit improvements | 37 | 27 (73%) | $383,378 | $446,275 | 85.9% | 58s | 🚀 3x P&L jump; ENVB P&L corrected $0→$12.7K |
-| **Feb 27b** | **2770fb3** | **+1 case (BATL red day), catalyst AI fix deployed** | **38** | **28 (73.7%)** | **$391,215** | **$439,575** | **89.0%** | **78s** | **New baseline; +$7.8K bot P&L from new case** |
+| Feb 27b | 2770fb3 | +1 case (BATL red day), catalyst AI fix deployed | 38 | 28 (73.7%) | $391,215 | $439,575 | 89.0% | 78s | New baseline; +$7.8K bot P&L from new case |
+| **Mar 1** | **6506aaf** | **Batch settings separation (40K shares, 1min bars)** | **38** | **28 (73.7%)** | **$437,558** | **$439,575** | **99.5%** | **96s** | **🎯 Resolved $139K divergence; VPS=$435,454 (0.5% Δ)** |
 
 
 ---
@@ -24,10 +25,10 @@
 ## Key Metrics Over Time
 
 ```
-Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5% → 85.9% → 89.0% 🚀
-Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K → $383.4K → $391.2K 🚀
-Win Rate:      52% → 66% → 60% → 66% → 63% → 73% → 73.7%
-Runtime:       43s → 35s → 155s → 93s → 322s → 58s → 78s ✅
+Capture Rate:  0.4% → 13.1% → 24.5% → 27.9% → 27.5% → 85.9% → 89.0% → 99.5% 🎯
+Bot P&L:       $1.6K → $53.9K → $101.3K → $120.9K → $119.1K → $383.4K → $391.2K → $437.6K 🎯
+Win Rate:      52% → 66% → 60% → 66% → 63% → 73% → 73.7% → 73.7%
+Runtime:       43s → 35s → 155s → 93s → 322s → 58s → 78s → 96s ✅
 ```
 
 ---
@@ -109,4 +110,5 @@ Cases that have changed direction or significantly shifted P&L between runs:
 | Feb 22 | 35 | 322s | 9.2s | ⚠️ Investigate regression |
 | Feb 23 | 35 | 291s | 8.3s | ⚠️ Needs investigation |
 | Feb 27a | 37 | 58s | 1.6s | ✅ Resolved — back to baseline |
-| **Feb 27b** | **38** | **78s** | **2.1s** | ✅ Stable |
+| Feb 27b | 38 | 78s | 2.1s | ✅ Stable |
+| **Mar 1** | **38** | **96s** | **2.5s** | ✅ Batch settings separation; VPS 1150s (NAC scanner contention) |
