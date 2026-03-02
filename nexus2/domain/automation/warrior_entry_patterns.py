@@ -301,16 +301,10 @@ async def detect_dip_for_level(
     if current_price >= watched.pmh:
         return None
     
-    # TIME GATE: DIP_FOR_LEVEL requires established intraday structure
+    # TIME GATE: Centralized in check_entry_triggers (warrior_engine_entry.py)
+    # All patterns are blocked before 6 AM ET at the orchestrator level.
     from nexus2.utils.time_utils import sim_aware_now_et
     now_et = sim_aware_now_et()
-    
-    if now_et.hour < 6:
-        logger.info(
-            f"[Warrior Entry] {symbol}: DIP_FOR_LEVEL blocked - early premarket "
-            f"({now_et.strftime('%H:%M')}). Wait until 06:00+."
-        )
-        return None
     
     # FALLING KNIFE FILTER
     is_falling_knife = False
@@ -1033,9 +1027,8 @@ async def detect_vwap_break_pattern(
     """
     symbol = watched.candidate.symbol
     
-    # EARLY PREMARKET GUARD: No VWAP breaks before 6 AM ET
-    # Precedent: detect_dip_for_level_pattern has the same guard (line 319)
-    # VWAP from <6 min of data is noise, not a tradeable signal
+    # TIME GATE: Centralized in check_entry_triggers (warrior_engine_entry.py)
+    # All patterns are blocked before 6 AM ET at the orchestrator level.
     from nexus2.utils.time_utils import now_et
     current_et = now_et()
     try:
@@ -1045,9 +1038,6 @@ async def detect_vwap_break_pattern(
             current_et = sim_clock.current_time
     except Exception:
         pass
-    
-    if current_et.hour < 6:
-        return None
     
     # PATTERN COMPETITION: Only check if setup_type matches
     should_check_vwap_break = setup_type is None or setup_type in ("vwap_break", "vwap_reclaim")

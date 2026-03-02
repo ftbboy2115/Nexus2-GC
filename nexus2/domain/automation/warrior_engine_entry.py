@@ -347,6 +347,15 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
     if not engine._get_quote:
         return
     
+    # CENTRALIZED EARLY-PREMARKET GUARD: No entries before 6 AM ET
+    # This single guard protects ALL entry patterns.
+    # Previously this was scattered across individual patterns (and missing from pmh_break,
+    # which caused 7 trades before 6 AM on 2026-03-02 with $7K+ in losses).
+    from nexus2.utils.time_utils import sim_aware_now_et
+    _entry_now_et = sim_aware_now_et()
+    if _entry_now_et.hour < 6:
+        return
+    
     for symbol, watched in list(engine._watchlist.items()):
         try:
             current_price = await engine._get_quote(symbol)
