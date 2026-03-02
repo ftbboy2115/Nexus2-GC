@@ -455,6 +455,27 @@ async def resume_warrior_engine():
     return await engine.resume()
 
 
+@router.get("/config")
+async def get_warrior_config():
+    """Get current Warrior engine configuration."""
+    engine = get_engine()
+    return {
+        "max_candidates": engine.config.max_candidates,
+        "scanner_interval_minutes": engine.config.scanner_interval_minutes,
+        "risk_per_trade": float(engine.config.risk_per_trade),
+        "max_positions": engine.config.max_positions,
+        "max_daily_loss": float(engine.config.max_daily_loss),
+        "orb_enabled": engine.config.orb_enabled,
+        "pmh_enabled": engine.config.pmh_enabled,
+        "max_shares_per_trade": engine.config.max_shares_per_trade,
+        "max_value_per_trade": float(engine.config.max_value_per_trade) if engine.config.max_value_per_trade else None,
+        "max_capital": float(engine.config.max_capital),
+        "entry_bar_timeframe": engine.config.entry_bar_timeframe,
+        "always_run_ai_comparison": get_warrior_scanner_service().settings.always_run_ai_comparison,
+        "macd_histogram_tolerance": engine.config.macd_histogram_tolerance,
+    }
+
+
 @router.put("/config")
 async def update_warrior_config(request: WarriorEngineConfigRequest):
     """
