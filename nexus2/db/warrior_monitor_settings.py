@@ -140,6 +140,9 @@ def apply_monitor_settings(monitor_settings_obj, settings: dict) -> None:
     # Guard toggles (for GC param sweep)
     if "enable_profit_check_guard" in settings:
         monitor_settings_obj.enable_profit_check_guard = settings["enable_profit_check_guard"]
+    # Live re-entry cooldown
+    if "live_reentry_cooldown_minutes" in settings:
+        monitor_settings_obj.live_reentry_cooldown_minutes = settings["live_reentry_cooldown_minutes"]
     
     print(f"[Warrior Monitor Settings] Applied: enable_scaling={monitor_settings_obj.enable_scaling}")
 
@@ -192,4 +195,6 @@ def get_monitor_settings_dict(monitor_settings_obj) -> dict:
         "max_reentry_after_loss": monitor_settings_obj.max_reentry_after_loss,
         # Guard toggles (for GC param sweep)
         "enable_profit_check_guard": monitor_settings_obj.enable_profit_check_guard,
+        # Live re-entry cooldown
+        "live_reentry_cooldown_minutes": monitor_settings_obj.live_reentry_cooldown_minutes,
     }

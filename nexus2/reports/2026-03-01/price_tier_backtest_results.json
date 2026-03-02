@@ -1,0 +1,1091 @@
+{
+  "cases": [
+    {
+      "case_id": "ross_lcfy_20260116",
+      "symbol": "LCFY",
+      "ross_pnl": 10456.94,
+      "baseline_pnl": 13544.89,
+      "tiered_pnl": 6772.44,
+      "delta": -6772.45,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.97,
+          "shares": 9451,
+          "pnl": 13544.89,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 6772.44
+        }
+      ]
+    },
+    {
+      "case_id": "ross_pavm_20260121",
+      "symbol": "PAVM",
+      "ross_pnl": 43950.0,
+      "baseline_pnl": 19046.82,
+      "tiered_pnl": 9523.41,
+      "delta": -9523.41,
+      "tier": "$10-$20",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 12.11,
+          "shares": 4386,
+          "pnl": 19046.82,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": 9523.41
+        },
+        {
+          "entry": 20.32,
+          "shares": 1227,
+          "pnl": 0,
+          "tier": "$20+",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_batl_20260126",
+      "symbol": "BATL",
+      "ross_pnl": 0,
+      "baseline_pnl": 61366.24,
+      "tiered_pnl": 30683.12,
+      "delta": -30683.12,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.78,
+          "shares": 31117,
+          "pnl": 61366.24,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 30683.12
+        },
+        {
+          "entry": 3.08,
+          "shares": 8064,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.79,
+          "shares": 8928,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.66,
+          "shares": 9259,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_batl_20260127",
+      "symbol": "BATL",
+      "ross_pnl": 0,
+      "baseline_pnl": 37645.99,
+      "tiered_pnl": 18823.0,
+      "delta": -18822.99,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.53,
+          "shares": 34905,
+          "pnl": 48030.19,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 24015.1
+        },
+        {
+          "entry": 3.91,
+          "shares": 9615,
+          "pnl": -10384.2,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": -5192.1
+        },
+        {
+          "entry": 2.52,
+          "shares": 9803,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.53,
+          "shares": 10000,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_rolr_20260114",
+      "symbol": "ROLR",
+      "ross_pnl": 85000.0,
+      "baseline_pnl": 45723.39,
+      "tiered_pnl": 36682.62,
+      "delta": -9040.77,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.38,
+          "shares": 20052,
+          "pnl": 45237.5,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 22618.75
+        },
+        {
+          "entry": 3.74,
+          "shares": 6764,
+          "pnl": 28127.75,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 14063.88
+        },
+        {
+          "entry": 14.21,
+          "shares": 2640,
+          "pnl": 0,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 7.88,
+          "shares": 3154,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_bnkk_20260115",
+      "symbol": "BNKK",
+      "ross_pnl": 15000.0,
+      "baseline_pnl": 1103.99,
+      "tiered_pnl": 552.0,
+      "delta": -551.99,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.46,
+          "shares": 8332,
+          "pnl": 1103.99,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 552.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_tnmg_20260116",
+      "symbol": "TNMG",
+      "ross_pnl": 2102.25,
+      "baseline_pnl": 8629.83,
+      "tiered_pnl": 4314.91,
+      "delta": -4314.92,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.65,
+          "shares": 24039,
+          "pnl": 2003.34,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 1001.67
+        },
+        {
+          "entry": 2.95,
+          "shares": 12930,
+          "pnl": 6626.48,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 3313.24
+        },
+        {
+          "entry": 3.08,
+          "shares": 8064,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 3.78,
+          "shares": 6578,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_gwav_20260116",
+      "symbol": "GWAV",
+      "ross_pnl": 3974.68,
+      "baseline_pnl": -6526.1,
+      "tiered_pnl": -13052.2,
+      "delta": -6526.1,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 5.68,
+          "shares": 18481,
+          "pnl": -13240.55,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": -26481.1
+        },
+        {
+          "entry": 5.47,
+          "shares": 6817,
+          "pnl": 6714.45,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 13428.9
+        },
+        {
+          "entry": 5.68,
+          "shares": 5952,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 5.68,
+          "shares": 5952,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_vero_20260116",
+      "symbol": "VERO",
+      "ross_pnl": 3484.88,
+      "baseline_pnl": 15647.52,
+      "tiered_pnl": 7823.76,
+      "delta": -7823.76,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.69,
+          "shares": 32406,
+          "pnl": 15647.52,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 7823.76
+        },
+        {
+          "entry": 2.75,
+          "shares": 9259,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.68,
+          "shares": 9259,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.72,
+          "shares": 9259,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_gri_20260128",
+      "symbol": "GRI",
+      "ross_pnl": 31599.98,
+      "baseline_pnl": 17004.23,
+      "tiered_pnl": 34008.46,
+      "delta": 17004.23,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 5.91,
+          "shares": 6355,
+          "pnl": 17004.23,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 34008.46
+        }
+      ]
+    },
+    {
+      "case_id": "ross_lrhc_20260130",
+      "symbol": "LRHC",
+      "ross_pnl": 31076.62,
+      "baseline_pnl": 896.12,
+      "tiered_pnl": 1792.24,
+      "delta": 896.12,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 6.94,
+          "shares": 5434,
+          "pnl": 896.12,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 1792.24
+        }
+      ]
+    },
+    {
+      "case_id": "ross_hind_20260127",
+      "symbol": "HIND",
+      "ross_pnl": 55252.51,
+      "baseline_pnl": 19354.14,
+      "tiered_pnl": 9677.07,
+      "delta": -9677.07,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.63,
+          "shares": 24304,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 3.42,
+          "shares": 11028,
+          "pnl": 19354.14,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 9677.07
+        },
+        {
+          "entry": 3.63,
+          "shares": 6944,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 3.63,
+          "shares": 6944,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_bctx_20260127",
+      "symbol": "BCTX",
+      "ross_pnl": 4500.0,
+      "baseline_pnl": 5768.45,
+      "tiered_pnl": 2884.22,
+      "delta": -2884.23,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.69,
+          "shares": 19341,
+          "pnl": 5768.45,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 2884.22
+        },
+        {
+          "entry": 4.7,
+          "shares": 11363,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 4.7,
+          "shares": 11363,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_dcx_20260129",
+      "symbol": "DCX",
+      "ross_pnl": 6268.28,
+      "baseline_pnl": 666.56,
+      "tiered_pnl": 333.28,
+      "delta": -333.28,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.47,
+          "shares": 8332,
+          "pnl": 666.56,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 333.28
+        }
+      ]
+    },
+    {
+      "case_id": "ross_npt_20260203",
+      "symbol": "NPT",
+      "ross_pnl": 81000.0,
+      "baseline_pnl": 68021.2,
+      "tiered_pnl": 136042.4,
+      "delta": 68021.2,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 6.96,
+          "shares": 5356,
+          "pnl": 68021.2,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 136042.4
+        }
+      ]
+    },
+    {
+      "case_id": "ross_bnai_20260205",
+      "symbol": "BNAI",
+      "ross_pnl": -7900.0,
+      "baseline_pnl": 5682.14,
+      "tiered_pnl": 0.0,
+      "delta": -5682.14,
+      "tier": "$20+",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 24.46,
+          "shares": 1530,
+          "pnl": 5682.14,
+          "tier": "$20+",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_rnaz_20260205",
+      "symbol": "RNAZ",
+      "ross_pnl": 1700.0,
+      "baseline_pnl": 95.94,
+      "tiered_pnl": 47.97,
+      "delta": -47.97,
+      "tier": "$10-$20",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 12.65,
+          "shares": 2952,
+          "pnl": 95.94,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": 47.97
+        }
+      ]
+    },
+    {
+      "case_id": "ross_rvsn_20260205",
+      "symbol": "RVSN",
+      "ross_pnl": -3000.0,
+      "baseline_pnl": -4045.47,
+      "tiered_pnl": -2022.73,
+      "delta": 2022.74,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.42,
+          "shares": 9867,
+          "pnl": -4045.47,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": -2022.73
+        }
+      ]
+    },
+    {
+      "case_id": "ross_flye_20260206",
+      "symbol": "FLYE",
+      "ross_pnl": 4800.0,
+      "baseline_pnl": 1878.74,
+      "tiered_pnl": 3757.48,
+      "delta": 1878.74,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 6.32,
+          "shares": 12343,
+          "pnl": 1878.74,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 3757.48
+        },
+        {
+          "entry": 6.67,
+          "shares": 3731,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 6.63,
+          "shares": 3787,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 6.88,
+          "shares": 3623,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_rdib_20260206",
+      "symbol": "RDIB",
+      "ross_pnl": 700.0,
+      "baseline_pnl": -5137.12,
+      "tiered_pnl": -2568.57,
+      "delta": 2568.55,
+      "tier": "$10-$20",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 19.42,
+          "shares": 1935,
+          "pnl": -5137.13,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": -2568.57
+        }
+      ]
+    },
+    {
+      "case_id": "ross_mnts_20260209",
+      "symbol": "MNTS",
+      "ross_pnl": 9000.0,
+      "baseline_pnl": -15502.64,
+      "tiered_pnl": -31005.28,
+      "delta": -15502.64,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 7.8,
+          "shares": 9314,
+          "pnl": -15502.64,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": -31005.28
+        },
+        {
+          "entry": 6.88,
+          "shares": 5318,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 6.9,
+          "shares": 5102,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_sxtc_20260209",
+      "symbol": "SXTC",
+      "ross_pnl": -5000.0,
+      "baseline_pnl": 8850.1,
+      "tiered_pnl": 4425.05,
+      "delta": -4425.05,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.17,
+          "shares": 17044,
+          "pnl": 8850.1,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 4425.05
+        }
+      ]
+    },
+    {
+      "case_id": "ross_uoka_20260209",
+      "symbol": "UOKA",
+      "ross_pnl": 858.0,
+      "baseline_pnl": -114.03,
+      "tiered_pnl": 0.0,
+      "delta": 114.03,
+      "tier": "$0-$2",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 1.93,
+          "shares": 19735,
+          "pnl": -114.03,
+          "tier": "$0-$2",
+          "multiplier": 0.0,
+          "scaled_pnl": -0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_evmn_20260210",
+      "symbol": "EVMN",
+      "ross_pnl": -10000.0,
+      "baseline_pnl": 42354.93,
+      "tiered_pnl": 21177.47,
+      "delta": -21177.46,
+      "tier": "$10-$20",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 17.2,
+          "shares": 7351,
+          "pnl": 42354.93,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": 21177.47
+        }
+      ]
+    },
+    {
+      "case_id": "ross_velo_20260210",
+      "symbol": "VELO",
+      "ross_pnl": -2000.0,
+      "baseline_pnl": -33.5,
+      "tiered_pnl": -16.75,
+      "delta": 16.75,
+      "tier": "$10-$20",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 14.9,
+          "shares": 2677,
+          "pnl": -33.5,
+          "tier": "$10-$20",
+          "multiplier": 0.5,
+          "scaled_pnl": -16.75
+        }
+      ]
+    },
+    {
+      "case_id": "ross_bnrg_20260211",
+      "symbol": "BNRG",
+      "ross_pnl": 271.74,
+      "baseline_pnl": 504.63,
+      "tiered_pnl": 252.31,
+      "delta": -252.32,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.95,
+          "shares": 9615,
+          "pnl": 504.63,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 252.31
+        }
+      ]
+    },
+    {
+      "case_id": "ross_prfx_20260211",
+      "symbol": "PRFX",
+      "ross_pnl": 5970.9,
+      "baseline_pnl": 41999.37,
+      "tiered_pnl": 20999.69,
+      "delta": -20999.68,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.95,
+          "shares": 24999,
+          "pnl": 41999.37,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 20999.69
+        }
+      ]
+    },
+    {
+      "case_id": "ross_pmi_20260212",
+      "symbol": "PMI",
+      "ross_pnl": 9959.3,
+      "baseline_pnl": 15256.23,
+      "tiered_pnl": 0.0,
+      "delta": -15256.23,
+      "tier": "$0-$2",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 1.7,
+          "shares": 34090,
+          "pnl": 15256.23,
+          "tier": "$0-$2",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_onco_20260212",
+      "symbol": "ONCO",
+      "ross_pnl": -5500.0,
+      "baseline_pnl": 295.83,
+      "tiered_pnl": 0.0,
+      "delta": -295.83,
+      "tier": "$0-$2",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 1.94,
+          "shares": 19735,
+          "pnl": 295.83,
+          "tier": "$0-$2",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_mlec_20260213",
+      "symbol": "MLEC",
+      "ross_pnl": 43000.0,
+      "baseline_pnl": -578.33,
+      "tiered_pnl": -1156.66,
+      "delta": -578.33,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 8.32,
+          "shares": 10520,
+          "pnl": -578.33,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": -1156.66
+        },
+        {
+          "entry": 8.57,
+          "shares": 2906,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 8.71,
+          "shares": 2873,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 9.04,
+          "shares": 2778,
+          "pnl": 0,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_vhub_20260217",
+      "symbol": "VHUB",
+      "ross_pnl": 1600.0,
+      "baseline_pnl": 20516.05,
+      "tiered_pnl": 10258.02,
+      "delta": -10258.03,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.69,
+          "shares": 30171,
+          "pnl": 20516.05,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 10258.02
+        },
+        {
+          "entry": 2.49,
+          "shares": 22727,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        },
+        {
+          "entry": 2.52,
+          "shares": 17241,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_snse_20260218",
+      "symbol": "SNSE",
+      "ross_pnl": 9373.32,
+      "baseline_pnl": 343.14,
+      "tiered_pnl": 0.0,
+      "delta": -343.14,
+      "tier": "$20+",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 26.44,
+          "shares": 1419,
+          "pnl": 343.14,
+          "tier": "$20+",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_envb_20260219",
+      "symbol": "ENVB",
+      "ross_pnl": 12716.0,
+      "baseline_pnl": 12037.5,
+      "tiered_pnl": 6018.75,
+      "delta": -6018.75,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 2.46,
+          "shares": 15000,
+          "pnl": 12037.5,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 6018.75
+        }
+      ]
+    },
+    {
+      "case_id": "ross_mlec_20260220",
+      "symbol": "MLEC",
+      "ross_pnl": 5612.0,
+      "baseline_pnl": -3240.21,
+      "tiered_pnl": 0.0,
+      "delta": 3240.21,
+      "tier": "$20+",
+      "multiplier": 0.0,
+      "trades": [
+        {
+          "entry": 20.58,
+          "shares": 2580,
+          "pnl": -3240.21,
+          "tier": "$20+",
+          "multiplier": 0.0,
+          "scaled_pnl": -0.0
+        },
+        {
+          "entry": 21.33,
+          "shares": 1173,
+          "pnl": 0,
+          "tier": "$20+",
+          "multiplier": 0.0,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_edhl_20260220",
+      "symbol": "EDHL",
+      "ross_pnl": -111.78,
+      "baseline_pnl": 672.57,
+      "tiered_pnl": 336.29,
+      "delta": -336.28,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 3.95,
+          "shares": 9615,
+          "pnl": 672.57,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 336.29
+        }
+      ]
+    },
+    {
+      "case_id": "ross_aidx_20260225",
+      "symbol": "AIDX",
+      "ross_pnl": 546.1,
+      "baseline_pnl": -1428.48,
+      "tiered_pnl": -2856.96,
+      "delta": -1428.48,
+      "tier": "$5-$10",
+      "multiplier": 2.0,
+      "trades": [
+        {
+          "entry": 8.43,
+          "shares": 4464,
+          "pnl": -1428.48,
+          "tier": "$5-$10",
+          "multiplier": 2.0,
+          "scaled_pnl": -2856.96
+        }
+      ]
+    },
+    {
+      "case_id": "ross_ndra_20260226",
+      "symbol": "NDRA",
+      "ross_pnl": 13.15,
+      "baseline_pnl": -1053.0,
+      "tiered_pnl": -526.5,
+      "delta": 526.5,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.95,
+          "shares": 12755,
+          "pnl": -1053.0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": -526.5
+        },
+        {
+          "entry": 4.95,
+          "shares": 5102,
+          "pnl": 0,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 0.0
+        }
+      ]
+    },
+    {
+      "case_id": "ross_batl_20260227",
+      "symbol": "BATL",
+      "ross_pnl": -6700.0,
+      "baseline_pnl": 10310.81,
+      "tiered_pnl": 5155.4,
+      "delta": -5155.41,
+      "tier": "$2-$5",
+      "multiplier": 0.5,
+      "trades": [
+        {
+          "entry": 4.43,
+          "shares": 19735,
+          "pnl": 10310.81,
+          "tier": "$2-$5",
+          "multiplier": 0.5,
+          "scaled_pnl": 5155.4
+        }
+      ]
+    }
+  ],
+  "tier_breakdown": {
+    "$0-$2": {
+      "trades": 3,
+      "baseline_pnl": 15438.029999999999,
+      "tiered_pnl": 0.0
+    },
+    "$2-$5": {
+      "trades": 40,
+      "baseline_pnl": 326885.41,
+      "tiered_pnl": 163442.705
+    },
+    "$5-$10": {
+      "trades": 20,
+      "baseline_pnl": 63764.74,
+      "tiered_pnl": 127529.48
+    },
+    "$10-$20": {
+      "trades": 6,
+      "baseline_pnl": 56327.06,
+      "tiered_pnl": 28163.53
+    },
+    "$20+": {
+      "trades": 5,
+      "baseline_pnl": 2785.0700000000006,
+      "tiered_pnl": 0.0
+    }
+  },
+  "summary": {
+    "total_baseline_pnl": 437558.47,
+    "total_tiered_pnl": 319135.71,
+    "delta": -118422.76,
+    "delta_pct": -27.1,
+    "cases_baseline_profitable": 28,
+    "cases_tiered_profitable": 24,
+    "trades_skipped_by_price_gate": 8,
+    "total_cases": 38,
+    "ross_total_pnl": 439574.87
+  },
+  "batch_runtime_seconds": 64.6
+}

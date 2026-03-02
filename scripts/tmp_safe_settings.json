@@ -1,0 +1,17 @@
+{
+    "max_positions": 3,
+    "max_daily_loss": 100.0,
+    "risk_per_trade": 50.0,
+    "max_capital": 500.0,
+    "max_candidates": 20,
+    "scanner_interval_minutes": 2,
+    "orb_enabled": true,
+    "pmh_enabled": true,
+    "max_shares_per_trade": 10,
+    "max_value_per_trade": 100.0,
+    "static_blacklist": [
+        "PLBY"
+    ],
+    "entry_bar_timeframe": "10s",
+    "macd_histogram_tolerance": -0.02
+}

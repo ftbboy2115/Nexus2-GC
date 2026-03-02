@@ -150,12 +150,16 @@ async def check_entry_guards(
         return False, "Pending buy order exists"
     
     # RE-ENTRY COOLDOWN (LIVE mode)
+    # Uses configurable live_reentry_cooldown_minutes (default 10 min) to prevent
+    # revenge trading. The old 120s cooldown was only a race-condition guard.
     if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
         exit_time = engine.monitor._recently_exited[symbol]
         seconds_ago = (now_utc() - exit_time).total_seconds()
-        cooldown = engine.monitor._recovery_cooldown_seconds
-        if seconds_ago < cooldown:
-            reason = f"Re-entry cooldown - exited {seconds_ago:.0f}s ago (waiting {cooldown}s)"
+        cooldown_minutes = engine.monitor.settings.live_reentry_cooldown_minutes
+        cooldown_seconds = cooldown_minutes * 60
+        if seconds_ago < cooldown_seconds:
+            minutes_ago = seconds_ago / 60
+            reason = f"Re-entry cooldown - exited {minutes_ago:.1f}m ago (waiting {cooldown_minutes}m)"
             tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price, _btime)
             return False, reason
     

@@ -72,6 +72,8 @@ class WarriorMonitorSettingsRequest(BaseModel):
     momentum_add_interval: Optional[float] = Field(None, description="Min price move for momentum add ($)")
     momentum_add_size_pct: Optional[int] = Field(None, description="Momentum add size as % of original")
     max_momentum_adds: Optional[int] = Field(None, description="Max momentum adds per position")
+    # Live re-entry cooldown
+    live_reentry_cooldown_minutes: Optional[int] = Field(None, ge=1, le=60, description="Live-mode re-entry cooldown in minutes (default 10)")
 
 
 class WarriorEngineConfigRequest(BaseModel):
@@ -910,6 +912,8 @@ async def get_warrior_monitor_settings():
         "max_momentum_adds": s.max_momentum_adds,
         # Exit mode (base_hit vs home_run)
         "session_exit_mode": s.session_exit_mode,
+        # Live re-entry cooldown
+        "live_reentry_cooldown_minutes": s.live_reentry_cooldown_minutes,
     }
 
 
@@ -954,6 +958,10 @@ async def update_warrior_monitor_settings(request: WarriorMonitorSettingsRequest
         engine.monitor.settings.momentum_add_size_pct = request.momentum_add_size_pct
     if hasattr(request, 'max_momentum_adds') and request.max_momentum_adds is not None:
         engine.monitor.settings.max_momentum_adds = request.max_momentum_adds
+    
+    # Live re-entry cooldown
+    if hasattr(request, 'live_reentry_cooldown_minutes') and request.live_reentry_cooldown_minutes is not None:
+        engine.monitor.settings.live_reentry_cooldown_minutes = request.live_reentry_cooldown_minutes
     
     # Persist settings to disk
     try:
