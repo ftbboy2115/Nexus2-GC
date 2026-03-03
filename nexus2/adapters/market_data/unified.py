@@ -921,7 +921,7 @@ class UnifiedMarketData:
         # 4. Finviz headlines (strong micro-cap coverage)
         try:
             from nexus2.adapters.market_data.news_sources import get_finviz_headlines
-            for headline in get_finviz_headlines(symbol, limit=5):
+            for headline in get_finviz_headlines(symbol, limit=5, days=days):
                 normalized = headline.strip().lower()
                 if normalized and normalized not in headlines_set:
                     headlines_set.add(normalized)

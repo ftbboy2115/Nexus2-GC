@@ -1426,6 +1426,9 @@ class WarriorScannerService:
                     )
                     if ctx.verbose:
                         print(f"{ctx.symbol}: Rejected - Negative catalyst: {neg_type}")
+                    # Log negative catalyst to audit log for observability
+                    from nexus2.domain.automation.catalyst_classifier import log_headline_evaluation
+                    log_headline_evaluation(ctx.symbol, [neg_headline or "unknown"], "FAIL", f"negative:{neg_type}")
                     self._write_scan_result_to_db(ctx.symbol, False, ctx, rejection_reason=f"negative_catalyst:{neg_type}")
                     return "negative_catalyst"
         

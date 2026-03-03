@@ -229,15 +229,22 @@ class CatalystClassifier:
         
         h = headline.strip()
         
+        # IPO exclusion: "Initial Public Offering" is a POSITIVE catalyst (ipo),
+        # but the negative "offering" regex would match it first. Skip negative
+        # patterns for IPO headlines so the positive ipo pattern fires instead.
+        is_ipo_headline = bool(re.search(r'\binitial\s+public\s+offering\b|\bipo\b', h, re.IGNORECASE))
+        
         # Check negative patterns first (to avoid bad trades)
-        for ctype, pattern in self.negative_patterns.items():
-            if pattern.search(h):
-                return CatalystMatch(
-                    headline=h,
-                    catalyst_type=ctype,
-                    confidence=0.9,
-                    is_positive=False,
-                )
+        # Skip for IPO headlines — they should be classified as positive ipo
+        if not is_ipo_headline:
+            for ctype, pattern in self.negative_patterns.items():
+                if pattern.search(h):
+                    return CatalystMatch(
+                        headline=h,
+                        catalyst_type=ctype,
+                        confidence=0.9,
+                        is_positive=False,
+                    )
         
         # Check exclusion patterns (reject before positive patterns match)
         for exc_name, exc_pattern in self.exclusion_patterns.items():
