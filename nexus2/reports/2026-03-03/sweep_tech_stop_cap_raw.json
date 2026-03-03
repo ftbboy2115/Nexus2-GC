@@ -1,0 +1,3038 @@
+{
+  "10%": {
+    "total_pnl": 233233.98,
+    "total_ross": 446405.87,
+    "cases": 39,
+    "profitable": 21,
+    "improved": 12,
+    "regressed": 27,
+    "net_change": -121804.68,
+    "per_case": {
+      "improved": [
+        {
+          "case_id": "ross_gwav_20260116",
+          "symbol": "GWAV",
+          "old_pnl": -6526.1,
+          "new_pnl": -5642.92,
+          "change": 883.18
+        },
+        {
+          "case_id": "ross_rvsn_20260205",
+          "symbol": "RVSN",
+          "old_pnl": -4045.47,
+          "new_pnl": -2696.98,
+          "change": 1348.49
+        },
+        {
+          "case_id": "ross_rdib_20260206",
+          "symbol": "RDIB",
+          "old_pnl": -5137.12,
+          "new_pnl": -4482.49,
+          "change": 654.63
+        },
+        {
+          "case_id": "ross_mnts_20260209",
+          "symbol": "MNTS",
+          "old_pnl": -15502.64,
+          "new_pnl": -2371.3,
+          "change": 13131.34
+        },
+        {
+          "case_id": "ross_uoka_20260209",
+          "symbol": "UOKA",
+          "old_pnl": -10635.0,
+          "new_pnl": -7090.0,
+          "change": 3545.0
+        },
+        {
+          "case_id": "ross_evmn_20260210",
+          "symbol": "EVMN",
+          "old_pnl": 42354.93,
+          "new_pnl": 49552.05,
+          "change": 7197.12
+        },
+        {
+          "case_id": "ross_velo_20260210",
+          "symbol": "VELO",
+          "old_pnl": -33.5,
+          "new_pnl": -22.35,
+          "change": 11.15
+        },
+        {
+          "case_id": "ross_onco_20260212",
+          "symbol": "ONCO",
+          "old_pnl": -12150.0,
+          "new_pnl": -2404.0,
+          "change": 9746.0
+        },
+        {
+          "case_id": "ross_edhl_20260220",
+          "symbol": "EDHL",
+          "old_pnl": 672.57,
+          "new_pnl": 1610.95,
+          "change": 938.38
+        },
+        {
+          "case_id": "ross_aidx_20260225",
+          "symbol": "AIDX",
+          "old_pnl": -1428.48,
+          "new_pnl": -952.32,
+          "change": 476.16
+        },
+        {
+          "case_id": "ross_ndra_20260226",
+          "symbol": "NDRA",
+          "old_pnl": -1053.0,
+          "new_pnl": -841.83,
+          "change": 211.17
+        },
+        {
+          "case_id": "ross_batl_20260302",
+          "symbol": "BATL",
+          "old_pnl": -6643.71,
+          "new_pnl": -1104.7,
+          "change": 5539.01
+        }
+      ],
+      "regressed": [
+        {
+          "case_id": "ross_lcfy_20260116",
+          "symbol": "LCFY",
+          "old_pnl": 13544.89,
+          "new_pnl": 9030.11,
+          "change": -4514.78
+        },
+        {
+          "case_id": "ross_pavm_20260121",
+          "symbol": "PAVM",
+          "old_pnl": 19046.82,
+          "new_pnl": 11051.04,
+          "change": -7995.78
+        },
+        {
+          "case_id": "ross_batl_20260126",
+          "symbol": "BATL",
+          "old_pnl": 26757.46,
+          "new_pnl": 22108.78,
+          "change": -4648.68
+        },
+        {
+          "case_id": "ross_batl_20260127",
+          "symbol": "BATL",
+          "old_pnl": 49635.8,
+          "new_pnl": 41141.67,
+          "change": -8494.13
+        },
+        {
+          "case_id": "ross_rolr_20260114",
+          "symbol": "ROLR",
+          "old_pnl": 45723.39,
+          "new_pnl": 35861.67,
+          "change": -9861.72
+        },
+        {
+          "case_id": "ross_bnkk_20260115",
+          "symbol": "BNKK",
+          "old_pnl": 1103.99,
+          "new_pnl": -2554.74,
+          "change": -3658.73
+        },
+        {
+          "case_id": "ross_tnmg_20260116",
+          "symbol": "TNMG",
+          "old_pnl": 8629.83,
+          "new_pnl": -9384.4,
+          "change": -18014.23
+        },
+        {
+          "case_id": "ross_vero_20260116",
+          "symbol": "VERO",
+          "old_pnl": 3578.92,
+          "new_pnl": -7676.94,
+          "change": -11255.86
+        },
+        {
+          "case_id": "ross_gri_20260128",
+          "symbol": "GRI",
+          "old_pnl": 17004.23,
+          "new_pnl": 11336.41,
+          "change": -5667.82
+        },
+        {
+          "case_id": "ross_lrhc_20260130",
+          "symbol": "LRHC",
+          "old_pnl": 10810.77,
+          "new_pnl": -2610.85,
+          "change": -13421.62
+        },
+        {
+          "case_id": "ross_hind_20260127",
+          "symbol": "HIND",
+          "old_pnl": 19354.14,
+          "new_pnl": 12902.76,
+          "change": -6451.38
+        },
+        {
+          "case_id": "ross_bctx_20260127",
+          "symbol": "BCTX",
+          "old_pnl": 5373.18,
+          "new_pnl": 4548.89,
+          "change": -824.29
+        },
+        {
+          "case_id": "ross_dcx_20260129",
+          "symbol": "DCX",
+          "old_pnl": 666.56,
+          "new_pnl": -2499.75,
+          "change": -3166.31
+        },
+        {
+          "case_id": "ross_npt_20260203",
+          "symbol": "NPT",
+          "old_pnl": 68021.2,
+          "new_pnl": 43460.83,
+          "change": -24560.37
+        },
+        {
+          "case_id": "ross_bnai_20260205",
+          "symbol": "BNAI",
+          "old_pnl": 5682.14,
+          "new_pnl": 3786.75,
+          "change": -1895.39
+        },
+        {
+          "case_id": "ross_rnaz_20260205",
+          "symbol": "RNAZ",
+          "old_pnl": 95.94,
+          "new_pnl": 63.96,
+          "change": -31.98
+        },
+        {
+          "case_id": "ross_flye_20260206",
+          "symbol": "FLYE",
+          "old_pnl": 1878.74,
+          "new_pnl": -1244.16,
+          "change": -3122.9
+        },
+        {
+          "case_id": "ross_sxtc_20260209",
+          "symbol": "SXTC",
+          "old_pnl": 7788.75,
+          "new_pnl": 5192.5,
+          "change": -2596.25
+        },
+        {
+          "case_id": "ross_bnrg_20260211",
+          "symbol": "BNRG",
+          "old_pnl": 360.5,
+          "new_pnl": 240.3,
+          "change": -120.2
+        },
+        {
+          "case_id": "ross_prfx_20260211",
+          "symbol": "PRFX",
+          "old_pnl": 25200.0,
+          "new_pnl": 16800.0,
+          "change": -8400.0
+        },
+        {
+          "case_id": "ross_pmi_20260212",
+          "symbol": "PMI",
+          "old_pnl": 6712.88,
+          "new_pnl": 4475.25,
+          "change": -2237.63
+        },
+        {
+          "case_id": "ross_mlec_20260213",
+          "symbol": "MLEC",
+          "old_pnl": -578.33,
+          "new_pnl": -10263.14,
+          "change": -9684.81
+        },
+        {
+          "case_id": "ross_vhub_20260217",
+          "symbol": "VHUB",
+          "old_pnl": 21796.45,
+          "new_pnl": 16055.4,
+          "change": -5741.05
+        },
+        {
+          "case_id": "ross_snse_20260218",
+          "symbol": "SNSE",
+          "old_pnl": 343.14,
+          "new_pnl": 228.76,
+          "change": -114.38
+        },
+        {
+          "case_id": "ross_envb_20260219",
+          "symbol": "ENVB",
+          "old_pnl": 12037.5,
+          "new_pnl": 8025.0,
+          "change": -4012.5
+        },
+        {
+          "case_id": "ross_mlec_20260220",
+          "symbol": "MLEC",
+          "old_pnl": -3240.21,
+          "new_pnl": -5621.23,
+          "change": -2381.02
+        },
+        {
+          "case_id": "ross_batl_20260227",
+          "symbol": "BATL",
+          "old_pnl": 7837.5,
+          "new_pnl": 5225.0,
+          "change": -2612.5
+        }
+      ],
+      "unchanged": []
+    },
+    "full_cases": [
+      {
+        "case_id": "ross_lcfy_20260116",
+        "symbol": "LCFY",
+        "date": "2026-01-16",
+        "bot_pnl": 9030.11,
+        "ross_pnl": 10456.94,
+        "delta": -1426.83,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pavm_20260121",
+        "symbol": "PAVM",
+        "date": "2026-01-21",
+        "bot_pnl": 11051.04,
+        "ross_pnl": 43950.0,
+        "delta": -32898.96,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260126",
+        "symbol": "BATL",
+        "date": "2026-01-26",
+        "bot_pnl": 22108.78,
+        "ross_pnl": 0,
+        "delta": 22108.78,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260127",
+        "symbol": "BATL",
+        "date": "2026-01-27",
+        "bot_pnl": 41141.67,
+        "ross_pnl": 0,
+        "delta": 41141.67,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rolr_20260114",
+        "symbol": "ROLR",
+        "date": "2026-01-14",
+        "bot_pnl": 35861.67,
+        "ross_pnl": 85000.0,
+        "delta": -49138.33,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnkk_20260115",
+        "symbol": "BNKK",
+        "date": "2026-01-15",
+        "bot_pnl": -2554.74,
+        "ross_pnl": 15000.0,
+        "delta": -17554.74,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_tnmg_20260116",
+        "symbol": "TNMG",
+        "date": "2026-01-16",
+        "bot_pnl": -9384.4,
+        "ross_pnl": 2102.25,
+        "delta": -11486.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gwav_20260116",
+        "symbol": "GWAV",
+        "date": "2026-01-16",
+        "bot_pnl": -5642.92,
+        "ross_pnl": 3974.68,
+        "delta": -9617.6,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vero_20260116",
+        "symbol": "VERO",
+        "date": "2026-01-16",
+        "bot_pnl": -7676.94,
+        "ross_pnl": 3484.88,
+        "delta": -11161.82,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gri_20260128",
+        "symbol": "GRI",
+        "date": "2026-01-28",
+        "bot_pnl": 11336.41,
+        "ross_pnl": 31599.98,
+        "delta": -20263.57,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_lrhc_20260130",
+        "symbol": "LRHC",
+        "date": "2026-01-30",
+        "bot_pnl": -2610.85,
+        "ross_pnl": 31076.62,
+        "delta": -33687.47,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_hind_20260127",
+        "symbol": "HIND",
+        "date": "2026-01-27",
+        "bot_pnl": 12902.76,
+        "ross_pnl": 55252.51,
+        "delta": -42349.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bctx_20260127",
+        "symbol": "BCTX",
+        "date": "2026-01-27",
+        "bot_pnl": 4548.89,
+        "ross_pnl": 4500.0,
+        "delta": 48.89,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_dcx_20260129",
+        "symbol": "DCX",
+        "date": "2026-01-29",
+        "bot_pnl": -2499.75,
+        "ross_pnl": 6268.28,
+        "delta": -8768.03,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_npt_20260203",
+        "symbol": "NPT",
+        "date": "2026-02-03",
+        "bot_pnl": 43460.83,
+        "ross_pnl": 81000.0,
+        "delta": -37539.17,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnai_20260205",
+        "symbol": "BNAI",
+        "date": "2026-02-05",
+        "bot_pnl": 3786.75,
+        "ross_pnl": -7900.0,
+        "delta": 11686.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rnaz_20260205",
+        "symbol": "RNAZ",
+        "date": "2026-02-05",
+        "bot_pnl": 63.96,
+        "ross_pnl": 1700.0,
+        "delta": -1636.04,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rvsn_20260205",
+        "symbol": "RVSN",
+        "date": "2026-02-05",
+        "bot_pnl": -2696.98,
+        "ross_pnl": -3000.0,
+        "delta": 303.02,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_flye_20260206",
+        "symbol": "FLYE",
+        "date": "2026-02-06",
+        "bot_pnl": -1244.16,
+        "ross_pnl": 4800.0,
+        "delta": -6044.16,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rdib_20260206",
+        "symbol": "RDIB",
+        "date": "2026-02-06",
+        "bot_pnl": -4482.49,
+        "ross_pnl": 700.0,
+        "delta": -5182.49,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mnts_20260209",
+        "symbol": "MNTS",
+        "date": "2026-02-09",
+        "bot_pnl": -2371.3,
+        "ross_pnl": 9000.0,
+        "delta": -11371.3,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_sxtc_20260209",
+        "symbol": "SXTC",
+        "date": "2026-02-09",
+        "bot_pnl": 5192.5,
+        "ross_pnl": -5000.0,
+        "delta": 10192.5,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_uoka_20260209",
+        "symbol": "UOKA",
+        "date": "2026-02-09",
+        "bot_pnl": -7090.0,
+        "ross_pnl": 858.0,
+        "delta": -7948.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_evmn_20260210",
+        "symbol": "EVMN",
+        "date": "2026-02-10",
+        "bot_pnl": 49552.05,
+        "ross_pnl": -10000.0,
+        "delta": 59552.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_velo_20260210",
+        "symbol": "VELO",
+        "date": "2026-02-10",
+        "bot_pnl": -22.35,
+        "ross_pnl": -2000.0,
+        "delta": 1977.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnrg_20260211",
+        "symbol": "BNRG",
+        "date": "2026-02-11",
+        "bot_pnl": 240.3,
+        "ross_pnl": 271.74,
+        "delta": -31.44,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_prfx_20260211",
+        "symbol": "PRFX",
+        "date": "2026-02-11",
+        "bot_pnl": 16800.0,
+        "ross_pnl": 5970.9,
+        "delta": 10829.1,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pmi_20260212",
+        "symbol": "PMI",
+        "date": "2026-02-12",
+        "bot_pnl": 4475.25,
+        "ross_pnl": 9959.3,
+        "delta": -5484.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_onco_20260212",
+        "symbol": "ONCO",
+        "date": "2026-02-12",
+        "bot_pnl": -2404.0,
+        "ross_pnl": -5500.0,
+        "delta": 3096.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260213",
+        "symbol": "MLEC",
+        "date": "2026-02-13",
+        "bot_pnl": -10263.14,
+        "ross_pnl": 43000.0,
+        "delta": -53263.14,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vhub_20260217",
+        "symbol": "VHUB",
+        "date": "2026-02-17",
+        "bot_pnl": 16055.4,
+        "ross_pnl": 1600.0,
+        "delta": 14455.4,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_snse_20260218",
+        "symbol": "SNSE",
+        "date": "2026-02-18",
+        "bot_pnl": 228.76,
+        "ross_pnl": 9373.32,
+        "delta": -9144.56,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_envb_20260219",
+        "symbol": "ENVB",
+        "date": "2026-02-19",
+        "bot_pnl": 8025.0,
+        "ross_pnl": 12716.0,
+        "delta": -4691.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260220",
+        "symbol": "MLEC",
+        "date": "2026-02-20",
+        "bot_pnl": -5621.23,
+        "ross_pnl": 5612.0,
+        "delta": -11233.23,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_edhl_20260220",
+        "symbol": "EDHL",
+        "date": "2026-02-20",
+        "bot_pnl": 1610.95,
+        "ross_pnl": -111.78,
+        "delta": 1722.73,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_aidx_20260225",
+        "symbol": "AIDX",
+        "date": "2026-02-25",
+        "bot_pnl": -952.32,
+        "ross_pnl": 546.1,
+        "delta": -1498.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_ndra_20260226",
+        "symbol": "NDRA",
+        "date": "2026-02-26",
+        "bot_pnl": -841.83,
+        "ross_pnl": 13.15,
+        "delta": -854.98,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260227",
+        "symbol": "BATL",
+        "date": "2026-02-27",
+        "bot_pnl": 5225.0,
+        "ross_pnl": -6700.0,
+        "delta": 11925.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260302",
+        "symbol": "BATL",
+        "date": "2026-03-02",
+        "bot_pnl": -1104.7,
+        "ross_pnl": 6831.0,
+        "delta": -7935.7,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      }
+    ]
+  },
+  "15%": {
+    "total_pnl": 276815.99,
+    "total_ross": 446405.87,
+    "cases": 39,
+    "profitable": 24,
+    "improved": 13,
+    "regressed": 26,
+    "net_change": -78222.67,
+    "per_case": {
+      "improved": [
+        {
+          "case_id": "ross_rvsn_20260205",
+          "symbol": "RVSN",
+          "old_pnl": -4045.47,
+          "new_pnl": -2696.98,
+          "change": 1348.49
+        },
+        {
+          "case_id": "ross_rdib_20260206",
+          "symbol": "RDIB",
+          "old_pnl": -5137.12,
+          "new_pnl": -4482.49,
+          "change": 654.63
+        },
+        {
+          "case_id": "ross_mnts_20260209",
+          "symbol": "MNTS",
+          "old_pnl": -15502.64,
+          "new_pnl": -3859.54,
+          "change": 11643.1
+        },
+        {
+          "case_id": "ross_uoka_20260209",
+          "symbol": "UOKA",
+          "old_pnl": -10635.0,
+          "new_pnl": -7090.0,
+          "change": 3545.0
+        },
+        {
+          "case_id": "ross_evmn_20260210",
+          "symbol": "EVMN",
+          "old_pnl": 42354.93,
+          "new_pnl": 49552.05,
+          "change": 7197.12
+        },
+        {
+          "case_id": "ross_velo_20260210",
+          "symbol": "VELO",
+          "old_pnl": -33.5,
+          "new_pnl": -22.35,
+          "change": 11.15
+        },
+        {
+          "case_id": "ross_onco_20260212",
+          "symbol": "ONCO",
+          "old_pnl": -12150.0,
+          "new_pnl": -3400.0,
+          "change": 8750.0
+        },
+        {
+          "case_id": "ross_mlec_20260213",
+          "symbol": "MLEC",
+          "old_pnl": -578.33,
+          "new_pnl": 18164.31,
+          "change": 18742.64
+        },
+        {
+          "case_id": "ross_mlec_20260220",
+          "symbol": "MLEC",
+          "old_pnl": -3240.21,
+          "new_pnl": -2992.97,
+          "change": 247.24
+        },
+        {
+          "case_id": "ross_edhl_20260220",
+          "symbol": "EDHL",
+          "old_pnl": 672.57,
+          "new_pnl": 1610.95,
+          "change": 938.38
+        },
+        {
+          "case_id": "ross_aidx_20260225",
+          "symbol": "AIDX",
+          "old_pnl": -1428.48,
+          "new_pnl": -952.32,
+          "change": 476.16
+        },
+        {
+          "case_id": "ross_ndra_20260226",
+          "symbol": "NDRA",
+          "old_pnl": -1053.0,
+          "new_pnl": -841.83,
+          "change": 211.17
+        },
+        {
+          "case_id": "ross_batl_20260302",
+          "symbol": "BATL",
+          "old_pnl": -6643.71,
+          "new_pnl": -4429.14,
+          "change": 2214.57
+        }
+      ],
+      "regressed": [
+        {
+          "case_id": "ross_lcfy_20260116",
+          "symbol": "LCFY",
+          "old_pnl": 13544.89,
+          "new_pnl": 9030.11,
+          "change": -4514.78
+        },
+        {
+          "case_id": "ross_pavm_20260121",
+          "symbol": "PAVM",
+          "old_pnl": 19046.82,
+          "new_pnl": 11051.04,
+          "change": -7995.78
+        },
+        {
+          "case_id": "ross_batl_20260126",
+          "symbol": "BATL",
+          "old_pnl": 26757.46,
+          "new_pnl": 22108.78,
+          "change": -4648.68
+        },
+        {
+          "case_id": "ross_batl_20260127",
+          "symbol": "BATL",
+          "old_pnl": 49635.8,
+          "new_pnl": 43133.05,
+          "change": -6502.75
+        },
+        {
+          "case_id": "ross_rolr_20260114",
+          "symbol": "ROLR",
+          "old_pnl": 45723.39,
+          "new_pnl": 35861.67,
+          "change": -9861.72
+        },
+        {
+          "case_id": "ross_bnkk_20260115",
+          "symbol": "BNKK",
+          "old_pnl": 1103.99,
+          "new_pnl": -4221.8,
+          "change": -5325.79
+        },
+        {
+          "case_id": "ross_tnmg_20260116",
+          "symbol": "TNMG",
+          "old_pnl": 8629.83,
+          "new_pnl": -9384.4,
+          "change": -18014.23
+        },
+        {
+          "case_id": "ross_gwav_20260116",
+          "symbol": "GWAV",
+          "old_pnl": -6526.1,
+          "new_pnl": -7207.7,
+          "change": -681.6
+        },
+        {
+          "case_id": "ross_vero_20260116",
+          "symbol": "VERO",
+          "old_pnl": 3578.92,
+          "new_pnl": 2918.18,
+          "change": -660.74
+        },
+        {
+          "case_id": "ross_gri_20260128",
+          "symbol": "GRI",
+          "old_pnl": 17004.23,
+          "new_pnl": 11336.41,
+          "change": -5667.82
+        },
+        {
+          "case_id": "ross_lrhc_20260130",
+          "symbol": "LRHC",
+          "old_pnl": 10810.77,
+          "new_pnl": 7206.81,
+          "change": -3603.96
+        },
+        {
+          "case_id": "ross_hind_20260127",
+          "symbol": "HIND",
+          "old_pnl": 19354.14,
+          "new_pnl": 12902.76,
+          "change": -6451.38
+        },
+        {
+          "case_id": "ross_bctx_20260127",
+          "symbol": "BCTX",
+          "old_pnl": 5373.18,
+          "new_pnl": 4548.89,
+          "change": -824.29
+        },
+        {
+          "case_id": "ross_dcx_20260129",
+          "symbol": "DCX",
+          "old_pnl": 666.56,
+          "new_pnl": -3944.05,
+          "change": -4610.61
+        },
+        {
+          "case_id": "ross_npt_20260203",
+          "symbol": "NPT",
+          "old_pnl": 68021.2,
+          "new_pnl": 45360.79,
+          "change": -22660.41
+        },
+        {
+          "case_id": "ross_bnai_20260205",
+          "symbol": "BNAI",
+          "old_pnl": 5682.14,
+          "new_pnl": 3786.75,
+          "change": -1895.39
+        },
+        {
+          "case_id": "ross_rnaz_20260205",
+          "symbol": "RNAZ",
+          "old_pnl": 95.94,
+          "new_pnl": 63.96,
+          "change": -31.98
+        },
+        {
+          "case_id": "ross_flye_20260206",
+          "symbol": "FLYE",
+          "old_pnl": 1878.74,
+          "new_pnl": -1244.16,
+          "change": -3122.9
+        },
+        {
+          "case_id": "ross_sxtc_20260209",
+          "symbol": "SXTC",
+          "old_pnl": 7788.75,
+          "new_pnl": 5192.5,
+          "change": -2596.25
+        },
+        {
+          "case_id": "ross_bnrg_20260211",
+          "symbol": "BNRG",
+          "old_pnl": 360.5,
+          "new_pnl": 240.3,
+          "change": -120.2
+        },
+        {
+          "case_id": "ross_prfx_20260211",
+          "symbol": "PRFX",
+          "old_pnl": 25200.0,
+          "new_pnl": 16800.0,
+          "change": -8400.0
+        },
+        {
+          "case_id": "ross_pmi_20260212",
+          "symbol": "PMI",
+          "old_pnl": 6712.88,
+          "new_pnl": 4475.25,
+          "change": -2237.63
+        },
+        {
+          "case_id": "ross_vhub_20260217",
+          "symbol": "VHUB",
+          "old_pnl": 21796.45,
+          "new_pnl": 14762.4,
+          "change": -7034.05
+        },
+        {
+          "case_id": "ross_snse_20260218",
+          "symbol": "SNSE",
+          "old_pnl": 343.14,
+          "new_pnl": 228.76,
+          "change": -114.38
+        },
+        {
+          "case_id": "ross_envb_20260219",
+          "symbol": "ENVB",
+          "old_pnl": 12037.5,
+          "new_pnl": 8025.0,
+          "change": -4012.5
+        },
+        {
+          "case_id": "ross_batl_20260227",
+          "symbol": "BATL",
+          "old_pnl": 7837.5,
+          "new_pnl": 5225.0,
+          "change": -2612.5
+        }
+      ],
+      "unchanged": []
+    },
+    "full_cases": [
+      {
+        "case_id": "ross_lcfy_20260116",
+        "symbol": "LCFY",
+        "date": "2026-01-16",
+        "bot_pnl": 9030.11,
+        "ross_pnl": 10456.94,
+        "delta": -1426.83,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pavm_20260121",
+        "symbol": "PAVM",
+        "date": "2026-01-21",
+        "bot_pnl": 11051.04,
+        "ross_pnl": 43950.0,
+        "delta": -32898.96,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260126",
+        "symbol": "BATL",
+        "date": "2026-01-26",
+        "bot_pnl": 22108.78,
+        "ross_pnl": 0,
+        "delta": 22108.78,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260127",
+        "symbol": "BATL",
+        "date": "2026-01-27",
+        "bot_pnl": 43133.05,
+        "ross_pnl": 0,
+        "delta": 43133.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rolr_20260114",
+        "symbol": "ROLR",
+        "date": "2026-01-14",
+        "bot_pnl": 35861.67,
+        "ross_pnl": 85000.0,
+        "delta": -49138.33,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnkk_20260115",
+        "symbol": "BNKK",
+        "date": "2026-01-15",
+        "bot_pnl": -4221.8,
+        "ross_pnl": 15000.0,
+        "delta": -19221.8,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_tnmg_20260116",
+        "symbol": "TNMG",
+        "date": "2026-01-16",
+        "bot_pnl": -9384.4,
+        "ross_pnl": 2102.25,
+        "delta": -11486.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gwav_20260116",
+        "symbol": "GWAV",
+        "date": "2026-01-16",
+        "bot_pnl": -7207.7,
+        "ross_pnl": 3974.68,
+        "delta": -11182.38,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vero_20260116",
+        "symbol": "VERO",
+        "date": "2026-01-16",
+        "bot_pnl": 2918.18,
+        "ross_pnl": 3484.88,
+        "delta": -566.7,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gri_20260128",
+        "symbol": "GRI",
+        "date": "2026-01-28",
+        "bot_pnl": 11336.41,
+        "ross_pnl": 31599.98,
+        "delta": -20263.57,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_lrhc_20260130",
+        "symbol": "LRHC",
+        "date": "2026-01-30",
+        "bot_pnl": 7206.81,
+        "ross_pnl": 31076.62,
+        "delta": -23869.81,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_hind_20260127",
+        "symbol": "HIND",
+        "date": "2026-01-27",
+        "bot_pnl": 12902.76,
+        "ross_pnl": 55252.51,
+        "delta": -42349.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bctx_20260127",
+        "symbol": "BCTX",
+        "date": "2026-01-27",
+        "bot_pnl": 4548.89,
+        "ross_pnl": 4500.0,
+        "delta": 48.89,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_dcx_20260129",
+        "symbol": "DCX",
+        "date": "2026-01-29",
+        "bot_pnl": -3944.05,
+        "ross_pnl": 6268.28,
+        "delta": -10212.33,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_npt_20260203",
+        "symbol": "NPT",
+        "date": "2026-02-03",
+        "bot_pnl": 45360.79,
+        "ross_pnl": 81000.0,
+        "delta": -35639.21,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnai_20260205",
+        "symbol": "BNAI",
+        "date": "2026-02-05",
+        "bot_pnl": 3786.75,
+        "ross_pnl": -7900.0,
+        "delta": 11686.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rnaz_20260205",
+        "symbol": "RNAZ",
+        "date": "2026-02-05",
+        "bot_pnl": 63.96,
+        "ross_pnl": 1700.0,
+        "delta": -1636.04,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rvsn_20260205",
+        "symbol": "RVSN",
+        "date": "2026-02-05",
+        "bot_pnl": -2696.98,
+        "ross_pnl": -3000.0,
+        "delta": 303.02,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_flye_20260206",
+        "symbol": "FLYE",
+        "date": "2026-02-06",
+        "bot_pnl": -1244.16,
+        "ross_pnl": 4800.0,
+        "delta": -6044.16,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rdib_20260206",
+        "symbol": "RDIB",
+        "date": "2026-02-06",
+        "bot_pnl": -4482.49,
+        "ross_pnl": 700.0,
+        "delta": -5182.49,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mnts_20260209",
+        "symbol": "MNTS",
+        "date": "2026-02-09",
+        "bot_pnl": -3859.54,
+        "ross_pnl": 9000.0,
+        "delta": -12859.54,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_sxtc_20260209",
+        "symbol": "SXTC",
+        "date": "2026-02-09",
+        "bot_pnl": 5192.5,
+        "ross_pnl": -5000.0,
+        "delta": 10192.5,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_uoka_20260209",
+        "symbol": "UOKA",
+        "date": "2026-02-09",
+        "bot_pnl": -7090.0,
+        "ross_pnl": 858.0,
+        "delta": -7948.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_evmn_20260210",
+        "symbol": "EVMN",
+        "date": "2026-02-10",
+        "bot_pnl": 49552.05,
+        "ross_pnl": -10000.0,
+        "delta": 59552.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_velo_20260210",
+        "symbol": "VELO",
+        "date": "2026-02-10",
+        "bot_pnl": -22.35,
+        "ross_pnl": -2000.0,
+        "delta": 1977.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnrg_20260211",
+        "symbol": "BNRG",
+        "date": "2026-02-11",
+        "bot_pnl": 240.3,
+        "ross_pnl": 271.74,
+        "delta": -31.44,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_prfx_20260211",
+        "symbol": "PRFX",
+        "date": "2026-02-11",
+        "bot_pnl": 16800.0,
+        "ross_pnl": 5970.9,
+        "delta": 10829.1,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pmi_20260212",
+        "symbol": "PMI",
+        "date": "2026-02-12",
+        "bot_pnl": 4475.25,
+        "ross_pnl": 9959.3,
+        "delta": -5484.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_onco_20260212",
+        "symbol": "ONCO",
+        "date": "2026-02-12",
+        "bot_pnl": -3400.0,
+        "ross_pnl": -5500.0,
+        "delta": 2100.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260213",
+        "symbol": "MLEC",
+        "date": "2026-02-13",
+        "bot_pnl": 18164.31,
+        "ross_pnl": 43000.0,
+        "delta": -24835.69,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vhub_20260217",
+        "symbol": "VHUB",
+        "date": "2026-02-17",
+        "bot_pnl": 14762.4,
+        "ross_pnl": 1600.0,
+        "delta": 13162.4,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_snse_20260218",
+        "symbol": "SNSE",
+        "date": "2026-02-18",
+        "bot_pnl": 228.76,
+        "ross_pnl": 9373.32,
+        "delta": -9144.56,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_envb_20260219",
+        "symbol": "ENVB",
+        "date": "2026-02-19",
+        "bot_pnl": 8025.0,
+        "ross_pnl": 12716.0,
+        "delta": -4691.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260220",
+        "symbol": "MLEC",
+        "date": "2026-02-20",
+        "bot_pnl": -2992.97,
+        "ross_pnl": 5612.0,
+        "delta": -8604.97,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_edhl_20260220",
+        "symbol": "EDHL",
+        "date": "2026-02-20",
+        "bot_pnl": 1610.95,
+        "ross_pnl": -111.78,
+        "delta": 1722.73,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_aidx_20260225",
+        "symbol": "AIDX",
+        "date": "2026-02-25",
+        "bot_pnl": -952.32,
+        "ross_pnl": 546.1,
+        "delta": -1498.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_ndra_20260226",
+        "symbol": "NDRA",
+        "date": "2026-02-26",
+        "bot_pnl": -841.83,
+        "ross_pnl": 13.15,
+        "delta": -854.98,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260227",
+        "symbol": "BATL",
+        "date": "2026-02-27",
+        "bot_pnl": 5225.0,
+        "ross_pnl": -6700.0,
+        "delta": 11925.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260302",
+        "symbol": "BATL",
+        "date": "2026-03-02",
+        "bot_pnl": -4429.14,
+        "ross_pnl": 6831.0,
+        "delta": -11260.14,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      }
+    ]
+  },
+  "20%": {
+    "total_pnl": 275627.67,
+    "total_ross": 446405.87,
+    "cases": 39,
+    "profitable": 26,
+    "improved": 14,
+    "regressed": 25,
+    "net_change": -79410.99,
+    "per_case": {
+      "improved": [
+        {
+          "case_id": "ross_bnkk_20260115",
+          "symbol": "BNKK",
+          "old_pnl": 1103.99,
+          "new_pnl": 1402.3,
+          "change": 298.31
+        },
+        {
+          "case_id": "ross_rvsn_20260205",
+          "symbol": "RVSN",
+          "old_pnl": -4045.47,
+          "new_pnl": -2696.98,
+          "change": 1348.49
+        },
+        {
+          "case_id": "ross_rdib_20260206",
+          "symbol": "RDIB",
+          "old_pnl": -5137.12,
+          "new_pnl": -5053.58,
+          "change": 83.54
+        },
+        {
+          "case_id": "ross_mnts_20260209",
+          "symbol": "MNTS",
+          "old_pnl": -15502.64,
+          "new_pnl": -5235.46,
+          "change": 10267.18
+        },
+        {
+          "case_id": "ross_uoka_20260209",
+          "symbol": "UOKA",
+          "old_pnl": -10635.0,
+          "new_pnl": -7090.0,
+          "change": 3545.0
+        },
+        {
+          "case_id": "ross_evmn_20260210",
+          "symbol": "EVMN",
+          "old_pnl": 42354.93,
+          "new_pnl": 49552.05,
+          "change": 7197.12
+        },
+        {
+          "case_id": "ross_velo_20260210",
+          "symbol": "VELO",
+          "old_pnl": -33.5,
+          "new_pnl": -22.35,
+          "change": 11.15
+        },
+        {
+          "case_id": "ross_onco_20260212",
+          "symbol": "ONCO",
+          "old_pnl": -12150.0,
+          "new_pnl": -5993.0,
+          "change": 6157.0
+        },
+        {
+          "case_id": "ross_mlec_20260213",
+          "symbol": "MLEC",
+          "old_pnl": -578.33,
+          "new_pnl": 12537.59,
+          "change": 13115.92
+        },
+        {
+          "case_id": "ross_mlec_20260220",
+          "symbol": "MLEC",
+          "old_pnl": -3240.21,
+          "new_pnl": -2992.97,
+          "change": 247.24
+        },
+        {
+          "case_id": "ross_edhl_20260220",
+          "symbol": "EDHL",
+          "old_pnl": 672.57,
+          "new_pnl": 1610.95,
+          "change": 938.38
+        },
+        {
+          "case_id": "ross_aidx_20260225",
+          "symbol": "AIDX",
+          "old_pnl": -1428.48,
+          "new_pnl": -952.32,
+          "change": 476.16
+        },
+        {
+          "case_id": "ross_ndra_20260226",
+          "symbol": "NDRA",
+          "old_pnl": -1053.0,
+          "new_pnl": -841.83,
+          "change": 211.17
+        },
+        {
+          "case_id": "ross_batl_20260302",
+          "symbol": "BATL",
+          "old_pnl": -6643.71,
+          "new_pnl": -4429.14,
+          "change": 2214.57
+        }
+      ],
+      "regressed": [
+        {
+          "case_id": "ross_lcfy_20260116",
+          "symbol": "LCFY",
+          "old_pnl": 13544.89,
+          "new_pnl": 9030.11,
+          "change": -4514.78
+        },
+        {
+          "case_id": "ross_pavm_20260121",
+          "symbol": "PAVM",
+          "old_pnl": 19046.82,
+          "new_pnl": 11051.04,
+          "change": -7995.78
+        },
+        {
+          "case_id": "ross_batl_20260126",
+          "symbol": "BATL",
+          "old_pnl": 26757.46,
+          "new_pnl": 22108.78,
+          "change": -4648.68
+        },
+        {
+          "case_id": "ross_batl_20260127",
+          "symbol": "BATL",
+          "old_pnl": 49635.8,
+          "new_pnl": 43133.05,
+          "change": -6502.75
+        },
+        {
+          "case_id": "ross_rolr_20260114",
+          "symbol": "ROLR",
+          "old_pnl": 45723.39,
+          "new_pnl": 35690.07,
+          "change": -10033.32
+        },
+        {
+          "case_id": "ross_tnmg_20260116",
+          "symbol": "TNMG",
+          "old_pnl": 8629.83,
+          "new_pnl": -9384.4,
+          "change": -18014.23
+        },
+        {
+          "case_id": "ross_gwav_20260116",
+          "symbol": "GWAV",
+          "old_pnl": -6526.1,
+          "new_pnl": -7207.7,
+          "change": -681.6
+        },
+        {
+          "case_id": "ross_vero_20260116",
+          "symbol": "VERO",
+          "old_pnl": 3578.92,
+          "new_pnl": 2918.18,
+          "change": -660.74
+        },
+        {
+          "case_id": "ross_gri_20260128",
+          "symbol": "GRI",
+          "old_pnl": 17004.23,
+          "new_pnl": 11336.41,
+          "change": -5667.82
+        },
+        {
+          "case_id": "ross_lrhc_20260130",
+          "symbol": "LRHC",
+          "old_pnl": 10810.77,
+          "new_pnl": 7206.81,
+          "change": -3603.96
+        },
+        {
+          "case_id": "ross_hind_20260127",
+          "symbol": "HIND",
+          "old_pnl": 19354.14,
+          "new_pnl": 12902.76,
+          "change": -6451.38
+        },
+        {
+          "case_id": "ross_bctx_20260127",
+          "symbol": "BCTX",
+          "old_pnl": 5373.18,
+          "new_pnl": 4548.89,
+          "change": -824.29
+        },
+        {
+          "case_id": "ross_dcx_20260129",
+          "symbol": "DCX",
+          "old_pnl": 666.56,
+          "new_pnl": 443.86,
+          "change": -222.7
+        },
+        {
+          "case_id": "ross_npt_20260203",
+          "symbol": "NPT",
+          "old_pnl": 68021.2,
+          "new_pnl": 45360.79,
+          "change": -22660.41
+        },
+        {
+          "case_id": "ross_bnai_20260205",
+          "symbol": "BNAI",
+          "old_pnl": 5682.14,
+          "new_pnl": 3786.75,
+          "change": -1895.39
+        },
+        {
+          "case_id": "ross_rnaz_20260205",
+          "symbol": "RNAZ",
+          "old_pnl": 95.94,
+          "new_pnl": 63.96,
+          "change": -31.98
+        },
+        {
+          "case_id": "ross_flye_20260206",
+          "symbol": "FLYE",
+          "old_pnl": 1878.74,
+          "new_pnl": -1244.16,
+          "change": -3122.9
+        },
+        {
+          "case_id": "ross_sxtc_20260209",
+          "symbol": "SXTC",
+          "old_pnl": 7788.75,
+          "new_pnl": 5192.5,
+          "change": -2596.25
+        },
+        {
+          "case_id": "ross_bnrg_20260211",
+          "symbol": "BNRG",
+          "old_pnl": 360.5,
+          "new_pnl": 240.3,
+          "change": -120.2
+        },
+        {
+          "case_id": "ross_prfx_20260211",
+          "symbol": "PRFX",
+          "old_pnl": 25200.0,
+          "new_pnl": 16800.0,
+          "change": -8400.0
+        },
+        {
+          "case_id": "ross_pmi_20260212",
+          "symbol": "PMI",
+          "old_pnl": 6712.88,
+          "new_pnl": 4475.25,
+          "change": -2237.63
+        },
+        {
+          "case_id": "ross_vhub_20260217",
+          "symbol": "VHUB",
+          "old_pnl": 21796.45,
+          "new_pnl": 13900.4,
+          "change": -7896.05
+        },
+        {
+          "case_id": "ross_snse_20260218",
+          "symbol": "SNSE",
+          "old_pnl": 343.14,
+          "new_pnl": 228.76,
+          "change": -114.38
+        },
+        {
+          "case_id": "ross_envb_20260219",
+          "symbol": "ENVB",
+          "old_pnl": 12037.5,
+          "new_pnl": 8025.0,
+          "change": -4012.5
+        },
+        {
+          "case_id": "ross_batl_20260227",
+          "symbol": "BATL",
+          "old_pnl": 7837.5,
+          "new_pnl": 5225.0,
+          "change": -2612.5
+        }
+      ],
+      "unchanged": []
+    },
+    "full_cases": [
+      {
+        "case_id": "ross_lcfy_20260116",
+        "symbol": "LCFY",
+        "date": "2026-01-16",
+        "bot_pnl": 9030.11,
+        "ross_pnl": 10456.94,
+        "delta": -1426.83,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pavm_20260121",
+        "symbol": "PAVM",
+        "date": "2026-01-21",
+        "bot_pnl": 11051.04,
+        "ross_pnl": 43950.0,
+        "delta": -32898.96,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260126",
+        "symbol": "BATL",
+        "date": "2026-01-26",
+        "bot_pnl": 22108.78,
+        "ross_pnl": 0,
+        "delta": 22108.78,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260127",
+        "symbol": "BATL",
+        "date": "2026-01-27",
+        "bot_pnl": 43133.05,
+        "ross_pnl": 0,
+        "delta": 43133.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rolr_20260114",
+        "symbol": "ROLR",
+        "date": "2026-01-14",
+        "bot_pnl": 35690.07,
+        "ross_pnl": 85000.0,
+        "delta": -49309.93,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnkk_20260115",
+        "symbol": "BNKK",
+        "date": "2026-01-15",
+        "bot_pnl": 1402.3,
+        "ross_pnl": 15000.0,
+        "delta": -13597.7,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_tnmg_20260116",
+        "symbol": "TNMG",
+        "date": "2026-01-16",
+        "bot_pnl": -9384.4,
+        "ross_pnl": 2102.25,
+        "delta": -11486.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gwav_20260116",
+        "symbol": "GWAV",
+        "date": "2026-01-16",
+        "bot_pnl": -7207.7,
+        "ross_pnl": 3974.68,
+        "delta": -11182.38,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vero_20260116",
+        "symbol": "VERO",
+        "date": "2026-01-16",
+        "bot_pnl": 2918.18,
+        "ross_pnl": 3484.88,
+        "delta": -566.7,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gri_20260128",
+        "symbol": "GRI",
+        "date": "2026-01-28",
+        "bot_pnl": 11336.41,
+        "ross_pnl": 31599.98,
+        "delta": -20263.57,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_lrhc_20260130",
+        "symbol": "LRHC",
+        "date": "2026-01-30",
+        "bot_pnl": 7206.81,
+        "ross_pnl": 31076.62,
+        "delta": -23869.81,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_hind_20260127",
+        "symbol": "HIND",
+        "date": "2026-01-27",
+        "bot_pnl": 12902.76,
+        "ross_pnl": 55252.51,
+        "delta": -42349.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bctx_20260127",
+        "symbol": "BCTX",
+        "date": "2026-01-27",
+        "bot_pnl": 4548.89,
+        "ross_pnl": 4500.0,
+        "delta": 48.89,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_dcx_20260129",
+        "symbol": "DCX",
+        "date": "2026-01-29",
+        "bot_pnl": 443.86,
+        "ross_pnl": 6268.28,
+        "delta": -5824.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_npt_20260203",
+        "symbol": "NPT",
+        "date": "2026-02-03",
+        "bot_pnl": 45360.79,
+        "ross_pnl": 81000.0,
+        "delta": -35639.21,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnai_20260205",
+        "symbol": "BNAI",
+        "date": "2026-02-05",
+        "bot_pnl": 3786.75,
+        "ross_pnl": -7900.0,
+        "delta": 11686.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rnaz_20260205",
+        "symbol": "RNAZ",
+        "date": "2026-02-05",
+        "bot_pnl": 63.96,
+        "ross_pnl": 1700.0,
+        "delta": -1636.04,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rvsn_20260205",
+        "symbol": "RVSN",
+        "date": "2026-02-05",
+        "bot_pnl": -2696.98,
+        "ross_pnl": -3000.0,
+        "delta": 303.02,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_flye_20260206",
+        "symbol": "FLYE",
+        "date": "2026-02-06",
+        "bot_pnl": -1244.16,
+        "ross_pnl": 4800.0,
+        "delta": -6044.16,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rdib_20260206",
+        "symbol": "RDIB",
+        "date": "2026-02-06",
+        "bot_pnl": -5053.58,
+        "ross_pnl": 700.0,
+        "delta": -5753.58,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mnts_20260209",
+        "symbol": "MNTS",
+        "date": "2026-02-09",
+        "bot_pnl": -5235.46,
+        "ross_pnl": 9000.0,
+        "delta": -14235.46,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_sxtc_20260209",
+        "symbol": "SXTC",
+        "date": "2026-02-09",
+        "bot_pnl": 5192.5,
+        "ross_pnl": -5000.0,
+        "delta": 10192.5,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_uoka_20260209",
+        "symbol": "UOKA",
+        "date": "2026-02-09",
+        "bot_pnl": -7090.0,
+        "ross_pnl": 858.0,
+        "delta": -7948.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_evmn_20260210",
+        "symbol": "EVMN",
+        "date": "2026-02-10",
+        "bot_pnl": 49552.05,
+        "ross_pnl": -10000.0,
+        "delta": 59552.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_velo_20260210",
+        "symbol": "VELO",
+        "date": "2026-02-10",
+        "bot_pnl": -22.35,
+        "ross_pnl": -2000.0,
+        "delta": 1977.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnrg_20260211",
+        "symbol": "BNRG",
+        "date": "2026-02-11",
+        "bot_pnl": 240.3,
+        "ross_pnl": 271.74,
+        "delta": -31.44,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_prfx_20260211",
+        "symbol": "PRFX",
+        "date": "2026-02-11",
+        "bot_pnl": 16800.0,
+        "ross_pnl": 5970.9,
+        "delta": 10829.1,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pmi_20260212",
+        "symbol": "PMI",
+        "date": "2026-02-12",
+        "bot_pnl": 4475.25,
+        "ross_pnl": 9959.3,
+        "delta": -5484.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_onco_20260212",
+        "symbol": "ONCO",
+        "date": "2026-02-12",
+        "bot_pnl": -5993.0,
+        "ross_pnl": -5500.0,
+        "delta": -493.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260213",
+        "symbol": "MLEC",
+        "date": "2026-02-13",
+        "bot_pnl": 12537.59,
+        "ross_pnl": 43000.0,
+        "delta": -30462.41,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vhub_20260217",
+        "symbol": "VHUB",
+        "date": "2026-02-17",
+        "bot_pnl": 13900.4,
+        "ross_pnl": 1600.0,
+        "delta": 12300.4,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_snse_20260218",
+        "symbol": "SNSE",
+        "date": "2026-02-18",
+        "bot_pnl": 228.76,
+        "ross_pnl": 9373.32,
+        "delta": -9144.56,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_envb_20260219",
+        "symbol": "ENVB",
+        "date": "2026-02-19",
+        "bot_pnl": 8025.0,
+        "ross_pnl": 12716.0,
+        "delta": -4691.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260220",
+        "symbol": "MLEC",
+        "date": "2026-02-20",
+        "bot_pnl": -2992.97,
+        "ross_pnl": 5612.0,
+        "delta": -8604.97,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_edhl_20260220",
+        "symbol": "EDHL",
+        "date": "2026-02-20",
+        "bot_pnl": 1610.95,
+        "ross_pnl": -111.78,
+        "delta": 1722.73,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_aidx_20260225",
+        "symbol": "AIDX",
+        "date": "2026-02-25",
+        "bot_pnl": -952.32,
+        "ross_pnl": 546.1,
+        "delta": -1498.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_ndra_20260226",
+        "symbol": "NDRA",
+        "date": "2026-02-26",
+        "bot_pnl": -841.83,
+        "ross_pnl": 13.15,
+        "delta": -854.98,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260227",
+        "symbol": "BATL",
+        "date": "2026-02-27",
+        "bot_pnl": 5225.0,
+        "ross_pnl": -6700.0,
+        "delta": 11925.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260302",
+        "symbol": "BATL",
+        "date": "2026-03-02",
+        "bot_pnl": -4429.14,
+        "ross_pnl": 6831.0,
+        "delta": -11260.14,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      }
+    ]
+  },
+  "25%": {
+    "total_pnl": 262028.93,
+    "total_ross": 446405.87,
+    "cases": 39,
+    "profitable": 25,
+    "improved": 11,
+    "regressed": 28,
+    "net_change": -93009.73,
+    "per_case": {
+      "improved": [
+        {
+          "case_id": "ross_rvsn_20260205",
+          "symbol": "RVSN",
+          "old_pnl": -4045.47,
+          "new_pnl": -2696.98,
+          "change": 1348.49
+        },
+        {
+          "case_id": "ross_rdib_20260206",
+          "symbol": "RDIB",
+          "old_pnl": -5137.12,
+          "new_pnl": -3424.75,
+          "change": 1712.37
+        },
+        {
+          "case_id": "ross_mnts_20260209",
+          "symbol": "MNTS",
+          "old_pnl": -15502.64,
+          "new_pnl": -6667.54,
+          "change": 8835.1
+        },
+        {
+          "case_id": "ross_uoka_20260209",
+          "symbol": "UOKA",
+          "old_pnl": -10635.0,
+          "new_pnl": -7090.0,
+          "change": 3545.0
+        },
+        {
+          "case_id": "ross_evmn_20260210",
+          "symbol": "EVMN",
+          "old_pnl": 42354.93,
+          "new_pnl": 49552.05,
+          "change": 7197.12
+        },
+        {
+          "case_id": "ross_velo_20260210",
+          "symbol": "VELO",
+          "old_pnl": -33.5,
+          "new_pnl": -22.35,
+          "change": 11.15
+        },
+        {
+          "case_id": "ross_onco_20260212",
+          "symbol": "ONCO",
+          "old_pnl": -12150.0,
+          "new_pnl": -5993.0,
+          "change": 6157.0
+        },
+        {
+          "case_id": "ross_mlec_20260220",
+          "symbol": "MLEC",
+          "old_pnl": -3240.21,
+          "new_pnl": -2992.97,
+          "change": 247.24
+        },
+        {
+          "case_id": "ross_aidx_20260225",
+          "symbol": "AIDX",
+          "old_pnl": -1428.48,
+          "new_pnl": -952.32,
+          "change": 476.16
+        },
+        {
+          "case_id": "ross_ndra_20260226",
+          "symbol": "NDRA",
+          "old_pnl": -1053.0,
+          "new_pnl": -841.83,
+          "change": 211.17
+        },
+        {
+          "case_id": "ross_batl_20260302",
+          "symbol": "BATL",
+          "old_pnl": -6643.71,
+          "new_pnl": -4429.14,
+          "change": 2214.57
+        }
+      ],
+      "regressed": [
+        {
+          "case_id": "ross_lcfy_20260116",
+          "symbol": "LCFY",
+          "old_pnl": 13544.89,
+          "new_pnl": 9030.11,
+          "change": -4514.78
+        },
+        {
+          "case_id": "ross_pavm_20260121",
+          "symbol": "PAVM",
+          "old_pnl": 19046.82,
+          "new_pnl": 11051.04,
+          "change": -7995.78
+        },
+        {
+          "case_id": "ross_batl_20260126",
+          "symbol": "BATL",
+          "old_pnl": 26757.46,
+          "new_pnl": 22108.78,
+          "change": -4648.68
+        },
+        {
+          "case_id": "ross_batl_20260127",
+          "symbol": "BATL",
+          "old_pnl": 49635.8,
+          "new_pnl": 43133.05,
+          "change": -6502.75
+        },
+        {
+          "case_id": "ross_rolr_20260114",
+          "symbol": "ROLR",
+          "old_pnl": 45723.39,
+          "new_pnl": 35690.07,
+          "change": -10033.32
+        },
+        {
+          "case_id": "ross_bnkk_20260115",
+          "symbol": "BNKK",
+          "old_pnl": 1103.99,
+          "new_pnl": 735.58,
+          "change": -368.41
+        },
+        {
+          "case_id": "ross_tnmg_20260116",
+          "symbol": "TNMG",
+          "old_pnl": 8629.83,
+          "new_pnl": -9384.4,
+          "change": -18014.23
+        },
+        {
+          "case_id": "ross_gwav_20260116",
+          "symbol": "GWAV",
+          "old_pnl": -6526.1,
+          "new_pnl": -7207.7,
+          "change": -681.6
+        },
+        {
+          "case_id": "ross_vero_20260116",
+          "symbol": "VERO",
+          "old_pnl": 3578.92,
+          "new_pnl": 2918.18,
+          "change": -660.74
+        },
+        {
+          "case_id": "ross_gri_20260128",
+          "symbol": "GRI",
+          "old_pnl": 17004.23,
+          "new_pnl": 11336.41,
+          "change": -5667.82
+        },
+        {
+          "case_id": "ross_lrhc_20260130",
+          "symbol": "LRHC",
+          "old_pnl": 10810.77,
+          "new_pnl": 7206.81,
+          "change": -3603.96
+        },
+        {
+          "case_id": "ross_hind_20260127",
+          "symbol": "HIND",
+          "old_pnl": 19354.14,
+          "new_pnl": 12902.76,
+          "change": -6451.38
+        },
+        {
+          "case_id": "ross_bctx_20260127",
+          "symbol": "BCTX",
+          "old_pnl": 5373.18,
+          "new_pnl": 4548.89,
+          "change": -824.29
+        },
+        {
+          "case_id": "ross_dcx_20260129",
+          "symbol": "DCX",
+          "old_pnl": 666.56,
+          "new_pnl": 443.86,
+          "change": -222.7
+        },
+        {
+          "case_id": "ross_npt_20260203",
+          "symbol": "NPT",
+          "old_pnl": 68021.2,
+          "new_pnl": 45360.79,
+          "change": -22660.41
+        },
+        {
+          "case_id": "ross_bnai_20260205",
+          "symbol": "BNAI",
+          "old_pnl": 5682.14,
+          "new_pnl": 3786.75,
+          "change": -1895.39
+        },
+        {
+          "case_id": "ross_rnaz_20260205",
+          "symbol": "RNAZ",
+          "old_pnl": 95.94,
+          "new_pnl": 63.96,
+          "change": -31.98
+        },
+        {
+          "case_id": "ross_flye_20260206",
+          "symbol": "FLYE",
+          "old_pnl": 1878.74,
+          "new_pnl": -1244.16,
+          "change": -3122.9
+        },
+        {
+          "case_id": "ross_sxtc_20260209",
+          "symbol": "SXTC",
+          "old_pnl": 7788.75,
+          "new_pnl": 5192.5,
+          "change": -2596.25
+        },
+        {
+          "case_id": "ross_bnrg_20260211",
+          "symbol": "BNRG",
+          "old_pnl": 360.5,
+          "new_pnl": 240.3,
+          "change": -120.2
+        },
+        {
+          "case_id": "ross_prfx_20260211",
+          "symbol": "PRFX",
+          "old_pnl": 25200.0,
+          "new_pnl": 16800.0,
+          "change": -8400.0
+        },
+        {
+          "case_id": "ross_pmi_20260212",
+          "symbol": "PMI",
+          "old_pnl": 6712.88,
+          "new_pnl": 4475.25,
+          "change": -2237.63
+        },
+        {
+          "case_id": "ross_mlec_20260213",
+          "symbol": "MLEC",
+          "old_pnl": -578.33,
+          "new_pnl": -4811.56,
+          "change": -4233.23
+        },
+        {
+          "case_id": "ross_vhub_20260217",
+          "symbol": "VHUB",
+          "old_pnl": 21796.45,
+          "new_pnl": 19283.35,
+          "change": -2513.1
+        },
+        {
+          "case_id": "ross_snse_20260218",
+          "symbol": "SNSE",
+          "old_pnl": 343.14,
+          "new_pnl": 228.76,
+          "change": -114.38
+        },
+        {
+          "case_id": "ross_envb_20260219",
+          "symbol": "ENVB",
+          "old_pnl": 12037.5,
+          "new_pnl": 8025.0,
+          "change": -4012.5
+        },
+        {
+          "case_id": "ross_edhl_20260220",
+          "symbol": "EDHL",
+          "old_pnl": 672.57,
+          "new_pnl": 448.38,
+          "change": -224.19
+        },
+        {
+          "case_id": "ross_batl_20260227",
+          "symbol": "BATL",
+          "old_pnl": 7837.5,
+          "new_pnl": 5225.0,
+          "change": -2612.5
+        }
+      ],
+      "unchanged": []
+    },
+    "full_cases": [
+      {
+        "case_id": "ross_lcfy_20260116",
+        "symbol": "LCFY",
+        "date": "2026-01-16",
+        "bot_pnl": 9030.11,
+        "ross_pnl": 10456.94,
+        "delta": -1426.83,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pavm_20260121",
+        "symbol": "PAVM",
+        "date": "2026-01-21",
+        "bot_pnl": 11051.04,
+        "ross_pnl": 43950.0,
+        "delta": -32898.96,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260126",
+        "symbol": "BATL",
+        "date": "2026-01-26",
+        "bot_pnl": 22108.78,
+        "ross_pnl": 0,
+        "delta": 22108.78,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260127",
+        "symbol": "BATL",
+        "date": "2026-01-27",
+        "bot_pnl": 43133.05,
+        "ross_pnl": 0,
+        "delta": 43133.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rolr_20260114",
+        "symbol": "ROLR",
+        "date": "2026-01-14",
+        "bot_pnl": 35690.07,
+        "ross_pnl": 85000.0,
+        "delta": -49309.93,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnkk_20260115",
+        "symbol": "BNKK",
+        "date": "2026-01-15",
+        "bot_pnl": 735.58,
+        "ross_pnl": 15000.0,
+        "delta": -14264.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_tnmg_20260116",
+        "symbol": "TNMG",
+        "date": "2026-01-16",
+        "bot_pnl": -9384.4,
+        "ross_pnl": 2102.25,
+        "delta": -11486.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gwav_20260116",
+        "symbol": "GWAV",
+        "date": "2026-01-16",
+        "bot_pnl": -7207.7,
+        "ross_pnl": 3974.68,
+        "delta": -11182.38,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vero_20260116",
+        "symbol": "VERO",
+        "date": "2026-01-16",
+        "bot_pnl": 2918.18,
+        "ross_pnl": 3484.88,
+        "delta": -566.7,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_gri_20260128",
+        "symbol": "GRI",
+        "date": "2026-01-28",
+        "bot_pnl": 11336.41,
+        "ross_pnl": 31599.98,
+        "delta": -20263.57,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_lrhc_20260130",
+        "symbol": "LRHC",
+        "date": "2026-01-30",
+        "bot_pnl": 7206.81,
+        "ross_pnl": 31076.62,
+        "delta": -23869.81,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_hind_20260127",
+        "symbol": "HIND",
+        "date": "2026-01-27",
+        "bot_pnl": 12902.76,
+        "ross_pnl": 55252.51,
+        "delta": -42349.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bctx_20260127",
+        "symbol": "BCTX",
+        "date": "2026-01-27",
+        "bot_pnl": 4548.89,
+        "ross_pnl": 4500.0,
+        "delta": 48.89,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_dcx_20260129",
+        "symbol": "DCX",
+        "date": "2026-01-29",
+        "bot_pnl": 443.86,
+        "ross_pnl": 6268.28,
+        "delta": -5824.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_npt_20260203",
+        "symbol": "NPT",
+        "date": "2026-02-03",
+        "bot_pnl": 45360.79,
+        "ross_pnl": 81000.0,
+        "delta": -35639.21,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnai_20260205",
+        "symbol": "BNAI",
+        "date": "2026-02-05",
+        "bot_pnl": 3786.75,
+        "ross_pnl": -7900.0,
+        "delta": 11686.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rnaz_20260205",
+        "symbol": "RNAZ",
+        "date": "2026-02-05",
+        "bot_pnl": 63.96,
+        "ross_pnl": 1700.0,
+        "delta": -1636.04,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rvsn_20260205",
+        "symbol": "RVSN",
+        "date": "2026-02-05",
+        "bot_pnl": -2696.98,
+        "ross_pnl": -3000.0,
+        "delta": 303.02,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_flye_20260206",
+        "symbol": "FLYE",
+        "date": "2026-02-06",
+        "bot_pnl": -1244.16,
+        "ross_pnl": 4800.0,
+        "delta": -6044.16,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_rdib_20260206",
+        "symbol": "RDIB",
+        "date": "2026-02-06",
+        "bot_pnl": -3424.75,
+        "ross_pnl": 700.0,
+        "delta": -4124.75,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mnts_20260209",
+        "symbol": "MNTS",
+        "date": "2026-02-09",
+        "bot_pnl": -6667.54,
+        "ross_pnl": 9000.0,
+        "delta": -15667.54,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_sxtc_20260209",
+        "symbol": "SXTC",
+        "date": "2026-02-09",
+        "bot_pnl": 5192.5,
+        "ross_pnl": -5000.0,
+        "delta": 10192.5,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_uoka_20260209",
+        "symbol": "UOKA",
+        "date": "2026-02-09",
+        "bot_pnl": -7090.0,
+        "ross_pnl": 858.0,
+        "delta": -7948.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_evmn_20260210",
+        "symbol": "EVMN",
+        "date": "2026-02-10",
+        "bot_pnl": 49552.05,
+        "ross_pnl": -10000.0,
+        "delta": 59552.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_velo_20260210",
+        "symbol": "VELO",
+        "date": "2026-02-10",
+        "bot_pnl": -22.35,
+        "ross_pnl": -2000.0,
+        "delta": 1977.65,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_bnrg_20260211",
+        "symbol": "BNRG",
+        "date": "2026-02-11",
+        "bot_pnl": 240.3,
+        "ross_pnl": 271.74,
+        "delta": -31.44,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_prfx_20260211",
+        "symbol": "PRFX",
+        "date": "2026-02-11",
+        "bot_pnl": 16800.0,
+        "ross_pnl": 5970.9,
+        "delta": 10829.1,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_pmi_20260212",
+        "symbol": "PMI",
+        "date": "2026-02-12",
+        "bot_pnl": 4475.25,
+        "ross_pnl": 9959.3,
+        "delta": -5484.05,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_onco_20260212",
+        "symbol": "ONCO",
+        "date": "2026-02-12",
+        "bot_pnl": -5993.0,
+        "ross_pnl": -5500.0,
+        "delta": -493.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260213",
+        "symbol": "MLEC",
+        "date": "2026-02-13",
+        "bot_pnl": -4811.56,
+        "ross_pnl": 43000.0,
+        "delta": -47811.56,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_vhub_20260217",
+        "symbol": "VHUB",
+        "date": "2026-02-17",
+        "bot_pnl": 19283.35,
+        "ross_pnl": 1600.0,
+        "delta": 17683.35,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_snse_20260218",
+        "symbol": "SNSE",
+        "date": "2026-02-18",
+        "bot_pnl": 228.76,
+        "ross_pnl": 9373.32,
+        "delta": -9144.56,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_envb_20260219",
+        "symbol": "ENVB",
+        "date": "2026-02-19",
+        "bot_pnl": 8025.0,
+        "ross_pnl": 12716.0,
+        "delta": -4691.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_mlec_20260220",
+        "symbol": "MLEC",
+        "date": "2026-02-20",
+        "bot_pnl": -2992.97,
+        "ross_pnl": 5612.0,
+        "delta": -8604.97,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_edhl_20260220",
+        "symbol": "EDHL",
+        "date": "2026-02-20",
+        "bot_pnl": 448.38,
+        "ross_pnl": -111.78,
+        "delta": 560.16,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_aidx_20260225",
+        "symbol": "AIDX",
+        "date": "2026-02-25",
+        "bot_pnl": -952.32,
+        "ross_pnl": 546.1,
+        "delta": -1498.42,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_ndra_20260226",
+        "symbol": "NDRA",
+        "date": "2026-02-26",
+        "bot_pnl": -841.83,
+        "ross_pnl": 13.15,
+        "delta": -854.98,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260227",
+        "symbol": "BATL",
+        "date": "2026-02-27",
+        "bot_pnl": 5225.0,
+        "ross_pnl": -6700.0,
+        "delta": 11925.0,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      },
+      {
+        "case_id": "ross_batl_20260302",
+        "symbol": "BATL",
+        "date": "2026-03-02",
+        "bot_pnl": -4429.14,
+        "ross_pnl": 6831.0,
+        "delta": -11260.14,
+        "entry_time": null,
+        "exit_time": null,
+        "direction": null,
+        "guard_blocks": []
+      }
+    ]
+  }
+}

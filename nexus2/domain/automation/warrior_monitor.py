@@ -418,6 +418,18 @@ class WarriorMonitor:
         technical_stop = None
         if support_level and s.use_technical_stop:
             technical_stop = support_level - s.technical_stop_buffer_cents / 100
+            
+            # Cap technical stop to max distance (prevents MNTS-style 32% bag-holds)
+            if entry_price > 0 and s.tech_stop_max_pct > 0:
+                max_pct = Decimal(str(s.tech_stop_max_pct))
+                stop_distance_pct = (entry_price - technical_stop) / entry_price
+                if stop_distance_pct > max_pct:
+                    original = technical_stop
+                    technical_stop = (entry_price * (1 - max_pct)).quantize(Decimal("0.01"))
+                    logger.warning(
+                        f"[Warrior] {symbol}: TECH STOP CAPPED ${original:.2f} → ${technical_stop:.2f} "
+                        f"({float(stop_distance_pct)*100:.1f}% > {float(max_pct)*100:.0f}% cap)"
+                    )
         
         # Current stop: Use CANDLE LOW (technical) as PRIMARY for ALL modes
         # Ross's rule: "Max loss per trade = Low of entry candle"

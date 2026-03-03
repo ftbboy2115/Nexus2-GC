@@ -1330,6 +1330,37 @@ test_cases:
       stop_near: 5.60  # Actual stops at $5.63 / $5.59
     notes: "Max loss red day. BATL (Battalion Oil) up 36% on oil/global events. Ross entered dip at $5.85 in retirement account (first trade was in wrong taxable account — small winner). Over-sized at 30k shares (should have been capped at 10k — forgot to save settings). Held waiting for first 1-min candle to make new high, never came. Stopped out $5.63/$5.59. Also avoided CDIO (rvol 1.43 vs 5 minimum, day 7 of squeeze). Set 10k share cap for next week. Transcript: 2026-02-27_transcript_Ch8J7gwrrJg.md"
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (March 2, 2026)
+  # Transcript: 2026-03-02_transcript_WqLUp4QTCQY.md
+  # Day total: +$6,831 (one stock, BATL — recovered Friday's -$6,743 loss)
+  # --------------------------------------------------------------------------
+
+  - id: ross_batl_20260302
+    symbol: BATL
+    setup_type: curl_squeeze
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$6,831 - Energy Catalyst Premarket Curl, Jacknife Rejection"
+    trade_date: "2026-03-02"
+    intraday_file: "intraday/ross_batl_20260302.json"
+    ross_pnl: 6831.00
+    ross_entry_time: "~07:07"  # Premarket curl entry at $11, confirmed in bar data (07:07 bar hits $11.00)
+    data_quality: "TRANSCRIPT_VERIFIED"  # Entry $11 and adds $12.58-$12.81 explicitly stated in transcript
+    premarket_data:
+      gap_percent: 61.9
+      premarket_high: 13.00
+      previous_close: null  # Not stated (Friday's close after -$6,743 loss day)
+      float_shares: null
+      catalyst: "energy"  # Middle East conflict driving oil futures up ~12%
+    expected:
+      entry_near: 11.00  # Ross: "I got in at $11 a share. That was my first entry."
+      stop_near: 10.50  # Below curl low area (~$10.40-$10.50 at 06:45-07:00)
+    notes: "Same stock as Friday's -$6,743 loss. Premarket curl entry at $11 (~07:07). Took 75% off at ~$12. Added back for break of $12 (first 1m candle new high), sold into pop → +$14K realized. Then aggressive adds at $12.58/$12.64/$12.69/$12.73/$12.77/$12.81 looking for $13 break. Jacknife rejection: peaked $12.90 (bar data shows $13.00 HOD at 07:14), tanked to $11.49 in one candle. Cut losses $12.41→$11.91. Gave back ~$8K on the failed breakout. Net +$6,831 (recovering Friday's loss, net +$89 over 2 days). Avoided: INDO (sideways), TPET (too cheap), TMDE (peaked/unwound by 7am), TURB (too cheap), QTTB (popped and died). Transcript: 2026-03-02_transcript_WqLUp4QTCQY.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1338,7 +1369,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               37 (+ BATL from 2026-02-27)
+# POLYGON_DATA:               39 (+ BATL from 2026-03-02)
 # ==========================================================================
 
 

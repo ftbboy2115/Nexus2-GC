@@ -63,6 +63,7 @@ class WarriorMonitorSettings:
     use_candle_low_stop: bool = True  # Ross's actual method: low of entry candle
     use_technical_stop: bool = True  # Also use support levels
     technical_stop_buffer_cents: Decimal = Decimal("5")  # 2-5 cents below support
+    tech_stop_max_pct: float = 0.0  # DISABLED: all sweep values net negative (10%=-$122K, 15%=-$78K, 20%=-$79K, 25%=-$93K)
     
     # Profit Targets (Ross-style: can use fixed cents OR R-multiple)
     profit_target_cents: Decimal = Decimal("0")  # If > 0, use fixed cents (e.g., 20 = +20¢)
