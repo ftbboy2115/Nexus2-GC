@@ -131,6 +131,11 @@ async def check_entry_guards(
         tml.log_warrior_guard_block(symbol, "fail_limit", reason, _trigger, _price, _btime)
         return False, reason
     
+    # NOTE: EMA trend is handled by scoring penalty (not a hard gate).
+    # The MACD gate + falling knife guard already block truly dead trends.
+    # A hard EMA gate was tested but caused -$34K regression by blocking
+    # profitable entries where EMAs hadn't caught up to a fresh move.
+    
     # MACD GATE - Block ALL entries when MACD is negative
     # FAIL-CLOSED MANDATE: "Better to not trade than trade blind."
     macd_result = await _check_macd_gate(engine, watched, current_price)
@@ -245,6 +250,9 @@ async def _check_macd_gate(
         # is meaningfully negative (below tolerance threshold).
         histogram = snapshot.macd_histogram or 0
         tolerance = engine.config.macd_histogram_tolerance  # default -0.02
+        
+        # Update cached MACD histogram for scoring (keeps scoring in sync with gate)
+        watched.cached_macd_histogram = float(histogram)
         
         if histogram < tolerance and snapshot.macd_crossover != "bullish":
             reason = (

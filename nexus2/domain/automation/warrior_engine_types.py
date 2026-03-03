@@ -193,9 +193,12 @@ class WatchedCandidate:
     # VWAP/EMA tracking for dynamic scoring (Ross: trend matters for TOP_PICK_ONLY)
     current_vwap: Optional[Decimal] = None  # Current VWAP value
     current_ema_9: Optional[Decimal] = None  # Current 9 EMA value
+    current_ema_20: Optional[Decimal] = None  # Current 20 EMA value (for dynamic scoring EMA trend)
     current_price: Optional[Decimal] = None  # Last known price
     is_above_vwap: bool = False  # True if price > VWAP
     is_above_ema_9: bool = False  # True if price > 9 EMA
+    is_above_ema_20: bool = False  # True if price > 20 EMA (for dynamic scoring EMA trend)
+    cached_macd_histogram: Optional[float] = None  # MACD histogram cached by update_candidate_technicals() for scoring
     trend_updated_at: Optional[datetime] = None  # When trend data was last updated
     
     # Bull flag pattern tracking (Ross: "first green after pullback")

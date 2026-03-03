@@ -169,6 +169,19 @@ In a past session, a coordinator referenced `POST /api/telemetry/catalyst-audit`
 - **DO** assign the **Backend Planner** to investigate complex code questions
 - **DO NOT** read through entire modules to understand implementation details
 
+### CLI Command Verification (MANDATORY)
+
+> [!WARNING]
+> **Before including ANY CLI command in a handoff, run `--help` to verify the exact syntax.**
+> Do NOT invent flags, arguments, or options from memory.
+
+- Run `script.py --help` before referencing its flags
+- If the script doesn't have a help flag, check `view_file_outline` for `argparse` setup
+- Incorrect commands waste downstream agent effort and erode trust
+
+### Prior Violations
+- **Mar 3**: Coordinator included `python scripts/gc_quick_test.py --case ross_cmct_20260109 --verbose` in a validator handoff. **Neither `--case` nor `--verbose` exist.** Correct syntax: positional args + `--trades`. Wasted validator effort on debugging non-existent flags.
+
 ---
 
 ## 🚨 DISCOVERY-BASED HANDOFFS (CRITICAL) 🚨

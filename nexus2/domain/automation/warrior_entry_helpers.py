@@ -353,6 +353,18 @@ async def update_candidate_technicals(
         if snapshot.ema_9:
             watched.current_ema_9 = Decimal(str(snapshot.ema_9))
             watched.is_above_ema_9 = current_price > watched.current_ema_9
+        if snapshot.ema_20:
+            watched.current_ema_20 = Decimal(str(snapshot.ema_20))
+            watched.is_above_ema_20 = current_price > watched.current_ema_20
+        
+        # Cache MACD histogram for dynamic scoring (scoring runs BEFORE MACD gate)
+        if snapshot.macd_histogram is not None:
+            watched.cached_macd_histogram = float(snapshot.macd_histogram)
+            logger.debug(
+                f"[Warrior Entry] {symbol}: Cached MACD histogram={snapshot.macd_histogram:.4f} "
+                f"for scoring"
+            )
+        
         from nexus2.utils.time_utils import sim_aware_now_utc
         watched.trend_updated_at = sim_aware_now_utc()
         

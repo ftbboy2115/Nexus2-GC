@@ -492,6 +492,57 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                 )
             
             # -----------------------------------------------------------------
+            # COMPUTE DYNAMIC SCORING FACTORS (once per symbol per cycle)
+            # -----------------------------------------------------------------
+            
+            # MACD: prefer cached value from update_candidate_technicals() (updated every 60s)
+            # Falls back to entry_snapshot (populated by MACD gate, but only available on re-entries)
+            _macd_histogram = watched.cached_macd_histogram
+            if _macd_histogram is None:
+                _entry_snap = getattr(watched, 'entry_snapshot', None)
+                if _entry_snap and hasattr(_entry_snap, 'macd_histogram'):
+                    _macd_histogram = _entry_snap.macd_histogram
+            
+            # EMA trend: from cached technicals (Ross uses 9 and 20 EMA)
+            _ema_trend = None
+            if watched.current_ema_9 is not None or watched.current_ema_20 is not None:
+                if watched.is_above_ema_9 and watched.is_above_ema_20:
+                    _ema_trend = "strong"
+                elif watched.is_above_ema_20:
+                    _ema_trend = "weakening"
+                else:
+                    _ema_trend = "bearish"
+            
+            # VWAP distance: from cached technicals
+            _vwap_distance_pct = None
+            if watched.current_vwap and watched.current_vwap > 0:
+                _vwap_distance_pct = float(
+                    (current_price - watched.current_vwap) / watched.current_vwap * 100
+                )
+            
+            # Price extension from PMH
+            _extension_pct = None
+            if watched.pmh and watched.pmh > 0:
+                _extension_pct = float(
+                    (current_price - watched.pmh) / watched.pmh * 100
+                )
+            
+            # Volume expansion: not wired yet (function exists but wiring caused regression)
+            _vol_expansion_ratio = None
+            
+            # Re-entry count (already tracked on watched)
+            _reentry_count = watched.entry_attempt_count
+            
+            # Log dynamic scoring context for debugging
+            _vwap_str = f"{_vwap_distance_pct:.1f}%" if _vwap_distance_pct is not None else "N/A"
+            logger.debug(
+                f"[Warrior Entry] {symbol}: Dynamic scoring context - "
+                f"MACD_hist={_macd_histogram}, EMA_trend={_ema_trend}, "
+                f"VWAP_dist={_vwap_str}, vol_exp={_vol_expansion_ratio}, "
+                f"reentry={_reentry_count}, ext={_extension_pct}"
+            )
+            
+            # -----------------------------------------------------------------
             # COLLECT PATTERN CANDIDATES
             # -----------------------------------------------------------------
             candidates: list[PatternCandidate] = []
@@ -509,6 +560,13 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                         level_proximity=level_proximity,
                         time_score=time_score,
                         blue_sky_pct=blue_sky_pct,
+                        # Dynamic factors
+                        macd_histogram=_macd_histogram,
+                        reentry_count=_reentry_count,
+                        ema_trend=_ema_trend,
+                        vwap_distance_pct=_vwap_distance_pct,
+                        volume_expansion=_vol_expansion_ratio,
+                        price_extension_pct=_extension_pct,
                     )
                     candidates.append(PatternCandidate(
                         pattern=trigger,
@@ -521,11 +579,18 @@ async def check_entry_triggers(engine: "WarriorEngine") -> None:
                             "level_prox": level_proximity,
                             "time": time_score,
                             "blue_sky": blue_sky_pct,
+                            "macd_hist": _macd_histogram,
+                            "ema_trend": _ema_trend,
+                            "reentry": _reentry_count,
+                            "vwap_dist": _vwap_distance_pct,
+                            "vol_expansion": _vol_expansion_ratio,
+                            "extension": _extension_pct,
                         }
                     ))
                     logger.debug(
                         f"[Warrior Entry] {symbol}: Candidate {trigger.name} "
-                        f"score={score:.3f} (conf={confidence:.2f})"
+                        f"score={score:.3f} (conf={confidence:.2f}, "
+                        f"macd={_macd_histogram}, ema={_ema_trend}, re={_reentry_count})"
                     )
             
             # ABCD PATTERN (standalone - doesn't depend on PMH relationship)
