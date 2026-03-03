@@ -1361,6 +1361,38 @@ test_cases:
       stop_near: 10.50  # Below curl low area (~$10.40-$10.50 at 06:45-07:00)
     notes: "Same stock as Friday's -$6,743 loss. Premarket curl entry at $11 (~07:07). Took 75% off at ~$12. Added back for break of $12 (first 1m candle new high), sold into pop → +$14K realized. Then aggressive adds at $12.58/$12.64/$12.69/$12.73/$12.77/$12.81 looking for $13 break. Jacknife rejection: peaked $12.90 (bar data shows $13.00 HOD at 07:14), tanked to $11.49 in one candle. Cut losses $12.41→$11.91. Gave back ~$8K on the failed breakout. Net +$6,831 (recovering Friday's loss, net +$89 over 2 days). Avoided: INDO (sideways), TPET (too cheap), TMDE (peaked/unwound by 7am), TURB (too cheap), QTTB (popped and died). Transcript: 2026-03-02_transcript_WqLUp4QTCQY.md"
 
+  # --------------------------------------------------------------------------
+  # ROSS CAMERON REAL TRADES (March 3, 2026)
+  # Transcript: 2026-03-03_transcript_3s9fnCvdWMo.md
+  # Day total: +$8,312.18 (all on NPT)
+  # Title: "Energy Stocks Surging Higher on Middle East News"
+  # --------------------------------------------------------------------------
+
+  - id: ross_npt_20260303
+    symbol: NPT
+    setup_type: pmh
+    outcome: winner
+    ross_traded: true
+    synthetic: false
+    status: POLYGON_DATA
+    data_source: polygon
+    description: "Ross Cameron +$8,312 - No News Chinese Stock, Multi-Scalp Day"
+    trade_date: "2026-03-03"
+    intraday_file: "intraday/ross_npt_20260303.json"
+    ross_pnl: 8312.18
+    ross_entry_time: "~08:03"  # First pop at ~8am, Ross entered on break of $7
+    data_quality: "TRANSCRIPT_PARTIAL"  # Entry on break of $7 confirmed, exact time not stated
+    premarket_data:
+      gap_percent: 24.7
+      premarket_high: 11.50
+      previous_close: 5.87  # From first premarket bar
+      float_shares: 5000000
+      catalyst: "momentum"  # No news, Chinese company, pure momentum
+    expected:
+      entry_near: 7.00  # Ross: "I jumped in for the break of 7 right there"
+      stop_near: 6.75
+    notes: "All trades on NPT. Chinese company with no news — 4/5 pillars (missing catalyst). First pop 08:02-08:04 ($5.87→$8.74). Ross entered break of $7, popped to $8.50, took profit. Added back $8.50 for $9 squeeze — gave back gains. Then break of $8.50→$9 for +$3K. Final squeeze $9→$11.50 for biggest trade. ~7-8 trades, 2-3 losers. Kept shares under 10K (cautious). Cold market day ($5K goal). Avoided: BATL (too expensive >$20, backside), TPET (too cheap), ZD ($45 too expensive), SVRN (too cheap). BATL halted on $15M offering at $5/share. Transcript: 2026-03-03_transcript_3s9fnCvdWMo.md"
+
 # ==========================================================================
 # SUMMARY
 # ==========================================================================
@@ -1369,7 +1401,7 @@ test_cases:
 # ESTIMATED (entry invalid):   2 (WOK, AZI)
 # NO_FMP_DATA:                 3 (BENF, AMCI, PVAS)
 # SYNTHETIC:                   2 (WLSR, WWNR)
-# POLYGON_DATA:               39 (+ BATL from 2026-03-02)
+# POLYGON_DATA:               40 (+ NPT from 2026-03-03)
 # ==========================================================================
 
 
