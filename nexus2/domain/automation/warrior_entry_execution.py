@@ -580,12 +580,12 @@ async def complete_entry(
     if actual_fill_price != entry_price or (order_status and order_status.lower() in ("filled", "partially_filled")):
         try:
             from nexus2.db.warrior_db import update_warrior_fill
-            mental_stop_cents = Decimal(str(engine.monitor.settings.mental_stop_cents))
-            actual_stop = actual_fill_decimal - mental_stop_cents / 100
+            # FIX: Don't recalculate stop from fill price.
+            # Preserve original consolidation stop from calculate_stop_price().
             update_warrior_fill(
                 trade_id=order_id,
                 actual_entry_price=float(actual_fill_price),
-                actual_stop_price=float(actual_stop),
+                actual_stop_price=None,  # Preserve original consolidation stop
                 actual_quantity=int(filled_qty) if filled_qty else shares,
             )
             slippage = (float(actual_fill_price) - float(entry_price)) * 100
@@ -633,8 +633,8 @@ async def complete_entry(
             f"intended ${entry_decimal:.2f} = {slippage_cents:+.1f}¢ ({slippage_bps:+.1f}bps)"
         )
     
-    # Recalculate stop based on actual fill price
-    actual_stop = actual_fill_decimal - Decimal(str(engine.monitor.settings.mental_stop_cents)) / 100
+    # FIX: Don't recalculate stop — use original mental_stop from calculate_stop_price()
+    # The fill price may differ from quote, but the consolidation stop is still correct.
     
     engine.monitor.add_position(
         position_id=order_id,
@@ -652,7 +652,7 @@ async def complete_entry(
         update_warrior_fill(
             trade_id=order_id,
             actual_entry_price=float(actual_fill_price),
-            actual_stop_price=float(actual_stop),
+            actual_stop_price=None,  # Preserve original consolidation stop
             actual_quantity=int(filled_qty) if filled_qty else shares,
         )
         logger.debug(f"[Warrior Entry] {symbol}: Updated DB with fill price ${actual_fill_price:.2f}")

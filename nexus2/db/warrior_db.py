@@ -327,8 +327,8 @@ def log_warrior_entry(
 def update_warrior_fill(
     trade_id: str,
     actual_entry_price: float,
-    actual_stop_price: float,
-    actual_quantity: int,
+    actual_stop_price: float = None,
+    actual_quantity: int = None,
 ) -> bool:
     """
     Update a Warrior trade with actual fill price after broker confirmation.
@@ -340,8 +340,10 @@ def update_warrior_fill(
     Args:
         trade_id: The trade ID to update
         actual_entry_price: Actual fill price from broker
-        actual_stop_price: Recalculated stop based on actual fill
-        actual_quantity: Actual filled quantity
+        actual_stop_price: Recalculated stop based on actual fill.
+                          If None, preserves the original stop (recommended).
+                          If provided and >= actual_entry_price, rejected with WARNING.
+        actual_quantity: Actual filled quantity (None = don't update)
     
     Returns:
         True if updated successfully, False if trade not found
@@ -354,9 +356,25 @@ def update_warrior_fill(
         
         old_price = trade.entry_price
         trade.entry_price = str(actual_entry_price)
-        trade.stop_price = str(actual_stop_price)
-        trade.quantity = actual_quantity
-        trade.remaining_quantity = actual_quantity
+        
+        # STOP PRICE UPDATE with failsafe guard
+        if actual_stop_price is not None:
+            # FAILSAFE: Reject stop prices that are >= entry price (inverted stop)
+            if actual_stop_price >= actual_entry_price:
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"[Warrior DB] STOP FAILSAFE: Rejecting stop ${actual_stop_price:.2f} "
+                    f">= entry ${actual_entry_price:.2f} for {trade.symbol}. "
+                    f"Preserving original stop ${trade.stop_price}."
+                )
+                # Don't update stop — keep original consolidation stop
+            else:
+                trade.stop_price = str(actual_stop_price)
+        # else: actual_stop_price is None — preserve original stop (normal case)
+        
+        if actual_quantity is not None:
+            trade.quantity = actual_quantity
+            trade.remaining_quantity = actual_quantity
         trade.high_since_entry = str(actual_entry_price)  # Reset high to actual fill
         trade.fill_price = str(actual_entry_price)  # Record actual fill
         
@@ -471,6 +489,34 @@ def get_warrior_trade_by_symbol(symbol: str, status: str = None):
                 WarriorTradeModel.status.in_(active_statuses)
             ).first()
         return trade.to_dict() if trade else None
+
+
+def get_all_warrior_trades_by_symbol(symbol: str) -> list:
+    """Get ALL open/active trades for a symbol.
+    
+    Unlike get_warrior_trade_by_symbol() which returns only .first(),
+    this returns ALL matching records. Essential for closing orphaned
+    scale-in DB rows that create ghost trades.
+    
+    Args:
+        symbol: Stock symbol to look up
+        
+    Returns:
+        List of trade dicts (may be empty)
+    """
+    with get_warrior_session() as db:
+        active_statuses = [
+            PositionStatus.OPEN.value,
+            PositionStatus.PENDING_FILL.value,
+            PositionStatus.PENDING_EXIT.value,
+            PositionStatus.PARTIAL.value,
+            PositionStatus.SCALING.value,
+        ]
+        trades = db.query(WarriorTradeModel).filter(
+            WarriorTradeModel.symbol == symbol,
+            WarriorTradeModel.status.in_(active_statuses)
+        ).all()
+        return [t.to_dict() for t in trades]
 
 
 def get_warrior_trade_for_recovery(symbol: str, broker_entry_price: float):

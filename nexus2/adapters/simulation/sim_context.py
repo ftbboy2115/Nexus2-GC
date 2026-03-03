@@ -360,16 +360,19 @@ def load_case_into_context(ctx: SimContext, case: dict, yaml_data: dict) -> int:
             # Without this, trades stay status='open' and get_all_warrior_trades('closed') returns nothing
             try:
                 from nexus2.db.warrior_db import (
-                    get_warrior_trade_by_symbol, log_warrior_exit
+                    get_all_warrior_trades_by_symbol, log_warrior_exit
                 )
-                trade = get_warrior_trade_by_symbol(signal.symbol)
-                if trade:
+                # FIX: Close ALL active records, not just .first()
+                # Scale-ins create new DB rows, and .first() only closes one,
+                # leaving orphaned ghost trades with exit_reason=null.
+                trades = get_all_warrior_trades_by_symbol(signal.symbol)
+                for trade in trades:
                     exit_reason = signal.reason.value if hasattr(signal.reason, 'value') else str(signal.reason)
                     log_warrior_exit(
                         trade_id=trade["id"],
                         exit_price=float(signal.exit_price),
                         exit_reason=exit_reason,
-                        quantity_exited=shares_to_sell,
+                        quantity_exited=trade.get("remaining_quantity") or trade.get("quantity", 0),
                         exit_time_override=ctx.clock.current_time,
                     )
             except Exception as e:
@@ -701,18 +704,21 @@ async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool 
                 )
                 ctx.broker.sell_position(pos_symbol, pos_qty)
 
-                # Log EOD exit to warrior_db
+                # Log EOD exit to warrior_db — close ALL active records
                 try:
                     from nexus2.db.warrior_db import (
-                        get_warrior_trade_by_symbol, log_warrior_exit
+                        get_all_warrior_trades_by_symbol, log_warrior_exit
                     )
-                    trade = get_warrior_trade_by_symbol(pos_symbol)
-                    if trade:
+                    # FIX: Close ALL active records, not just .first()
+                    # Scale-ins create new DB rows, and .first() only closes one,
+                    # leaving orphaned ghost trades with exit_reason=null.
+                    trades = get_all_warrior_trades_by_symbol(pos_symbol)
+                    for trade in trades:
                         log_warrior_exit(
                             trade_id=trade["id"],
                             exit_price=float(eod_price),
                             exit_reason="eod_close",
-                            quantity_exited=pos_qty,
+                            quantity_exited=trade.get("remaining_quantity") or trade.get("quantity", 0),
                             exit_time_override=ctx.clock.current_time,
                         )
                 except Exception as e:

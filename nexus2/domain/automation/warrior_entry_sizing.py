@@ -36,10 +36,9 @@ async def calculate_stop_price(
     """
     Calculate stop price using consolidation low methodology.
     
-    Uses CONSOLIDATION LOW (lowest of last 5 candles) - Ross Cameron methodology.
-    This prevents premature stops during normal consolidation dips before breakouts.
-    
-    Example: GRI entry at $4.70, consolidation low was $4.60, stop should be ~$4.58
+    Uses the lowest low of the last 5 candles as the stop basis.
+    A downstream cap (base_hit_max_stop_cents) limits the max stop distance
+    for base_hit trades to prevent bag holding on wide premarket ranges.
     
     Args:
         engine: The WarriorEngine instance

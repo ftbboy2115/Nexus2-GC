@@ -399,6 +399,67 @@ async def _check_time_stop(
     )
 
 
+def _check_mfe_trail(
+    monitor: "WarriorMonitor",
+    position: WarriorPosition,
+    current_price: Decimal,
+    r_multiple: float,
+) -> Optional[WarriorExitSignal]:
+    """
+    MFE Trailing Protection: prevent round-tripping profitable positions.
+    
+    Logic:
+    1. Calculate max profit reached: high_since_entry - entry_price
+    2. If max profit >= activation threshold (e.g., 3% of entry), trail is active
+    3. If current profit has given back >= give_back_pct of the max profit, exit
+    
+    Example (MNTS):
+    - Entry $7.80, high_since_entry $8.20 (MFE = +$0.40 = +5.1%)
+    - Activation at 3% = $0.234 → activated (MFE $0.40 > $0.234)
+    - Give-back threshold at 50% = keep at least $0.20 of the $0.40 gain
+    - If price drops to $8.00 → current profit $0.20, gave back $0.20 (50%) → EXIT
+    """
+    s = monitor.settings
+    if not s.enable_mfe_trail:
+        return None
+    
+    # Calculate max profit from high water mark
+    max_profit = position.high_since_entry - position.entry_price
+    if max_profit <= 0:
+        return None  # Never been profitable
+    
+    # Check activation threshold
+    activation_threshold = position.entry_price * Decimal(str(s.mfe_trail_activation_pct))
+    if max_profit < activation_threshold:
+        return None  # Hasn't reached activation threshold yet
+    
+    # Calculate how much of the max profit has been given back
+    current_profit = current_price - position.entry_price
+    profit_given_back = max_profit - current_profit
+    give_back_ratio = float(profit_given_back / max_profit) if max_profit > 0 else 0
+    
+    if give_back_ratio >= s.mfe_trail_give_back_pct:
+        pnl = current_profit * position.shares
+        logger.info(
+            f"[Warrior] {position.symbol}: MFE TRAIL EXIT - "
+            f"high=${position.high_since_entry:.2f}, now=${current_price:.2f}, "
+            f"gave back {give_back_ratio:.0%} of +${max_profit:.2f} max profit "
+            f"(threshold {s.mfe_trail_give_back_pct:.0%})"
+        )
+        return WarriorExitSignal(
+            position_id=position.position_id,
+            symbol=position.symbol,
+            reason=WarriorExitReason.MENTAL_STOP,  # Closest existing reason
+            exit_price=current_price,
+            shares_to_exit=position.shares,
+            pnl_estimate=pnl,
+            r_multiple=r_multiple,
+            trigger_description=f"MFE trail: gave back {give_back_ratio:.0%} of +${max_profit:.2f} (high=${position.high_since_entry:.2f})",
+        )
+    
+    return None
+
+
 def _check_stop_hit(
     position: WarriorPosition,
     current_price: Decimal,
