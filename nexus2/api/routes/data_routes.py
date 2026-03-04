@@ -39,14 +39,22 @@ def _apply_multi_select(entries: List[dict], column: str, filter_value: Optional
     """Filter in-memory entries by comma-separated multi-select values."""
     if not filter_value:
         return entries
+    import logging
+    _log = logging.getLogger("data_routes.multi_select")
     value_set = {v.strip() for v in filter_value.split(',')}
     has_empty = '(empty)' in value_set
     value_set.discard('(empty)')
-    return [
+    _log.info(f"[DEBUG] column={column}, filter_value={filter_value!r}, value_set={value_set}, has_empty={has_empty}")
+    # Sample first 3 entries to see what column values look like
+    for e in entries[:3]:
+        _log.info(f"[DEBUG] entry[{column}]={e.get(column)!r}, str={str(e.get(column) or '')!r}")
+    result = [
         e for e in entries
         if str(e.get(column) or '') in value_set
         or (has_empty and not e.get(column))
     ]
+    _log.info(f"[DEBUG] before={len(entries)}, after={len(result)}")
+    return result
 
 def apply_generic_filters(query, model, **filters):
     """
