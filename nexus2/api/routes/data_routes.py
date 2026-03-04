@@ -35,6 +35,19 @@ def _apply_exact_time_filter(entries: List[dict], column: str, filter_value: Opt
     value_set = {v.strip() for v in filter_value.split(',')}
     return [e for e in entries if e.get(column, "") in value_set]
 
+def _apply_multi_select(entries: List[dict], column: str, filter_value: Optional[str]) -> List[dict]:
+    """Filter in-memory entries by comma-separated multi-select values."""
+    if not filter_value:
+        return entries
+    value_set = {v.strip() for v in filter_value.split(',')}
+    has_empty = '(empty)' in value_set
+    value_set.discard('(empty)')
+    return [
+        e for e in entries
+        if str(e.get(column) or '') in value_set
+        or (has_empty and not e.get(column))
+    ]
+
 def apply_generic_filters(query, model, **filters):
     """
     Apply column filters dynamically to a query.
@@ -157,26 +170,17 @@ async def get_nac_trades(
     with get_nac_session() as db:
         query = db.query(NACTradeModel)
         
-        # Apply filters (handle __EMPTY__ for NULL filtering)
-        if status:
-            if status == '__EMPTY__':
-                query = query.filter(NACTradeModel.status == None)
-            else:
-                query = query.filter(NACTradeModel.status == status)
-        if symbol:
-            query = query.filter(NACTradeModel.symbol == symbol.upper())
+        # Apply multi-select filters via generic handler
+        query = apply_generic_filters(
+            query, NACTradeModel,
+            status=status,
+            symbol=symbol.upper() if symbol else None,
+            exit_reason=exit_reason,
+            setup_type=setup_type,
+        )
+        # Boolean column - keep manual handling
         if partial_taken is not None:
             query = query.filter(NACTradeModel.partial_taken == partial_taken)
-        if exit_reason:
-            if exit_reason == '__EMPTY__':
-                query = query.filter(NACTradeModel.exit_reason == None)
-            else:
-                query = query.filter(NACTradeModel.exit_reason == exit_reason)
-        if setup_type:
-            if setup_type == '__EMPTY__':
-                query = query.filter(NACTradeModel.setup_type == None)
-            else:
-                query = query.filter(NACTradeModel.setup_type == setup_type)
         if date_from:
             try:
                 start_time = f"{time_from}:00" if time_from else "00:00:00"
@@ -270,12 +274,9 @@ async def get_scan_history(
         all_entries = [e for e in all_entries if e["date"] >= date_from]
     if date_to:
         all_entries = [e for e in all_entries if e["date"] <= date_to]
-    if symbol:
-        all_entries = [e for e in all_entries if e["symbol"].upper() == symbol.upper()]
-    if source:
-        all_entries = [e for e in all_entries if e.get("source", "scan") == source]
-    if catalyst:
-        all_entries = [e for e in all_entries if e.get("catalyst", "") == catalyst]
+    all_entries = _apply_multi_select(all_entries, "symbol", symbol.upper() if symbol else None)
+    all_entries = _apply_multi_select(all_entries, "source", source)
+    all_entries = _apply_multi_select(all_entries, "catalyst", catalyst)
     all_entries = _apply_exact_time_filter(all_entries, "logged_at", logged_at)
     
     # Calculate total before pagination
@@ -756,6 +757,7 @@ async def get_trade_events(
     strategy: Optional[str] = Query(None, description="Filter by strategy: NAC or WARRIOR"),
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     event_type: Optional[str] = Query(None, description="Filter by event type"),
+    reason: Optional[str] = Query(None, description="Filter by reason"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     time_from: Optional[str] = Query(None, description="Start time (HH:MM)"),
@@ -772,11 +774,10 @@ async def get_trade_events(
     # Get all events (service returns dicts)
     all_events = trade_event_service.get_recent_events(strategy, limit=500)
     
-    # Apply additional filters
-    if symbol:
-        all_events = [e for e in all_events if e.get("symbol", "").upper() == symbol.upper()]
-    if event_type:
-        all_events = [e for e in all_events if e.get("event_type") == event_type]
+    # Apply multi-select filters
+    all_events = _apply_multi_select(all_events, "symbol", symbol.upper() if symbol else None)
+    all_events = _apply_multi_select(all_events, "event_type", event_type)
+    all_events = _apply_multi_select(all_events, "reason", reason)
     # Date and time filter uses created_at field (stored as UTC, filters are ET)
     if date_from or date_to or time_from or time_to:
         from zoneinfo import ZoneInfo
@@ -903,48 +904,27 @@ async def get_warrior_trades(
     with get_warrior_session() as db:
         query = db.query(WarriorTradeModel)
         
-        # Apply filters (handle __EMPTY__ for NULL filtering)
-        if status:
-            if status == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.status == None)
-            else:
-                query = query.filter(WarriorTradeModel.status == status)
-        if symbol:
-            query = query.filter(WarriorTradeModel.symbol == symbol.upper())
-        if exit_reason:
-            if exit_reason == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.exit_reason == None)
-            else:
-                query = query.filter(WarriorTradeModel.exit_reason == exit_reason)
-        if trigger_type:
-            if trigger_type == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.trigger_type == None)
-            else:
-                query = query.filter(WarriorTradeModel.trigger_type == trigger_type)
-        if quote_source:
-            if quote_source == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.quote_source == None)
-            else:
-                query = query.filter(WarriorTradeModel.quote_source == quote_source)
-        if exit_mode:
-            if exit_mode == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.exit_mode == None)
-            else:
-                query = query.filter(WarriorTradeModel.exit_mode == exit_mode)
-        if stop_method:
-            if stop_method == '__EMPTY__':
-                query = query.filter(WarriorTradeModel.stop_method == None)
-            else:
-                query = query.filter(WarriorTradeModel.stop_method == stop_method)
+        # Apply multi-select filters via generic handler
+        query = apply_generic_filters(
+            query, WarriorTradeModel,
+            status=status,
+            symbol=symbol.upper() if symbol else None,
+            exit_reason=exit_reason,
+            trigger_type=trigger_type,
+            quote_source=quote_source,
+            exit_mode=exit_mode,
+            stop_method=stop_method,
+        )
+        # Boolean columns need special handling (not string-based)
         if is_sim is not None:
-            if is_sim.lower() == 'null' or is_sim == '__EMPTY__':
+            if is_sim.lower() in ('null', '(empty)'):
                 query = query.filter(WarriorTradeModel.is_sim == None)
             elif is_sim.lower() == 'true':
                 query = query.filter(WarriorTradeModel.is_sim == True)
             elif is_sim.lower() == 'false':
                 query = query.filter(WarriorTradeModel.is_sim == False)
         if partial_taken is not None:
-            if partial_taken == '__EMPTY__' or partial_taken.lower() == 'null':
+            if partial_taken.lower() in ('null', '(empty)'):
                 query = query.filter(WarriorTradeModel.partial_taken == None)
             elif partial_taken.lower() == 'true':
                 query = query.filter(WarriorTradeModel.partial_taken == True)
@@ -1075,22 +1055,14 @@ async def get_quote_audits(
     with get_session() as db:
         query = db.query(QuoteAuditModel)
         
-        # Apply filters (handle __EMPTY__ for NULL filtering)
-        if symbol:
-            if symbol == '__EMPTY__':
-                query = query.filter(QuoteAuditModel.symbol == None)
-            else:
-                query = query.filter(QuoteAuditModel.symbol == symbol.upper())
-        if time_window:
-            if time_window == '__EMPTY__':
-                query = query.filter(QuoteAuditModel.time_window == None)
-            else:
-                query = query.filter(QuoteAuditModel.time_window == time_window)
-        if selected_source:
-            if selected_source == '__EMPTY__':
-                query = query.filter(QuoteAuditModel.selected_source == None)
-            else:
-                query = query.filter(QuoteAuditModel.selected_source == selected_source)
+        # Apply multi-select filters via generic handler
+        query = apply_generic_filters(
+            query, QuoteAuditModel,
+            symbol=symbol.upper() if symbol else None,
+            time_window=time_window,
+            selected_source=selected_source,
+        )
+        # Boolean column - keep manual handling
         if high_divergence is not None:
             query = query.filter(QuoteAuditModel.high_divergence == high_divergence)
         if date_from:
@@ -1194,13 +1166,15 @@ async def get_validation_log(
     with get_warrior_session() as db:
         query = db.query(EntryValidationLogModel)
         
-        # Apply filters
-        if symbol:
-            query = query.filter(EntryValidationLogModel.symbol == symbol.upper())
-        if entry_trigger:
-            query = query.filter(EntryValidationLogModel.entry_trigger == entry_trigger)
+        # Apply multi-select filters via generic handler
+        query = apply_generic_filters(
+            query, EntryValidationLogModel,
+            symbol=symbol.upper() if symbol else None,
+            entry_trigger=entry_trigger,
+        )
+        # Boolean column - keep manual handling
         if target_hit is not None:
-            if target_hit == '__EMPTY__':
+            if target_hit.lower() in ('(empty)', 'null'):
                 query = query.filter(EntryValidationLogModel.target_hit == None)
             elif target_hit.lower() == 'true':
                 query = query.filter(EntryValidationLogModel.target_hit == True)
