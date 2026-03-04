@@ -527,7 +527,7 @@ class PolygonAdapter:
         
         data = self._get(
             f"/v2/aggs/ticker/{symbol}/range/1/day/{from_date}/{to_date}",
-            params={"limit": limit, "sort": "asc"}
+            params={"limit": limit, "sort": "asc", "adjusted": "true"}
         )
         
         if not data or data.get("status") != "OK":

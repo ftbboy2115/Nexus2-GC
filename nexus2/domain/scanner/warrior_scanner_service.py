@@ -1180,7 +1180,7 @@ class WarriorScannerService:
                 scan_logger.debug(f"200 EMA | {symbol} | Insufficient bars ({len(bars) if bars else 0} < 200)")
                 return None
             
-            # Extract closing prices (most recent first in the bars list)
+            # Extract closing prices — Polygon returns sorted "asc" (oldest first)
             closes = [float(bar.close) for bar in bars if bar.close]
             if len(closes) < 200:
                 return None
@@ -1191,9 +1191,8 @@ class WarriorScannerService:
             period = 200
             k = 2 / (period + 1)
             
-            # Start with SMA for the first period (seed the EMA)
-            # Note: bars are typically most recent first, so we need to reverse
-            closes_chronological = closes[::-1]  # Oldest to newest
+            # Polygon returns bars sorted ascending (oldest first) — already chronological
+            closes_chronological = closes
             
             sma = sum(closes_chronological[:period]) / period
             ema = sma
@@ -1722,6 +1721,16 @@ class WarriorScannerService:
         
         ctx.ema_200_value = self._cached(f"ema200:{ctx.symbol}", 21600, lambda: self._get_200_ema(ctx.symbol))
         if ctx.ema_200_value and ctx.ema_200_value > 0 and float(ctx.last_price) > 0:
+            # Sanity check: EMA should be within reasonable range of current price
+            ema_ratio = float(ctx.ema_200_value) / float(ctx.last_price)
+            if ema_ratio > 100 or ema_ratio < 0.01:
+                scan_logger.warning(
+                    f"200 EMA SANITY FAIL | {ctx.symbol} | "
+                    f"EMA=${float(ctx.ema_200_value):.2f} vs Price=${float(ctx.last_price):.2f} | "
+                    f"Ratio: {ema_ratio:.0f}x — likely stale/unadjusted data, ignoring"
+                )
+                ctx.ema_200_value = None  # Discard garbage value
+                return None
             ctx.room_to_ema_pct = ((float(ctx.last_price) - float(ctx.ema_200_value)) / float(ctx.ema_200_value)) * 100
             
             # Reject if price is below EMA but not far enough below (e.g., -10% = too close to ceiling)

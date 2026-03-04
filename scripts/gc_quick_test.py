@@ -181,23 +181,32 @@ def print_results(data: dict):
     print(f"{'='*96}\n")
 
 
-def diff_results(current: dict, baseline: dict):
-    """Show per-case diff between current run and baseline."""
+def diff_results(current: dict, baseline: dict) -> tuple[int, int, int]:
+    """Show per-case diff between current run and baseline.
+    
+    Returns (improved, regressed, new_count) for auto-save logic.
+    """
     current_map = {r["case_id"]: r for r in current.get("results", [])}
     baseline_map = {r["case_id"]: r for r in baseline.get("results", [])}
 
     all_ids = sorted(set(list(current_map.keys()) + list(baseline_map.keys())))
 
-    # Compute stats first
+    # Compute stats first — separate NEW cases from genuine improvements
     improved = 0
     regressed = 0
     unchanged = 0
+    new_count = 0
+    removed_count = 0
     total_change = 0
     new_total_pnl = 0
     new_total_ross = 0
     changed_cases = []
+    new_cases = []
+    removed_cases = []
 
     for cid in all_ids:
+        in_baseline = cid in baseline_map
+        in_current = cid in current_map
         old = baseline_map.get(cid, {})
         new = current_map.get(cid, {})
 
@@ -205,20 +214,30 @@ def diff_results(current: dict, baseline: dict):
         new_pnl = new.get("total_pnl", new.get("bot_pnl", 0)) or 0
         ross_pnl = new.get("ross_pnl", 0) or 0
         change = new_pnl - old_pnl
-        total_change += change
         new_total_pnl += new_pnl
         new_total_ross += ross_pnl
 
-        if abs(change) < 0.01:
+        if not in_baseline and in_current:
+            # NEW case — not in baseline, don't count as improved
+            new_count += 1
+            new_cases.append((cid, new_pnl))
+        elif in_baseline and not in_current:
+            # REMOVED case — in baseline but not in current run
+            removed_count += 1
+            removed_cases.append((cid, old_pnl))
+        elif abs(change) < 0.01:
             unchanged += 1
         elif change > 0:
             improved += 1
+            total_change += change
             changed_cases.append((cid, old_pnl, new_pnl, change, "IMPROVED"))
         else:
             regressed += 1
+            total_change += change
             changed_cases.append((cid, old_pnl, new_pnl, change, "REGRESSED"))
 
-    total = improved + regressed + unchanged
+    comparable = improved + regressed + unchanged
+    total = comparable + new_count
     capture = (new_total_pnl / new_total_ross * 100) if new_total_ross else 0
 
     # Get baseline timestamp and runtimes
@@ -229,17 +248,21 @@ def diff_results(current: dict, baseline: dict):
 
     # Print SUMMARY FIRST (so GC always sees it before truncation)
     print(f"\n{'='*80}")
-    print(f"  DIFF vs BASELINE ({total} cases)")
+    print(f"  DIFF vs BASELINE ({total} cases, {comparable} comparable)")
     print(f"  Baseline saved: {baseline_ts}")
     print(f"{'='*80}")
-    print(f"  Improved:  {improved}/{total}")
-    print(f"  Regressed: {regressed}/{total}")
-    print(f"  Unchanged: {unchanged}/{total}")
+    print(f"  Improved:  {improved}/{comparable}")
+    print(f"  Regressed: {regressed}/{comparable}")
+    print(f"  Unchanged: {unchanged}/{comparable}")
+    if new_count:
+        print(f"  New cases: {new_count} (not in baseline — excluded from diff)")
+    if removed_count:
+        print(f"  Removed:   {removed_count} (in baseline but not in current run)")
     # Methodology Fidelity (how well bot replicates Ross's winning trades)
     rt_bot = sum((r.get("total_pnl", r.get("bot_pnl", 0)) or 0) for r in current.get("results", []) if (r.get("ross_pnl", 0) or 0) > 0)
     rt_ross = sum((r.get("ross_pnl", 0) or 0) for r in current.get("results", []) if (r.get("ross_pnl", 0) or 0) > 0)
     fidelity = (rt_bot / rt_ross * 100) if rt_ross else 0
-    print(f"  Net change:  ${total_change:>+,.2f}")
+    print(f"  Net change (comparable only): ${total_change:>+,.2f}")
     print(f"  New total P&L: ${new_total_pnl:>,.2f}  (Ross: ${new_total_ross:>,.2f})")
     print(f"  Capture: {capture:.1f}%  (Fidelity: {fidelity:.1f}%)")
     runtime_str = f"  Runtime: {current_runtime}s"
@@ -256,7 +279,21 @@ def diff_results(current: dict, baseline: dict):
         for cid, old_pnl, new_pnl, change, status in changed_cases:
             marker = "+" if status == "IMPROVED" else "-"
             print(f"  {marker} {cid:<28s} | ${old_pnl:>10,.2f} | ${new_pnl:>10,.2f} | ${change:>+10,.2f}")
+    
+    # Show new cases separately
+    if new_cases:
+        print(f"\n  NEW CASES (not in baseline — no diff applicable):")
+        for cid, pnl in new_cases:
+            print(f"  * {cid:<28s} | P&L: ${pnl:>10,.2f}")
+    
+    # Show removed cases
+    if removed_cases:
+        print(f"\n  REMOVED CASES (in baseline, not in current run):")
+        for cid, old_pnl in removed_cases:
+            print(f"  x {cid:<28s} | Was: ${old_pnl:>10,.2f}")
     print()
+    
+    return improved, regressed, new_count
 
 
 def save_baseline(data: dict):
