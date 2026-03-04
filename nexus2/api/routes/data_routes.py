@@ -20,41 +20,53 @@ router = APIRouter(prefix="/data", tags=["data-explorer"])
 
 def _apply_exact_time_filter(entries: List[dict], column: str, filter_value: Optional[str]) -> List[dict]:
     """
-    Filter entries by exact timestamp match (supports comma-separated multi-select).
+    Filter entries by exact timestamp match (supports pipe-separated multi-select).
     
     Args:
         entries: List of entry dicts
         column: Column name to filter on (e.g., 'timestamp', 'entry_time', 'created_at')
-        filter_value: Comma-separated values to match exactly
+        filter_value: Pipe-separated values to match exactly
     
     Returns:
         Filtered list of entries
     """
     if not filter_value:
         return entries
-    value_set = {v.strip() for v in filter_value.split(',')}
+    value_set = {v.strip() for v in filter_value.split('|')}
     return [e for e in entries if e.get(column, "") in value_set]
 
 def _apply_multi_select(entries: List[dict], column: str, filter_value: Optional[str]) -> List[dict]:
-    """Filter in-memory entries by comma-separated multi-select values."""
+    """Filter in-memory entries by pipe-separated multi-select values."""
     if not filter_value:
         return entries
-    import logging
-    _log = logging.getLogger("data_routes.multi_select")
-    value_set = {v.strip() for v in filter_value.split(',')}
+    value_set = {v.strip() for v in filter_value.split('|')}
     has_empty = '(empty)' in value_set
     value_set.discard('(empty)')
-    _log.info(f"[DEBUG] column={column}, filter_value={filter_value!r}, value_set={value_set}, has_empty={has_empty}")
-    # Sample first 3 entries to see what column values look like
-    for e in entries[:3]:
-        _log.info(f"[DEBUG] entry[{column}]={e.get(column)!r}, str={str(e.get(column) or '')!r}")
-    result = [
+    return [
         e for e in entries
         if str(e.get(column) or '') in value_set
         or (has_empty and not e.get(column))
     ]
-    _log.info(f"[DEBUG] before={len(entries)}, after={len(result)}")
-    return result
+
+def _categorize_reason(reason: str) -> str:
+    """Map verbose reason strings to filterable categories."""
+    if not reason:
+        return ''
+    prefixes = [
+        'Re-entry cooldown', 'BLOCKED', 'Exit (candle_under_candle)',
+        'Exit (topping_tail)', 'Exit (mental_stop)', 'Exit (technical_stop)',
+        'Exit fill confirmed', 'Exit callback failed', 'Fill confirmed',
+        'MACD GATE', 'REJECTED - spread', 'TOP_3_ONLY', 'EoD entry cutoff',
+        'Re-entry BLOCKED', 'Stop moved', 'Orphan auto-closed',
+    ]
+    for prefix in prefixes:
+        if reason.startswith(prefix):
+            return prefix
+    if reason.startswith('Added ') and 'shares @' in reason:
+        return 'Added shares'
+    if 'Entry:' in reason and 'shares @' in reason:
+        return 'Entry'
+    return reason  # Keep as-is if no category matches
 
 def apply_generic_filters(query, model, **filters):
     """
@@ -62,9 +74,9 @@ def apply_generic_filters(query, model, **filters):
     
     Supports:
     - Equality: "US" → col = 'US'
-    - Multi-select: "US,CN" → col IN ('US', 'CN')
+    - Multi-select: "US|CN" → col IN ('US', 'CN')
     - Range: ">=5" → col >= 5, "<=10" → col <= 10
-    - Combined: ">=5,<=10" → col >= 5 AND col <= 10
+    - Combined: ">=5|<=10" → col >= 5 AND col <= 10
     - NULL handling: "(empty)" → col IS NULL
     
     Args:
@@ -88,8 +100,8 @@ def apply_generic_filters(query, model, **filters):
         if col is None:
             continue  # Skip invalid/unknown columns
         
-        # Split comma-separated values
-        value_list = [v.strip() for v in value.split(',')]
+        # Split pipe-separated values
+        value_list = [v.strip() for v in value.split('|')]
         
         # Separate range operators from equality values
         range_conditions = []
@@ -203,12 +215,12 @@ async def get_nac_trades(
                 query = query.filter(NACTradeModel.entry_time <= et_to_utc(et_end))
             except ValueError:
                 pass
-        # Exact entry_time filter (supports comma-separated values)
+        # Exact entry_time filter (supports pipe-separated values)
         # Normalize ISO format (2026-02-05T03:18:02Z) to DB format prefix (2026-02-05 03:18:02)
         if entry_time:
             from sqlalchemy import or_
             time_values = []
-            for t in entry_time.split(','):
+            for t in entry_time.split('|'):
                 t = t.strip().replace('T', ' ').rstrip('Z')  # Convert ISO to DB format
                 time_values.append(t)
             query = query.filter(or_(*[NACTradeModel.entry_time.like(f"{t}%") for t in time_values]))
@@ -798,7 +810,16 @@ async def get_trade_events(
     # Apply multi-select filters
     all_events = _apply_multi_select(all_events, "symbol", symbol.upper() if symbol else None)
     all_events = _apply_multi_select(all_events, "event_type", event_type)
-    all_events = _apply_multi_select(all_events, "reason", reason)
+    # Reason uses category matching instead of exact match
+    if reason:
+        reason_categories = {v.strip() for v in reason.split('|')}
+        has_empty = '(empty)' in reason_categories
+        reason_categories.discard('(empty)')
+        all_events = [
+            e for e in all_events
+            if _categorize_reason(str(e.get('reason') or '')) in reason_categories
+            or (has_empty and not e.get('reason'))
+        ]
     # Date and time filter uses created_at field (stored as UTC, filters are ET)
     if date_from or date_to or time_from or time_to:
         from zoneinfo import ZoneInfo
@@ -879,6 +900,21 @@ async def get_trade_events_distinct(
     from nexus2.domain.automation.trade_event_service import trade_event_service
     
     all_events = trade_event_service.get_recent_events(None, limit=1000)
+    
+    # For reason column, group into categories instead of raw values
+    if column == 'reason':
+        categories = set()
+        has_empty = False
+        for event in all_events:
+            val = event.get('reason')
+            if val is None or val == '':
+                has_empty = True
+            else:
+                categories.add(_categorize_reason(str(val)))
+        result = sorted(list(categories))
+        if has_empty:
+            result.append('(empty)')
+        return {"column": column, "values": result}
     
     values = set()
     has_empty = False

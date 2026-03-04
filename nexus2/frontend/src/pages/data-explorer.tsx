@@ -288,7 +288,7 @@ export default function DataExplorer() {
             Object.entries(filters).forEach(([key, valueSet]) => {
                 if (valueSet && valueSet.size > 0) {
                     // Convert Set to comma-separated string for backend
-                    params.set(key, Array.from(valueSet).join(','))
+                    params.set(key, Array.from(valueSet).join('|'))
                 }
             })
 
