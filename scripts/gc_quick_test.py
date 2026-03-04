@@ -251,7 +251,7 @@ def diff_results(current: dict, baseline: dict):
     # Then show per-case changes (sorted by impact)
     if changed_cases:
         changed_cases.sort(key=lambda x: x[3])  # worst first
-        print(f"  {'Case':<30s} | {'Old P&L':>12s} | {'New P&L':>12s} | {'Change':>12s}")
+        print(f"  {'Case':<30s} | {'Baseline P&L':>12s} | {'Current P&L':>12s} | {'Change':>12s}")
         print(f"  {'-'*30}-+-{'-'*12}-+-{'-'*12}-+-{'-'*12}")
         for cid, old_pnl, new_pnl, change, status in changed_cases:
             marker = "+" if status == "IMPROVED" else "-"

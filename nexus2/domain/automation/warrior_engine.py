@@ -627,20 +627,35 @@ class WarriorEngine:
         # PRIMARY: Derive from Polygon 1-min intraday bars
         if self._get_intraday_bars:
             try:
-                bars = await self._get_intraday_bars(symbol, "1min", limit=100)
+                # Need 400+ bars to cover premarket (4:00-9:30 = 330 min) + some regular hours
+                bars = await self._get_intraday_bars(symbol, "1min", limit=400)
                 if bars:
                     pre_market_highs = []
                     for bar in bars:
-                        bar_time = getattr(bar, 'time', '') or ''
-                        if not bar_time:
-                            continue
                         try:
-                            # Parse hour from bar time (format: "HH:MM" or "HH:MM:SS")
-                            hour, minute = int(bar_time.split(':')[0]), int(bar_time.split(':')[1])
+                            # Polygon OHLCV: has .timestamp (UTC datetime)
+                            # Mock Market OHLCV: has .time (string "HH:MM") or .date (string)
+                            bar_ts = getattr(bar, 'timestamp', None)
+                            if bar_ts is not None and hasattr(bar_ts, 'hour'):
+                                # Convert UTC timestamp to ET for premarket filtering
+                                import pytz
+                                et_tz = pytz.timezone('US/Eastern')
+                                if bar_ts.tzinfo is not None:
+                                    bar_et = bar_ts.astimezone(et_tz)
+                                else:
+                                    bar_et = et_tz.localize(bar_ts)
+                                hour, minute = bar_et.hour, bar_et.minute
+                            else:
+                                # Fallback: mock market bars with .time string "HH:MM"
+                                bar_time = getattr(bar, 'time', '') or ''
+                                if not bar_time:
+                                    continue
+                                hour, minute = int(bar_time.split(':')[0]), int(bar_time.split(':')[1])
+                            
                             # Pre-market: 4:00 AM to 9:29 AM ET
                             if 4 <= hour < 9 or (hour == 9 and minute < 30):
                                 pre_market_highs.append(Decimal(str(bar.high)))
-                        except (ValueError, IndexError):
+                        except (ValueError, IndexError, AttributeError):
                             continue
                     
                     if pre_market_highs:
@@ -651,7 +666,7 @@ class WarriorEngine:
                         )
                         return pmh
                     else:
-                        logger.info(f"[Warrior PMH] {symbol}: No pre-market bars found in Polygon data")
+                        logger.info(f"[Warrior PMH] {symbol}: No pre-market bars found in Polygon data ({len(bars)} total bars)")
             except Exception as e:
                 logger.warning(f"[Warrior PMH] {symbol}: Polygon bar lookup failed: {e}")
         
