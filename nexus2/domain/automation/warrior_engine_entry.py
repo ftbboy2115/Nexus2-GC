@@ -1501,6 +1501,10 @@ async def enter_position(
                             f"intent recorded, sync will update fill price"
                         )
             
+            # Ensure Decimal types for all arithmetic (actual_fill_price may be float from MockBroker)
+            # NOTE: Must be defined BEFORE the fill update block which references actual_fill_decimal
+            actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
+            
             # Update DB with actual fill price (even if still quote price)
             if actual_fill_price != entry_price or order_status and order_status.lower() in ("filled", "partially_filled"):
                 try:
@@ -1549,12 +1553,8 @@ async def enter_position(
                 return
             
             
-            # NOTE: Fill price has already been polled above (lines 1177-1225)
-            # actual_fill_price is already set from the poll loop
-            
-            # Ensure Decimal types for all arithmetic (actual_fill_price may be float from MockBroker)
-            actual_fill_decimal = Decimal(str(actual_fill_price)) if not isinstance(actual_fill_price, Decimal) else actual_fill_price
-            entry_decimal = Decimal(str(entry_price)) if not isinstance(entry_price, Decimal) else entry_price
+            # NOTE: Fill price has already been polled above
+            # actual_fill_price and actual_fill_decimal are already set
             
             # Calculate slippage
             slippage_cents = (actual_fill_decimal - entry_decimal) * 100  # In cents
