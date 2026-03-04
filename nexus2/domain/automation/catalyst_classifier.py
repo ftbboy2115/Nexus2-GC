@@ -181,11 +181,11 @@ class CatalystClassifier:
                 re.IGNORECASE,
             ),
             "sec_or_legal": re.compile(
-                r"\b(sec\s+investigation|subpoena|lawsuit|settlement|class\s+action|investigation)\b",
+                r"\b(sec\s+investigation|sec\s+inquiry|subpoena|lawsuit|class\s+action|legal\s+settlement|regulatory\s+investigation)\b",
                 re.IGNORECASE,
             ),
             "guidance_cut": re.compile(
-                r"\b(lowers?\s+(outlook|guidance)|cuts?\s+guidance|downward\s+revision|warns?)\b",
+                r"\b(lowers?\s+(outlook|guidance)|cuts?\s+guidance|downward\s+revision|warns?\s+(of\s+)?(weak|lower|decline|loss|risk|slowdown|shortfall))\b",
                 re.IGNORECASE,
             ),
             "miss": re.compile(

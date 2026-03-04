@@ -408,6 +408,35 @@ Examples:
 # Backward compatibility alias (used by AICatalystValidator legacy class)
 SYSTEM_PROMPT = WARRIOR_SYSTEM_PROMPT
 
+# =============================================================================
+# NEGATIVE CATALYST REVIEW PROMPT
+# =============================================================================
+
+NEGATIVE_REVIEW_PROMPT = """You are reviewing a negative catalyst detection for a momentum day trading scanner.
+
+The regex classifier flagged this headline as potentially harmful. Your job is to determine
+whether the headline is GENUINELY NEGATIVE or if the regex MISCLASSIFIED a non-harmful headline.
+
+GENUINELY NEGATIVE (confirm regex — BLOCK the trade):
+- Stock offering, direct offering, ATM offering, shelf offering (dilutive)
+- SEC investigation, SEC inquiry, subpoena, class action lawsuit
+- Earnings miss, guidance cut, lowered outlook, revenue decline
+- Bankruptcy, delisting, going concern
+
+FALSE POSITIVES (regex got it wrong — ALLOW the trade):
+- "Initial Public Offering" or "IPO" — this is a POSITIVE catalyst, not dilutive
+- "Oversubscribed offering" — indicates strong demand, neutral/positive
+- "Settlement" in M&A/acquisition context ("settlement of acquisition") — not legal
+- "Investigation" in scientific/FDA context ("FDA investigation shows promising results") — not legal
+- "Warns of strong demand" or positive warning context — not a guidance cut
+- Any headline where the matched word is used in a positive or neutral context
+
+RESPONSE FORMAT:
+Respond with EXACTLY one line:
+- "NEGATIVE: [reason]" if this IS genuinely harmful and should BLOCK the trade
+- "FALSE_POSITIVE: [actual_type]" if the regex misclassified a non-harmful headline
+"""
+
 
 class AICatalystValidator:
     """
@@ -1026,6 +1055,164 @@ Is this a valid Qullamaggie EP catalyst?"""
             logger.warning(f"Failed to write catalyst audit to DB: {e}")
         
         return (final_valid, final_type, regex_passed, flash_passed, method)
+    
+    def validate_negative_sync(
+        self,
+        headline: str,
+        symbol: str,
+        neg_type: str,
+    ) -> Tuple[bool, str]:
+        """
+        3-party AI review of a negative catalyst rejection.
+        
+        Matches the positive pipeline pattern:
+          Party 1: Regex says negative
+          Party 2: Flash-Lite reviews — agrees or disagrees
+          Party 3: If disagree → Pro breaks the tie
+        
+        Fail-closed: If any AI party is unavailable, defaults to
+        regex rejection (safe).
+        
+        Args:
+            headline: The flagged headline text
+            symbol: Stock symbol
+            neg_type: Regex-detected negative type (offering, sec_or_legal, etc.)
+        
+        Returns:
+            Tuple of:
+            - is_negative: True if genuinely negative, False if false positive
+            - reason: Explanation string
+        """
+        import time
+        
+        user_prompt = f"""Headline: "{headline}"
+Symbol: {symbol}
+Regex match type: {neg_type}
+
+Is this headline genuinely a NEGATIVE catalyst that should BLOCK a momentum trade?
+Or is the regex wrong — is this actually a POSITIVE or NEUTRAL event being misclassified?"""
+        
+        # --- Party 2: Flash-Lite ---
+        if not self._can_call_model("flash_lite"):
+            logger.warning(f"[NegReview] {symbol}: Flash rate limited, defaulting to regex rejection (fail-closed)")
+            return (True, "ai_unavailable_rate_limited")
+        
+        try:
+            client = self._get_client()
+            self._record_call("flash_lite")
+            
+            flash_config = self.models.get("flash_lite")
+            if not flash_config:
+                return (True, "flash_lite_not_configured")
+            
+            start = time.perf_counter()
+            
+            response = client.models.generate_content(
+                model=flash_config.model_id,
+                contents=user_prompt,
+                config={
+                    "system_instruction": NEGATIVE_REVIEW_PROMPT,
+                    "temperature": 0.0,
+                    "max_output_tokens": 60,
+                },
+            )
+            
+            flash_latency = int((time.perf_counter() - start) * 1000)
+            
+            if response.text is None:
+                logger.warning(f"[NegReview] {symbol}: Empty Flash response, defaulting to rejection")
+                return (True, "ai_empty_response")
+            
+            flash_raw = response.text.strip()
+            flash_says_negative = not flash_raw.upper().startswith("FALSE_POSITIVE:")
+            
+        except Exception as e:
+            logger.error(f"[NegReview] {symbol}: Flash error: {e}, defaulting to rejection (fail-closed)")
+            return (True, f"ai_error:{str(e)[:50]}")
+        
+        # --- Consensus check: Regex (negative) vs Flash-Lite ---
+        if flash_says_negative:
+            # Both agree: genuinely negative → reject
+            reason = flash_raw.split(":", 1)[1].strip() if ":" in flash_raw else flash_raw
+            logger.info(
+                f"[NegReview] {symbol}: CONSENSUS — Regex({neg_type}) + Flash both say NEGATIVE: {reason} | {flash_latency}ms"
+            )
+            return (True, f"consensus_negative:{reason}")
+        
+        # --- Disagreement: Regex says negative, Flash says false positive ---
+        flash_actual_type = flash_raw.split(":", 1)[1].strip() if ":" in flash_raw else "unknown"
+        logger.info(
+            f"[NegReview] {symbol}: DISAGREE — Regex({neg_type}) vs Flash(FALSE_POSITIVE:{flash_actual_type}) | {flash_latency}ms → calling Pro tiebreaker"
+        )
+        
+        # --- Party 3: Pro tiebreaker ---
+        if "pro" not in self.models or not self._can_call_model("pro"):
+            # Pro unavailable — use Flash verdict (it's the more contextual model)
+            logger.warning(
+                f"🔄 AI_NEG_OVERRIDE | {symbol} | Pro unavailable, using Flash verdict | "
+                f"Regex: {neg_type} | Flash: FALSE_POSITIVE:{flash_actual_type} | "
+                f"Headline: {headline[:80]}"
+            )
+            return (False, f"flash_override:{flash_actual_type}")
+        
+        try:
+            self._record_call("pro")
+            pro_config = self.models["pro"]
+            
+            start = time.perf_counter()
+            
+            pro_response = client.models.generate_content(
+                model=pro_config.model_id,
+                contents=user_prompt,
+                config={
+                    "system_instruction": NEGATIVE_REVIEW_PROMPT,
+                    "temperature": 0.0,
+                    "max_output_tokens": 1024,  # Pro uses thinking tokens; needs larger budget
+                },
+            )
+            
+            pro_latency = int((time.perf_counter() - start) * 1000)
+            
+            # Extract text — Pro thinking model may put response in candidates
+            pro_text = None
+            if pro_response.text is not None:
+                pro_text = pro_response.text.strip()
+            elif hasattr(pro_response, 'candidates') and pro_response.candidates:
+                for part in pro_response.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        pro_text = part.text.strip()
+                        break
+            
+            if not pro_text:
+                # Pro returned nothing — fail-closed, reject
+                logger.warning(f"[NegReview] {symbol}: Empty Pro response, defaulting to rejection")
+                return (True, "pro_empty_response")
+            
+            pro_says_negative = not pro_text.upper().startswith("FALSE_POSITIVE:")
+            
+            if pro_says_negative:
+                # Pro agrees with regex: genuinely negative → reject
+                pro_reason = pro_text.split(":", 1)[1].strip() if ":" in pro_text else pro_text
+                logger.info(
+                    f"[NegReview] {symbol}: PRO_TIEBREAKER → NEGATIVE: {pro_reason} | "
+                    f"Regex({neg_type}) + Pro agree, Flash overruled | {pro_latency}ms"
+                )
+                return (True, f"pro_confirmed:{pro_reason}")
+            else:
+                # Pro agrees with Flash: false positive → allow through
+                pro_actual_type = pro_text.split(":", 1)[1].strip() if ":" in pro_text else "unknown"
+                logger.warning(
+                    f"🔄 AI_NEG_OVERRIDE | {symbol} | PRO_TIEBREAKER → FALSE_POSITIVE | "
+                    f"Regex: {neg_type} | Flash: {flash_actual_type} | Pro: {pro_actual_type} | "
+                    f"Headline: {headline[:80]} | {pro_latency}ms"
+                )
+                return (False, f"tiebreaker_override:{pro_actual_type}")
+                
+        except Exception as e:
+            # Pro error — fail-closed, reject (don't trust Flash alone without tiebreaker)
+            logger.error(f"[NegReview] {symbol}: Pro error: {e}, defaulting to rejection (fail-closed)")
+            return (True, f"pro_error:{str(e)[:50]}")
+
     
     def get_stats(self) -> dict:
         """Get rate limit and queue stats."""

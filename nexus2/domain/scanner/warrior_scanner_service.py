@@ -149,6 +149,9 @@ class WarriorScanSettings:
     always_run_ai_comparison: bool = True  # Run AI even when regex/calendar already resolved (kill switch for rate limits)
     comparison_models: list = None  # Default: ["flash_lite", "pro"] - set in __post_init__
     
+    # AI Negative Catalyst Review (tiebreaker for regex false positives)
+    enable_ai_negative_review: bool = True  # Ask Flash-Lite to review negative catalyst rejections
+    
     def __post_init__(self):
         if self.comparison_models is None:
             self.comparison_models = ["flash_lite", "pro"]
@@ -484,6 +487,7 @@ class EvaluationContext:
     
     # Momentum override (Ross: "trade them, manage risk" for offering stocks)
     momentum_override: bool = False
+    ai_negative_override: bool = False  # True when AI overrides regex negative classification
     position_size_multiplier: float = 1.0
 
 
@@ -1411,6 +1415,31 @@ class WarriorScannerService:
                             f"Gap:{ctx.change_percent:.1f}% >= {s.momentum_override_gap:.0f}% | "
                             f"Type: {neg_type} | Size reduced by {s.momentum_override_size_reduction*100:.0f}%"
                         )
+                
+                if not should_bypass:
+                    # AI Negative Tiebreaker: Ask Flash-Lite to review before rejecting
+                    if s.enable_ai_negative_review and neg_headline:
+                        try:
+                            from nexus2.domain.automation.ai_catalyst_validator import get_multi_validator
+                            multi_validator = get_multi_validator()
+                            is_negative, ai_reason = multi_validator.validate_negative_sync(
+                                headline=neg_headline,
+                                symbol=ctx.symbol,
+                                neg_type=neg_type,
+                            )
+                            if not is_negative:
+                                # AI says this is a false positive — allow through with size reduction
+                                should_bypass = True
+                                ctx.ai_negative_override = True
+                                ctx.position_size_multiplier = getattr(ctx, 'position_size_multiplier', 1.0) * 0.75
+                                scan_logger.warning(
+                                    f"🔄 AI_NEG_OVERRIDE | {ctx.symbol} | "
+                                    f"Regex: {neg_type} | AI: {ai_reason} | "
+                                    f"Headline: {neg_headline[:80]} | Size reduced to 75%"
+                                )
+                        except Exception as e:
+                            # Fail-closed: if AI review errors, proceed with regex rejection
+                            scan_logger.warning(f"[NegReview] {ctx.symbol}: AI review failed ({e}), using regex rejection")
                 
                 if not should_bypass:
                     tracker.record(
