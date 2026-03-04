@@ -131,6 +131,16 @@ async def check_entry_guards(
         tml.log_warrior_guard_block(symbol, "fail_limit", reason, _trigger, _price, _btime)
         return False, reason
     
+    # PRICE FLOOR — scanner min_price must still be respected at entry time
+    # Bug fix: MOBX scanned at $1.80+ but entered at $1.36 (below $1.50 min)
+    scanner_min_price = engine._get_scanner_setting("min_price", Decimal("1.50"))
+    if isinstance(scanner_min_price, (int, float)):
+        scanner_min_price = Decimal(str(scanner_min_price))
+    if current_price < scanner_min_price:
+        reason = f"Below scanner min_price (${current_price:.2f} < ${scanner_min_price:.2f})"
+        tml.log_warrior_guard_block(symbol, "price_floor", reason, _trigger, _price, _btime)
+        return False, reason
+    
     # NOTE: EMA trend is handled by scoring penalty (not a hard gate).
     # The MACD gate + falling knife guard already block truly dead trends.
     # A hard EMA gate was tested but caused -$34K regression by blocking
@@ -154,30 +164,42 @@ async def check_entry_guards(
         tml.log_warrior_guard_block(symbol, "pending_entry", "Pending buy order exists", _trigger, _price, _btime)
         return False, "Pending buy order exists"
     
-    # RE-ENTRY COOLDOWN (LIVE mode)
-    # Uses configurable live_reentry_cooldown_minutes (default 10 min) to prevent
-    # revenge trading. The old 120s cooldown was only a race-condition guard.
-    if not engine.monitor.sim_mode and symbol in engine.monitor._recently_exited:
-        exit_time = engine.monitor._recently_exited[symbol]
-        seconds_ago = (now_utc() - exit_time).total_seconds()
-        cooldown_minutes = engine.monitor.settings.live_reentry_cooldown_minutes
-        cooldown_seconds = cooldown_minutes * 60
-        if seconds_ago < cooldown_seconds:
-            minutes_ago = seconds_ago / 60
-            reason = f"Re-entry cooldown - exited {minutes_ago:.1f}m ago (waiting {cooldown_minutes}m)"
-            tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price, _btime)
-            return False, reason
+    # RE-ENTRY COOLDOWN (unified: live, paper, and sim modes)
+    # Bug fix: Paper mode (sim_mode=True) previously skipped BOTH cooldown paths:
+    #   - Live guard: gated by "not sim_mode" → skipped in paper mode
+    #   - Sim guard: requires _sim_clock → doesn't exist in paper mode
+    # Result: MOBX re-entered 2 minutes after exit instead of waiting 10 minutes.
+    #
+    # Strategy: sim_mode WITH _sim_clock → use sim clock (historical replay)
+    #           everything else (live + paper) → use wall clock
+    has_sim_clock = (
+        engine.monitor.sim_mode
+        and hasattr(engine.monitor, '_sim_clock')
+        and engine.monitor._sim_clock
+    )
     
-    # SIM MODE COOLDOWN
-    if engine.monitor.sim_mode and symbol in engine.monitor._recently_exited_sim_time:
-        exit_sim_time = engine.monitor._recently_exited_sim_time[symbol]
-        if hasattr(engine.monitor, '_sim_clock') and engine.monitor._sim_clock:
+    if has_sim_clock:
+        # HISTORICAL REPLAY: Use sim clock for cooldown
+        if symbol in engine.monitor._recently_exited_sim_time:
+            exit_sim_time = engine.monitor._recently_exited_sim_time[symbol]
             current_sim_time = engine.monitor._sim_clock.current_time
             minutes_since_exit = (current_sim_time - exit_sim_time).total_seconds() / 60
-            cooldown_minutes = engine.monitor._reentry_cooldown_minutes
+            cooldown_minutes = engine.monitor.settings.live_reentry_cooldown_minutes
             if minutes_since_exit < cooldown_minutes:
                 reason = f"SIM re-entry cooldown - exited {minutes_since_exit:.1f}m ago (waiting {cooldown_minutes}m)"
                 tml.log_warrior_guard_block(symbol, "sim_cooldown", reason, _trigger, _price, _btime)
+                return False, reason
+    else:
+        # LIVE + PAPER MODE: Use wall clock for cooldown
+        if symbol in engine.monitor._recently_exited:
+            exit_time = engine.monitor._recently_exited[symbol]
+            seconds_ago = (now_utc() - exit_time).total_seconds()
+            cooldown_minutes = engine.monitor.settings.live_reentry_cooldown_minutes
+            cooldown_seconds = cooldown_minutes * 60
+            if seconds_ago < cooldown_seconds:
+                minutes_ago = seconds_ago / 60
+                reason = f"Re-entry cooldown - exited {minutes_ago:.1f}m ago (waiting {cooldown_minutes}m)"
+                tml.log_warrior_guard_block(symbol, "live_cooldown", reason, _trigger, _price, _btime)
                 return False, reason
     
     # RE-ENTRY QUALITY GATE: Block re-entry after consecutive losses (Ross: 3-5 trades max per symbol)

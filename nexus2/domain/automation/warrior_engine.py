@@ -560,13 +560,22 @@ class WarriorEngine:
                 # Get pre-market high
                 pmh = await self._get_premarket_high(candidate.symbol)
                 
+                if pmh is None:
+                    # FAIL-CLOSED: No PMH available — set to 0 so PMH-break never fires
+                    # DO NOT fall back to session_high (it's dynamic intraday HOD, not PMH)
+                    logger.warning(
+                        f"[Warrior Watch] {candidate.symbol}: No PMH available — "
+                        f"PMH-break triggers will be disabled for this candidate"
+                    )
+                    pmh = Decimal("0")
+                
                 self._watchlist[candidate.symbol] = WatchedCandidate(
                     candidate=candidate,
-                    pmh=pmh or candidate.session_high,
+                    pmh=pmh,
                 )
                 logger.info(
                     f"[Warrior Watch] Added {candidate.symbol}: "
-                    f"gap={candidate.gap_percent:.1f}%, PMH=${pmh or candidate.session_high}"
+                    f"gap={candidate.gap_percent:.1f}%, PMH=${pmh}"
                 )
         
         # Store scan result for UI visibility
@@ -606,26 +615,61 @@ class WarriorEngine:
     async def _get_premarket_high(self, symbol: str) -> Optional[Decimal]:
         """Get pre-market high for a symbol.
         
-        Uses FMP intraday bars to calculate max(high) from pre-market (4AM-9:29AM).
-        This is the TRUE PMH - doesn't update during regular session.
+        PRIMARY: Derives PMH from Polygon intraday bars (already available via
+        _get_intraday_bars). Filters for bars before 9:30 AM ET and takes max(high).
+        
+        SECONDARY FALLBACK: FMP intraday bars (30-min, may be sparse for micro-caps).
+        
+        FAIL-CLOSED: If no pre-market bars exist from any source, returns None.
+        The caller must handle None (do NOT fall back to session_high/day_high
+        which are dynamic intraday values, not frozen pre-market highs).
         """
+        # PRIMARY: Derive from Polygon 1-min intraday bars
+        if self._get_intraday_bars:
+            try:
+                bars = await self._get_intraday_bars(symbol, "1min", limit=100)
+                if bars:
+                    pre_market_highs = []
+                    for bar in bars:
+                        bar_time = getattr(bar, 'time', '') or ''
+                        if not bar_time:
+                            continue
+                        try:
+                            # Parse hour from bar time (format: "HH:MM" or "HH:MM:SS")
+                            hour, minute = int(bar_time.split(':')[0]), int(bar_time.split(':')[1])
+                            # Pre-market: 4:00 AM to 9:29 AM ET
+                            if 4 <= hour < 9 or (hour == 9 and minute < 30):
+                                pre_market_highs.append(Decimal(str(bar.high)))
+                        except (ValueError, IndexError):
+                            continue
+                    
+                    if pre_market_highs:
+                        pmh = max(pre_market_highs)
+                        logger.info(
+                            f"[Warrior PMH] {symbol}: Derived from Polygon bars "
+                            f"(${pmh:.2f}, {len(pre_market_highs)} pre-market bars)"
+                        )
+                        return pmh
+                    else:
+                        logger.info(f"[Warrior PMH] {symbol}: No pre-market bars found in Polygon data")
+            except Exception as e:
+                logger.warning(f"[Warrior PMH] {symbol}: Polygon bar lookup failed: {e}")
+        
+        # SECONDARY FALLBACK: FMP intraday bars (may be sparse for micro-caps)
         try:
             from nexus2.adapters.market_data.fmp_adapter import get_fmp_adapter
             
             fmp = get_fmp_adapter()
             if fmp:
-                # Run in thread pool to avoid blocking event loop
                 pmh = await asyncio.to_thread(fmp.get_premarket_high, symbol)
                 if pmh:
+                    logger.info(f"[Warrior PMH] {symbol}: FMP fallback PMH=${pmh:.2f}")
                     return pmh
         except Exception as e:
-            logger.warning(f"[Warrior PMH] FMP lookup failed for {symbol}: {e}")
+            logger.warning(f"[Warrior PMH] {symbol}: FMP lookup failed: {e}")
         
-        # Fallback to quote day_high if FMP fails (less accurate)
-        if self._get_quote:
-            quote = await self._get_quote(symbol)
-            if quote:
-                return Decimal(str(getattr(quote, 'day_high', 0) or 0))
+        # FAIL-CLOSED: No pre-market data from any source
+        logger.warning(f"[Warrior PMH] {symbol}: No PMH available from any source (Polygon + FMP)")
         return None
     
     # =========================================================================
