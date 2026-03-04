@@ -449,7 +449,10 @@ async def get_warrior_scan_history_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -467,16 +470,20 @@ async def get_nac_scan_history_distinct(
     history = get_scan_history_logger()
     
     values = set()
+    has_empty = False
     for date_str, entries in history._history.items():
         for entry in entries:
             full_entry = {"date": date_str, "source": "scan", **entry}
-            if column in full_entry:
-                val = full_entry[column]
-                if val is not None:
-                    values.add(str(val))
+            val = full_entry.get(column)
+            if val is None or val == '':
+                has_empty = True
+            elif val is not None:
+                values.add(str(val))
     
-    values.discard("")
-    return {"column": column, "values": sorted(list(values))}
+    result = sorted(list(values))
+    if has_empty:
+        result.append('(empty)')
+    return {"column": column, "values": result}
 
 
 # =============================================================================
@@ -611,7 +618,10 @@ async def get_catalyst_audits_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -741,7 +751,10 @@ async def get_ai_comparisons_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -860,14 +873,18 @@ async def get_trade_events_distinct(
     all_events = trade_event_service.get_recent_events(None, limit=1000)
     
     values = set()
+    has_empty = False
     for event in all_events:
-        if column in event:
-            val = event[column]
-            if val is not None:
-                values.add(str(val))
+        val = event.get(column)
+        if val is None or val == '':
+            has_empty = True
+        elif val is not None:
+            values.add(str(val))
     
-    values.discard("")
-    return {"column": column, "values": sorted(list(values))}
+    result = sorted(list(values))
+    if has_empty:
+        result.append('(empty)')
+    return {"column": column, "values": result}
 
 
 # =============================================================================
@@ -993,7 +1010,10 @@ async def get_warrior_trades_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -1015,7 +1035,10 @@ async def get_nac_trades_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -1128,7 +1151,10 @@ async def get_quote_audits_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
@@ -1243,7 +1269,10 @@ async def get_validation_log_distinct(
             return {"column": column, "values": []}
         
         results = db.query(distinct(col)).all()
+        has_null = any(r[0] is None for r in results)
         values = [str(r[0]) for r in results if r[0] is not None]
+        if has_null:
+            values.append('(empty)')
     
     return {"column": column, "values": sorted(values)}
 
