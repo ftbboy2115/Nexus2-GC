@@ -8,7 +8,7 @@ access to NAC trades and scan history data.
 from datetime import date, datetime
 from datetime import datetime as dt
 from typing import Optional, List
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from nexus2.utils.time_utils import et_to_utc, EASTERN
 
 router = APIRouter(prefix="/data", tags=["data-explorer"])
@@ -255,6 +255,7 @@ async def get_nac_trades(
 
 @router.get("/scan-history")
 async def get_scan_history(
+    request: Request,
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
@@ -289,7 +290,7 @@ async def get_scan_history(
                 **entry,
             })
     
-    # Apply filters
+    # Apply explicit filters
     if date_from:
         all_entries = [e for e in all_entries if e["date"] >= date_from]
     if date_to:
@@ -298,6 +299,13 @@ async def get_scan_history(
     all_entries = _apply_multi_select(all_entries, "source", source)
     all_entries = _apply_multi_select(all_entries, "catalyst", catalyst)
     all_entries = _apply_exact_time_filter(all_entries, "logged_at", logged_at)
+    
+    # Apply dynamic filters for any additional query params
+    _known_params = {'limit', 'offset', 'date_from', 'date_to', 'symbol', 'source',
+                     'catalyst', 'logged_at', 'sort_by', 'sort_dir'}
+    for param_name, param_value in request.query_params.items():
+        if param_name not in _known_params and param_value:
+            all_entries = _apply_multi_select(all_entries, param_name, param_value)
     
     # Calculate total before pagination
     total = len(all_entries)
@@ -785,6 +793,7 @@ async def get_ai_comparisons_distinct(
 
 @router.get("/trade-events")
 async def get_trade_events(
+    request: Request,
     limit: int = Query(50, ge=1, le=500, description="Maximum records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     strategy: Optional[str] = Query(None, description="Filter by strategy: NAC or WARRIOR"),
@@ -807,7 +816,7 @@ async def get_trade_events(
     # Get all events (service returns dicts)
     all_events = trade_event_service.get_recent_events(strategy, limit=500)
     
-    # Apply multi-select filters
+    # Apply explicit multi-select filters
     all_events = _apply_multi_select(all_events, "symbol", symbol.upper() if symbol else None)
     all_events = _apply_multi_select(all_events, "event_type", event_type)
     # Reason uses category matching instead of exact match
@@ -820,6 +829,14 @@ async def get_trade_events(
             if _categorize_reason(str(e.get('reason') or '')) in reason_categories
             or (has_empty and not e.get('reason'))
         ]
+    
+    # Apply dynamic filters for any additional query params (position_id, exit_mode, etc.)
+    _known_params = {'limit', 'offset', 'strategy', 'symbol', 'event_type', 'reason',
+                     'date_from', 'date_to', 'time_from', 'time_to', 'created_at',
+                     'sort_by', 'sort_dir'}
+    for param_name, param_value in request.query_params.items():
+        if param_name not in _known_params and param_value:
+            all_events = _apply_multi_select(all_events, param_name, param_value)
     # Date and time filter uses created_at field (stored as UTC, filters are ET)
     if date_from or date_to or time_from or time_to:
         from zoneinfo import ZoneInfo
