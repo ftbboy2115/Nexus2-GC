@@ -268,6 +268,7 @@ def create_get_intraday_bars():
         low: float
         close: float
         volume: int
+        timestamp: object = None  # datetime or None — preserved for PMH premarket filtering
     
     async def get_intraday_bars(symbol: str, timeframe: str = "5min", limit: int = 50):
         """Get intraday bars for technical indicator calculation.
@@ -287,7 +288,8 @@ def create_get_intraday_bars():
                     if bars:
                         return [Bar(
                             open=float(b.open), high=float(b.high), low=float(b.low),
-                            close=float(b.close), volume=int(b.volume)
+                            close=float(b.close), volume=int(b.volume),
+                            timestamp=getattr(b, 'timestamp', None)
                         ) for b in bars]
                 return None
         except Exception:
@@ -320,7 +322,8 @@ def create_get_intraday_bars():
                         high=float(b.high),
                         low=float(b.low),
                         close=float(b.close),
-                        volume=int(b.volume)
+                        volume=int(b.volume),
+                        timestamp=getattr(b, 'timestamp', None)
                     ) for b in bars]
         except Exception as e:
             logger.debug(f"[Warrior] Polygon bars failed for {symbol}: {e}")
@@ -341,7 +344,8 @@ def create_get_intraday_bars():
                             high=float(b.high),
                             low=float(b.low),
                             close=float(b.close),
-                            volume=int(b.volume)
+                            volume=int(b.volume),
+                            timestamp=getattr(b, 'timestamp', None)
                         ) for b in bars]
             except Exception as e:
                 logger.debug(f"[Warrior] Alpaca bars failed for {symbol}: {e}")
@@ -359,7 +363,8 @@ def create_get_intraday_bars():
                             high=float(b.high),
                             low=float(b.low),
                             close=float(b.close),
-                            volume=int(b.volume)
+                            volume=int(b.volume),
+                            timestamp=getattr(b, 'timestamp', None)
                         ) for b in bars_to_use]
             except Exception as e:
                 logger.debug(f"[Warrior] FMP bars failed for {symbol}: {e}")
