@@ -664,8 +664,10 @@ async def validate_technicals(
         return True, None
     
     if not engine._get_intraday_bars:
-        # Cannot validate - proceed with caution
-        return True, None
+        # FAIL-CLOSED: Cannot validate technicals without bar data
+        reason = "FAIL-CLOSED - no intraday bar callback available. Cannot validate VWAP/EMA."
+        logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+        return False, reason
     
     try:
         candles = await engine._get_intraday_bars(symbol, "1min", limit=50)
@@ -725,7 +727,11 @@ async def validate_technicals(
         # Check: price should be above VWAP (Ross Cameron rule)
         # Use vwap_snapshot (today's bars only) for accurate session VWAP
         actual_vwap = vwap_snapshot.vwap if vwap_snapshot else snapshot.vwap
-        if actual_vwap and entry_price < actual_vwap:
+        if actual_vwap is None:
+            reason = "FAIL-CLOSED - VWAP data missing. Cannot validate technicals."
+            logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+            return False, reason
+        if entry_price < actual_vwap:
             reason = (
                 f"REJECTED - below VWAP "
                 f"(${entry_price:.2f} < VWAP ${actual_vwap:.2f})"
@@ -736,7 +742,11 @@ async def validate_technicals(
             return False, reason
         
         # Check: price should be above 9 EMA (within 1% tolerance)
-        if snapshot.ema_9 and entry_price < snapshot.ema_9 * Decimal("0.99"):
+        if snapshot.ema_9 is None:
+            reason = "FAIL-CLOSED - 9 EMA data missing. Cannot validate technicals."
+            logger.warning(f"[Warrior Entry] {symbol}: {reason}")
+            return False, reason
+        if entry_price < snapshot.ema_9 * Decimal("0.99"):
             reason = (
                 f"REJECTED - below 9 EMA "
                 f"(${entry_price:.2f} < 9EMA ${snapshot.ema_9:.2f})"
