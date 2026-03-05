@@ -225,6 +225,29 @@ Key endpoints (all under `/warrior` prefix):
 
 **This is how we track whether code changes improve or hurt trade performance over time.**
 
+### Baseline Re-establishment (after new test case)
+
+After verifying the new test case runs successfully, you MUST offer to establish a new baseline:
+
+1. **Check for in-flight code changes** — Run `git status` and `git diff --stat` in the Nexus project root.
+   - If the working tree is **clean** (no uncommitted changes to `nexus2/` source files), proceed to step 2.
+   - If there are **uncommitted changes**, ask Clay:
+     ```
+     ⚠️ There are uncommitted code changes in the working tree:
+     [list changed files]
+     Running a full batch now would mix the new test case's impact with code changes.
+     Options:
+     1. Run anyway (baseline will reflect both the new case AND code changes)
+     2. Wait until code changes are committed/reverted, then re-baseline
+     ```
+2. **Offer the full batch run** — Ask Clay: *"The new test case is verified. Want me to run a full batch (`--all`) to establish the new baseline with this case included?"*
+3. If approved, run `run_batch_concurrent` with **no `case_ids` filter** (all cases)
+4. Update the **Benchmark Tracker** — In the new row, clearly note that the delta is due to a **new test case addition**, not a code change
+
+> [!IMPORTANT]
+> A clean baseline matters. If you mix new-case additions with code changes in the same
+> benchmark row, it becomes impossible to attribute P&L deltas to either cause.
+
 ---
 
 ## Current Implementation Status
