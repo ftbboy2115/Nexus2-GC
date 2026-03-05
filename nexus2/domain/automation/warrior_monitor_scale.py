@@ -50,6 +50,14 @@ async def check_scale_opportunity(
     if not s.enable_scaling:
         return None
     
+    # SAFETY: Skip if position is already CLOSED (prevents scaling into exited positions)
+    from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+    from nexus2.domain.positions.position_state_machine import PositionStatus
+    trade = get_warrior_trade_by_symbol(position.symbol)
+    if trade and trade["status"] == PositionStatus.CLOSED.value:
+        logger.debug(f"[Warrior Scale] {position.symbol}: Skipping scale - position already CLOSED")
+        return None
+    
     # Route scaling strategy
     if s.enable_level_break_scaling:
         # ADDITIVE: Try legacy first (gets the early one-add),
@@ -389,6 +397,14 @@ async def check_momentum_add(
     if not s.enable_momentum_adds:
         return None
     
+    # SAFETY: Skip if position is already CLOSED
+    from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+    from nexus2.domain.positions.position_state_machine import PositionStatus
+    trade = get_warrior_trade_by_symbol(position.symbol)
+    if trade and trade["status"] == PositionStatus.CLOSED.value:
+        logger.debug(f"[Warrior Momentum] {position.symbol}: Skipping momentum add - position already CLOSED")
+        return None
+    
     if position.momentum_add_count >= s.max_momentum_adds:
         return None
     
@@ -478,6 +494,14 @@ async def execute_scale_in(
     Returns True if scale was executed successfully.
     """
     from nexus2.domain.automation.trade_event_service import trade_event_service
+    
+    # SAFETY: Skip if position is already CLOSED (defense-in-depth)
+    from nexus2.db.warrior_db import get_warrior_trade_by_symbol
+    from nexus2.domain.positions.position_state_machine import PositionStatus
+    trade = get_warrior_trade_by_symbol(position.symbol)
+    if trade and trade["status"] == PositionStatus.CLOSED.value:
+        logger.warning(f"[Warrior Scale] {position.symbol}: BLOCKED scale execution - position already CLOSED")
+        return False
     
     if not monitor._submit_scale_order:
         logger.warning(f"[Warrior Scale] {position.symbol}: No scale order callback configured")
