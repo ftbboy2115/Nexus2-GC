@@ -18,6 +18,9 @@ from nexus2.domain.automation.warrior_engine_types import (
     EntryTriggerType,
     WatchedCandidate,
 )
+from nexus2.domain.automation.warrior_entry_helpers import (
+    check_high_volume_red_candle,
+)
 from nexus2.utils.time_utils import now_utc
 
 if TYPE_CHECKING:
@@ -153,6 +156,14 @@ async def check_entry_guards(
         tml.log_warrior_guard_block(symbol, "macd", macd_result[1], _trigger, _price, _btime)
         return macd_result
     
+    # FALLING KNIFE + HIGH-VOL RED CANDLE GUARD (all patterns)
+    # Previously only protected VWAP_BREAK. Now centralized to guard ALL entries.
+    # Uses snapshot + candles already fetched by MACD gate (stored on watched).
+    fk_result = _check_falling_knife_guard(engine, watched, current_price)
+    if not fk_result[0]:
+        tml.log_warrior_guard_block(symbol, "falling_knife", fk_result[1], _trigger, _price, _btime)
+        return fk_result
+    
     # POSITION CHECKS (existing position, max scales, profit check)
     position_result = await _check_position_guards(engine, watched, current_price, trigger_type)
     if not position_result[0]:
@@ -276,11 +287,15 @@ async def _check_macd_gate(
         # Update cached MACD histogram for scoring (keeps scoring in sync with gate)
         watched.cached_macd_histogram = float(histogram)
         
+        # MACD GATE is UNCONDITIONAL (warrior.md §8.1 — "red light = don't trade")
+        # The 5x RVOL prerequisite applies to MACD *entry signals* (crossovers),
+        # NOT the defensive gate. Removed RVOL bypass that was added in error.
         if histogram < tolerance and snapshot.macd_crossover != "bullish":
             reason = (
                 f"MACD GATE - blocking entry "
                 f"(histogram={histogram:.4f} < tolerance={tolerance}, "
-                f"crossover={snapshot.macd_crossover}) - MACD too negative for entry"
+                f"crossover={snapshot.macd_crossover}) "
+                f"- MACD too negative for entry"
             )
             return False, reason
         
@@ -291,8 +306,9 @@ async def _check_macd_gate(
                 f"(histogram={histogram:.4f}, tolerance={tolerance}) - allowing entry"
             )
         
-        # CRITICAL: Store snapshot for audit logging
+        # CRITICAL: Store snapshot AND candles for downstream guards (falling knife, red candle)
         watched.entry_snapshot = snapshot
+        watched._macd_gate_candles = candles
         logger.info(
             f"[Warrior Entry] {symbol}: MACD OK for entry "
             f"(histogram={f'{snapshot.macd_histogram:.4f}' if snapshot.macd_histogram else 'N/A'})"
@@ -303,7 +319,60 @@ async def _check_macd_gate(
         return False, f"FAIL-CLOSED - MACD check failed: {e}. Cannot verify momentum."
 
 
-
+def _check_falling_knife_guard(
+    engine: "WarriorEngine",
+    watched: WatchedCandidate,
+    current_price: Decimal,
+) -> Tuple[bool, str]:
+    """
+    Falling knife + high-volume red candle guard.
+    
+    Blocks ALL entry patterns during falling knife conditions:
+    - Below 20 EMA AND MACD negative = falling knife
+    - Current bar is a high-volume red candle = distribution
+    
+    Uses snapshot and candles already fetched by _check_macd_gate().
+    
+    Returns:
+        (True, "") if conditions OK
+        (False, reason) if blocked
+    """
+    symbol = watched.candidate.symbol
+    snapshot = getattr(watched, 'entry_snapshot', None)
+    candles = getattr(watched, '_macd_gate_candles', None)
+    
+    if not snapshot or not candles:
+        # No data from MACD gate — can't check, allow entry (MACD gate already passed)
+        return True, ""
+    
+    # FALLING KNIFE: below 20 EMA AND MACD negative
+    # Use MACD gate's tolerance (-0.02) instead of is_macd_bullish (histogram > 0)
+    # to avoid re-blocking entries the MACD gate already approved.
+    if len(candles) >= 20:
+        tolerance = engine.config.macd_histogram_tolerance  # default -0.02
+        histogram = snapshot.macd_histogram or 0
+        is_macd_acceptable = histogram >= tolerance
+        is_above_20_ema = (
+            snapshot.ema_20 and
+            current_price > Decimal(str(snapshot.ema_20))
+        )
+        if not is_above_20_ema and not is_macd_acceptable:
+            ema_str = f"${snapshot.ema_20:.2f}" if snapshot.ema_20 else "N/A"
+            reason = f"FALLING KNIFE guard — below 20 EMA {ema_str}, MACD negative (histogram={histogram:.4f} < {tolerance})"
+            logger.warning(f"[Warrior Guards] {symbol}: {reason}")
+            return False, reason
+    
+    # HIGH-VOLUME RED CANDLE: distribution signal
+    is_red_flag, red_vol, red_avg = check_high_volume_red_candle(candles)
+    if is_red_flag:
+        reason = (
+            f"HIGH-VOL RED CANDLE guard — "
+            f"red bar vol {red_vol:,} >= 1.5x avg {red_avg:,.0f}"
+        )
+        logger.warning(f"[Warrior Guards] {symbol}: {reason}")
+        return False, reason
+    
+    return True, ""
 
 
 async def _check_position_guards(

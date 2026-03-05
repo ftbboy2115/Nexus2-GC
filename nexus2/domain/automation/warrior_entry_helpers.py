@@ -128,9 +128,20 @@ def check_high_volume_red_candle(candles: list, volume_multiplier: float = 1.5) 
         return False, 0, 0.0  # Green candle, no red flag
     
     # Check if volume is significantly above average
+    # FIX: Use 50-bar lookback (was 10) to avoid unreliable averages during
+    # premarket when volume is thin. A 10-bar window produced avg volumes like
+    # 2,147 or 24,716 which made any normal volume spike trigger the guard,
+    # causing false blocks that cascaded into worse entries.
     current_vol = current.volume if hasattr(current, 'volume') else 0
-    lookback = min(10, len(candles) - 1)
+    lookback = min(50, len(candles) - 1)
     avg_vol = sum(c.volume for c in candles[-lookback-1:-1]) / lookback if lookback > 0 else 0
+    
+    # Minimum avg volume floor: skip guard if average is too thin to be reliable.
+    # During premarket, averages can be <5,000 — at these levels, the "1.5x avg"
+    # threshold is meaningless as any normal order flow triggers the guard.
+    MIN_AVG_VOLUME = 5000
+    if avg_vol < MIN_AVG_VOLUME:
+        return False, current_vol, avg_vol
     
     is_high_volume = current_vol >= avg_vol * volume_multiplier
     
