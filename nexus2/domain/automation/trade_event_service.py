@@ -90,6 +90,10 @@ class TradeEventService:
         # Dedup tracker for trigger rejections: {"SYMBOL_PATTERN": timestamp}
         # Prevents redundant events during live trading (5s poll cycles)
         self._trigger_rejection_dedup: Dict[str, float] = {}
+        
+        # Per-process in-memory guard block tracking (for batch tests)
+        # Avoids shared nexus.db accumulation across runs
+        self._run_guard_blocks: list = []
     
     def _log_to_file(self, strategy: str, symbol: str, event_type: str, details: str, order_id: str = None):
         """Append event to persistent TML file for forensics (NAC and Warrior)."""
@@ -1042,6 +1046,15 @@ class TradeEventService:
             reason=reason,
             metadata=metadata,
         )
+        
+        # Per-process in-memory tracking (for batch test guard_block_count)
+        self._run_guard_blocks.append({
+            "guard": guard_name,
+            "reason": reason,
+            "symbol": symbol.upper(),
+            "blocked_price": price,
+            "blocked_time": blocked_time,
+        })
     
     def log_warrior_trigger_rejection(
         self,

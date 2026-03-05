@@ -761,32 +761,19 @@ async def _run_single_case_async(case: dict, yaml_data: dict, skip_guards: bool 
         except Exception as e:
             log.warning(f"[{case_id}] Failed to extract trades from warrior_db: {e}")
 
-        # Extract guard block events from trade_events DB
+        # Extract guard block events from per-process in-memory tracking
+        # FIX: Previously read from shared nexus.db which accumulated blocks
+        # across ALL runs (no cleanup, no date filter). This caused guard_block_count
+        # to grow with every batch run and misled root cause investigations.
+        # Now uses in-memory list tracked by trade_event_service during THIS run only.
         guard_blocks = []
         try:
             import json as _json
-            from nexus2.db.database import get_session
-            from nexus2.db.models import TradeEventModel
-            with get_session() as db:
-                blocks = db.query(TradeEventModel).filter(
-                    TradeEventModel.event_type == "GUARD_BLOCK",
-                    TradeEventModel.symbol == symbol.upper(),
-                ).all()
-                for b in blocks:
-                    block_entry = {
-                        "guard": b.new_value,
-                        "reason": b.reason,
-                        "symbol": b.symbol,
-                    }
-                    # Phase 2: Extract enriched metadata (blocked_price, blocked_time)
-                    if b.metadata_json:
-                        try:
-                            meta = _json.loads(b.metadata_json)
-                            block_entry["blocked_price"] = meta.get("blocked_price")
-                            block_entry["blocked_time"] = meta.get("blocked_time")
-                        except (ValueError, TypeError):
-                            pass
-                    guard_blocks.append(block_entry)
+            from nexus2.domain.automation.trade_event_service import trade_event_service as _tes
+            blocks_raw = getattr(_tes, '_run_guard_blocks', [])
+            for b in blocks_raw:
+                if b.get("symbol", "").upper() == symbol.upper():
+                    guard_blocks.append(b)
         except Exception as e:
             log.warning(f"[{case_id}] Failed to extract guard blocks: {e}")
 
