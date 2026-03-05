@@ -25,21 +25,16 @@ These rules apply to ALL specialist agents. Do not duplicate in individual rule 
 
 ---
 
-## 🔍 Search Tools — Use Symlink Paths
+## 📂 Project Paths
 
-> [!IMPORTANT]
-> The actual project path contains spaces and parentheses (`Documents (sync'd)`) which breaks `grep_search` / `codebase_search`.
-> **Always use the symlink paths for search tools:**
-
-| Project | Symlink Path | Actual Path |
-|---------|-------------|-------------|
-| Nexus | `C:\Dev\Nexus` | `C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\Nexus` |
-| Gravity Claw | `C:\Dev\gravity-claw` | `C:\Users\ftbbo\Nextcloud4\OneDrive Backup\Documents (sync'd)\Development\gravity-claw` |
+| Project | Path |
+|---------|------|
+| Nexus | `C:\Dev\Nexus` |
+| Gravity Claw | `C:\Dev\gravity-claw` |
 
 **Rules:**
-1. Use `C:\Dev\Nexus\...` for `grep_search`, `find_by_name`, and `codebase_search`
-2. Both the symlink and actual paths work for `view_file`, `run_command`, etc.
-3. If a search returns 0 results, verify with `view_file` before concluding code is missing
+1. Use these paths for all tool calls (`grep_search`, `find_by_name`, `view_file`, etc.)
+2. If a search returns 0 results, verify with `view_file` before concluding code is missing
 
 > [!CAUTION]
 > **Do NOT conclude that code is missing based solely on grep_search returning 0 results.**
